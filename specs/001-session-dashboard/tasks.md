@@ -80,7 +80,7 @@
 - [X] T029 [US1] Wire `repository.added`, `repository.removed`, `session.created`, `session.updated`, `session.ended` events through `event-dispatcher.ts` at `backend/src/api/ws/event-dispatcher.ts`
 - [X] T030 [P] [US1] Implement frontend `DashboardPage` with repository list, session count badges, and loading states at `frontend/src/pages/DashboardPage.tsx`
 - [X] T031 [P] [US1] Implement frontend `SessionCard` component: session type badge, status indicator, `startedAt` timestamp at `frontend/src/components/SessionCard/SessionCard.tsx`
-- [ ] T032 [US1] Connect `session.created`, `session.updated`, `session.ended`, `repository.added`, `repository.removed` WebSocket events to `DashboardPage` live state at `frontend/src/services/socket.ts` *(extends T016 — must be implemented after T016 is complete)*
+- [X] T032 [US1] Connect `session.created`, `session.updated`, `session.ended`, `repository.added`, `repository.removed` WebSocket events to `DashboardPage` live state at `frontend/src/services/socket.ts` *(extends T016 — must be implemented after T016 is complete)*
 
 **Checkpoint**: US1 fully functional. Open dashboard, see repos and sessions, watch live updates without refresh.
 

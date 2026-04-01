@@ -66,3 +66,19 @@ export function onEvent(type: string, handler: EventHandler): () => void {
   handlers.get(type)!.add(handler);
   return () => handlers.get(type)?.delete(handler);
 }
+
+import type { QueryClient } from '@tanstack/react-query';
+
+export function initSocketHandlers(qc: QueryClient): void {
+  onEvent('session.created', () => { qc.invalidateQueries({ queryKey: ['sessions'] }); });
+  onEvent('session.updated', () => { qc.invalidateQueries({ queryKey: ['sessions'] }); });
+  onEvent('session.ended', () => { qc.invalidateQueries({ queryKey: ['sessions'] }); });
+  onEvent('repository.added', () => {
+    qc.invalidateQueries({ queryKey: ['repositories'] });
+    qc.invalidateQueries({ queryKey: ['sessions'] });
+  });
+  onEvent('repository.removed', () => {
+    qc.invalidateQueries({ queryKey: ['repositories'] });
+    qc.invalidateQueries({ queryKey: ['sessions'] });
+  });
+}
