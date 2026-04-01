@@ -29,7 +29,7 @@
 
 ** CRITICAL**: Phases 35 cannot begin until this phase is complete.
 
-- [X] T092 Add `DashboardSettings` interface and `DEFAULT_SETTINGS` constant to `frontend/src/types.ts`: `{ showEndedSessions: boolean }` with default `{ showEndedSessions: true }`
+- [X] T092 Add `DashboardSettings` interface and `DEFAULT_SETTINGS` constant to `frontend/src/types.ts`: `{ hideEndedSessions: boolean }` with default `{ hideEndedSessions: false }`
 - [X] T093 Create `frontend/src/hooks/useSettings.ts`  React hook that returns `[settings, updateSetting]`; state initialized from `DEFAULT_SETTINGS` only (no localStorage yet  that is US2); `updateSetting(key, value)` updates a single field
 
 **Checkpoint**: `useSettings` is importable and returns correct defaults. Phases 35 can begin (in priority order or in parallel if multiple developers).
@@ -38,9 +38,9 @@
 
 ## Phase 3: User Story 1  Toggle Visibility of Ended Sessions (Priority: P1)  MVP
 
-**Goal**: Sessions with status `completed` or `ended` are hidden from all repository cards when `showEndedSessions` is `false`.
+**Goal**: Sessions with status `completed` or `ended` are hidden from all repository cards when `hideEndedSessions` is `true`.
 
-**Independent Test**: Pre-set `showEndedSessions` to `false` via `useSettings` (or directly in test setup), verify ended sessions disappear from the card list; set back to `true`, verify they reappear.
+**Independent Test**: Pre-set `hideEndedSessions` to `true` via `useSettings` (or directly in test setup), verify ended sessions disappear from the card list; set back to `false`, verify they reappear.
 
 ### Tests for User Story 1
 
@@ -53,15 +53,15 @@
 - [X] T095 [US1] In `frontend/src/pages/DashboardPage.tsx`: import `useSettings` hook; derive `visibleSessions` by filtering `sessions`
 - [X] T096 [US1] In `frontend/src/pages/DashboardPage.tsx`: add empty-state message inside each repository card when its filtered session list is empty
 
-**Checkpoint**: Pre-setting `localStorage['argus:settings']` to `{"showEndedSessions":false}` before page load hides ended sessions. US1 E2E test passes.
+**Checkpoint**: Pre-setting `localStorage['argus:settings']` to `{"hideEndedSessions":true}` before page load hides ended sessions. US1 E2E test passes.
 
 ---
 
 ## Phase 4: User Story 2  Preference Persists Across Page Loads (Priority: P2)
 
-**Goal**: The `showEndedSessions` preference survives page reload. Stored under `argus:settings` (JSON) in `localStorage`. Falls back to default on corrupt/missing data.
+**Goal**: The `hideEndedSessions` preference survives page reload. Stored under `argus:settings` (JSON) in `localStorage`. Falls back to default on corrupt/missing data.
 
-**Independent Test**: Set `showEndedSessions` to `false`, reload the page, verify ended sessions are still hidden without any user action.
+**Independent Test**: Set `hideEndedSessions` to `true`, reload the page, verify ended sessions are still hidden without any user action.
 
 ### Tests for User Story 2
 
@@ -79,9 +79,9 @@
 
 ## Phase 5: User Story 3  Settings Panel Discoverability (Priority: P3)
 
-**Goal**: A gear icon () in the dashboard header opens a settings panel containing the "Show ended sessions" toggle. The toggle reflects and controls `useSettings` state.
+**Goal**: A gear icon () in the dashboard header opens a settings panel containing the "Hide ended sessions" toggle. The toggle reflects and controls `useSettings` state.
 
-**Independent Test**: Open dashboard, click the gear icon, verify settings panel appears with "Show ended sessions" toggle. Toggle it and verify the session list updates immediately.
+**Independent Test**: Open dashboard, click the gear icon, verify settings panel appears with "Hide ended sessions" toggle. Toggle it and verify the session list updates immediately.
 
 ### Tests for User Story 3
 
@@ -109,7 +109,7 @@
 
 ## Phase 7: User Story 4 — Hide Repositories with No Active Sessions (Priority: P4)
 
-**Goal**: When `hideReposWithNoActiveSessions` is `true`, repository cards with no sessions of status `active`, `idle`, `waiting`, or `error` are removed from the dashboard. Repos with zero sessions are also hidden. Filter is independent of the `showEndedSessions` setting.
+**Goal**: When `hideReposWithNoActiveSessions` is `true`, repository cards with no sessions of status `active`, `idle`, `waiting`, or `error` are removed from the dashboard. Repos with zero sessions are also hidden. Filter is independent of the `hideEndedSessions` setting.
 
 **Independent Test**: Register two repos — one with an active session, one with only completed sessions. Turn on "Hide repos with no active sessions". Verify only the repo with the active session is visible.
 
@@ -117,13 +117,13 @@
 
 > **Write these tests FIRST — they must FAIL before implementation begins**
 
-- [X] T106 [P] [US4] Add E2E tests to `frontend/tests/e2e/sc-005-settings-filter.spec.ts`: mock two repos — `active-repo` (has `active` session) and `idle-repo` (has only `completed` session); pre-set `localStorage['argus:settings']` to `{"showEndedSessions":true,"hideReposWithNoActiveSessions":true}`; assert `idle-repo` card is not visible; assert `active-repo` card is visible; add second test: with setting `false`, assert both repo cards are visible; add third test: all repos have only ended sessions + setting on → global empty-state message shown
+- [X] T106 [P] [US4] Add E2E tests to `frontend/tests/e2e/sc-005-settings-filter.spec.ts`: mock two repos — `active-repo` (has `active` session) and `idle-repo` (has only `completed` session); pre-set `localStorage['argus:settings']` to `{"hideEndedSessions":false,"hideReposWithNoActiveSessions":true}`; assert `idle-repo` card is not visible; assert `active-repo` card is visible; add second test: with setting `false`, assert both repo cards are visible; add third test: all repos have only ended sessions + setting on → global empty-state message shown
 
 ### Implementation for User Story 4
 
 - [X] T107 [P] [US4] Add `hideReposWithNoActiveSessions: boolean` field (default `false`) to `DashboardSettings` interface in `frontend/src/types.ts` and to `DEFAULT_SETTINGS` constant
 - [X] T108 [US4] In `frontend/src/pages/DashboardPage.tsx`: define `ACTIVE_STATUSES = new Set(['active','idle','waiting','error'])`; after building `reposWithSessions`, when `settings.hideReposWithNoActiveSessions` is `true`, filter the array to only include repos where `sessions.some(s => ACTIVE_STATUSES.has(s.status))` using the **full** `sessions` list (not the already-filtered `visibleSessions`) — check against the raw `sessions` data query result per repo; update the global empty-state message to account for all repos being hidden by this filter
-- [X] T109 [US4] In `frontend/src/components/SettingsPanel/SettingsPanel.tsx`: add a second toggle row labelled "Hide repos with no active sessions"; wire to `onToggle('hideReposWithNoActiveSessions', checked)`; place below the existing "Show ended sessions" row
+- [X] T109 [US4] In `frontend/src/components/SettingsPanel/SettingsPanel.tsx`: add a second toggle row labelled "Hide repos with no active sessions"; wire to `onToggle('hideReposWithNoActiveSessions', checked)`; place below the existing "Hide ended sessions" row
 
 **Checkpoint**: "Hide repos with no active sessions" toggle works, persists (via existing `useSettings` localStorage mechanism), and E2E tests pass.
 

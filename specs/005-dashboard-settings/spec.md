@@ -9,18 +9,18 @@
 
 ### User Story 1 - Toggle Visibility of Ended Sessions (Priority: P1)
 
-A user monitoring multiple repositories can see many sessions in the dashboard. Some of those sessions have ended (completed or timed out). The user wants to reduce visual clutter and hide ended sessions so they can focus only on active ones. A settings panel on the dashboard provides a "Show ended sessions" toggle, which is on by default. Turning it off hides all ended sessions from the list.
+A user monitoring multiple repositories can see many sessions in the dashboard. Some of those sessions have ended (completed or timed out). The user wants to reduce visual clutter and hide ended sessions so they can focus only on active ones. A settings panel on the dashboard provides a "Hide ended sessions" toggle, which is off by default. Turning it on hides all ended sessions from the list.
 
 **Why this priority**: This is the core deliverable of the feature. Without it, nothing else in this feature has value.
 
-**Independent Test**: Open the dashboard, toggle "Show ended sessions" off, verify ended sessions disappear. Toggle back on, verify they reappear.
+**Independent Test**: Open the dashboard, toggle "Hide ended sessions" on, verify ended sessions disappear. Toggle back off, verify they reappear.
 
 **Acceptance Scenarios**:
 
 1. **Given** the dashboard has both active and ended sessions, **When** the user opens the dashboard for the first time, **Then** all sessions (active and ended) are visible by default.
-2. **Given** "Show ended sessions" is on, **When** the user toggles it off, **Then** all ended sessions are hidden and only active sessions remain visible.
-3. **Given** "Show ended sessions" is off, **When** the user toggles it on, **Then** all ended sessions reappear in the list.
-4. **Given** "Show ended sessions" is off and there are no active sessions, **When** the user views the dashboard, **Then** an empty-state message is shown (not a blank page).
+2. **Given** "Hide ended sessions" is off, **When** the user toggles it on, **Then** all ended sessions are hidden and only active sessions remain visible.
+3. **Given** "Hide ended sessions" is on, **When** the user toggles it off, **Then** all ended sessions reappear in the list.
+4. **Given** "Hide ended sessions" is on and there are no active sessions, **When** the user views the dashboard, **Then** an empty-state message is shown (not a blank page).
 
 ---
 
@@ -30,12 +30,12 @@ After a user sets their preference to hide ended sessions, they close the browse
 
 **Why this priority**: Without persistence, the setting resets on every page load, making it effectively useless. However, it does not block the core toggle from working.
 
-**Independent Test**: Toggle "Show ended sessions" off, reload the page, verify ended sessions are still hidden.
+**Independent Test**: Toggle "Hide ended sessions" on, reload the page, verify ended sessions are still hidden.
 
 **Acceptance Scenarios**:
 
-1. **Given** the user has toggled "Show ended sessions" off, **When** the user reloads or reopens the dashboard, **Then** the toggle is still off and ended sessions remain hidden.
-2. **Given** the user has never changed the setting, **When** the user opens the dashboard, **Then** the default (show ended sessions = on) is applied.
+1. **Given** the user has toggled "Hide ended sessions" on, **When** the user reloads or reopens the dashboard, **Then** the toggle is still on and ended sessions remain hidden.
+2. **Given** the user has never changed the setting, **When** the user opens the dashboard, **Then** the default (hide ended sessions = off) is applied.
 
 ---
 
@@ -50,7 +50,7 @@ The settings are accessible via a clearly labelled settings icon or button on th
 **Acceptance Scenarios**:
 
 1. **Given** the dashboard is loaded, **When** the user looks at the dashboard header/toolbar, **Then** a settings control (icon or button) is visible.
-2. **Given** the user clicks the settings control, **When** the settings panel opens, **Then** the "Show ended sessions" toggle is visible with its current state clearly indicated (on/off).
+2. **Given** the user clicks the settings control, **When** the settings panel opens, **Then** the "Hide ended sessions" toggle is visible with its current state clearly indicated (on/off).
 
 ---
 
@@ -74,7 +74,7 @@ A user with many registered repositories — most of which are idle — wants to
 
 ### Edge Cases
 
-- What happens when all sessions are ended and "Show ended sessions" is off? → Show an empty-state message, not a blank or broken UI.
+- What happens when all sessions are ended and "Hide ended sessions" is on? → Show an empty-state message, not a blank or broken UI.
 - What happens if the persisted preference is corrupted or unreadable? → Fall back to the default (show ended sessions = on, hide repos with no active sessions = off).
 - What happens if a session transitions from active to ended while the filter is off? → The session disappears from the list immediately (or on next refresh).
 - What happens when "Hide repos with no active sessions" is on and a session becomes active in a hidden repo? → The repo reappears on next data refresh (React Query polling).
@@ -85,30 +85,30 @@ A user with many registered repositories — most of which are idle — wants to
 ### Functional Requirements
 
 - **FR-001**: The dashboard MUST include a settings panel accessible from a visible control in the dashboard header or toolbar.
-- **FR-002**: The settings panel MUST contain a "Show ended sessions" toggle.
-- **FR-003**: The "Show ended sessions" toggle MUST default to on (ended sessions are shown).
-- **FR-004**: When "Show ended sessions" is off, the dashboard MUST hide all sessions with an ended status from the session list.
-- **FR-005**: When "Show ended sessions" is on, the dashboard MUST display all sessions regardless of status.
-- **FR-006**: The user's "Show ended sessions" preference MUST be persisted locally and restored on subsequent visits without requiring any action from the user.
-- **FR-007**: When "Show ended sessions" is off and no active sessions exist, the dashboard MUST display a clear empty-state message.
-- **FR-008**: If the persisted preference cannot be read, the system MUST fall back to the default (show ended sessions = on).
+- **FR-002**: The settings panel MUST contain a "Hide ended sessions" toggle.
+- **FR-003**: The "Hide ended sessions" toggle MUST default to off (ended sessions are shown).
+- **FR-004**: When "Hide ended sessions" is on, the dashboard MUST hide all sessions with an ended status from the session list.
+- **FR-005**: When "Hide ended sessions" is off, the dashboard MUST display all sessions regardless of status.
+- **FR-006**: The user's "Hide ended sessions" preference MUST be persisted locally and restored on subsequent visits without requiring any action from the user.
+- **FR-007**: When "Hide ended sessions" is on and no active sessions exist, the dashboard MUST display a clear empty-state message.
+- **FR-008**: If the persisted preference cannot be read, the system MUST fall back to the default (hide ended sessions = off).
 - **FR-009**: The settings panel MUST be designed to accommodate additional settings in the future (extensible structure).
 - **FR-010**: The settings panel MUST contain a "Hide repos with no active sessions" toggle.
 - **FR-011**: The "Hide repos with no active sessions" toggle MUST default to off (all repos shown).
 - **FR-012**: When "Hide repos with no active sessions" is on, the dashboard MUST hide any repository card where no session has status `active`, `idle`, `waiting`, or `error` (including repos with zero sessions).
-- **FR-013**: The "Hide repos with no active sessions" filter MUST be independent of the "Show ended sessions" filter — it evaluates raw session statuses, not the post-filter visible list.
+- **FR-013**: The "Hide repos with no active sessions" filter MUST be independent of the "Hide ended sessions" filter — it evaluates raw session statuses, not the post-filter visible list.
 - **FR-014**: When all repos are hidden by the filter, a global empty-state message MUST be shown.
 
 ### Key Entities
 
-- **Setting**: A named user preference with a value, persisted locally. Settings: `showEndedSessions` (boolean, default: `true`), `hideReposWithNoActiveSessions` (boolean, default: `false`).
+- **Setting**: A named user preference with a value, persisted locally. Settings: `hideEndedSessions` (boolean, default: `false`), `hideReposWithNoActiveSessions` (boolean, default: `false`).
 - **Session**: An individual Copilot CLI or Claude Code session tracked by Argus. Has a status that is either active or ended.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: A user can locate and toggle the "Show ended sessions" setting in under 10 seconds without any instructions.
+- **SC-001**: A user can locate and toggle the "Hide ended sessions" setting in under 10 seconds without any instructions.
 - **SC-002**: Toggling the setting takes effect on the displayed session list instantly (no page reload required).
 - **SC-003**: The user's preference is correctly restored on 100% of subsequent page loads.
 - **SC-004**: The settings panel can accommodate at least 5 additional settings without redesign.

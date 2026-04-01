@@ -61,7 +61,7 @@ export default function DashboardPage() {
     return { ...repo, sessions: visibleSessions };
   }).filter((repo) => {
     if (!settings.hideReposWithNoActiveSessions) return true;
-    // Use raw sessions (independent of showEndedSessions filter)
+    // Use raw sessions (independent of hideEndedSessions filter)
     const repoSessions = sessions.filter(s => s.repositoryId === repo.id);
     return repoSessions.some(s => ACTIVE_STATUSES.has(s.status));
   });

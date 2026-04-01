@@ -5,7 +5,7 @@
 
 ## Summary
 
-Add a settings panel to the Argus dashboard. The first setting is a "Show ended sessions" toggle (default: on). When toggled off, sessions with status `completed` or `ended` are hidden from all repository cards. The preference is persisted to `localStorage` and restored on page load. The panel is accessible via a gear icon in the dashboard header and is designed to accommodate future settings. This is a **frontend-only change**  no backend modifications required.
+Add a settings panel to the Argus dashboard. The first setting is a "Hide ended sessions" toggle (default: off). When toggled on, sessions with status `completed` or `ended` are hidden from all repository cards. The preference is persisted to `localStorage` and restored on page load. The panel is accessible via a gear icon in the dashboard header and is designed to accommodate future settings. This is a **frontend-only change** — no backend modifications required.
 
 ## Technical Context
 
@@ -82,7 +82,7 @@ No unknowns found  all resolved from existing codebase:
 | Question | Answer |
 |----------|--------|
 | Which statuses count as "ended"? | `'completed'` and `'ended'` (from `SessionStatus` in `types.ts`) |
-| Existing localStorage key pattern | `argus:skipRemoveConfirm`  new key will be `argus:showEndedSessions` |
+| Existing localStorage key pattern | `argus:skipRemoveConfirm` → new key will be `argus:settings` (JSON) |
 | Existing settings infrastructure | None  will create `useSettings` hook as the foundation |
 | Settings panel pattern | No existing pattern  use Tailwind-styled popover anchored to gear icon |
 | No new npm dependencies needed | Confirmed  Tailwind + React cover all UI needs |
