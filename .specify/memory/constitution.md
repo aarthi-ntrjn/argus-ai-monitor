@@ -7,6 +7,12 @@
 **Version change**: 1.0.1 → 1.1.0 (minor — added exception clauses to §VI and §VIII for localhost single-user developer tools)
 **Rationale**: The Argus project is a localhost-bound, single-developer tool. §VI's blanket auth requirement and §VIII's 10k-user target are designed for networked multi-user services and must not block legitimate local tooling.
 **Templates reviewed**: plan-template.md ✅ spec-template.md ✅ tasks-template.md ✅
+
+## Sync Impact Report
+**Version change**: 1.1.0 → 1.2.0 (minor — added §XI Documentation principle requiring README.md updates with every change)
+**Added sections**: §XI Documentation
+**Modified sections**: §X Definition of Done (added README.md checkbox)
+**Templates reviewed**: plan-template.md ✅ tasks-template.md ✅
 -->
 
 # Argus Constitution
@@ -71,8 +77,16 @@ A feature is complete only when ALL are satisfied:
 - [ ] Code written and reviewed
 - [ ] Tests written test-first and passing
 - [ ] Documentation written
+- [ ] README.md updated to reflect the change
 - [ ] Metrics and logs added
 - [ ] Security reviewed
+
+### XI. Documentation
+- `README.md` MUST be updated with every user-facing or architectural change.
+- Documentation updates MUST be included in the same PR as the code change — not deferred.
+- README MUST always reflect the current state of the project: setup instructions,
+  configuration options, and any behaviour changes since the last release.
+- Outdated documentation is treated as a bug.
 
 ## Governance
 
@@ -80,4 +94,4 @@ Amendments require a dedicated PR (not a feature branch), a migration plan, and 
 
 **Versioning**: MAJOR = principle removed/redefined · MINOR = new principle · PATCH = clarification
 
-**Version**: 1.1.0 | **Ratified**: 2026-04-01 | **Last Amended**: 2026-04-01
+**Version**: 1.2.0 | **Ratified**: 2026-04-01 | **Last Amended**: 2026-04-01
