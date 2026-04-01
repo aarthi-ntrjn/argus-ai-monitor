@@ -76,9 +76,9 @@ export async function buildServer() {
   });
 
   app.register(async (fastify) => {
-    fastify.get('/ws', { websocket: true }, (socket) => {
-      addClient(socket);
-      socket.on('close', () => removeClient(socket));
+    fastify.get('/ws', { websocket: true }, (connection) => {
+      addClient(connection.socket);
+      connection.on('close', () => removeClient(connection.socket));
     });
   });
 
