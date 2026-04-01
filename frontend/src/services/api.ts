@@ -13,11 +13,20 @@ export const queryClient = new QueryClient({
 const BASE = '/api/v1';
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = init?.body ? { 'Content-Type': 'application/json' } : {};
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     ...init,
   });
-  if (!res.ok) throw new Error(`API error ${res.status}: ${await res.text()}`);
+  if (!res.ok) {
+    const text = await res.text();
+    let message = text;
+    try {
+      const json = JSON.parse(text);
+      message = json.message ?? text;
+    } catch { /* not JSON, use raw text */ }
+    throw new Error(message);
+  }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
@@ -32,6 +41,19 @@ export async function addRepository(path: string): Promise<Repository> {
 
 export async function removeRepository(id: string): Promise<void> {
   await apiFetch<void>(`/repositories/${id}`, { method: 'DELETE' });
+}
+
+export async function pickFolder(): Promise<string | null> {
+  const result = await apiFetch<{ path: string | null; error?: string }>('/fs/pick-folder', { method: 'POST' });
+  return result.path;
+}
+
+export async function scanFolder(path: string): Promise<Array<{ path: string; name: string }>> {
+  const result = await apiFetch<{ repos: Array<{ path: string; name: string }>; error?: string }>(
+    '/fs/scan-folder',
+    { method: 'POST', body: JSON.stringify({ path }) }
+  );
+  return result.repos ?? [];
 }
 
 export interface SessionFilters { repositoryId?: string; status?: string; type?: string; }

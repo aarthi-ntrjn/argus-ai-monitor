@@ -1,18 +1,10 @@
 <!--
 ## Sync Impact Report
-**Version change**: 1.0.0 → 1.0.1 (editorial — shortened and restructured, no principle changes)
+**Version change**: 1.2.0 → 1.3.0 (minor — added §XII Error Handling principle)
+**Added sections**: §XII Error Handling
+**Rationale**: Errors in logs/server responses must carry full technical context for debuggability (§I, §VII).
+UX-facing errors must be human-readable without leaking internal details. Two distinct contracts.
 **Templates reviewed**: plan-template.md ✅ spec-template.md ✅ tasks-template.md ✅
-
-## Sync Impact Report
-**Version change**: 1.0.1 → 1.1.0 (minor — added exception clauses to §VI and §VIII for localhost single-user developer tools)
-**Rationale**: The Argus project is a localhost-bound, single-developer tool. §VI's blanket auth requirement and §VIII's 10k-user target are designed for networked multi-user services and must not block legitimate local tooling.
-**Templates reviewed**: plan-template.md ✅ spec-template.md ✅ tasks-template.md ✅
-
-## Sync Impact Report
-**Version change**: 1.1.0 → 1.2.0 (minor — added §XI Documentation principle requiring README.md updates with every change)
-**Added sections**: §XI Documentation
-**Modified sections**: §X Definition of Done (added README.md checkbox)
-**Templates reviewed**: plan-template.md ✅ tasks-template.md ✅
 -->
 
 # Argus Constitution
@@ -88,10 +80,21 @@ A feature is complete only when ALL are satisfied:
   configuration options, and any behaviour changes since the last release.
 - Outdated documentation is treated as a bug.
 
+### XII. Error Handling
+- Server-side errors and log entries MUST include full technical context: error code,
+  stack trace (in development), request ID, affected resource, and any relevant state.
+- API error responses MUST use a structured contract: `{ error: ERROR_CODE, message: string, requestId: string }`.
+- UX-facing error messages MUST be human-friendly: plain language, actionable where possible,
+  and MUST NOT expose internal error codes, stack traces, raw paths, or JSON blobs.
+- The frontend MUST extract and display only the `message` field from API error responses —
+  never the raw response body or HTTP status prefix.
+- Errors that can be recovered by the user MUST suggest a corrective action (e.g., "Please
+  choose a folder that contains a .git directory.").
+
 ## Governance
 
 Amendments require a dedicated PR (not a feature branch), a migration plan, and a version bump. Run `/speckit.constitution` to propagate changes to templates. Constitution violations found by `/speckit.analyze` are **CRITICAL** and block merge.
 
 **Versioning**: MAJOR = principle removed/redefined · MINOR = new principle · PATCH = clarification
 
-**Version**: 1.2.0 | **Ratified**: 2026-04-01 | **Last Amended**: 2026-04-01
+**Version**: 1.3.0 | **Ratified**: 2026-04-01 | **Last Amended**: 2026-04-01
