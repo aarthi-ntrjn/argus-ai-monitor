@@ -107,7 +107,7 @@
 - [X] T038 [US2] Add `chokidar` file watcher to `CopilotCliDetector` to tail `events.jsonl` on active sessions and feed `OutputStore` at `backend/src/services/copilot-cli-detector.ts`
 - [X] T039 [US2] Add `GET /api/v1/sessions/:id` and `GET /api/v1/sessions/:id/output` route handlers to `backend/src/api/routes/sessions.ts`
 - [X] T040 [US2] Wire `session.output` WebSocket broadcast in `event-dispatcher.ts` triggered by `OutputStore` writes at `backend/src/api/ws/event-dispatcher.ts`
-- [ ] T041 [P] [US2] Implement frontend `SessionPage`: session metadata header (type, status, PID, duration), navigation back to dashboard at `frontend/src/pages/SessionPage.tsx`
+- [X] T041 [P] [US2] Implement frontend `SessionPage`: session metadata header (type, status, PID, duration), navigation back to dashboard at `frontend/src/pages/SessionPage.tsx`
 - [ ] T042 [P] [US2] Implement frontend `SessionDetail` component: virtualized scrollable output stream with type labels and timestamps at `frontend/src/components/SessionDetail/SessionDetail.tsx`
 - [ ] T043 [US2] Connect `session.output` WebSocket events to live-append `SessionDetail` feed; integrate TanStack Query for initial output load with pagination at `frontend/src/services/socket.ts` *(extends T016 and T032 — must be implemented after T032 is complete)*
 
