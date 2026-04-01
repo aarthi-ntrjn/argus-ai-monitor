@@ -47,9 +47,19 @@ No blocking prerequisites — scan logic builds directly on existing `fs.ts` rou
 
 - [X] T086 [P] Mark T082–T085 as [X] in `specs/003-remove-repository/tasks.md` after implementation is verified
 
----
+## Phase 5: Constitution Compliance Fixes
 
-## Dependencies & Execution Order
+**Purpose**: Address CRITICAL violations found by `/speckit.analyze` — §XII (missing `requestId`) and §IV/§V (no tests)
+
+- [ ] T087 [US1] Add `requestId: request.id` to all custom error `reply.send()` calls in `backend/src/api/routes/fs.ts` (SCAN_FAILED, PATH_NOT_FOUND, MISSING_PATH) and `backend/src/api/routes/repositories.ts` (NOT_GIT_REPO, MISSING_PATH, DUPLICATE) so every error response satisfies the §XII contract `{ error, message, requestId }`
+
+- [ ] T088 [P] [US1] Write unit tests for `findGitRepos()` in `backend/tests/unit/scan-folder.test.ts`: create a temp directory tree with `mkdtemp`/`mkdirSync`, test: (1) folder with `.git` returns itself, (2) parent with 2 nested git repos returns both, (3) already-nested `.git` subdirs are not recursed into, (4) `node_modules` is skipped, (5) empty folder returns `[]`; import the helper directly from `backend/src/api/routes/fs.ts` (export it)
+
+- [ ] T089 [P] [US1] Write contract tests for `POST /api/v1/fs/scan-folder` in `backend/tests/contract/fs.test.ts` following the supertest + vitest pattern in `backend/tests/contract/repositories.test.ts`: test (1) missing body returns 400, (2) nonexistent path returns 404 with `{ error, message, requestId }`, (3) valid path returns 200 with `{ repos: [] }` when no git repos present; use `os.tmpdir()` + `mkdtemp` for isolated test directories
+
+**Checkpoint**: `npm test` passes all 37 + new tests. All error responses include `requestId`.
+
+---
 
 ### Phase Dependencies
 
