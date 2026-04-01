@@ -12,7 +12,6 @@ export default function DashboardPage() {
   const [addError, setAddError] = useState<string | null>(null);
   const [addInfo, setAddInfo] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
-  const [scanning, setScanning] = useState(false);
   const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
 
@@ -38,24 +37,8 @@ export default function DashboardPage() {
 
   const handleAddRepo = async () => {
     setAddError(null);
-    setAdding(true);
-    try {
-      const path = await pickFolder();
-      if (!path) return;
-      await addRepository(path);
-      await queryClient.invalidateQueries({ queryKey: ['repositories'] });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to add repository';
-      setAddError(msg);
-    } finally {
-      setAdding(false);
-    }
-  };
-
-  const handleScanAndAdd = async () => {
-    setAddError(null);
     setAddInfo(null);
-    setScanning(true);
+    setAdding(true);
     try {
       const folderPath = await pickFolder();
       if (!folderPath) return;
@@ -83,10 +66,10 @@ export default function DashboardPage() {
         setAddError(`Added ${added} of ${newRepos.length} repositories — ${failed} failed.`);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to scan folder';
+      const msg = err instanceof Error ? err.message : 'Failed to add repository';
       setAddError(msg);
     } finally {
-      setScanning(false);
+      setAdding(false);
     }
   };
 
@@ -120,22 +103,13 @@ export default function DashboardPage() {
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Argus Dashboard</h1>
-          <div className="flex gap-2">
-            <button
-              onClick={handleScanAndAdd}
-              disabled={scanning || adding}
-              className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50"
-            >
-              {scanning ? 'Scanning...' : 'Add Multiple'}
-            </button>
-            <button
-              onClick={handleAddRepo}
-              disabled={adding || scanning}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-            >
-              {adding ? 'Adding...' : 'Add Repository'}
-            </button>
-          </div>
+          <button
+            onClick={handleAddRepo}
+            disabled={adding}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            {adding ? 'Adding...' : 'Add Repository'}
+          </button>
         </div>
 
         {addInfo && (
