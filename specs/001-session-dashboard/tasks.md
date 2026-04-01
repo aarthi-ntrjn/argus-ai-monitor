@@ -166,6 +166,16 @@
 
 - [X] T062 Fix integration and contract tests to use an isolated test DB (via `ARGUS_DB_PATH` env var) instead of `~/.argus/argus.db`; add afterAll cleanup in `output-store.test.ts` at `backend/tests/integration/output-store.test.ts`, `backend/src/db/database.ts`, `backend/vitest.config.ts`
 
+### Addendum: Folder navigation UX for Add Repository
+
+- [ ] T063 Add `GET /api/v1/fs/browse` route: accepts `?path=` query param (defaults to `homedir()`), returns `{ current: string, parent: string|null, entries: { name, path, isGitRepo }[] }` listing immediate subdirectories only at `backend/src/api/routes/fs.ts`; register in `backend/src/server.ts`
+- [ ] T064 [P] Create `frontend/src/components/FolderBrowser/FolderBrowser.tsx`: shows current path as breadcrumb, lists subdirs (git repos highlighted with a badge), click to navigate into subdir, "Select" button emits chosen path to parent via `onSelect(path: string)` callback; uses `GET /api/v1/fs/browse`
+- [ ] T065 Wire `FolderBrowser` into the Add Repository modal in `frontend/src/pages/DashboardPage.tsx`: replace text input with FolderBrowser; keep manual path input as a fallback below the browser; pre-populate input when user clicks Select
+
+### Addendum: Detect pre-existing sessions on startup
+
+- [ ] T066 On startup, scan `~/.claude/projects/` for Claude Code sessions that were already running before Argus started: for each project subdir check for active `claude` process via ps-list, map `cwd` to a registered repo, and upsert a `claude-code` session with `status: active`; add this scan to `ClaudeCodeDetector` as `scanExistingSessions()` called from `SessionMonitor.start()` at `backend/src/services/claude-code-detector.ts`
+
 **Checkpoint**: All acceptance criteria met. `npm test` passes. E2E suite green.
 
 ---
