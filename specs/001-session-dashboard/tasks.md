@@ -105,7 +105,7 @@
 - [X] T036 [US2] Implement `OutputStore` service: persist `SessionOutput` to SQLite, paginated reads, enforce per-session size limit with oldest-first pruning at `backend/src/services/output-store.ts`
 - [X] T037 [P] [US2] Implement `events.jsonl` event parser: map Copilot CLI event types (`tool.execution_start`, `assistant.message`, etc.) to `SessionOutput` records at `backend/src/services/events-parser.ts`
 - [X] T038 [US2] Add `chokidar` file watcher to `CopilotCliDetector` to tail `events.jsonl` on active sessions and feed `OutputStore` at `backend/src/services/copilot-cli-detector.ts`
-- [ ] T039 [US2] Add `GET /api/v1/sessions/:id` and `GET /api/v1/sessions/:id/output` route handlers to `backend/src/api/routes/sessions.ts`
+- [X] T039 [US2] Add `GET /api/v1/sessions/:id` and `GET /api/v1/sessions/:id/output` route handlers to `backend/src/api/routes/sessions.ts`
 - [ ] T040 [US2] Wire `session.output` WebSocket broadcast in `event-dispatcher.ts` triggered by `OutputStore` writes at `backend/src/api/ws/event-dispatcher.ts`
 - [ ] T041 [P] [US2] Implement frontend `SessionPage`: session metadata header (type, status, PID, duration), navigation back to dashboard at `frontend/src/pages/SessionPage.tsx`
 - [ ] T042 [P] [US2] Implement frontend `SessionDetail` component: virtualized scrollable output stream with type labels and timestamps at `frontend/src/components/SessionDetail/SessionDetail.tsx`
