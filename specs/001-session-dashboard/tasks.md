@@ -201,6 +201,10 @@
 
 - [X] T073 Fix `CopilotCliDetector.processSessionDir` in `backend/src/services/copilot-cli-detector.ts`: `js-yaml` silently coerces ISO timestamp strings (e.g. `created_at`, `updated_at`) into JavaScript `Date` objects; passing these to `upsertSession` throws "SQLite3 can only bind numbers, strings, bigints, buffers, and null" which is caught and swallowed, making every `processSessionDir` return `null`; fix by converting date fields to ISO strings when constructing the Session: `startedAt: workspace.created_at ? new Date(workspace.created_at as string | Date).toISOString() : new Date().toISOString()` and same for `endedAt`/`lastActivityAt`; update `WorkspaceYaml` interface to type these fields as `string | Date` to make the coercion visible
 
+### Addendum: Bug — Claude Code sessions marked ended on server restart
+
+- [ ] T074 Fix `reconcileStaleSessions()` in `backend/src/services/session-monitor.ts`: the condition `if (!session.pid || ...)` evaluates `!null` as `true`, so every Claude Code session created via hooks (which always have `pid: null`) is incorrectly marked `ended` on every server restart; fix by changing the condition to `if (session.pid != null && !runningPids.has(session.pid))` so sessions without a known PID are skipped — their lifecycle is managed by hooks, not by PID presence
+
 **Checkpoint**: All acceptance criteria met. `npm test` passes. E2E suite green.
 
 ---
