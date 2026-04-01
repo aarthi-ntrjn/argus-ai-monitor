@@ -8,12 +8,15 @@ interface RepoWithSessions extends Repository {
   sessions: Session[];
 }
 
+const SKIP_REMOVE_CONFIRM_KEY = 'argus:skipRemoveConfirm';
+
 export default function DashboardPage() {
   const [addError, setAddError] = useState<string | null>(null);
   const [addInfo, setAddInfo] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [skipConfirm, setSkipConfirm] = useState(() => localStorage.getItem(SKIP_REMOVE_CONFIRM_KEY) === 'true');
 
   const showInfo = (msg: string) => {
     setAddInfo(msg);
@@ -73,11 +76,10 @@ export default function DashboardPage() {
     }
   };
 
-  const handleRemoveRepo = async () => {
-    if (!removeConfirmId) return;
+  const handleRemoveRepoById = async (id: string) => {
     setRemoving(true);
     try {
-      await removeRepository(removeConfirmId);
+      await removeRepository(id);
       await queryClient.invalidateQueries({ queryKey: ['repositories'] });
       await queryClient.invalidateQueries({ queryKey: ['sessions'] });
     } finally {
@@ -85,6 +87,8 @@ export default function DashboardPage() {
       setRemoveConfirmId(null);
     }
   };
+
+  const handleRemoveRepo = () => handleRemoveRepoById(removeConfirmId!);
 
   if (reposLoading || sessionsLoading) {
     return (
@@ -144,8 +148,15 @@ export default function DashboardPage() {
                     <span className="bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded">
                       {repo.sessions.length} session{repo.sessions.length !== 1 ? 's' : ''}
                     </span>
-                    <button
-                      onClick={() => setRemoveConfirmId(repo.id)}
+    <button
+                      onClick={() => {
+                        if (skipConfirm) {
+                          setRemoveConfirmId(repo.id);
+                          handleRemoveRepoById(repo.id);
+                        } else {
+                          setRemoveConfirmId(repo.id);
+                        }
+                      }}
                       title="Remove repository"
                       className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded"
                     >
@@ -178,11 +189,25 @@ export default function DashboardPage() {
               Remove <span className="font-semibold">{reposWithSessions.find(r => r.id === removeConfirmId)?.name}</span>?
               This will also delete all associated sessions and output history.
             </p>
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setRemoveConfirmId(null)} disabled={removing} className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50">Cancel</button>
-              <button onClick={handleRemoveRepo} disabled={removing} className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50">
-                {removing ? 'Removing...' : 'Remove'}
-              </button>
+            <div className="flex items-center justify-between mt-4">
+              <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={skipConfirm}
+                  onChange={e => {
+                    setSkipConfirm(e.target.checked);
+                    localStorage.setItem(SKIP_REMOVE_CONFIRM_KEY, String(e.target.checked));
+                  }}
+                  className="rounded"
+                />
+                Don't ask again
+              </label>
+              <div className="flex gap-2">
+                <button onClick={() => setRemoveConfirmId(null)} disabled={removing} className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50">Cancel</button>
+                <button onClick={handleRemoveRepo} disabled={removing} className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50">
+                  {removing ? 'Removing...' : 'Remove'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
