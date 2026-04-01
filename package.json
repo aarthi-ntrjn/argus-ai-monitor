@@ -5,6 +5,10 @@
   "scripts": {
     "dev": "npm run dev --workspace=backend",
     "build": "npm run build --workspaces",
-    "test": "npm run test --workspaces"
+    "test": "npm run test --workspaces",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:real": "playwright test --config playwright.real.config.ts",
+    "test:e2e:real:ui": "playwright test --config playwright.real.config.ts --ui"
   }
 }
