@@ -121,7 +121,11 @@ export async function startServer() {
   return app;
 }
 
-startServer().catch((err) => {
-  console.error('Failed to start server:', err);
-  process.exit(1);
-});
+// Only auto-start when run directly (not when imported by tests)
+const isMain = process.argv[1]?.endsWith('server.ts') || process.argv[1]?.endsWith('server.js');
+if (isMain) {
+  startServer().catch((err) => {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+  });
+}

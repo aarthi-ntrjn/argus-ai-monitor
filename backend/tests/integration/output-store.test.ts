@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { randomUUID } from 'crypto';
-import { insertRepository, upsertSession } from '../../src/db/database.js';
+import { rmSync, existsSync } from 'fs';
+import { insertRepository, upsertSession, closeDb } from '../../src/db/database.js';
 
 const testRepoId = randomUUID();
 const testSessionId = `test-${randomUUID()}`;
@@ -26,6 +27,12 @@ beforeAll(() => {
     summary: null,
     expiresAt: null,
   });
+});
+
+afterAll(() => {
+  closeDb();
+  const dbPath = process.env.ARGUS_DB_PATH;
+  if (dbPath && existsSync(dbPath)) rmSync(dbPath, { force: true });
 });
 
 describe('OutputStore', () => {

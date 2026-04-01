@@ -162,6 +162,10 @@
 
 - [X] T061 Remove `axios` from `frontend/package.json` and replace all usages in `frontend/src/services/api.ts` with native `fetch`; ensure all existing TypeScript types are preserved and no behaviour changes
 
+### Addendum: Test isolation
+
+- [X] T062 Fix integration and contract tests to use an isolated test DB (via `ARGUS_DB_PATH` env var) instead of `~/.argus/argus.db`; add afterAll cleanup in `output-store.test.ts` at `backend/tests/integration/output-store.test.ts`, `backend/src/db/database.ts`, `backend/vitest.config.ts`
+
 **Checkpoint**: All acceptance criteria met. `npm test` passes. E2E suite green.
 
 ---
