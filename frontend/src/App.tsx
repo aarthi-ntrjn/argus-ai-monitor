@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { connect, initSocketHandlers } from './services/socket';
 import DashboardPage from './pages/DashboardPage';
+import SessionPage from './pages/SessionPage';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 5000, retry: 2 } },
@@ -20,7 +21,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<DashboardPage />} />
-          <Route path="/sessions/:id" element={<div className="p-8 text-gray-500">Session detail coming soon...</div>} />
+          <Route path="/sessions/:id" element={<SessionPage />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>

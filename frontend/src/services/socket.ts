@@ -1,3 +1,6 @@
+import type { QueryClient } from '@tanstack/react-query';
+import type { SessionOutput } from '../types';
+
 type EventHandler = (data: Record<string, unknown>) => void;
 
 const handlers = new Map<string, Set<EventHandler>>();
@@ -67,8 +70,6 @@ export function onEvent(type: string, handler: EventHandler): () => void {
   return () => handlers.get(type)?.delete(handler);
 }
 
-import type { QueryClient } from '@tanstack/react-query';
-
 export function initSocketHandlers(qc: QueryClient): void {
   onEvent('session.created', () => { qc.invalidateQueries({ queryKey: ['sessions'] }); });
   onEvent('session.updated', () => { qc.invalidateQueries({ queryKey: ['sessions'] }); });
@@ -80,5 +81,19 @@ export function initSocketHandlers(qc: QueryClient): void {
   onEvent('repository.removed', () => {
     qc.invalidateQueries({ queryKey: ['repositories'] });
     qc.invalidateQueries({ queryKey: ['sessions'] });
+  });
+  onEvent('session.output', (data) => {
+    const { sessionId, output } = data as { sessionId: string; output: SessionOutput };
+    qc.setQueryData<{ items: SessionOutput[]; nextBefore: string | null; total: number }>(
+      ['session-output', sessionId],
+      (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          items: [...old.items, output],
+          total: old.total + 1,
+        };
+      }
+    );
   });
 }
