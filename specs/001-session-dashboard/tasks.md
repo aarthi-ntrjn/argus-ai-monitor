@@ -189,6 +189,10 @@
 
 - [ ] T070 Fix `getRepositoryByPath` in `backend/src/db/database.ts` and `CopilotCliDetector.processSessionDir` in `backend/src/services/copilot-cli-detector.ts` to handle path variations on Windows (case, trailing separator, forward vs backslash): normalize both the registered repo path and the `workspace.cwd` to lowercase with `path.normalize()` before comparing; update `getRepositoryByPath` to perform a case-insensitive lookup using `LOWER(path) = LOWER(?)` so sessions whose `cwd` differs only in case or separators are correctly matched to their repo
 
+### Addendum: Fix README
+
+- [ ] T071 Rewrite `README.md` at repo root to be crisp, concise and accurate: include a one-line description, what Argus does (monitors Copilot CLI + Claude Code sessions, real-time output, remote stop), how to run it (`npm run dev` from repo root + `npm run build` in frontend/), how to add a repo, key features list (folder browser, scan-folder bulk-add, pre-existing session detection), and a brief tech stack note (Node/Fastify backend, React frontend, SQLite); remove all placeholder text ("Coming soon", etc.)
+
 **Checkpoint**: All acceptance criteria met. `npm test` passes. E2E suite green.
 
 ---
