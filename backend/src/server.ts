@@ -52,7 +52,11 @@ export async function buildServer() {
 
   const frontendDist = join(__dirname, '..', '..', 'frontend', 'dist');
   try {
-    await app.register(fastifyStatic, { root: frontendDist, wildcard: false, decorateReply: false });
+    await app.register(fastifyStatic, { root: frontendDist });
+    // SPA catch-all: serve index.html for any unmatched non-API route
+    app.setNotFoundHandler((_request, reply) => {
+      reply.sendFile('index.html');
+    });
   } catch {
     app.log.warn('Frontend dist not found, skipping static file serving');
   }
