@@ -172,6 +172,11 @@
 - [ ] T064 [P] Create `frontend/src/components/FolderBrowser/FolderBrowser.tsx`: shows current path as breadcrumb, lists subdirs (git repos highlighted with a badge), click to navigate into subdir, "Select" button emits chosen path to parent via `onSelect(path: string)` callback; uses `GET /api/v1/fs/browse`
 - [ ] T065 Wire `FolderBrowser` into the Add Repository modal in `frontend/src/pages/DashboardPage.tsx`: replace text input with FolderBrowser; keep manual path input as a fallback below the browser; pre-populate input when user clicks Select
 
+### Addendum: Scan parent folder for git repositories
+
+- [ ] T067 Add `GET /api/v1/fs/scan` route: accepts `?path=` query param, walks immediate subdirectories (non-recursive) checking for `.git` folder, returns `{ scannedPath: string, repos: { name: string, path: string }[] }`; register handler in `backend/src/api/routes/fs.ts` alongside T063's browse route
+- [ ] T068 Add "Scan Folder" tab to the Add Repository modal in `frontend/src/pages/DashboardPage.tsx`: user picks a parent folder via `FolderBrowser` (T064), clicks "Scan", modal shows a checklist of discovered git repos, user selects any subset, "Add Selected" calls `POST /api/v1/repositories` for each; existing single-repo tab unchanged
+
 ### Addendum: Detect pre-existing sessions on startup
 
 - [ ] T066 On startup, scan `~/.claude/projects/` for Claude Code sessions that were already running before Argus started: for each project subdir check for active `claude` process via ps-list, map `cwd` to a registered repo, and upsert a `claude-code` session with `status: active`; add this scan to `ClaudeCodeDetector` as `scanExistingSessions()` called from `SessionMonitor.start()` at `backend/src/services/claude-code-detector.ts`
