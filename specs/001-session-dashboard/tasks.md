@@ -197,6 +197,10 @@
 
 - [X] T072 On startup, reconcile stale sessions in `SessionMonitor.start()` at `backend/src/services/session-monitor.ts`: query `getSessions({ status: 'active' })` from the DB, fetch current running PIDs via ps-list, and call `updateSessionStatus(id, 'ended', now)` for any session whose `pid` is not in the running PID set (or whose `pid` is null); this must run before the first `runScan()` so the frontend never sees stale `active` sessions
 
+### Addendum: Bug — Copilot CLI sessions not detected (js-yaml Date coercion)
+
+- [ ] T073 Fix `CopilotCliDetector.processSessionDir` in `backend/src/services/copilot-cli-detector.ts`: `js-yaml` silently coerces ISO timestamp strings (e.g. `created_at`, `updated_at`) into JavaScript `Date` objects; passing these to `upsertSession` throws "SQLite3 can only bind numbers, strings, bigints, buffers, and null" which is caught and swallowed, making every `processSessionDir` return `null`; fix by converting date fields to ISO strings when constructing the Session: `startedAt: workspace.created_at ? new Date(workspace.created_at as string | Date).toISOString() : new Date().toISOString()` and same for `endedAt`/`lastActivityAt`; update `WorkspaceYaml` interface to type these fields as `string | Date` to make the coercion visible
+
 **Checkpoint**: All acceptance criteria met. `npm test` passes. E2E suite green.
 
 ---
