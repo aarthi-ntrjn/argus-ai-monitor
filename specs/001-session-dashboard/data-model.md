@@ -31,7 +31,7 @@ An active or recently completed AI coding assistant instance associated with a r
 |---|---|---|
 | `id` | UUID | Primary key; matches AI tool's own session ID where available |
 | `repositoryId` | UUID FK → Repository | Owning repository |
-| `type` | enum | `copilot-cli` \| `claude-code` \| `copilot-vscode` |
+| `type` | enum | `copilot-cli` \| `claude-code` *(VS Code Copilot: post-v1)* |
 | `pid` | integer \| null | OS process ID; null if process no longer running |
 | `status` | enum | `active` \| `idle` \| `waiting` \| `error` \| `completed` \| `ended` |
 | `startedAt` | ISO datetime | When session was first detected |
@@ -115,7 +115,7 @@ CREATE TABLE repositories (
 CREATE TABLE sessions (
   id TEXT PRIMARY KEY,
   repository_id TEXT NOT NULL REFERENCES repositories(id),
-  type TEXT NOT NULL CHECK(type IN ('copilot-cli','claude-code','copilot-vscode')),
+  type TEXT NOT NULL CHECK(type IN ('copilot-cli','claude-code')),
   pid INTEGER,
   status TEXT NOT NULL,
   started_at TEXT NOT NULL,

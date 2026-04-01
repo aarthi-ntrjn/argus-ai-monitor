@@ -2,7 +2,7 @@
 
 **Feature Branch**: `001-session-dashboard`
 **Created**: 2026-04-01
-**Status**: Draft
+**Status**: Clarified
 **Input**: User description: "i want to build and experience that shows me all the repositories that i have locally with the running copilot, github copilot and claude code sessions on each of them. From this i want to see the state of each session. I want to see the results of the session and i want to control what is going on there."
 
 ## User Scenarios & Testing *(mandatory)*
@@ -59,34 +59,34 @@ As a developer, I want to control active AI sessions from the Argus dashboard, s
 
 ### Edge Cases
 
-- What happens when a monitored repository is deleted or moved while the dashboard is open?
-- When an AI session crashes or ends unexpectedly, it is shown as "ended" with a timestamp and auto-removed after the configured retention period.
-- What happens when the same repository has multiple concurrent sessions of the same AI tool type?
-- What happens if session discovery is slow due to a large number of repositories?
-- How does the dashboard behave when no repositories have any active sessions?
+- **Deleted/moved repository**: If a repository's `.git` directory is no longer accessible on the next scan, the repository is marked `unavailable` in the database and the dashboard shows an inline warning banner. The repository record is not auto-deleted; the user must manually remove it. Sessions on an unavailable repo retain their last known state.
+- **Unexpected session end**: When an AI session crashes or ends unexpectedly, it is shown as "ended" with a timestamp and auto-removed after the configured retention period.
+- **Multiple concurrent sessions of the same type**: A repository may have multiple simultaneous sessions of the same AI tool type (e.g., two `copilot-cli` sessions). Each is displayed as a separate session card, ordered by `startedAt` descending.
+- **Slow discovery with many repositories**: The initial scan is non-blocking and asynchronous. The UI shows a "Scanning repositories…" state while discovery runs and populates results incrementally as repos are found.
+- **No active sessions**: Repositories with no active sessions are still listed on the dashboard. An empty state message is shown per-repo ("No active sessions") and at the dashboard level if no sessions exist across all repos.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
 - **FR-001**: System MUST discover and display all local repositories configured for monitoring via a config file specifying root directories to scan; repositories MUST also be addable and removable through the dashboard UI.
-- **FR-002**: System MUST detect active Claude Code, GitHub Copilot CLI, and GitHub Copilot sessions on each repository via a hybrid approach: OS process scanning to identify running sessions, combined with IPC/API connections and event hooks exposed by each AI tool for real-time state and output.
+- **FR-002**: System MUST detect active Claude Code and GitHub Copilot CLI sessions on each repository via a hybrid approach: OS process scanning to identify running sessions, combined with IPC/API connections and event hooks exposed by each AI tool for real-time state and output. *(GitHub Copilot VS Code extension detection is out of scope for v1; planned post-v1.)*
 - **FR-003**: System MUST display the current state of each active session (active, idle, waiting, error, completed).
 - **FR-004**: System MUST display session output and results history for each active or recently completed session, persisted to disk so history survives session end and Argus restarts.
 - **FR-004a**: System MUST enforce a configurable retention limit on persisted session output (by size or age); output exceeding the limit MUST be automatically pruned.
 - **FR-005**: System MUST update session state and output in real time without requiring manual refresh.
 - **FR-006**: System MUST allow users to stop active sessions from the dashboard.
-- **FR-007**: System MUST allow users to send prompts and messages to active sessions from the dashboard.
+- **FR-007**: System MUST allow users to send prompts and messages to active Claude Code sessions from the dashboard. *(Prompt injection for GitHub Copilot CLI is not supported in v1 — the API returns a clear unsupported message; planned post-v1.)*
 - **FR-008**: System MUST handle sessions that end or become unreachable gracefully, without crashing or hanging.
 - **FR-009**: System MUST be accessible via a web browser connected to a locally running Argus server, bound to localhost (127.0.0.1) only. Network-accessible endpoints are out of scope for v1.
 - **FR-009a**: System MUST display ended or crashed sessions as "completed" or "ended" with a timestamp; sessions MUST be automatically removed from the dashboard after a configurable retention period.
-- **FR-010**: System MUST clearly distinguish between session types (Claude Code vs GitHub Copilot CLI vs GitHub Copilot).
+- **FR-010**: System MUST clearly distinguish between session types (Claude Code vs GitHub Copilot CLI). *(VS Code GitHub Copilot is out of scope for v1.)*
 - **FR-011**: System MUST support at least 10 simultaneously monitored sessions across multiple repositories.
 
 ### Key Entities
 
 - **Repository**: A local directory tracked by Argus; has a path, name, and zero or more associated sessions.
-- **Session**: An active or recently completed AI coding assistant instance; belongs to a repository; has a type (Claude Code / GitHub Copilot CLI / GitHub Copilot), status, start time, and output history.
+- **Session**: An active or recently completed AI coding assistant instance; belongs to a repository; has a type (Claude Code / GitHub Copilot CLI), status, start time, and output history. *(VS Code GitHub Copilot is out of scope for v1.)*
 - **Session State**: The current operational status of a session — one of: active, idle, waiting for input, error, completed.
 - **Session Output**: The ordered stream of results, messages, or changes produced by a session over its lifetime.
 - **Control Action**: A user-initiated command sent to a session (e.g., stop, restart, send prompt).
@@ -99,7 +99,7 @@ As a developer, I want to control active AI sessions from the Argus dashboard, s
 - **SC-002**: Session state and output refresh within 2 seconds of a change occurring in the underlying session.
 - **SC-003**: Developer can identify the current status of any session without opening the AI tool itself.
 - **SC-004**: Developer can perform a session control action and see the result reflected in the dashboard within 3 seconds.
-- **SC-005**: The dashboard correctly identifies and distinguishes all three supported AI tool types (Claude Code, GitHub Copilot CLI, GitHub Copilot).
+- **SC-005**: The dashboard correctly identifies and distinguishes the two supported AI tool types (Claude Code and GitHub Copilot CLI).
 
 ## Assumptions
 

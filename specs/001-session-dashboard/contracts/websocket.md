@@ -2,6 +2,8 @@
 
 **URL**: `ws://127.0.0.1:{port}/ws` (default port: `7411`)
 
+> The WebSocket endpoint is not versioned. Version negotiation is handled via the `connected` event's `version` field.
+
 ---
 
 ## Connection
@@ -57,7 +59,7 @@ A new session has been detected.
     "sessionId": "uuid",
     "repositoryId": "uuid",
     "repositoryName": "argus",
-    "type": "copilot-cli",
+    "type": "copilot-cli",  // or "claude-code"
     "pid": 12345,
     "status": "active",
     "startedAt": "...",

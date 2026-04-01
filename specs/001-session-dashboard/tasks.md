@@ -44,6 +44,7 @@
 - [ ] T012 Implement SQLite schema (tables: `repositories`, `sessions`, `session_output`, `control_actions`) at `backend/src/db/schema.ts`
 - [ ] T013 Implement database connection, query helpers, and migration runner at `backend/src/db/database.ts`
 - [ ] T014 Implement Fastify server entry point bound to `127.0.0.1`, pino structured logging, graceful shutdown at `backend/src/server.ts`
+- [ ] T014b Implement Fastify `requestIdHeader` and inject `requestId` into all pino log entries; return `X-Request-Id` header in all error responses for failure traceability at `backend/src/server.ts`
 - [ ] T015 Implement WebSocket event dispatcher (register clients, broadcast typed events) at `backend/src/api/ws/event-dispatcher.ts`
 - [ ] T016 [P] Implement frontend WebSocket client with exponential backoff reconnection at `frontend/src/services/socket.ts`
 - [ ] T017 [P] Implement frontend REST API client with TanStack Query base configuration (queryClient, axios instance) at `frontend/src/services/api.ts`
@@ -62,24 +63,24 @@
 
 > **Write these tests FIRST. Verify they FAIL before writing any implementation.**
 
-- [ ] T018 [P] [US1] Write contract tests for `GET /api/repositories`, `POST /api/repositories`, `DELETE /api/repositories/:id` at `backend/tests/contract/repositories.test.ts`
-- [ ] T019 [P] [US1] Write contract test for `GET /api/sessions` (with `repositoryId`, `status`, `type` filters) at `backend/tests/contract/sessions.test.ts`
+- [ ] T018 [P] [US1] Write contract tests for `GET /api/v1/repositories`, `POST /api/v1/repositories`, `DELETE /api/v1/repositories/:id` at `backend/tests/contract/repositories.test.ts`
+- [ ] T019 [P] [US1] Write contract test for `GET /api/v1/sessions` (with `repositoryId`, `status`, `type` filters) at `backend/tests/contract/sessions.test.ts`
 - [ ] T020 [P] [US1] Write integration test for `CopilotCliDetector`: mock `~/.copilot/session-state/` directory with fixture files; assert sessions detected with correct PID, CWD, status at `backend/tests/integration/copilot-cli-detector.test.ts`
 - [ ] T021 [P] [US1] Write integration test for `ClaudeCodeDetector`: simulate hook POST payload; assert session record created with correct repo association at `backend/tests/integration/claude-code-detector.test.ts`
 
 ### Implementation for User Story 1
 
 - [ ] T022 [P] [US1] Implement `RepositoryScanner` service: scan configured directories for `.git` repos, persist to SQLite, detect new/removed repos at `backend/src/services/repository-scanner.ts`
-- [ ] T023 [P] [US1] Implement `CopilotCliDetector`: scan `~/.copilot/session-state/`, parse `inuse.{PID}.lock` + `workspace.yaml`, map CWD to registered repo at `backend/src/services/copilot-cli-detector.ts`
+- [ ] T023 [P] [US1] Implement `CopilotCliDetector`: scan `~/.copilot/session-state/`, parse `inuse.{PID}.lock` + `workspace.yaml`, map CWD to registered repo. **Validate each PID against running processes via `ps-list`** — if process is gone but lock file exists, mark session as `ended` (stale lock) at `backend/src/services/copilot-cli-detector.ts`
 - [ ] T024 [P] [US1] Implement `ClaudeCodeDetector`: inject hooks into `~/.claude/settings.json`, receive `POST /hooks/claude` payloads, create/update session records at `backend/src/services/claude-code-detector.ts`
 - [ ] T025 [US1] Implement `SessionMonitor` orchestrator: coordinate detectors, manage session lifecycle, emit typed domain events at `backend/src/services/session-monitor.ts`
-- [ ] T026 [US1] Implement `GET`, `POST`, `DELETE /api/repositories` route handlers with input validation at `backend/src/api/routes/repositories.ts`
-- [ ] T027 [US1] Implement `GET /api/sessions` route handler with filter support at `backend/src/api/routes/sessions.ts`
+- [ ] T026 [US1] Implement `GET`, `POST`, `DELETE /api/v1/repositories` route handlers with input validation at `backend/src/api/routes/repositories.ts`
+- [ ] T027 [US1] Implement `GET /api/v1/sessions` route handler with filter support at `backend/src/api/routes/sessions.ts`
 - [ ] T028 [US1] Implement `POST /hooks/claude` event receiver route at `backend/src/api/routes/hooks.ts`
 - [ ] T029 [US1] Wire `repository.added`, `repository.removed`, `session.created`, `session.updated`, `session.ended` events through `event-dispatcher.ts` at `backend/src/api/ws/event-dispatcher.ts`
 - [ ] T030 [P] [US1] Implement frontend `DashboardPage` with repository list, session count badges, and loading states at `frontend/src/pages/DashboardPage.tsx`
 - [ ] T031 [P] [US1] Implement frontend `SessionCard` component: session type badge, status indicator, `startedAt` timestamp at `frontend/src/components/SessionCard/SessionCard.tsx`
-- [ ] T032 [US1] Connect `session.created`, `session.updated`, `session.ended`, `repository.added`, `repository.removed` WebSocket events to `DashboardPage` live state at `frontend/src/services/socket.ts`
+- [ ] T032 [US1] Connect `session.created`, `session.updated`, `session.ended`, `repository.added`, `repository.removed` WebSocket events to `DashboardPage` live state at `frontend/src/services/socket.ts` *(extends T016 — must be implemented after T016 is complete)*
 
 **Checkpoint**: US1 fully functional. Open dashboard, see repos and sessions, watch live updates without refresh.
 
@@ -95,7 +96,7 @@
 
 > **Write these tests FIRST. Verify they FAIL before writing any implementation.**
 
-- [ ] T033 [P] [US2] Write contract tests for `GET /api/sessions/:id` and `GET /api/sessions/:id/output` (pagination with `limit`, `before` params) at `backend/tests/contract/sessions.test.ts`
+- [ ] T033 [P] [US2] Write contract tests for `GET /api/v1/sessions/:id` and `GET /api/v1/sessions/:id/output` (pagination with `limit`, `before` params) at `backend/tests/contract/sessions.test.ts`
 - [ ] T034 [P] [US2] Write unit test for `events.jsonl` parser: assert each Copilot CLI event type maps to correct `SessionOutput.type` at `backend/tests/unit/events-parser.test.ts`
 - [ ] T035 [P] [US2] Write integration test for `OutputStore`: persist 200 output records, assert paginated reads and size-limit pruning (oldest removed when limit exceeded) at `backend/tests/integration/output-store.test.ts`
 
@@ -104,11 +105,11 @@
 - [ ] T036 [US2] Implement `OutputStore` service: persist `SessionOutput` to SQLite, paginated reads, enforce per-session size limit with oldest-first pruning at `backend/src/services/output-store.ts`
 - [ ] T037 [P] [US2] Implement `events.jsonl` event parser: map Copilot CLI event types (`tool.execution_start`, `assistant.message`, etc.) to `SessionOutput` records at `backend/src/services/events-parser.ts`
 - [ ] T038 [US2] Add `chokidar` file watcher to `CopilotCliDetector` to tail `events.jsonl` on active sessions and feed `OutputStore` at `backend/src/services/copilot-cli-detector.ts`
-- [ ] T039 [US2] Add `GET /api/sessions/:id` and `GET /api/sessions/:id/output` route handlers to `backend/src/api/routes/sessions.ts`
+- [ ] T039 [US2] Add `GET /api/v1/sessions/:id` and `GET /api/v1/sessions/:id/output` route handlers to `backend/src/api/routes/sessions.ts`
 - [ ] T040 [US2] Wire `session.output` WebSocket broadcast in `event-dispatcher.ts` triggered by `OutputStore` writes at `backend/src/api/ws/event-dispatcher.ts`
 - [ ] T041 [P] [US2] Implement frontend `SessionPage`: session metadata header (type, status, PID, duration), navigation back to dashboard at `frontend/src/pages/SessionPage.tsx`
 - [ ] T042 [P] [US2] Implement frontend `SessionDetail` component: virtualized scrollable output stream with type labels and timestamps at `frontend/src/components/SessionDetail/SessionDetail.tsx`
-- [ ] T043 [US2] Connect `session.output` WebSocket events to live-append `SessionDetail` feed; integrate TanStack Query for initial output load with pagination at `frontend/src/services/socket.ts`
+- [ ] T043 [US2] Connect `session.output` WebSocket events to live-append `SessionDetail` feed; integrate TanStack Query for initial output load with pagination at `frontend/src/services/socket.ts` *(extends T016 and T032 — must be implemented after T032 is complete)*
 
 **Checkpoint**: US2 fully functional. Session detail view shows live output stream, status, and paginated history.
 
@@ -124,15 +125,15 @@
 
 > **Write these tests FIRST. Verify they FAIL before writing any implementation.**
 
-- [ ] T044 [P] [US3] Write contract tests for `POST /api/sessions/:id/stop` (202, 404, 409) at `backend/tests/contract/sessions.test.ts`
-- [ ] T045 [P] [US3] Write contract tests for `POST /api/sessions/:id/send` (202, 404, 409, 501 for copilot-cli) at `backend/tests/contract/sessions.test.ts`
+- [ ] T044 [P] [US3] Write contract tests for `POST /api/v1/sessions/:id/stop` (202, 404, 409) at `backend/tests/contract/sessions.test.ts`
+- [ ] T045 [P] [US3] Write contract tests for `POST /api/v1/sessions/:id/send` (202, 404, 409, 501 for copilot-cli) at `backend/tests/contract/sessions.test.ts`
 - [ ] T046 [P] [US3] Write unit test for `SessionController`: mock `process.kill` and `exec('taskkill')`; assert `ControlAction` records created with correct status transitions at `backend/tests/unit/session-controller.test.ts`
 
 ### Implementation for User Story 3
 
 - [ ] T047 [US3] Implement `SessionController`: stop via `process.kill(pid, 'SIGTERM')` (Unix) or `taskkill /PID {pid} /T` (Windows); persist `ControlAction` records at `backend/src/services/session-controller.ts`
-- [ ] T048 [US3] Implement `POST /api/sessions/:id/stop` route handler using `SessionController` at `backend/src/api/routes/sessions.ts`
-- [ ] T049 [US3] Implement `POST /api/sessions/:id/send` route handler: `501` for `copilot-cli`, `202` accepted for `claude-code`; persist `ControlAction` at `backend/src/api/routes/sessions.ts`
+- [ ] T048 [US3] Implement `POST /api/v1/sessions/:id/stop` route handler using `SessionController` at `backend/src/api/routes/sessions.ts`
+- [ ] T049 [US3] Implement `POST /api/v1/sessions/:id/send` route handler: `501` for `copilot-cli` with message "Prompt injection not supported for Copilot CLI in v1", `202` accepted for `claude-code`; persist `ControlAction` at `backend/src/api/routes/sessions.ts`
 - [ ] T050 [US3] Wire `action.updated` WebSocket broadcast in `event-dispatcher.ts` triggered by `ControlAction` status changes at `backend/src/api/ws/event-dispatcher.ts`
 - [ ] T051 [P] [US3] Implement frontend `ControlPanel` component: Stop button with confirmation dialog, Send Prompt form with disabled state for `copilot-cli` at `frontend/src/components/ControlPanel/ControlPanel.tsx`
 - [ ] T052 [US3] Integrate `ControlPanel` into `SessionPage`; wire TanStack Query mutations to `POST /api/sessions/:id/stop` and `POST /api/sessions/:id/send` at `frontend/src/pages/SessionPage.tsx`
@@ -146,6 +147,8 @@
 **Purpose**: Health, resilience, retention, empty states, and acceptance validation.
 
 - [ ] T053 [P] Implement `GET /api/health` route (status, version, uptime) at `backend/src/api/routes/health.ts`
+- [ ] T053b [P] Implement `GET /api/metrics` route (counters: `sessions_active`, `sessions_ended`, `output_records_written`, `control_actions_total`) at `backend/src/api/routes/metrics.ts`
+- [ ] T053c [P] Configure `@fastify/swagger` and `@fastify/swagger-ui` to auto-generate OpenAPI spec from route schemas; serve at `GET /api/docs` at `backend/src/server.ts`
 - [ ] T054 [P] Implement global Fastify error handler middleware with pino-structured error logging at `backend/src/server.ts`
 - [ ] T055 Implement background pruning job: purge expired sessions (past `expiresAt`) and over-limit output records on a configurable interval at `backend/src/services/pruning-job.ts`
 - [ ] T056 [P] Add frontend empty-state screens (no repos registered, no sessions on a repo, loading skeleton) at `frontend/src/components/EmptyState/EmptyState.tsx`
@@ -262,5 +265,8 @@ Each phase checkpoint delivers independently demonstrable value:
 - Constitution principle IV (Test-First): test tasks precede implementation in every story phase
 - Commit after each completed checkpoint or logical group of tasks
 - On Windows, use `taskkill /PID {pid} /T` for session stop; `process.kill` on macOS/Linux
-- Claude Code `send-prompt` returns `501 Not Implemented` for v1 — document this clearly in UI
+- Claude Code `send-prompt` returns `501 Not Implemented` for `copilot-cli` sessions — UI must show "Not supported for Copilot CLI in v1"
 - Hook injection modifies `~/.claude/settings.json` — must be idempotent (don't duplicate hooks on restart)
+- All versioned REST routes use the `/api/v1/` prefix; `/api/health`, `/api/metrics`, `/api/docs`, and `/hooks/claude` are unversioned
+- `frontend/src/services/socket.ts` is built incrementally across 3 phases: T016 (base) → T032 (US1 handlers) → T043 (US2 handlers). Each task MUST complete before the next begins.
+- VS Code GitHub Copilot extension detection is **out of scope for v1**; `copilot-vscode` type is reserved in constitution but not implemented. Post-v1 work item.

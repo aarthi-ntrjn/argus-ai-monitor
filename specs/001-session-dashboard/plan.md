@@ -42,7 +42,7 @@ Build a web-based dashboard (local server + browser UI) that monitors all local 
 | VI. Security | ✅ PASS | Localhost binding approved in spec for v1; no secrets; audit log for control actions |
 | VII. Observability | ✅ PASS | pino structured logging; health check endpoint; metrics endpoint |
 | VIII. Performance | ✅ PASS | Targets defined in Technical Context above |
-| IX. Test-First | ✅ PASS | Enforced in tasks |
+| IX. AI Usage | ✅ PASS | Enforced in tasks |
 | X. Definition of Done | ✅ PASS | Tracked per task in tasks.md |
 
 **No violations. Gate passes.**

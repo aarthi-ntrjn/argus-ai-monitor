@@ -1,6 +1,8 @@
 # REST API Contract: Session Dashboard
 
-**Base URL**: `http://127.0.0.1:{port}` (default port: `7411`)
+**Base URL**: `http://127.0.0.1:{port}/api/v1` (default port: `7411`)
+
+> All routes are prefixed `/api/v1/`. The unversioned `/api/health` and `/hooks/claude` paths are exempt from versioning as they are infrastructure/internal endpoints.
 
 ---
 
@@ -23,7 +25,7 @@ Returns server health status.
 
 ## Repositories
 
-### GET /api/repositories
+### GET /api/v1/repositories
 
 Returns all registered repositories.
 
@@ -42,7 +44,7 @@ Returns all registered repositories.
 ]
 ```
 
-### POST /api/repositories
+### POST /api/v1/repositories
 
 Register a new repository.
 
@@ -58,7 +60,7 @@ Register a new repository.
 { "error": "INVALID_PATH", "message": "Path is not a git repository" }
 ```
 
-### DELETE /api/repositories/:id
+### DELETE /api/v1/repositories/:id
 
 Unregister a repository. Active sessions are terminated first.
 
@@ -70,7 +72,7 @@ Unregister a repository. Active sessions are terminated first.
 
 ## Sessions
 
-### GET /api/sessions
+### GET /api/v1/sessions
 
 Returns all sessions. Supports filtering.
 
@@ -87,7 +89,7 @@ Returns all sessions. Supports filtering.
     "repositoryId": "uuid",
     "repositoryName": "argus",
     "repositoryPath": "/path/to/repo",
-    "type": "copilot-cli",
+    "type": "copilot-cli"  // or "claude-code",
     "pid": 12345,
     "status": "active",
     "startedAt": "2026-04-01T10:00:00Z",
@@ -98,7 +100,7 @@ Returns all sessions. Supports filtering.
 ]
 ```
 
-### GET /api/sessions/:id
+### GET /api/v1/sessions/:id
 
 Returns a single session.
 
@@ -106,7 +108,7 @@ Returns a single session.
 
 **Response 404**: Session not found
 
-### GET /api/sessions/:id/output
+### GET /api/v1/sessions/:id/output
 
 Returns paginated output records for a session, newest first.
 
@@ -137,7 +139,7 @@ Returns paginated output records for a session, newest first.
 
 ## Session Control
 
-### POST /api/sessions/:id/stop
+### POST /api/v1/sessions/:id/stop
 
 Stop a running session by terminating the OS process.
 
@@ -153,7 +155,7 @@ Stop a running session by terminating the OS process.
 
 **Response 409**: Session already ended
 
-### POST /api/sessions/:id/send
+### POST /api/v1/sessions/:id/send
 
 Send a prompt to a running session.
 
