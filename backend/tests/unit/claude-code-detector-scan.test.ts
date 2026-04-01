@@ -12,8 +12,8 @@ vi.mock('ps-list', () => ({
 }));
 
 const FAKE_REPO_PATH = 'C:\\testproject';
-// encode → 'C%3A%5Ctestproject'; decode step (replace - with /) → no change; decodeURIComponent → 'C:\testproject' ✓
-const FAKE_DIR_NAME = encodeURIComponent(FAKE_REPO_PATH);
+// Claude dir naming: replace :, \, / with hyphens → 'C--testproject'
+const FAKE_DIR_NAME = FAKE_REPO_PATH.replace(/[:\\/]/g, '-');
 
 // Mock fs so we control what project directories the detector "sees"
 // readdirSync returns a fake Claude project dir matching FAKE_REPO_PATH

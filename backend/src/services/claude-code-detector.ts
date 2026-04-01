@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 
 import { join, dirname } from 'path';
 import { homedir } from 'os';
 import psList from 'ps-list';
-import { getSession, upsertSession, getRepositoryByPath, getSessions, updateSessionStatus } from '../db/database.js';
+import { getSession, upsertSession, getRepositories, getSessions, updateSessionStatus } from '../db/database.js';
 import type { Session } from '../models/index.js';
 
 const CLAUDE_SETTINGS_PATH = join(homedir(), '.claude', 'settings.json');
@@ -53,6 +53,13 @@ export class ClaudeCodeDetector {
     );
   }
 
+  // Claude names project dirs by replacing path separators (:, \, /) with hyphens.
+  // e.g. C:\source\argus → C--source-argus
+  // Encoding forward is deterministic; decoding back is lossy (hyphens in names are ambiguous).
+  private claudeProjectDirName(repoPath: string): string {
+    return repoPath.replace(/[:\\/]/g, '-');
+  }
+
   async scanExistingSessions(): Promise<void> {
     const projectsDir = join(homedir(), '.claude', 'projects');
     if (!existsSync(projectsDir)) return;
@@ -72,19 +79,16 @@ export class ClaudeCodeDetector {
     if (!claudeRunning) return;
 
     try {
-      const projectDirs = readdirSync(projectsDir, { withFileTypes: true })
-        .filter(e => e.isDirectory());
+      const projectDirNames = new Set(
+        readdirSync(projectsDir, { withFileTypes: true })
+          .filter(e => e.isDirectory())
+          .map(e => e.name.toLowerCase())
+      );
 
-      for (const dir of projectDirs) {
-        let decodedPath: string;
-        try {
-          decodedPath = decodeURIComponent(dir.name.replace(/-/g, '/'));
-        } catch {
-          continue;
-        }
-
-        const repo = getRepositoryByPath(decodedPath);
-        if (!repo) continue;
+      for (const repo of getRepositories()) {
+        // Match repo path to Claude project dir by encoding forward (not decoding back)
+        const expectedDirName = this.claudeProjectDirName(repo.path).toLowerCase();
+        if (!projectDirNames.has(expectedDirName)) continue;
 
         // Already have an active session — nothing to do
         const activeSessions = getSessions({ repositoryId: repo.id, status: 'active', type: 'claude-code' });
@@ -101,7 +105,6 @@ export class ClaudeCodeDetector {
         if (mostRecentEnded) {
           updateSessionStatus(mostRecentEnded.id, 'active', null);
         } else {
-          // No prior session — create a startup placeholder
           upsertSession({
             id: `claude-startup-${repo.id}-${Date.now()}`,
             repositoryId: repo.id,
