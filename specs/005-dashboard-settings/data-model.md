@@ -9,6 +9,7 @@ Client-side only. Stored in `localStorage` under key `argus:settings` as JSON.
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `showEndedSessions` | `boolean` | `true` | When `false`, sessions with status `completed` or `ended` are hidden from all repository cards |
+| `hideReposWithNoActiveSessions` | `boolean` | `false` | When `true`, repository cards are hidden if they have no sessions with status `active`, `idle`, `waiting`, or `error` |
 
 **Validation rules:**
 - If the value read from `localStorage` cannot be parsed as valid JSON, fall back to the default `{ showEndedSessions: true }`.
@@ -26,6 +27,10 @@ Client-side only. Stored in `localStorage` under key `argus:settings` as JSON.
 | `endedAt` | `string \| null` | Non-null when session has finished |
 
 **"Ended session" definition**: A session is considered ended when `status === 'completed'` OR `status === 'ended'`. Active sessions are those with status `active`, `idle`, `waiting`, or `error`.
+
+**"Active repo" definition**: A repo is considered active if it has at least one session with status `active`, `idle`, `waiting`, or `error`. Repos with only ended sessions or no sessions at all are considered inactive.
+
+**Filter independence**: `hideReposWithNoActiveSessions` evaluates against **all** sessions for a repo (not just the visible ones after `showEndedSessions` filtering), so the two filters do not compound in unexpected ways.
 
 ---
 
@@ -45,6 +50,7 @@ DashboardSettings.showEndedSessions:
 // localStorage key: "argus:settings"
 // Value (JSON string):
 {
-  "showEndedSessions": true
+  "showEndedSessions": true,
+  "hideReposWithNoActiveSessions": false
 }
 ```
