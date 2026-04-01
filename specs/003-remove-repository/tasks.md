@@ -31,13 +31,13 @@ No blocking prerequisites — scan logic builds directly on existing `fs.ts` rou
 
 ### Implementation
 
-- [ ] T082 [US1] Add `POST /api/v1/fs/scan-folder` to `backend/src/api/routes/fs.ts`: accept `{ path: string }` body; use `fs.readdirSync` recursively (skip `node_modules`, `.git` subdirs) to find all directories containing a `.git` entry; return `{ repos: Array<{ path: string, name: string }> }` where `name` is the last path segment; log scan start/complete with full path and count at info level; on any fs error log full error with path and return `{ repos: [], error: 'SCAN_FAILED' }`
+- [X] T082 [US1] Add `POST /api/v1/fs/scan-folder` to `backend/src/api/routes/fs.ts`: accept `{ path: string }` body; use `fs.readdirSync` recursively (skip `node_modules`, `.git` subdirs) to find all directories containing a `.git` entry; return `{ repos: Array<{ path: string, name: string }> }` where `name` is the last path segment; log scan start/complete with full path and count at info level; on any fs error log full error with path and return `{ repos: [], error: 'SCAN_FAILED' }`
 
-- [ ] T083 [P] [US1] Add `scanFolder(path: string)` to `frontend/src/services/api.ts`: call `POST /api/v1/fs/scan-folder` with `{ path }` body; return `Array<{ path: string, name: string }>` on success; throws human-friendly error on failure
+- [X] T083 [P] [US1] Add `scanFolder(path: string)` to `frontend/src/services/api.ts`: call `POST /api/v1/fs/scan-folder` with `{ path }` body; return `Array<{ path: string, name: string }>` on success; throws human-friendly error on failure
 
-- [ ] T084 [US1] Add "Add Multiple" button and `handleScanAndAdd` handler to `frontend/src/pages/DashboardPage.tsx`: button sits next to "Add Repository" in the header; `handleScanAndAdd` calls `pickFolder()` (cancel → no-op), then `scanFolder(path)`, filters out already-registered paths by comparing against `repos`, calls `addRepository` for each new path sequentially, invalidates queries after all adds; if zero new repos found after filtering show inline banner "No new git repositories found in the selected folder"; if some adds fail show "Added X of Y repositories — Z failed"; clear banner after 5 seconds
+- [X] T084 [US1] Add "Add Multiple" button and `handleScanAndAdd` handler to `frontend/src/pages/DashboardPage.tsx`: button sits next to "Add Repository" in the header; `handleScanAndAdd` calls `pickFolder()` (cancel → no-op), then `scanFolder(path)`, filters out already-registered paths by comparing against `repos`, calls `addRepository` for each new path sequentially, invalidates queries after all adds; if zero new repos found after filtering show inline banner "No new git repositories found in the selected folder"; if some adds fail show "Added X of Y repositories — Z failed"; clear banner after 5 seconds
 
-- [ ] T085 [P] [US1] Update `README.md` to document the "Add Multiple Repositories" feature in the usage section
+- [X] T085 [P] [US1] Update `README.md` to document the "Add Multiple Repositories" feature
 
 **Checkpoint**: After T082–T084, user can pick a parent folder and all nested git repos are added in one click. Already-registered repos are silently skipped. Dashboard updates immediately.
 
@@ -45,7 +45,7 @@ No blocking prerequisites — scan logic builds directly on existing `fs.ts` rou
 
 ## Phase 4: Polish & Cross-Cutting Concerns
 
-- [ ] T086 [P] Mark T082–T085 as [X] in `specs/003-remove-repository/tasks.md` after implementation is verified
+- [X] T086 [P] Mark T082–T085 as [X] in `specs/003-remove-repository/tasks.md` after implementation is verified
 
 ---
 
