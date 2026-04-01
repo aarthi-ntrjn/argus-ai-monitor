@@ -64,11 +64,22 @@ git push
 Make the code changes identified in Step 1. Rules:
 - Make **only** the changes needed to fix this bug — no refactoring, no unrelated cleanup
 - If the fix touches shared functions, ensure callers are still compatible
-- Add or update a unit/integration test that would have caught this bug if it existed before
 
 ---
 
-### Step 5 — Verify
+### Step 5 — Add a regression test
+
+Add or update a test that **directly verifies the fix** — i.e. a test that would have **failed before the fix** and **passes after**.
+
+Rules:
+- The test must target the specific root cause, not just high-level symptoms
+- Place it in the most appropriate existing test file, or create a new one alongside the file being fixed
+- The test name must describe the bug scenario clearly (e.g. `"should coerce Date objects to ISO strings when writing to DB"`)
+- Do not add tests that were already passing before the fix
+
+---
+
+### Step 6 — Verify
 
 Run the backend test suite:
 ```
@@ -86,7 +97,33 @@ Build must succeed with no errors.
 
 ---
 
-### Step 6 — Commit and mark done
+### Step 7 — Update BUG-LEARNINGS.md
+
+Read `BUG-LEARNINGS.md` at the repo root (create it if it doesn't exist). Append an entry in this format:
+
+```markdown
+## T### — <short description>
+
+**Date**: YYYY-MM-DD
+**Symptom**: What the user observed
+**Root cause**: The specific code path, assumption, or missing guard that caused the bug
+**Why it was missed**: Why existing tests/code review did not catch this
+**How to prevent**: Concrete rule or pattern that would catch this class of bug earlier
+**Fix summary**: What changed (file, function, one sentence)
+```
+
+Commit the learnings file:
+```
+git add BUG-LEARNINGS.md
+git commit -m "docs(T###): add bug learning entry
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+git push
+```
+
+---
+
+### Step 8 — Commit and mark done
 
 1. Mark the task as `[X]` in `specs/001-session-dashboard/tasks.md`
 2. Commit all changed files:
@@ -100,10 +137,12 @@ Build must succeed with no errors.
 
 ---
 
-### Step 7 — Report
+### Step 9 — Report
 
 Summarise what was done:
 - **Bug**: what the symptom was
 - **Root cause**: what was actually wrong
 - **Fix**: what was changed (files + brief description)
+- **Regression test**: what test was added and why it catches the root cause
+- **Learning**: the key takeaway added to BUG-LEARNINGS.md
 - **Tests**: pass/fail status
