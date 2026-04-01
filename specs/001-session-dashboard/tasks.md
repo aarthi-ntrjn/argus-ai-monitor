@@ -42,7 +42,7 @@
 - [X] T010 Define TypeScript model interfaces: `Repository`, `Session`, `SessionOutput`, `ControlAction`, `ArgusConfig` at `backend/src/models/index.ts`
 - [X] T011 [P] Implement `ArgusConfig` loader (read/write `~/.argus/config.json`, create with defaults if absent) at `backend/src/config/config-loader.ts`
 - [X] T012 Implement SQLite schema (tables: `repositories`, `sessions`, `session_output`, `control_actions`) at `backend/src/db/schema.ts`
-- [ ] T013 Implement database connection, query helpers, and migration runner at `backend/src/db/database.ts`
+- [X] T013 Implement database connection, query helpers, and migration runner at `backend/src/db/database.ts`
 - [ ] T014 Implement Fastify server entry point bound to `127.0.0.1`, pino structured logging, graceful shutdown at `backend/src/server.ts`
 - [ ] T014b Implement Fastify `requestIdHeader` and inject `requestId` into all pino log entries; return `X-Request-Id` header in all error responses for failure traceability at `backend/src/server.ts`
 - [ ] T015 Implement WebSocket event dispatcher (register clients, broadcast typed events) at `backend/src/api/ws/event-dispatcher.ts`
