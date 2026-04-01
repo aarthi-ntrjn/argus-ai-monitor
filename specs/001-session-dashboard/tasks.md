@@ -127,7 +127,7 @@
 
 - [X] T044 [P] [US3] Write contract tests for `POST /api/v1/sessions/:id/stop` (202, 404, 409) at `backend/tests/contract/sessions.test.ts`
 - [X] T045 [P] [US3] Write contract tests for `POST /api/v1/sessions/:id/send` (202, 404, 409, 501 for copilot-cli) at `backend/tests/contract/sessions.test.ts`
-- [ ] T046 [P] [US3] Write unit test for `SessionController`: mock `process.kill` and `exec('taskkill')`; assert `ControlAction` records created with correct status transitions at `backend/tests/unit/session-controller.test.ts`
+- [X] T046 [P] [US3] Write unit test for `SessionController`: mock `process.kill` and `exec('taskkill')`; assert `ControlAction` records created with correct status transitions at `backend/tests/unit/session-controller.test.ts`
 
 ### Implementation for User Story 3
 
