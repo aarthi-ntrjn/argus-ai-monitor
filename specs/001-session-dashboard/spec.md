@@ -60,7 +60,7 @@ As a developer, I want to control active AI sessions from the Argus dashboard, s
 ### Edge Cases
 
 - What happens when a monitored repository is deleted or moved while the dashboard is open?
-- What happens when an AI session crashes and leaves behind stale state?
+- When an AI session crashes or ends unexpectedly, it is shown as "ended" with a timestamp and auto-removed after the configured retention period.
 - What happens when the same repository has multiple concurrent sessions of the same AI tool type?
 - What happens if session discovery is slow due to a large number of repositories?
 - How does the dashboard behave when no repositories have any active sessions?
@@ -69,15 +69,17 @@ As a developer, I want to control active AI sessions from the Argus dashboard, s
 
 ### Functional Requirements
 
-- **FR-001**: System MUST discover and display all local repositories configured for monitoring.
-- **FR-002**: System MUST detect active Claude Code, GitHub Copilot CLI, and GitHub Copilot sessions on each repository.
+- **FR-001**: System MUST discover and display all local repositories configured for monitoring via a config file specifying root directories to scan; repositories MUST also be addable and removable through the dashboard UI.
+- **FR-002**: System MUST detect active Claude Code, GitHub Copilot CLI, and GitHub Copilot sessions on each repository via a hybrid approach: OS process scanning to identify running sessions, combined with IPC/API connections and event hooks exposed by each AI tool for real-time state and output.
 - **FR-003**: System MUST display the current state of each active session (active, idle, waiting, error, completed).
-- **FR-004**: System MUST display session output and results history for each active or recently completed session.
+- **FR-004**: System MUST display session output and results history for each active or recently completed session, persisted to disk so history survives session end and Argus restarts.
+- **FR-004a**: System MUST enforce a configurable retention limit on persisted session output (by size or age); output exceeding the limit MUST be automatically pruned.
 - **FR-005**: System MUST update session state and output in real time without requiring manual refresh.
 - **FR-006**: System MUST allow users to stop active sessions from the dashboard.
 - **FR-007**: System MUST allow users to send prompts and messages to active sessions from the dashboard.
 - **FR-008**: System MUST handle sessions that end or become unreachable gracefully, without crashing or hanging.
-- **FR-009**: System MUST be accessible via a web browser connected to a locally running Argus server.
+- **FR-009**: System MUST be accessible via a web browser connected to a locally running Argus server, bound to localhost (127.0.0.1) only. Network-accessible endpoints are out of scope for v1.
+- **FR-009a**: System MUST display ended or crashed sessions as "completed" or "ended" with a timestamp; sessions MUST be automatically removed from the dashboard after a configurable retention period.
 - **FR-010**: System MUST clearly distinguish between session types (Claude Code vs GitHub Copilot CLI vs GitHub Copilot).
 - **FR-011**: System MUST support at least 10 simultaneously monitored sessions across multiple repositories.
 
@@ -105,6 +107,10 @@ As a developer, I want to control active AI sessions from the Argus dashboard, s
 - All monitored repositories are local filesystem directories accessible to Argus.
 - "Results" means the output, conversation history, and file changes produced by a session during its lifetime.
 - Multiple sessions of different AI tool types can run concurrently on the same repository.
-- v1 scope covers the current user's local machine only — multi-machine monitoring is out of scope.
-- Sessions are identified by detecting running processes or local socket/IPC mechanisms exposed by each AI tool.
+- v1 scope covers the current user's local machine only — multi-machine and network-accessible endpoints are out of scope for v1 (planned post-MVP).
+- Sessions are discovered via OS process scanning; state and output are retrieved via IPC/API connections and event hooks exposed by each AI tool (Claude Code, GitHub Copilot CLI, GitHub Copilot).
+- Repositories are configured via a config file pointing to root directories; the dashboard UI supplements but does not replace the config file.
+- Session output history is persisted to disk with a configurable retention limit; it is not kept indefinitely.
+- Ended or crashed sessions remain visible on the dashboard for a configurable period before being auto-removed.
 - The primary user is a single developer (not a team) managing their own local sessions.
+- The Argus web server binds to 127.0.0.1 — no authentication is required for v1.
