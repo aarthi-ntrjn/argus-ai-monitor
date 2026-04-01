@@ -181,6 +181,10 @@
 
 - [ ] T066 On startup, scan `~/.claude/projects/` for Claude Code sessions that were already running before Argus started: for each project subdir check for active `claude` process via ps-list, map `cwd` to a registered repo, and upsert a `claude-code` session with `status: active`; add this scan to `ClaudeCodeDetector` as `scanExistingSessions()` called from `SessionMonitor.start()` at `backend/src/services/claude-code-detector.ts`
 
+### Addendum: Bug — session not marked ended when process stops
+
+- [ ] T069 Fix `SessionMonitor.runScan()` in `backend/src/services/session-monitor.ts` to detect sessions that were active but are no longer returned by `CopilotCliDetector.scan()` (e.g., because the session directory was cleaned up on process exit): after each scan, diff the set of currently-returned active session IDs against a `Map<string, Session>` of previously-active sessions; for any session that has disappeared or now has `status: 'ended'`, call `updateSessionStatus(id, 'ended', endedAt)` in `backend/src/db/database.ts` and emit `session.ended`; add `updateSessionStatus` export to `database.ts` if not present
+
 **Checkpoint**: All acceptance criteria met. `npm test` passes. E2E suite green.
 
 ---
