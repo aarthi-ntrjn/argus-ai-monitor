@@ -39,7 +39,7 @@
 
 **⚠️ CRITICAL**: These tasks BLOCK all user stories.
 
-- [ ] T010 Define TypeScript model interfaces: `Repository`, `Session`, `SessionOutput`, `ControlAction`, `ArgusConfig` at `backend/src/models/index.ts`
+- [X] T010 Define TypeScript model interfaces: `Repository`, `Session`, `SessionOutput`, `ControlAction`, `ArgusConfig` at `backend/src/models/index.ts`
 - [ ] T011 [P] Implement `ArgusConfig` loader (read/write `~/.argus/config.json`, create with defaults if absent) at `backend/src/config/config-loader.ts`
 - [ ] T012 Implement SQLite schema (tables: `repositories`, `sessions`, `session_output`, `control_actions`) at `backend/src/db/schema.ts`
 - [ ] T013 Implement database connection, query helpers, and migration runner at `backend/src/db/database.ts`
