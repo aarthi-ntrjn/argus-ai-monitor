@@ -30,7 +30,7 @@ test.describe('SC-005: Dashboard Settings — Filter Ended Sessions', () => {
       localStorage.setItem('argus:settings', JSON.stringify({ hideEndedSessions: true }));
     });
     await page.goto('/');
-    await expect(page.getByText('active-repo')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'active-repo' })).toBeVisible({ timeout: 5000 });
     await expect(page.getByText('Active session')).toBeVisible({ timeout: 5000 });
     await expect(page.getByText('Completed session')).not.toBeVisible();
     await expect(page.getByText('Ended session')).not.toBeVisible();
@@ -98,9 +98,9 @@ test.describe('SC-005: Dashboard Settings — Filter Ended Sessions', () => {
     await expect(page.getByText('Completed session')).toBeVisible({ timeout: 5000 });
     await page.getByRole('button', { name: /settings/i }).click();
     await page.getByRole('checkbox', { name: /hide ended sessions/i }).check();
-    await expect(page.getByText('Completed session')).not.toBeVisible();
-    await expect(page.getByText('Ended session')).not.toBeVisible();
-    await expect(page.getByText('Active session')).toBeVisible();
+    await expect(page.getByText('Completed session', { exact: true })).not.toBeVisible();
+    await expect(page.getByText('Ended session', { exact: true })).not.toBeVisible();
+    await expect(page.getByText('Active session', { exact: true })).toBeVisible();
   });
 });
 
@@ -135,7 +135,7 @@ test.describe('SC-005: Dashboard Settings — Hide Repos with No Active Sessions
       localStorage.setItem('argus:settings', JSON.stringify({ hideEndedSessions: false, hideReposWithNoActiveSessions: true }));
     });
     await page.goto('/');
-    await expect(page.getByText('active-repo')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'active-repo' })).toBeVisible({ timeout: 5000 });
     await expect(page.getByText('idle-repo')).not.toBeVisible();
   });
 
@@ -145,11 +145,11 @@ test.describe('SC-005: Dashboard Settings — Hide Repos with No Active Sessions
       localStorage.setItem('argus:settings', JSON.stringify({ hideEndedSessions: false, hideReposWithNoActiveSessions: false }));
     });
     await page.goto('/');
-    await expect(page.getByText('active-repo')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('idle-repo')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'active-repo' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'idle-repo' })).toBeVisible({ timeout: 5000 });
   });
 
-  test('shows global empty-state when all repos have only ended sessions and setting is on', async ({ page }) => {
+  test('shows global empty-statewhen all repos have only ended sessions and setting is on', async ({ page }) => {
     const allEndedSessions = TWO_REPOS_SESSIONS.map(s => ({ ...s, status: 'completed' }));
     await mockTwoRepoApis(page, allEndedSessions);
     await page.addInitScript(() => {
@@ -171,11 +171,11 @@ test.describe('SC-005: Dashboard Settings — Hide Repos with No Active Sessions
   test('toggling hide-repos via panel immediately hides inactive repo', async ({ page }) => {
     await mockTwoRepoApis(page);
     await page.goto('/');
-    await expect(page.getByText('active-repo')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('idle-repo')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'active-repo' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'idle-repo' })).toBeVisible({ timeout: 5000 });
     await page.getByRole('button', { name: /settings/i }).click();
     await page.getByRole('checkbox', { name: /hide repos with no active sessions/i }).check();
-    await expect(page.getByText('idle-repo')).not.toBeVisible();
-    await expect(page.getByText('active-repo')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'idle-repo' })).not.toBeVisible();
+    await expect(page.getByRole('heading', { name: 'active-repo' })).toBeVisible();
   });
 });
