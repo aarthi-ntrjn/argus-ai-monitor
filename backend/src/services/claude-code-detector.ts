@@ -45,6 +45,33 @@ export class ClaudeCodeDetector {
     } catch { /* ignore if settings file inaccessible */ }
   }
 
+  removeHooksForRepo(_repoPath: string): void {
+    // Claude hooks are global (not repo-specific) — the single HOOK_COMMAND listens for all repos.
+    // We do not remove them on a per-repo basis to avoid breaking other registered repos.
+    // Hooks are only removed when ALL repos are gone or the user manually clears them.
+  }
+
+  removeAllHooks(): void {
+    try {
+      if (!existsSync(CLAUDE_SETTINGS_PATH)) return;
+      const settings: ClaudeSettings = JSON.parse(readFileSync(CLAUDE_SETTINGS_PATH, 'utf-8'));
+      if (!settings.hooks) return;
+      let changed = false;
+      for (const event of HOOK_EVENTS) {
+        const entries = settings.hooks[event];
+        if (!entries) continue;
+        const filtered = entries.filter(
+          (entry) => !entry.hooks?.some((h) => h.command === HOOK_COMMAND)
+        );
+        if (filtered.length !== entries.length) {
+          settings.hooks[event] = filtered;
+          changed = true;
+        }
+      }
+      if (changed) writeFileSync(CLAUDE_SETTINGS_PATH, JSON.stringify(settings, null, 2), 'utf-8');
+    } catch { /* ignore */ }
+  }
+
   private hasHook(settings: ClaudeSettings, event: string): boolean {
     const eventHooks = settings.hooks?.[event];
     if (!eventHooks) return false;

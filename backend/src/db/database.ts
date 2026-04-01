@@ -52,7 +52,10 @@ export function insertRepository(repo: Repository): void {
 }
 
 export function deleteRepository(id: string): void {
-  getDb().prepare('DELETE FROM repositories WHERE id = ?').run(id);
+  const db = getDb();
+  db.prepare('DELETE FROM session_output WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
+  db.prepare('DELETE FROM sessions WHERE repository_id = ?').run(id);
+  db.prepare('DELETE FROM repositories WHERE id = ?').run(id);
 }
 
 export interface SessionFilters { repositoryId?: string; status?: string; type?: string; }

@@ -11,6 +11,7 @@ import {
   getRepositoryByPath,
 } from '../../db/database.js';
 import { broadcast } from '../ws/event-dispatcher.js';
+import { ClaudeCodeDetector } from '../../services/claude-code-detector.js';
 
 const repositoriesRoutes: FastifyPluginAsync = async (app) => {
   app.get('/api/v1/repositories', async (_req, reply) => {
@@ -48,6 +49,13 @@ const repositoriesRoutes: FastifyPluginAsync = async (app) => {
     if (!existing) return reply.status(404).send({ error: 'NOT_FOUND', message: `Repository ${id} not found` });
 
     deleteRepository(id);
+
+    // Remove Claude hooks if no repositories remain
+    const remaining = getRepositories();
+    if (remaining.length === 0) {
+      new ClaudeCodeDetector().removeAllHooks();
+    }
+
     broadcast({ type: 'repository.removed', timestamp: new Date().toISOString(), data: { id } });
     return reply.status(204).send();
   });
