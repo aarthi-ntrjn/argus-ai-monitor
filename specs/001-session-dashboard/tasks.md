@@ -72,7 +72,7 @@
 
 - [X] T022 [P] [US1] Implement `RepositoryScanner` service: scan configured directories for `.git` repos, persist to SQLite, detect new/removed repos at `backend/src/services/repository-scanner.ts`
 - [X] T023 [P] [US1] Implement `CopilotCliDetector`: scan `~/.copilot/session-state/`, parse `inuse.{PID}.lock` + `workspace.yaml`, map CWD to registered repo. **Validate each PID against running processes via `ps-list`** — if process is gone but lock file exists, mark session as `ended` (stale lock) at `backend/src/services/copilot-cli-detector.ts`
-- [ ] T024 [P] [US1] Implement `ClaudeCodeDetector`: inject hooks into `~/.claude/settings.json`, receive `POST /hooks/claude` payloads, create/update session records at `backend/src/services/claude-code-detector.ts`
+- [X] T024 [P] [US1] Implement `ClaudeCodeDetector`: inject hooks into `~/.claude/settings.json`, receive `POST /hooks/claude` payloads, create/update session records at `backend/src/services/claude-code-detector.ts`
 - [ ] T025 [US1] Implement `SessionMonitor` orchestrator: coordinate detectors, manage session lifecycle, emit typed domain events at `backend/src/services/session-monitor.ts`
 - [ ] T026 [US1] Implement `GET`, `POST`, `DELETE /api/v1/repositories` route handlers with input validation at `backend/src/api/routes/repositories.ts`
 - [ ] T027 [US1] Implement `GET /api/v1/sessions` route handler with filter support at `backend/src/api/routes/sessions.ts`
