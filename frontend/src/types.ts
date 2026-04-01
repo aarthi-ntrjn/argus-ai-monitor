@@ -39,6 +39,16 @@ export interface SessionOutput {
   sequenceNumber: number;
 }
 
+export interface DashboardSettings {
+  hideEndedSessions: boolean;
+  hideReposWithNoActiveSessions: boolean;
+}
+
+export const DEFAULT_SETTINGS: DashboardSettings = {
+  hideEndedSessions: false,
+  hideReposWithNoActiveSessions: false,
+};
+
 export interface ControlAction {
   id: string;
   sessionId: string;
