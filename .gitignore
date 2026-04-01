@@ -1,5 +1,5 @@
 # Agent credential folders
-.claude/
+
 .github/copilot/
 
 node_modules/
