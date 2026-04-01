@@ -1,9 +1,10 @@
 import { EventEmitter } from 'events';
+import psList from 'ps-list';
 import { RepositoryScanner } from './repository-scanner.js';
 import { CopilotCliDetector } from './copilot-cli-detector.js';
 import { ClaudeCodeDetector } from './claude-code-detector.js';
 import { loadConfig } from '../config/config-loader.js';
-import { updateSessionStatus } from '../db/database.js';
+import { getSessions, updateSessionStatus } from '../db/database.js';
 import type { Session, Repository } from '../models/index.js';
 
 export interface SessionMonitorEvents {
@@ -32,9 +33,25 @@ export class SessionMonitor extends EventEmitter {
 
   async start(): Promise<void> {
     this.claudeDetector.injectHooks();
+    await this.reconcileStaleSessions();
     await this.claudeDetector.scanExistingSessions();
     await this.runScan();
     this.scanInterval = setInterval(() => this.runScan(), 5000);
+  }
+
+  private async reconcileStaleSessions(): Promise<void> {
+    try {
+      const activeSessions = getSessions({ status: 'active' });
+      if (activeSessions.length === 0) return;
+      const processes = await psList();
+      const runningPids = new Set(processes.map((p) => p.pid));
+      const now = new Date().toISOString();
+      for (const session of activeSessions) {
+        if (!session.pid || !runningPids.has(session.pid)) {
+          updateSessionStatus(session.id, 'ended', now);
+        }
+      }
+    } catch { /* ignore — stale reconciliation is best-effort */ }
   }
 
   stop(): void {

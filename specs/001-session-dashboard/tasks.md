@@ -193,6 +193,10 @@
 
 - [X] T071 Rewrite `README.md` at repo root to be crisp, concise and accurate: include a one-line description, what Argus does (monitors Copilot CLI + Claude Code sessions, real-time output, remote stop), how to run it (`npm run dev` from repo root + `npm run build` in frontend/), how to add a repo, key features list (folder browser, scan-folder bulk-add, pre-existing session detection), and a brief tech stack note (Node/Fastify backend, React frontend, SQLite); remove all placeholder text ("Coming soon", etc.)
 
+### Addendum: Bug — stale active sessions persist across restarts
+
+- [X] T072 On startup, reconcile stale sessions in `SessionMonitor.start()` at `backend/src/services/session-monitor.ts`: query `getSessions({ status: 'active' })` from the DB, fetch current running PIDs via ps-list, and call `updateSessionStatus(id, 'ended', now)` for any session whose `pid` is not in the running PID set (or whose `pid` is null); this must run before the first `runScan()` so the frontend never sees stale `active` sessions
+
 **Checkpoint**: All acceptance criteria met. `npm test` passes. E2E suite green.
 
 ---
