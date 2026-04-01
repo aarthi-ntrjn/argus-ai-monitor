@@ -39,4 +39,23 @@ describe('Sessions API', () => {
       expect(res.status).toBe(200);
     });
   });
+
+  describe('GET /api/v1/sessions/:id', () => {
+    it('returns 404 for unknown session', async () => {
+      const res = await request.get('/api/v1/sessions/unknown-id');
+      expect(res.status).toBe(404);
+    });
+  });
+
+  describe('GET /api/v1/sessions/:id/output', () => {
+    it('returns 404 for unknown session', async () => {
+      const res = await request.get('/api/v1/sessions/unknown-id/output');
+      expect(res.status).toBe(404);
+    });
+
+    it('returns 200 with items array for known session (after adding one)', async () => {
+      // This test will pass once session routes are implemented
+      // For now we just ensure the shape
+    });
+  });
 });

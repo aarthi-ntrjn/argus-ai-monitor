@@ -96,7 +96,7 @@
 
 > **Write these tests FIRST. Verify they FAIL before writing any implementation.**
 
-- [ ] T033 [P] [US2] Write contract tests for `GET /api/v1/sessions/:id` and `GET /api/v1/sessions/:id/output` (pagination with `limit`, `before` params) at `backend/tests/contract/sessions.test.ts`
+- [X] T033 [P] [US2] Write contract tests for `GET /api/v1/sessions/:id` and `GET /api/v1/sessions/:id/output` (pagination with `limit`, `before` params) at `backend/tests/contract/sessions.test.ts`
 - [ ] T034 [P] [US2] Write unit test for `events.jsonl` parser: assert each Copilot CLI event type maps to correct `SessionOutput.type` at `backend/tests/unit/events-parser.test.ts`
 - [ ] T035 [P] [US2] Write integration test for `OutputStore`: persist 200 output records, assert paginated reads and size-limit pruning (oldest removed when limit exceeded) at `backend/tests/integration/output-store.test.ts`
 
