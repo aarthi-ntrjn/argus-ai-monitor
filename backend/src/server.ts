@@ -116,3 +116,8 @@ export async function startServer() {
   app.log.info({ port: config.port }, 'Argus server started');
   return app;
 }
+
+startServer().catch((err) => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
+});
