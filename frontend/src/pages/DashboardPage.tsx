@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { getRepositories, getSessions, addRepository, removeRepository, pickFolder, queryClient } from '../services/api';
+import { getRepositories, getSessions, addRepository, removeRepository, pickFolder, scanFolder, queryClient } from '../services/api';
 import type { Repository, Session } from '../types';
 import SessionCard from '../components/SessionCard/SessionCard';
 
@@ -10,9 +10,16 @@ interface RepoWithSessions extends Repository {
 
 export default function DashboardPage() {
   const [addError, setAddError] = useState<string | null>(null);
+  const [addInfo, setAddInfo] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
+
+  const showInfo = (msg: string) => {
+    setAddInfo(msg);
+    setTimeout(() => setAddInfo(null), 5000);
+  };
 
   const { data: repos = [], isLoading: reposLoading } = useQuery({
     queryKey: ['repositories'],
@@ -42,6 +49,44 @@ export default function DashboardPage() {
       setAddError(msg);
     } finally {
       setAdding(false);
+    }
+  };
+
+  const handleScanAndAdd = async () => {
+    setAddError(null);
+    setAddInfo(null);
+    setScanning(true);
+    try {
+      const folderPath = await pickFolder();
+      if (!folderPath) return;
+      const found = await scanFolder(folderPath);
+      const registeredPaths = new Set(repos.map(r => r.path));
+      const newRepos = found.filter(r => !registeredPaths.has(r.path));
+      if (newRepos.length === 0) {
+        showInfo('No new git repositories found in the selected folder.');
+        return;
+      }
+      let added = 0;
+      let failed = 0;
+      for (const repo of newRepos) {
+        try {
+          await addRepository(repo.path);
+          added++;
+        } catch {
+          failed++;
+        }
+      }
+      await queryClient.invalidateQueries({ queryKey: ['repositories'] });
+      if (failed === 0) {
+        showInfo(`Added ${added} repositor${added === 1 ? 'y' : 'ies'}.`);
+      } else {
+        setAddError(`Added ${added} of ${newRepos.length} repositories — ${failed} failed.`);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to scan folder';
+      setAddError(msg);
+    } finally {
+      setScanning(false);
     }
   };
 
@@ -75,14 +120,30 @@ export default function DashboardPage() {
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Argus Dashboard</h1>
-          <button
-            onClick={handleAddRepo}
-            disabled={adding}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-          >
-            {adding ? 'Adding...' : 'Add Repository'}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleScanAndAdd}
+              disabled={scanning || adding}
+              className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50"
+            >
+              {scanning ? 'Scanning...' : 'Add Multiple'}
+            </button>
+            <button
+              onClick={handleAddRepo}
+              disabled={adding || scanning}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              {adding ? 'Adding...' : 'Add Repository'}
+            </button>
+          </div>
         </div>
+
+        {addInfo && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-green-700 text-sm flex justify-between">
+            <span>{addInfo}</span>
+            <button onClick={() => setAddInfo(null)} className="ml-4 font-bold">x</button>
+          </div>
+        )}
 
         {addError && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm flex justify-between">
