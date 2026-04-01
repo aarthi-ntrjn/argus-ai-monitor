@@ -31,9 +31,24 @@ Open **http://localhost:7411**
 
 ## Add repositories
 
-**Single repo**: Click **Add Repository** → native folder picker opens → select any git repo folder → it appears on the dashboard immediately.
+**Single repo / Bulk import**: Click **Add Repository** → native folder picker opens → if the selected folder is a git repo it is added immediately; if not, Argus scans all subdirectories and adds every git repo found in one go. Already-registered repos are skipped automatically.
 
-**Bulk import**: Click **Add Multiple** → pick a parent folder → Argus recursively scans all subdirectories → every git repo found is added in one go. Already-registered repos are skipped automatically.
+## Dashboard Settings
+
+Click the **⚙ gear icon** in the top-right of the dashboard header to open the Settings panel.
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Show ended sessions | On | When turned off, sessions with status `completed` or `ended` are hidden from all repository cards |
+
+Settings are saved automatically in your browser (`localStorage`) and restored on every page load.
+
+### Adding a new setting (developers)
+
+1. Add a field with a default to `DashboardSettings` in `frontend/src/types.ts`
+2. Add the default value to `DEFAULT_SETTINGS` in the same file
+3. Add a toggle row in `frontend/src/components/SettingsPanel/SettingsPanel.tsx`
+4. Consume it in any component via `const [settings] = useSettings()`
 
 ## Config
 
