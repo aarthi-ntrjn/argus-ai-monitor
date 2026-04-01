@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 
 import { join, dirname } from 'path';
 import { homedir } from 'os';
 import psList from 'ps-list';
-import { getSession, upsertSession, getRepositories, getSessions, updateSessionStatus } from '../db/database.js';
+import { getSession, upsertSession, getRepositories, getRepositoryByPath, getSessions, updateSessionStatus } from '../db/database.js';
 import type { Session } from '../models/index.js';
 
 const CLAUDE_SETTINGS_PATH = join(homedir(), '.claude', 'settings.json');
