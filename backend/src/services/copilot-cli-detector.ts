@@ -1,5 +1,5 @@
 import { readdirSync, existsSync, readFileSync, openSync, readSync, closeSync, statSync } from 'fs';
-import { join } from 'path';
+import { join, normalize } from 'path';
 import { homedir } from 'os';
 import { load as yamlLoad } from 'js-yaml';
 import psList from 'ps-list';
@@ -16,8 +16,8 @@ interface WorkspaceYaml {
   id?: string;
   cwd?: string;
   summary?: string;
-  created_at?: string;
-  updated_at?: string;
+  created_at?: string | Date;
+  updated_at?: string | Date;
 }
 
 export class CopilotCliDetector {
@@ -65,11 +65,14 @@ export class CopilotCliDetector {
     const pid = lockFile ? this.extractPid(lockFile) : null;
     const isRunning = pid !== null && runningPids.has(pid);
 
-    const repo = workspace.cwd ? getRepositoryByPath(workspace.cwd) : null;
+    const repo = workspace.cwd ? getRepositoryByPath(normalize(workspace.cwd)) : null;
     if (!repo) return null;
 
     const sessionId = workspace.id ?? randomUUID();
     const status = isRunning ? 'active' : 'ended';
+
+    const toIso = (val: string | Date | undefined): string =>
+      val ? (val instanceof Date ? val.toISOString() : val) : new Date().toISOString();
 
     const session: Session = {
       id: sessionId,
@@ -77,9 +80,9 @@ export class CopilotCliDetector {
       type: 'copilot-cli',
       pid: pid,
       status,
-      startedAt: workspace.created_at ?? new Date().toISOString(),
-      endedAt: status === 'ended' ? (workspace.updated_at ?? new Date().toISOString()) : null,
-      lastActivityAt: workspace.updated_at ?? new Date().toISOString(),
+      startedAt: toIso(workspace.created_at),
+      endedAt: status === 'ended' ? toIso(workspace.updated_at) : null,
+      lastActivityAt: toIso(workspace.updated_at),
       summary: workspace.summary ?? null,
       expiresAt: null,
     };

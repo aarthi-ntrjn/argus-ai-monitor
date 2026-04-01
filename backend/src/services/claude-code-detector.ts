@@ -1,7 +1,8 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { homedir } from 'os';
-import { getSession, upsertSession, getRepositoryByPath } from '../db/database.js';
+import psList from 'ps-list';
+import { getSession, upsertSession, getRepositories, getRepositoryByPath, getSessions, updateSessionStatus } from '../db/database.js';
 import type { Session } from '../models/index.js';
 
 const CLAUDE_SETTINGS_PATH = join(homedir(), '.claude', 'settings.json');
@@ -50,6 +51,75 @@ export class ClaudeCodeDetector {
     return eventHooks.some((entry) =>
       entry.hooks?.some((h) => h.command === HOOK_COMMAND)
     );
+  }
+
+  // Claude names project dirs by replacing path separators (:, \, /) with hyphens.
+  // e.g. C:\source\argus → C--source-argus
+  // Encoding forward is deterministic; decoding back is lossy (hyphens in names are ambiguous).
+  private claudeProjectDirName(repoPath: string): string {
+    return repoPath.replace(/[:\\/]/g, '-');
+  }
+
+  async scanExistingSessions(): Promise<void> {
+    const projectsDir = join(homedir(), '.claude', 'projects');
+    if (!existsSync(projectsDir)) return;
+
+    let processes: Awaited<ReturnType<typeof psList>>;
+    try {
+      processes = await psList();
+    } catch {
+      return;
+    }
+
+    // On Windows psList does not return process cwd, so we cannot match by path.
+    // Instead check whether any Claude process is running at all.
+    const claudeRunning = processes.some(p =>
+      p.name.toLowerCase().includes('claude') || p.cmd?.toLowerCase().includes('claude')
+    );
+    if (!claudeRunning) return;
+
+    try {
+      const projectDirNames = new Set(
+        readdirSync(projectsDir, { withFileTypes: true })
+          .filter(e => e.isDirectory())
+          .map(e => e.name.toLowerCase())
+      );
+
+      for (const repo of getRepositories()) {
+        // Match repo path to Claude project dir by encoding forward (not decoding back)
+        const expectedDirName = this.claudeProjectDirName(repo.path).toLowerCase();
+        if (!projectDirNames.has(expectedDirName)) continue;
+
+        // Already have an active session — nothing to do
+        const activeSessions = getSessions({ repositoryId: repo.id, status: 'active', type: 'claude-code' });
+        if (activeSessions.length > 0) continue;
+
+        const now = new Date().toISOString();
+
+        // Re-activate the most recently ended session for this repo, if any
+        const allSessions = getSessions({ repositoryId: repo.id, type: 'claude-code' });
+        const mostRecentEnded = allSessions
+          .filter(s => s.status === 'ended')
+          .sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt))[0];
+
+        if (mostRecentEnded) {
+          updateSessionStatus(mostRecentEnded.id, 'active', null);
+        } else {
+          upsertSession({
+            id: `claude-startup-${repo.id}-${Date.now()}`,
+            repositoryId: repo.id,
+            type: 'claude-code',
+            pid: null,
+            status: 'active',
+            startedAt: now,
+            endedAt: null,
+            lastActivityAt: now,
+            summary: null,
+            expiresAt: null,
+          });
+        }
+      }
+    } catch { /* ignore */ }
   }
 
   async handleHookPayload(payload: HookPayload): Promise<void> {

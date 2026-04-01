@@ -13,6 +13,7 @@ import sessionsRoutes from './api/routes/sessions.js';
 import hooksRoutes, { setClaudeDetector } from './api/routes/hooks.js';
 import healthRoutes from './api/routes/health.js';
 import metricsRoutes from './api/routes/metrics.js';
+import { fsRoutes } from './api/routes/fs.js';
 import { SessionMonitor } from './services/session-monitor.js';
 import { startPruningJob } from './services/pruning-job.js';
 import type { Session, Repository } from './models/index.js';
@@ -79,6 +80,7 @@ export async function buildServer() {
   await app.register(hooksRoutes);
   await app.register(healthRoutes);
   await app.register(metricsRoutes);
+  await app.register(fsRoutes);
 
   app.register(async (fastify) => {
     fastify.get('/ws', { websocket: true }, (connection) => {

@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { join, dirname } from 'path';
+import { join, dirname, normalize } from 'path';
 import { homedir } from 'os';
 import { mkdirSync } from 'fs';
 import { SCHEMA_SQL } from './schema.js';
@@ -41,14 +41,14 @@ export function getRepository(id: string): Repository | undefined {
 
 export function getRepositoryByPath(path: string): Repository | undefined {
   return getDb().prepare(
-    'SELECT id, path, name, source, added_at as addedAt, last_scanned_at as lastScannedAt FROM repositories WHERE path = ?'
+    'SELECT id, path, name, source, added_at as addedAt, last_scanned_at as lastScannedAt FROM repositories WHERE LOWER(path) = LOWER(?)'
   ).get(path) as Repository | undefined;
 }
 
 export function insertRepository(repo: Repository): void {
   getDb().prepare(
     'INSERT INTO repositories (id, path, name, source, added_at, last_scanned_at) VALUES (?, ?, ?, ?, ?, ?)'
-  ).run(repo.id, repo.path, repo.name, repo.source, repo.addedAt, repo.lastScannedAt);
+  ).run(repo.id, normalize(repo.path), repo.name, repo.source, repo.addedAt, repo.lastScannedAt);
 }
 
 export function deleteRepository(id: string): void {
@@ -71,6 +71,12 @@ export function getSession(id: string): Session | undefined {
   return getDb().prepare(
     'SELECT id, repository_id as repositoryId, type, pid, status, started_at as startedAt, ended_at as endedAt, last_activity_at as lastActivityAt, summary, expires_at as expiresAt FROM sessions WHERE id = ?'
   ).get(id) as Session | undefined;
+}
+
+export function updateSessionStatus(id: string, status: string, endedAt: string | null): void {
+  getDb().prepare(
+    'UPDATE sessions SET status = ?, ended_at = ?, last_activity_at = ? WHERE id = ?'
+  ).run(status, endedAt, new Date().toISOString(), id);
 }
 
 export function upsertSession(session: Session): void {

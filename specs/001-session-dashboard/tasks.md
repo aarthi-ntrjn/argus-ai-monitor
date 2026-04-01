@@ -166,6 +166,55 @@
 
 - [X] T062 Fix integration and contract tests to use an isolated test DB (via `ARGUS_DB_PATH` env var) instead of `~/.argus/argus.db`; add afterAll cleanup in `output-store.test.ts` at `backend/tests/integration/output-store.test.ts`, `backend/src/db/database.ts`, `backend/vitest.config.ts`
 
+### Addendum: Folder navigation UX for Add Repository
+
+- [X] T063 Add `GET /api/v1/fs/browse` route: accepts `?path=` query param (defaults to `homedir()`), returns `{ current: string, parent: string|null, entries: { name, path, isGitRepo }[] }` listing immediate subdirectories only at `backend/src/api/routes/fs.ts`; register in `backend/src/server.ts`
+- [X] T064 [P] Create `frontend/src/components/FolderBrowser/FolderBrowser.tsx`: shows current path as breadcrumb, lists subdirs (git repos highlighted with a badge), click to navigate into subdir, "Select" button emits chosen path to parent via `onSelect(path: string)` callback; uses `GET /api/v1/fs/browse`
+- [X] T065 Wire `FolderBrowser` into the Add Repository modal in `frontend/src/pages/DashboardPage.tsx`: replace text input with FolderBrowser; keep manual path input as a fallback below the browser; pre-populate input when user clicks Select
+
+### Addendum: Scan parent folder for git repositories
+
+- [X] T067 Add `GET /api/v1/fs/scan` route: accepts `?path=` query param, walks immediate subdirectories (non-recursive) checking for `.git` folder, returns `{ scannedPath: string, repos: { name: string, path: string }[] }`; register handler in `backend/src/api/routes/fs.ts` alongside T063's browse route
+- [X] T068 Add "Scan Folder" tab to the Add Repository modal in `frontend/src/pages/DashboardPage.tsx`: user picks a parent folder via `FolderBrowser` (T064), clicks "Scan", modal shows a checklist of discovered git repos, user selects any subset, "Add Selected" calls `POST /api/v1/repositories` for each; existing single-repo tab unchanged
+
+### Addendum: Detect pre-existing sessions on startup
+
+- [X] T066 On startup, scan `~/.claude/projects/` for Claude Code sessions that were already running before Argus started: for each project subdir check for active `claude` process via ps-list, map `cwd` to a registered repo, and upsert a `claude-code` session with `status: active`; add this scan to `ClaudeCodeDetector` as `scanExistingSessions()` called from `SessionMonitor.start()` at `backend/src/services/claude-code-detector.ts`
+
+### Addendum: Bug — session not marked ended when process stops
+
+- [X] T069 Fix `SessionMonitor.runScan()` in `backend/src/services/session-monitor.ts` to detect sessions that were active but are no longer returned by `CopilotCliDetector.scan()` (e.g., because the session directory was cleaned up on process exit): after each scan, diff the set of currently-returned active session IDs against a `Map<string, Session>` of previously-active sessions; for any session that has disappeared or now has `status: 'ended'`, call `updateSessionStatus(id, 'ended', endedAt)` in `backend/src/db/database.ts` and emit `session.ended`; add `updateSessionStatus` export to `database.ts` if not present
+
+### Addendum: Bug — Copilot CLI session not detected (path mismatch)
+
+- [X] T070 Fix `getRepositoryByPath` in `backend/src/db/database.ts` and `CopilotCliDetector.processSessionDir` in `backend/src/services/copilot-cli-detector.ts` to handle path variations on Windows (case, trailing separator, forward vs backslash): normalize both the registered repo path and the `workspace.cwd` to lowercase with `path.normalize()` before comparing; update `getRepositoryByPath` to perform a case-insensitive lookup using `LOWER(path) = LOWER(?)` so sessions whose `cwd` differs only in case or separators are correctly matched to their repo
+
+### Addendum: Fix README
+
+- [X] T071 Rewrite `README.md` at repo root to be crisp, concise and accurate: include a one-line description, what Argus does (monitors Copilot CLI + Claude Code sessions, real-time output, remote stop), how to run it (`npm run dev` from repo root + `npm run build` in frontend/), how to add a repo, key features list (folder browser, scan-folder bulk-add, pre-existing session detection), and a brief tech stack note (Node/Fastify backend, React frontend, SQLite); remove all placeholder text ("Coming soon", etc.)
+
+### Addendum: Bug — stale active sessions persist across restarts
+
+- [X] T072 On startup, reconcile stale sessions in `SessionMonitor.start()` at `backend/src/services/session-monitor.ts`: query `getSessions({ status: 'active' })` from the DB, fetch current running PIDs via ps-list, and call `updateSessionStatus(id, 'ended', now)` for any session whose `pid` is not in the running PID set (or whose `pid` is null); this must run before the first `runScan()` so the frontend never sees stale `active` sessions
+
+### Addendum: Bug — Copilot CLI sessions not detected (js-yaml Date coercion)
+
+- [X] T073 Fix `CopilotCliDetector.processSessionDir` in `backend/src/services/copilot-cli-detector.ts`: `js-yaml` silently coerces ISO timestamp strings (e.g. `created_at`, `updated_at`) into JavaScript `Date` objects; passing these to `upsertSession` throws "SQLite3 can only bind numbers, strings, bigints, buffers, and null" which is caught and swallowed, making every `processSessionDir` return `null`; fix by converting date fields to ISO strings when constructing the Session: `startedAt: workspace.created_at ? new Date(workspace.created_at as string | Date).toISOString() : new Date().toISOString()` and same for `endedAt`/`lastActivityAt`; update `WorkspaceYaml` interface to type these fields as `string | Date` to make the coercion visible
+
+### Addendum: Bug — Claude Code sessions marked ended on server restart
+
+- [X] T074 Fix `reconcileStaleSessions()` in `backend/src/services/session-monitor.ts`: the condition `if (!session.pid || ...)` evaluates `!null` as `true`, so every Claude Code session created via hooks (which always have `pid: null`) is incorrectly marked `ended` on every server restart; fix by changing the condition to `if (session.pid != null && !runningPids.has(session.pid))` so sessions without a known PID are skipped — their lifecycle is managed by hooks, not by PID presence
+
+### Addendum: Bug — Claude Code sessions not re-detected on restart (scanExistingSessions broken on Windows)
+
+- [X] T075 Fix `ClaudeCodeDetector.scanExistingSessions()` in `backend/src/services/claude-code-detector.ts`: two bugs: (1) it requires `psList` to return a process `cwd` to match the project path, but on Windows psList never returns `cwd`, so `matchedProcess` is always `undefined` and the entire method is a no-op; (2) even if a process is matched, it creates a new `claude-startup-{repo.id}-{pid}` session rather than re-activating an existing `ended` session — so already-ended hook sessions (e.g. incorrectly ended by the pre-T074 bug) are never restored. Fix: (a) remove the per-process `cwd` match — instead check if ANY `claude` process is running at all (`processes.some(p => p.name.toLowerCase().includes('claude'))`); (b) for each project directory matching a registered repo, if no `active` claude-code session exists for that repo: find the most recently ended claude-code session and call `updateSessionStatus(id, 'active', null)` to re-activate it, or create a new startup session if none exists. Import `getSessions` and `updateSessionStatus` from `../db/database.js`
+
+### Addendum: Feature — Remove Repository
+
+- [ ] T076 Add cascade delete for sessions and session output when a repository is removed: update `deleteRepository` in `backend/src/db/database.ts` to first `DELETE FROM session_output WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)`, then `DELETE FROM sessions WHERE repository_id = ?`, then `DELETE FROM repositories WHERE id = ?`; this ensures no orphaned session or output records remain after a repo is removed
+- [ ] T077 Add Claude hook cleanup on repository removal: add a `removeHooksForRepo(repoPath: string)` method to `ClaudeCodeDetector` in `backend/src/services/claude-code-detector.ts` that reads `~/.claude/settings.json`, removes any hook entries whose `cwd` or script arguments reference the given repo path, and writes the file back; call this method from the `DELETE /api/v1/repositories/:id` handler in `backend/src/api/routes/repositories.ts` before calling `deleteRepository`
+- [ ] T078 Add "Remove" button to each repository card in `frontend/src/pages/DashboardPage.tsx`: render a small remove/trash icon button on the repo card header; clicking it shows a confirmation dialog ("Remove [repo name]? This will also delete all associated sessions."); on confirm, call the existing `removeRepository(id)` from `frontend/src/services/api.ts` (already implemented but never used), handle loading and error states, and close the dialog on success
+
 **Checkpoint**: All acceptance criteria met. `npm test` passes. E2E suite green.
 
 ---
