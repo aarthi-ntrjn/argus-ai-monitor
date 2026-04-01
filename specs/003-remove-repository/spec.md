@@ -17,7 +17,7 @@ As a developer, I want to pick a parent folder and have Argus automatically find
 
 **Acceptance Scenarios**:
 
-1. **Given** a parent folder contains 4 git repositories at various subdirectory depths, **When** I use "Add Multiple Repositories" and select that parent folder, **Then** all 4 repos are added to the dashboard and appear within 5 seconds.
+1. **Given** a parent folder contains 4 git repositories at various subdirectory depths, **When** I click "Add Repository" and select that parent folder, **Then** all 4 repos are added to the dashboard and appear within 5 seconds.
 2. **Given** a parent folder contains 2 repos already registered and 2 new ones, **When** I scan that folder, **Then** only the 2 new repos are added; the already-registered ones are silently skipped (no duplicates, no error).
 3. **Given** I select a folder that contains no git repositories at any depth, **When** the scan completes, **Then** a friendly message informs me "No new git repositories found in the selected folder."
 4. **Given** the scan finds repos, **When** they are added, **Then** each newly added repo immediately appears on the dashboard (same real-time update as single-add).
@@ -46,7 +46,7 @@ As a developer, I want to pick a parent folder and have Argus automatically find
 
 ### Key Entities
 
-- **ScannedRepo**: `{ path: string, name: string, alreadyRegistered: boolean }` — represents a found git repo during a scan.
+- **ScannedRepo**: `{ path: string, name: string }` — represents a found git repo during a scan. Already-registered filtering is done client-side by comparing paths against registered repos.
 
 ## Success Criteria *(mandatory)*
 
@@ -62,5 +62,5 @@ As a developer, I want to pick a parent folder and have Argus automatically find
 - The folder picker reuses the existing `POST /api/v1/fs/pick-folder` backend endpoint (already implemented).
 - The scan depth is unbounded — scan all subdirectories recursively (no configurable depth limit for v1).
 - The `.git` directory check is sufficient to identify a git repo (no `git rev-parse` validation needed for v1).
-- The feature is a separate "Add Multiple" button/action alongside the existing "Add Repository" single-add flow.
+- The single **"Add Repository"** button is smart: if the selected folder contains a `.git` directory, it adds that repo; if not, it recursively scans for all git repos in subdirectories and adds them all.
 - No confirmation step before adding — user asked to "add them all" directly.

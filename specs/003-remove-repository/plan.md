@@ -5,7 +5,7 @@
 
 ## Summary
 
-Add a "Add Multiple Repositories" action to the Argus dashboard that opens the native OS folder picker, recursively scans the selected folder for git repositories, and bulk-adds all newly found repos (skipping already-registered ones). One user story, two new endpoints, minimal frontend changes.
+Add a smart "Add Repository" action to the Argus dashboard: opens the native OS folder picker; if the selected folder is a git repo adds it directly; if it's a parent folder, recursively scans for all nested git repos and bulk-adds them all (skipping already-registered ones). Also adds `requestId` to all API error responses (§XII) and unit + integration tests for the scan logic (§IV, §V).
 
 ## Technical Context
 
@@ -43,11 +43,17 @@ specs/003-remove-repository/
 
 ```text
 backend/src/api/routes/
-├── fs.ts                # ADD: POST /api/v1/fs/scan-folder endpoint
+├── fs.ts                # UPDATED: POST /api/v1/fs/scan-folder, requestId in errors
+├── repositories.ts      # UPDATED: requestId in error responses
 
 frontend/src/
-├── pages/DashboardPage.tsx   # ADD: "Add Multiple" button + handleScanAndAdd handler
-├── services/api.ts            # ADD: scanFolder() function
+├── pages/DashboardPage.tsx   # UPDATED: single smart "Add Repository" button
+├── services/api.ts            # UPDATED: scanFolder() function
+
+backend/tests/contract/
+├── fs.test.ts                 # NEW: integration tests for scan-folder endpoint
+backend/tests/unit/
+├── scan-folder.test.ts        # NEW: unit tests for findGitRepos() helper
 ```
 
 **Structure Decision**: Additive changes only — no new files except the endpoint in the existing `fs.ts` route file and API service additions.
