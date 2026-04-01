@@ -63,7 +63,7 @@
 
 > **Write these tests FIRST. Verify they FAIL before writing any implementation.**
 
-- [ ] T018 [P] [US1] Write contract tests for `GET /api/v1/repositories`, `POST /api/v1/repositories`, `DELETE /api/v1/repositories/:id` at `backend/tests/contract/repositories.test.ts`
+- [X] T018 [P] [US1] Write contract tests for `GET /api/v1/repositories`, `POST /api/v1/repositories`, `DELETE /api/v1/repositories/:id` at `backend/tests/contract/repositories.test.ts`
 - [ ] T019 [P] [US1] Write contract test for `GET /api/v1/sessions` (with `repositoryId`, `status`, `type` filters) at `backend/tests/contract/sessions.test.ts`
 - [ ] T020 [P] [US1] Write integration test for `CopilotCliDetector`: mock `~/.copilot/session-state/` directory with fixture files; assert sessions detected with correct PID, CWD, status at `backend/tests/integration/copilot-cli-detector.test.ts`
 - [ ] T021 [P] [US1] Write integration test for `ClaudeCodeDetector`: simulate hook POST payload; assert session record created with correct repo association at `backend/tests/integration/claude-code-detector.test.ts`
