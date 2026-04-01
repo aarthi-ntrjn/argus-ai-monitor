@@ -39,6 +39,14 @@ export interface SessionOutput {
   sequenceNumber: number;
 }
 
+export interface DashboardSettings {
+  showEndedSessions: boolean;
+}
+
+export const DEFAULT_SETTINGS: DashboardSettings = {
+  showEndedSessions: true,
+};
+
 export interface ControlAction {
   id: string;
   sessionId: string;
