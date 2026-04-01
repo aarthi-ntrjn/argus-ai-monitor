@@ -30,3 +30,17 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 - When a session field can legitimately be null (no PID assigned), document what null means and handle it explicitly in any code that branches on that field.
 - Add regression tests for startup reconciliation covering both the null-PID (skip) and dead-PID (end) cases.
 **Fix summary**: Changed condition in `reconcileStaleSessions()` from `!session.pid ||` to `session.pid != null &&` so sessions without a known PID are skipped; added two regression tests in `tests/unit/session-monitor.test.ts`.
+
+---
+
+## T075 — Claude Code sessions not re-detected on Argus restart (scanExistingSessions broken on Windows)
+
+**Date**: 2026-04-01
+**Symptom**: After server restart, Claude Code sessions continued to show as `ended` even after the T074 fix, because the T074 fix only prevented future incorrect marking — already-ended sessions were never restored.
+**Root cause**: `scanExistingSessions()` in `claude-code-detector.ts` required `psList` to return a `cwd` property per process to match the project path. On Windows, `psList` (backed by WMIC/tasklist) never returns `cwd`. Every `matchedProcess` lookup returned `undefined`, so the method was a complete no-op on Windows — it never created or re-activated any session.
+**Why it was missed**: The method was written and tested on a non-Windows platform or with a mock that provided `cwd`. There were no tests exercising the Windows code path, and the `/* ignore */` catch block hid any errors. The T074 fix was also incomplete because it addressed incorrect ending at startup but didn't address the inability to re-discover running Claude sessions.
+**How to prevent**:
+- Test platform-specific code (psList on Windows) explicitly. If a function depends on a property that may not exist on all platforms, validate that assumption with a contract test or conditional fallback.
+- Any feature that "silently does nothing" (all catch blocks suppressed, no logging) needs an explicit integration test that verifies a session WAS created/updated, not just that no exception was thrown.
+- When fixing a bug that has a "before state" (incorrectly ended sessions), always ask: what cleans up the pre-existing bad state?
+**Fix summary**: Removed per-process `cwd` match from `scanExistingSessions()`; now checks if any `claude` process is running at all. For each matching project directory, re-activates the most recently ended session (or creates a new startup one). Added 3 regression tests in `tests/unit/claude-code-detector-scan.test.ts`.
