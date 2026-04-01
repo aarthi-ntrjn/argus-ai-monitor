@@ -2,6 +2,11 @@
 ## Sync Impact Report
 **Version change**: 1.0.0 → 1.0.1 (editorial — shortened and restructured, no principle changes)
 **Templates reviewed**: plan-template.md ✅ spec-template.md ✅ tasks-template.md ✅
+
+## Sync Impact Report
+**Version change**: 1.0.1 → 1.1.0 (minor — added exception clauses to §VI and §VIII for localhost single-user developer tools)
+**Rationale**: The Argus project is a localhost-bound, single-developer tool. §VI's blanket auth requirement and §VIII's 10k-user target are designed for networked multi-user services and must not block legitimate local tooling.
+**Templates reviewed**: plan-template.md ✅ spec-template.md ✅ tasks-template.md ✅
 -->
 
 # Argus Constitution
@@ -41,6 +46,7 @@
 
 ### VI. Security & Compliance
 - All endpoints MUST enforce authentication and authorization.
+  - **Exception**: Services bound exclusively to `127.0.0.1` that serve a single local user MAY use network isolation in lieu of auth/authz. This exception MUST be explicitly declared in the feature specification and is only valid for v1 of local developer tools. Post-v1 network exposure requires full auth.
 - No secrets in source code, config files, or logs.
 - All actions MUST be audit-logged (actor, timestamp, outcome).
 - Follow least-privilege access for all services and users.
@@ -52,6 +58,7 @@
 ### VIII. Performance
 - APIs MUST respond within 500ms at p95.
 - System MUST support 10,000 concurrent users.
+  - **Exception**: Single-user localhost developer tools are exempt from the 10,000 user target. Such tools MUST instead define their actual concurrency target explicitly in the feature specification (e.g., "≥10 concurrent sessions").
 - System MUST degrade gracefully under overload.
 
 ### IX. AI Usage
@@ -73,4 +80,4 @@ Amendments require a dedicated PR (not a feature branch), a migration plan, and 
 
 **Versioning**: MAJOR = principle removed/redefined · MINOR = new principle · PATCH = clarification
 
-**Version**: 1.0.1 | **Ratified**: 2026-04-01 | **Last Amended**: 2026-04-01
+**Version**: 1.1.0 | **Ratified**: 2026-04-01 | **Last Amended**: 2026-04-01
