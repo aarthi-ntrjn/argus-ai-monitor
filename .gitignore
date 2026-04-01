@@ -1,3 +1,15 @@
 # Agent credential folders
 .claude/
 .github/copilot/
+
+node_modules/
+dist/
+build/
+*.log
+.env*
+coverage/
+.DS_Store
+Thumbs.db
+*.tmp
+frontend/dist/
+backend/dist/
