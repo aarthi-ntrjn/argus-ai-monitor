@@ -168,26 +168,26 @@
 
 ### Addendum: Folder navigation UX for Add Repository
 
-- [ ] T063 Add `GET /api/v1/fs/browse` route: accepts `?path=` query param (defaults to `homedir()`), returns `{ current: string, parent: string|null, entries: { name, path, isGitRepo }[] }` listing immediate subdirectories only at `backend/src/api/routes/fs.ts`; register in `backend/src/server.ts`
-- [ ] T064 [P] Create `frontend/src/components/FolderBrowser/FolderBrowser.tsx`: shows current path as breadcrumb, lists subdirs (git repos highlighted with a badge), click to navigate into subdir, "Select" button emits chosen path to parent via `onSelect(path: string)` callback; uses `GET /api/v1/fs/browse`
-- [ ] T065 Wire `FolderBrowser` into the Add Repository modal in `frontend/src/pages/DashboardPage.tsx`: replace text input with FolderBrowser; keep manual path input as a fallback below the browser; pre-populate input when user clicks Select
+- [X] T063 Add `GET /api/v1/fs/browse` route: accepts `?path=` query param (defaults to `homedir()`), returns `{ current: string, parent: string|null, entries: { name, path, isGitRepo }[] }` listing immediate subdirectories only at `backend/src/api/routes/fs.ts`; register in `backend/src/server.ts`
+- [X] T064 [P] Create `frontend/src/components/FolderBrowser/FolderBrowser.tsx`: shows current path as breadcrumb, lists subdirs (git repos highlighted with a badge), click to navigate into subdir, "Select" button emits chosen path to parent via `onSelect(path: string)` callback; uses `GET /api/v1/fs/browse`
+- [X] T065 Wire `FolderBrowser` into the Add Repository modal in `frontend/src/pages/DashboardPage.tsx`: replace text input with FolderBrowser; keep manual path input as a fallback below the browser; pre-populate input when user clicks Select
 
 ### Addendum: Scan parent folder for git repositories
 
-- [ ] T067 Add `GET /api/v1/fs/scan` route: accepts `?path=` query param, walks immediate subdirectories (non-recursive) checking for `.git` folder, returns `{ scannedPath: string, repos: { name: string, path: string }[] }`; register handler in `backend/src/api/routes/fs.ts` alongside T063's browse route
-- [ ] T068 Add "Scan Folder" tab to the Add Repository modal in `frontend/src/pages/DashboardPage.tsx`: user picks a parent folder via `FolderBrowser` (T064), clicks "Scan", modal shows a checklist of discovered git repos, user selects any subset, "Add Selected" calls `POST /api/v1/repositories` for each; existing single-repo tab unchanged
+- [X] T067 Add `GET /api/v1/fs/scan` route: accepts `?path=` query param, walks immediate subdirectories (non-recursive) checking for `.git` folder, returns `{ scannedPath: string, repos: { name: string, path: string }[] }`; register handler in `backend/src/api/routes/fs.ts` alongside T063's browse route
+- [X] T068 Add "Scan Folder" tab to the Add Repository modal in `frontend/src/pages/DashboardPage.tsx`: user picks a parent folder via `FolderBrowser` (T064), clicks "Scan", modal shows a checklist of discovered git repos, user selects any subset, "Add Selected" calls `POST /api/v1/repositories` for each; existing single-repo tab unchanged
 
 ### Addendum: Detect pre-existing sessions on startup
 
-- [ ] T066 On startup, scan `~/.claude/projects/` for Claude Code sessions that were already running before Argus started: for each project subdir check for active `claude` process via ps-list, map `cwd` to a registered repo, and upsert a `claude-code` session with `status: active`; add this scan to `ClaudeCodeDetector` as `scanExistingSessions()` called from `SessionMonitor.start()` at `backend/src/services/claude-code-detector.ts`
+- [X] T066 On startup, scan `~/.claude/projects/` for Claude Code sessions that were already running before Argus started: for each project subdir check for active `claude` process via ps-list, map `cwd` to a registered repo, and upsert a `claude-code` session with `status: active`; add this scan to `ClaudeCodeDetector` as `scanExistingSessions()` called from `SessionMonitor.start()` at `backend/src/services/claude-code-detector.ts`
 
 ### Addendum: Bug — session not marked ended when process stops
 
-- [ ] T069 Fix `SessionMonitor.runScan()` in `backend/src/services/session-monitor.ts` to detect sessions that were active but are no longer returned by `CopilotCliDetector.scan()` (e.g., because the session directory was cleaned up on process exit): after each scan, diff the set of currently-returned active session IDs against a `Map<string, Session>` of previously-active sessions; for any session that has disappeared or now has `status: 'ended'`, call `updateSessionStatus(id, 'ended', endedAt)` in `backend/src/db/database.ts` and emit `session.ended`; add `updateSessionStatus` export to `database.ts` if not present
+- [X] T069 Fix `SessionMonitor.runScan()` in `backend/src/services/session-monitor.ts` to detect sessions that were active but are no longer returned by `CopilotCliDetector.scan()` (e.g., because the session directory was cleaned up on process exit): after each scan, diff the set of currently-returned active session IDs against a `Map<string, Session>` of previously-active sessions; for any session that has disappeared or now has `status: 'ended'`, call `updateSessionStatus(id, 'ended', endedAt)` in `backend/src/db/database.ts` and emit `session.ended`; add `updateSessionStatus` export to `database.ts` if not present
 
 ### Addendum: Bug — Copilot CLI session not detected (path mismatch)
 
-- [ ] T070 Fix `getRepositoryByPath` in `backend/src/db/database.ts` and `CopilotCliDetector.processSessionDir` in `backend/src/services/copilot-cli-detector.ts` to handle path variations on Windows (case, trailing separator, forward vs backslash): normalize both the registered repo path and the `workspace.cwd` to lowercase with `path.normalize()` before comparing; update `getRepositoryByPath` to perform a case-insensitive lookup using `LOWER(path) = LOWER(?)` so sessions whose `cwd` differs only in case or separators are correctly matched to their repo
+- [X] T070 Fix `getRepositoryByPath` in `backend/src/db/database.ts` and `CopilotCliDetector.processSessionDir` in `backend/src/services/copilot-cli-detector.ts` to handle path variations on Windows (case, trailing separator, forward vs backslash): normalize both the registered repo path and the `workspace.cwd` to lowercase with `path.normalize()` before comparing; update `getRepositoryByPath` to perform a case-insensitive lookup using `LOWER(path) = LOWER(?)` so sessions whose `cwd` differs only in case or separators are correctly matched to their repo
 
 ### Addendum: Fix README
 

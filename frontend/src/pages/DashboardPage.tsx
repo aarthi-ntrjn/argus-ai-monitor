@@ -1,18 +1,33 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { getRepositories, getSessions, addRepository, queryClient } from '../services/api';
+import { getRepositories, getSessions, addRepository, apiFetch, queryClient } from '../services/api';
 import type { Repository, Session } from '../types';
 import SessionCard from '../components/SessionCard/SessionCard';
+import { FolderBrowser } from '../components/FolderBrowser';
 
 interface RepoWithSessions extends Repository {
   sessions: Session[];
 }
 
+interface ScannedRepo {
+  name: string;
+  path: string;
+  selected: boolean;
+}
+
 export default function DashboardPage() {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [addTab, setAddTab] = useState<'single' | 'scan'>('single');
   const [newRepoPath, setNewRepoPath] = useState('');
+  const [showBrowser, setShowBrowser] = useState(false);
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
+
+  // Scan tab state
+  const [scanPath, setScanPath] = useState('');
+  const [showScanBrowser, setShowScanBrowser] = useState(false);
+  const [scannedRepos, setScannedRepos] = useState<ScannedRepo[]>([]);
+  const [scanning, setScanning] = useState(false);
 
   const { data: repos = [], isLoading: reposLoading } = useQuery({
     queryKey: ['repositories'],
@@ -38,12 +53,59 @@ export default function DashboardPage() {
       await queryClient.invalidateQueries({ queryKey: ['repositories'] });
       setShowAddModal(false);
       setNewRepoPath('');
+      setShowBrowser(false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to add repository';
       setAddError(msg);
     } finally {
       setAdding(false);
     }
+  };
+
+  const handleScan = async () => {
+    if (!scanPath) return;
+    setScanning(true);
+    try {
+      const result = await apiFetch<{ scannedPath: string; repos: { name: string; path: string }[] }>(
+        `/fs/scan?path=${encodeURIComponent(scanPath)}`
+      );
+      setScannedRepos(result.repos.map(r => ({ ...r, selected: true })));
+    } catch {
+      setAddError('Failed to scan directory');
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const handleAddSelected = async () => {
+    setAdding(true);
+    setAddError(null);
+    const selected = scannedRepos.filter(r => r.selected);
+    try {
+      for (const repo of selected) {
+        await addRepository(repo.path);
+      }
+      await queryClient.invalidateQueries({ queryKey: ['repositories'] });
+      setShowAddModal(false);
+      setScannedRepos([]);
+      setScanPath('');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to add repositories';
+      setAddError(msg);
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const closeModal = () => {
+    setShowAddModal(false);
+    setNewRepoPath('');
+    setShowBrowser(false);
+    setAddError(null);
+    setAddTab('single');
+    setScanPath('');
+    setScannedRepos([]);
+    setShowScanBrowser(false);
   };
 
   if (reposLoading || sessionsLoading) {
@@ -106,24 +168,122 @@ export default function DashboardPage() {
 
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-semibold mb-4">Add Repository</h2>
-            <form onSubmit={handleAddRepo}>
-              <input
-                type="text"
-                value={newRepoPath}
-                onChange={(e) => setNewRepoPath(e.target.value)}
-                placeholder="Enter repository path..."
-                className="w-full border border-gray-300 rounded px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              {addError && <p className="text-red-500 text-sm mb-3">{addError}</p>}
-              <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
-                <button type="submit" disabled={adding || !newRepoPath} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50">
-                  {adding ? 'Adding...' : 'Add'}
-                </button>
+
+            {/* Tabs */}
+            <div className="flex border-b mb-4">
+              <button
+                className={`px-4 py-2 text-sm font-medium ${addTab === 'single' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                onClick={() => setAddTab('single')}
+              >
+                Single
+              </button>
+              <button
+                className={`px-4 py-2 text-sm font-medium ${addTab === 'scan' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                onClick={() => setAddTab('scan')}
+              >
+                Scan Folder
+              </button>
+            </div>
+
+            {addTab === 'single' && (
+              <form onSubmit={handleAddRepo}>
+                <div className="mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowBrowser(!showBrowser)}
+                    className="text-sm text-blue-600 hover:underline mb-2"
+                  >
+                    {showBrowser ? 'Hide browser' : 'Browse…'}
+                  </button>
+                  {showBrowser && (
+                    <div className="border rounded mb-3 max-h-64 overflow-y-auto">
+                      <FolderBrowser onSelect={(p) => { setNewRepoPath(p); setShowBrowser(false); }} />
+                    </div>
+                  )}
+                  <input
+                    type="text"
+                    value={newRepoPath}
+                    onChange={(e) => setNewRepoPath(e.target.value)}
+                    placeholder="Enter repository path..."
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                {addError && <p className="text-red-500 text-sm mb-3">{addError}</p>}
+                <div className="flex justify-end gap-2">
+                  <button type="button" onClick={closeModal} className="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+                  <button type="submit" disabled={adding || !newRepoPath} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50">
+                    {adding ? 'Adding...' : 'Add'}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {addTab === 'scan' && (
+              <div>
+                <div className="mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowScanBrowser(!showScanBrowser)}
+                    className="text-sm text-blue-600 hover:underline mb-2"
+                  >
+                    {showScanBrowser ? 'Hide browser' : 'Browse for folder…'}
+                  </button>
+                  {showScanBrowser && (
+                    <div className="border rounded mb-3 max-h-64 overflow-y-auto">
+                      <FolderBrowser onSelect={(p) => { setScanPath(p); setShowScanBrowser(false); }} />
+                    </div>
+                  )}
+                  {scanPath && <p className="text-sm text-gray-600 mb-2">Selected: <span className="font-mono">{scanPath}</span></p>}
+                  <button
+                    type="button"
+                    onClick={handleScan}
+                    disabled={!scanPath || scanning}
+                    className="bg-gray-100 text-gray-800 px-4 py-2 rounded hover:bg-gray-200 disabled:opacity-50"
+                  >
+                    {scanning ? 'Scanning...' : 'Scan'}
+                  </button>
+                </div>
+
+                {scannedRepos.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-sm text-gray-600 mb-2">Found {scannedRepos.length} git repositories:</p>
+                    <ul className="border rounded divide-y max-h-48 overflow-y-auto">
+                      {scannedRepos.map((repo, i) => (
+                        <li key={repo.path} className="flex items-center gap-2 px-3 py-2">
+                          <input
+                            type="checkbox"
+                            checked={repo.selected}
+                            onChange={(e) => {
+                              const updated = [...scannedRepos];
+                              updated[i] = { ...repo, selected: e.target.checked };
+                              setScannedRepos(updated);
+                            }}
+                          />
+                          <span className="text-sm font-mono truncate" title={repo.path}>{repo.name}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {addError && <p className="text-red-500 text-sm mb-3">{addError}</p>}
+                <div className="flex justify-end gap-2">
+                  <button type="button" onClick={closeModal} className="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+                  {scannedRepos.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleAddSelected}
+                      disabled={adding || scannedRepos.filter(r => r.selected).length === 0}
+                      className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {adding ? 'Adding...' : `Add Selected (${scannedRepos.filter(r => r.selected).length})`}
+                    </button>
+                  )}
+                </div>
               </div>
-            </form>
+            )}
           </div>
         </div>
       )}

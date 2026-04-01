@@ -32,6 +32,7 @@ export class SessionMonitor extends EventEmitter {
 
   async start(): Promise<void> {
     this.claudeDetector.injectHooks();
+    await this.claudeDetector.scanExistingSessions();
     await this.runScan();
     this.scanInterval = setInterval(() => this.runScan(), 5000);
   }

@@ -1,6 +1,7 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { homedir } from 'os';
+import psList from 'ps-list';
 import { getSession, upsertSession, getRepositoryByPath } from '../db/database.js';
 import type { Session } from '../models/index.js';
 
@@ -50,6 +51,73 @@ export class ClaudeCodeDetector {
     return eventHooks.some((entry) =>
       entry.hooks?.some((h) => h.command === HOOK_COMMAND)
     );
+  }
+
+  async scanExistingSessions(): Promise<void> {
+    const projectsDir = join(homedir(), '.claude', 'projects');
+    if (!existsSync(projectsDir)) return;
+
+    let processes: Awaited<ReturnType<typeof psList>>;
+    try {
+      processes = await psList();
+    } catch {
+      return;
+    }
+
+    const claudeProcesses = processes.filter(p =>
+      p.name.toLowerCase().includes('claude') || p.cmd?.toLowerCase().includes('claude')
+    );
+
+    try {
+      const projectDirs = readdirSync(projectsDir, { withFileTypes: true })
+        .filter(e => e.isDirectory());
+
+      for (const dir of projectDirs) {
+        // Directory names are URL-encoded project paths
+        let decodedPath: string;
+        try {
+          decodedPath = decodeURIComponent(dir.name.replace(/-/g, '/'));
+        } catch {
+          continue;
+        }
+
+        const repo = getRepositoryByPath(decodedPath);
+        if (!repo) continue;
+
+        // Find a claude process whose cwd matches this project path
+        const matchedProcess = claudeProcesses.find(p => {
+          const cwd = (p as { cwd?: string }).cwd;
+          if (!cwd) return false;
+          return cwd.toLowerCase() === decodedPath.toLowerCase();
+        });
+
+        if (!matchedProcess) continue;
+
+        const now = new Date().toISOString();
+        const sessionId = `claude-startup-${repo.id}-${matchedProcess.pid}`;
+        const existing = getSession(sessionId);
+
+        const session: Session = existing ?? {
+          id: sessionId,
+          repositoryId: repo.id,
+          type: 'claude-code',
+          pid: matchedProcess.pid,
+          status: 'active',
+          startedAt: now,
+          endedAt: null,
+          lastActivityAt: now,
+          summary: null,
+          expiresAt: null,
+        };
+
+        if (!existing) {
+          session.status = 'active';
+          session.pid = matchedProcess.pid;
+          session.lastActivityAt = now;
+          upsertSession(session);
+        }
+      }
+    } catch { /* ignore */ }
   }
 
   async handleHookPayload(payload: HookPayload): Promise<void> {
