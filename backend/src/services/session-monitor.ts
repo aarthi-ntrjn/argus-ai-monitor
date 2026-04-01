@@ -3,6 +3,7 @@ import { RepositoryScanner } from './repository-scanner.js';
 import { CopilotCliDetector } from './copilot-cli-detector.js';
 import { ClaudeCodeDetector } from './claude-code-detector.js';
 import { loadConfig } from '../config/config-loader.js';
+import { updateSessionStatus } from '../db/database.js';
 import type { Session, Repository } from '../models/index.js';
 
 export interface SessionMonitorEvents {
@@ -19,6 +20,7 @@ export class SessionMonitor extends EventEmitter {
   private claudeDetector: ClaudeCodeDetector;
   private scanInterval: ReturnType<typeof setInterval> | null = null;
   private knownSessionIds = new Set<string>();
+  private activeSessionMap = new Map<string, Session>();
 
   constructor() {
     super();
@@ -53,6 +55,19 @@ export class SessionMonitor extends EventEmitter {
     try {
       await this.scanner.scan();
       const sessions = await this.cliDetector.scan();
+      const currentScanIds = new Set<string>(sessions.map((s) => s.id));
+
+      // Detect sessions that were active but are no longer returned (process exited + dir cleaned up)
+      for (const [id, session] of this.activeSessionMap) {
+        if (!currentScanIds.has(id)) {
+          const now = new Date().toISOString();
+          updateSessionStatus(id, 'ended', now);
+          const endedSession: Session = { ...session, status: 'ended', endedAt: now };
+          this.emit('session.ended', endedSession);
+          this.activeSessionMap.delete(id);
+        }
+      }
+
       for (const session of sessions) {
         if (!this.knownSessionIds.has(session.id)) {
           this.knownSessionIds.add(session.id);
@@ -62,6 +77,9 @@ export class SessionMonitor extends EventEmitter {
         }
         if (session.status === 'ended') {
           this.emit('session.ended', session);
+          this.activeSessionMap.delete(session.id);
+        } else if (session.status === 'active') {
+          this.activeSessionMap.set(session.id, session);
         }
       }
     } catch (err) {

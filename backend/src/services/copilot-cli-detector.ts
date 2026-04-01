@@ -1,5 +1,5 @@
 import { readdirSync, existsSync, readFileSync, openSync, readSync, closeSync, statSync } from 'fs';
-import { join } from 'path';
+import { join, normalize } from 'path';
 import { homedir } from 'os';
 import { load as yamlLoad } from 'js-yaml';
 import psList from 'ps-list';
@@ -65,7 +65,7 @@ export class CopilotCliDetector {
     const pid = lockFile ? this.extractPid(lockFile) : null;
     const isRunning = pid !== null && runningPids.has(pid);
 
-    const repo = workspace.cwd ? getRepositoryByPath(workspace.cwd) : null;
+    const repo = workspace.cwd ? getRepositoryByPath(normalize(workspace.cwd)) : null;
     if (!repo) return null;
 
     const sessionId = workspace.id ?? randomUUID();
