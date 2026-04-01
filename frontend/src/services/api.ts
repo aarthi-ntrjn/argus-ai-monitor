@@ -18,7 +18,15 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     headers,
     ...init,
   });
-  if (!res.ok) throw new Error(`API error ${res.status}: ${await res.text()}`);
+  if (!res.ok) {
+    const text = await res.text();
+    try {
+      const json = JSON.parse(text);
+      throw new Error(json.message ?? text);
+    } catch {
+      throw new Error(text);
+    }
+  }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }

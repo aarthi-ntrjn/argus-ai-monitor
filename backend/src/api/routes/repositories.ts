@@ -24,7 +24,7 @@ const repositoriesRoutes: FastifyPluginAsync = async (app) => {
     if (!repoPath) return reply.status(400).send({ error: 'MISSING_PATH', message: 'path is required' });
 
     if (!existsSync(join(repoPath, '.git'))) {
-      return reply.status(400).send({ error: 'NOT_GIT_REPO', message: `No .git directory at: ${repoPath}` });
+      return reply.status(400).send({ error: 'NOT_GIT_REPO', message: `The selected folder is not a git repository. Please choose a folder that contains a .git directory.` });
     }
 
     const existing = getRepositoryByPath(repoPath);
