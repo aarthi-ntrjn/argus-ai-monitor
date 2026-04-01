@@ -215,6 +215,13 @@
 - [X] T077 Add Claude hook cleanup on repository removal: add a `removeHooksForRepo(repoPath: string)` method to `ClaudeCodeDetector` in `backend/src/services/claude-code-detector.ts` that reads `~/.claude/settings.json`, removes any hook entries whose `cwd` or script arguments reference the given repo path, and writes the file back; call this method from the `DELETE /api/v1/repositories/:id` handler in `backend/src/api/routes/repositories.ts` before calling `deleteRepository`
 - [X] T078 Add "Remove" button to each repository card in `frontend/src/pages/DashboardPage.tsx`: render a small remove/trash icon button on the repo card header; clicking it shows a confirmation dialog ("Remove [repo name]? This will also delete all associated sessions."); on confirm, call the existing `removeRepository(id)` from `frontend/src/services/api.ts` (already implemented but never used), handle loading and error states, and close the dialog on success
 
+### Addendum: Feature — Native OS Folder Picker
+
+Replace the custom `FolderBrowser` web component (hard to navigate, poor UX) with a native OS folder selection dialog triggered via a backend endpoint.
+
+- [ ] T079 Add `POST /api/v1/fs/pick-folder` endpoint to `backend/src/api/routes/fs.ts`: spawn a platform-appropriate native folder picker dialog using `child_process.spawnSync` — on Windows use PowerShell `Add-Type -AssemblyName System.Windows.Forms; $d = New-Object System.Windows.Forms.FolderBrowserDialog; $d.ShowNewFolderButton = $true; if ($d.ShowDialog() -eq 'OK') { $d.SelectedPath }`, on macOS use `osascript -e 'POSIX path of (choose folder)'`, on Linux use `zenity --file-selection --directory`; wait for the subprocess to exit and return `{ path: string | null }` (null if user cancelled or dialog unavailable); if the platform command is not found, return `{ path: null, error: "not_supported" }` gracefully without throwing
+- [ ] T080 [P] Replace `FolderBrowser` component usage in `frontend/src/pages/DashboardPage.tsx` with a single "Browse…" button that calls `POST /api/v1/fs/pick-folder` via a new `pickFolder()` function in `frontend/src/services/api.ts`; on success, populate the path input with the returned path; on `null` result (user cancelled), do nothing; on error, show a small inline message "Folder picker not available — enter path manually"; remove all `showBrowser`, `showScanBrowser` state and `FolderBrowser` imports from `DashboardPage.tsx`; keep the manual text input as-is for fallback
+
 **Checkpoint**: All acceptance criteria met. `npm test` passes. E2E suite green.
 
 ---
