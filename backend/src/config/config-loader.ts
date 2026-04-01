@@ -7,7 +7,7 @@ const CONFIG_DIR = join(homedir(), '.argus');
 const CONFIG_PATH = join(CONFIG_DIR, 'config.json');
 
 const DEFAULTS: ArgusConfig = {
-  port: 7411,
+  port: process.env.ARGUS_PORT ? parseInt(process.env.ARGUS_PORT, 10) : 7411,
   watchDirectories: [],
   sessionRetentionHours: 24,
   outputRetentionMbPerSession: 10,
