@@ -12,6 +12,7 @@ interface RepoWithSessions extends Repository {
 
 const SKIP_REMOVE_CONFIRM_KEY = 'argus:skipRemoveConfirm';
 const ENDED_STATUSES = new Set(['completed', 'ended']);
+const ACTIVE_STATUSES = new Set(['active', 'idle', 'waiting', 'error']);
 
 export default function DashboardPage() {
   const [addError, setAddError] = useState<string | null>(null);
@@ -58,6 +59,11 @@ export default function DashboardPage() {
       ? repoSessions
       : repoSessions.filter(s => !ENDED_STATUSES.has(s.status));
     return { ...repo, sessions: visibleSessions };
+  }).filter((repo) => {
+    if (!settings.hideReposWithNoActiveSessions) return true;
+    // Use raw sessions (independent of showEndedSessions filter)
+    const repoSessions = sessions.filter(s => s.repositoryId === repo.id);
+    return repoSessions.some(s => ACTIVE_STATUSES.has(s.status));
   });
 
   const handleAddRepo = async () => {
@@ -176,8 +182,17 @@ export default function DashboardPage() {
 
         {reposWithSessions.length === 0 ? (
           <div className="text-center py-16 text-gray-500">
-            <p className="text-xl">No repositories registered.</p>
-            <p className="mt-2">Click "Add Repository" to get started.</p>
+            {repos.length === 0 ? (
+              <>
+                <p className="text-xl">No repositories registered.</p>
+                <p className="mt-2">Click "Add Repository" to get started.</p>
+              </>
+            ) : (
+              <>
+                <p className="text-xl">No repositories to show.</p>
+                <p className="mt-2">All repositories are hidden by your current settings.</p>
+              </>
+            )}
           </div>
         ) : (
           <div className="space-y-6">

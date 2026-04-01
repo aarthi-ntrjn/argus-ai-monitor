@@ -40,6 +40,7 @@ Click the **⚙ gear icon** in the top-right of the dashboard header to open the
 | Setting | Default | Description |
 |---------|---------|-------------|
 | Show ended sessions | On | When turned off, sessions with status `completed` or `ended` are hidden from all repository cards |
+| Hide repos with no active sessions | Off | When turned on, repository cards are hidden if they have no sessions with status `active`, `idle`, `waiting`, or `error` (including repos with zero sessions) |
 
 Settings are saved automatically in your browser (`localStorage`) and restored on every page load.
 
