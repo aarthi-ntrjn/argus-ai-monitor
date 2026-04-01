@@ -136,7 +136,7 @@
 - [X] T049 [US3] Implement `POST /api/v1/sessions/:id/send` route handler: `501` for `copilot-cli` with message "Prompt injection not supported for Copilot CLI in v1", `202` accepted for `claude-code`; persist `ControlAction` at `backend/src/api/routes/sessions.ts`
 - [X] T050 [US3] Wire `action.updated` WebSocket broadcast in `event-dispatcher.ts` triggered by `ControlAction` status changes at `backend/src/api/ws/event-dispatcher.ts`
 - [X] T051 [P] [US3] Implement frontend `ControlPanel` component: Stop button with confirmation dialog, Send Prompt form with disabled state for `copilot-cli` at `frontend/src/components/ControlPanel/ControlPanel.tsx`
-- [ ] T052 [US3] Integrate `ControlPanel` into `SessionPage`; wire TanStack Query mutations to `POST /api/sessions/:id/stop` and `POST /api/sessions/:id/send` at `frontend/src/pages/SessionPage.tsx`
+- [X] T052 [US3] Integrate `ControlPanel` into `SessionPage`; wire TanStack Query mutations to `POST /api/sessions/:id/stop` and `POST /api/sessions/:id/send` at `frontend/src/pages/SessionPage.tsx`
 
 **Checkpoint**: US3 fully functional. Can stop any active session from the dashboard; send-prompt works for Claude Code, shows clear unsupported message for Copilot CLI.
 

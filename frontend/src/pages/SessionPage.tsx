@@ -1,7 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { getSession, getSessionOutput } from '../services/api';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { getSession, getSessionOutput, stopSession, sendPrompt, queryClient } from '../services/api';
 import SessionDetail from '../components/SessionDetail/SessionDetail';
+import ControlPanel from '../components/ControlPanel/ControlPanel';
 
 function getElapsed(startedAt: string, endedAt: string | null): string {
   const end = endedAt ? new Date(endedAt) : new Date();
@@ -41,6 +42,16 @@ export default function SessionPage() {
     queryKey: ['session-output', id],
     queryFn: () => getSessionOutput(id!, { limit: 100 }),
     enabled: !!id,
+  });
+
+  const stopMutation = useMutation({
+    mutationFn: () => stopSession(id!),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['session', id] }); },
+  });
+
+  const sendMutation = useMutation({
+    mutationFn: (prompt: string) => sendPrompt(id!, prompt),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['session', id] }); },
   });
 
   if (sessionLoading) {
@@ -91,6 +102,17 @@ export default function SessionPage() {
             <p className="text-gray-600 text-sm mt-2">{session.summary}</p>
           )}
           <p className="text-xs text-gray-400 mt-1">ID: {session.id}</p>
+        </div>
+
+        <div className="bg-white rounded-lg shadow mb-6">
+          <div className="p-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">Controls</h2>
+          </div>
+          <ControlPanel
+            session={session}
+            onStop={async () => { await stopMutation.mutateAsync(); }}
+            onSendPrompt={async (prompt) => { await sendMutation.mutateAsync(prompt); }}
+          />
         </div>
 
         <div className="bg-white rounded-lg shadow">
