@@ -27,7 +27,7 @@
 - [X] T006 [P] Configure ESLint + Prettier for backend at `backend/.eslintrc.json` and `backend/.prettierrc`
 - [X] T007 [P] Configure ESLint + Prettier for frontend at `frontend/.eslintrc.json` and `frontend/.prettierrc`
 - [X] T008 [P] Configure Vitest for backend at `backend/vitest.config.ts` with coverage reporting
-- [ ] T009 [P] Configure Playwright for E2E tests at `playwright.config.ts` (targets `http://localhost:7411`)
+- [X] T009 [P] Configure Playwright for E2E tests at `playwright.config.ts` (targets `http://localhost:7411`)
 
 **Checkpoint**: Project structure exists, all tooling configured. `npm install` runs clean across both workspaces.
 
