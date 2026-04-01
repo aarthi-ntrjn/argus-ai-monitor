@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 
 import { join, dirname } from 'path';
 import { homedir } from 'os';
 import psList from 'ps-list';
-import { getSession, upsertSession, getRepositoryByPath } from '../db/database.js';
+import { getSession, upsertSession, getRepositoryByPath, getSessions, updateSessionStatus } from '../db/database.js';
 import type { Session } from '../models/index.js';
 
 const CLAUDE_SETTINGS_PATH = join(homedir(), '.claude', 'settings.json');
@@ -64,16 +64,18 @@ export class ClaudeCodeDetector {
       return;
     }
 
-    const claudeProcesses = processes.filter(p =>
+    // On Windows psList does not return process cwd, so we cannot match by path.
+    // Instead check whether any Claude process is running at all.
+    const claudeRunning = processes.some(p =>
       p.name.toLowerCase().includes('claude') || p.cmd?.toLowerCase().includes('claude')
     );
+    if (!claudeRunning) return;
 
     try {
       const projectDirs = readdirSync(projectsDir, { withFileTypes: true })
         .filter(e => e.isDirectory());
 
       for (const dir of projectDirs) {
-        // Directory names are URL-encoded project paths
         let decodedPath: string;
         try {
           decodedPath = decodeURIComponent(dir.name.replace(/-/g, '/'));
@@ -84,37 +86,34 @@ export class ClaudeCodeDetector {
         const repo = getRepositoryByPath(decodedPath);
         if (!repo) continue;
 
-        // Find a claude process whose cwd matches this project path
-        const matchedProcess = claudeProcesses.find(p => {
-          const cwd = (p as { cwd?: string }).cwd;
-          if (!cwd) return false;
-          return cwd.toLowerCase() === decodedPath.toLowerCase();
-        });
-
-        if (!matchedProcess) continue;
+        // Already have an active session — nothing to do
+        const activeSessions = getSessions({ repositoryId: repo.id, status: 'active', type: 'claude-code' });
+        if (activeSessions.length > 0) continue;
 
         const now = new Date().toISOString();
-        const sessionId = `claude-startup-${repo.id}-${matchedProcess.pid}`;
-        const existing = getSession(sessionId);
 
-        const session: Session = existing ?? {
-          id: sessionId,
-          repositoryId: repo.id,
-          type: 'claude-code',
-          pid: matchedProcess.pid,
-          status: 'active',
-          startedAt: now,
-          endedAt: null,
-          lastActivityAt: now,
-          summary: null,
-          expiresAt: null,
-        };
+        // Re-activate the most recently ended session for this repo, if any
+        const allSessions = getSessions({ repositoryId: repo.id, type: 'claude-code' });
+        const mostRecentEnded = allSessions
+          .filter(s => s.status === 'ended')
+          .sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt))[0];
 
-        if (!existing) {
-          session.status = 'active';
-          session.pid = matchedProcess.pid;
-          session.lastActivityAt = now;
-          upsertSession(session);
+        if (mostRecentEnded) {
+          updateSessionStatus(mostRecentEnded.id, 'active', null);
+        } else {
+          // No prior session — create a startup placeholder
+          upsertSession({
+            id: `claude-startup-${repo.id}-${Date.now()}`,
+            repositoryId: repo.id,
+            type: 'claude-code',
+            pid: null,
+            status: 'active',
+            startedAt: now,
+            endedAt: null,
+            lastActivityAt: now,
+            summary: null,
+            expiresAt: null,
+          });
         }
       }
     } catch { /* ignore */ }
