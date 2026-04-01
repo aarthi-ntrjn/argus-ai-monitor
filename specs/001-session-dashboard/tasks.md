@@ -47,7 +47,7 @@
 - [X] T014b Implement Fastify `requestIdHeader` and inject `requestId` into all pino log entries; return `X-Request-Id` header in all error responses for failure traceability at `backend/src/server.ts`
 - [X] T015 Implement WebSocket event dispatcher (register clients, broadcast typed events) at `backend/src/api/ws/event-dispatcher.ts`
 - [X] T016 [P] Implement frontend WebSocket client with exponential backoff reconnection at `frontend/src/services/socket.ts`
-- [ ] T017 [P] Implement frontend REST API client with TanStack Query base configuration (queryClient, axios instance) at `frontend/src/services/api.ts`
+- [X] T017 [P] Implement frontend REST API client with TanStack Query base configuration (queryClient, axios instance) at `frontend/src/services/api.ts`
 
 **Checkpoint**: Server starts, connects to SQLite, serves WebSocket upgrades at `ws://localhost:7411/ws`. Frontend compiles and connects.
 
