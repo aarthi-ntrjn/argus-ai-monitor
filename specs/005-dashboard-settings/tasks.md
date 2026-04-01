@@ -117,13 +117,13 @@
 
 > **Write these tests FIRST — they must FAIL before implementation begins**
 
-- [ ] T106 [P] [US4] Add E2E tests to `frontend/tests/e2e/sc-005-settings-filter.spec.ts`: mock two repos — `active-repo` (has `active` session) and `idle-repo` (has only `completed` session); pre-set `localStorage['argus:settings']` to `{"showEndedSessions":true,"hideReposWithNoActiveSessions":true}`; assert `idle-repo` card is not visible; assert `active-repo` card is visible; add second test: with setting `false`, assert both repo cards are visible; add third test: all repos have only ended sessions + setting on → global empty-state message shown
+- [X] T106 [P] [US4] Add E2E tests to `frontend/tests/e2e/sc-005-settings-filter.spec.ts`: mock two repos — `active-repo` (has `active` session) and `idle-repo` (has only `completed` session); pre-set `localStorage['argus:settings']` to `{"showEndedSessions":true,"hideReposWithNoActiveSessions":true}`; assert `idle-repo` card is not visible; assert `active-repo` card is visible; add second test: with setting `false`, assert both repo cards are visible; add third test: all repos have only ended sessions + setting on → global empty-state message shown
 
 ### Implementation for User Story 4
 
-- [ ] T107 [P] [US4] Add `hideReposWithNoActiveSessions: boolean` field (default `false`) to `DashboardSettings` interface in `frontend/src/types.ts` and to `DEFAULT_SETTINGS` constant
-- [ ] T108 [US4] In `frontend/src/pages/DashboardPage.tsx`: define `ACTIVE_STATUSES = new Set(['active','idle','waiting','error'])`; after building `reposWithSessions`, when `settings.hideReposWithNoActiveSessions` is `true`, filter the array to only include repos where `sessions.some(s => ACTIVE_STATUSES.has(s.status))` using the **full** `sessions` list (not the already-filtered `visibleSessions`) — check against the raw `sessions` data query result per repo; update the global empty-state message to account for all repos being hidden by this filter
-- [ ] T109 [US4] In `frontend/src/components/SettingsPanel/SettingsPanel.tsx`: add a second toggle row labelled "Hide repos with no active sessions"; wire to `onToggle('hideReposWithNoActiveSessions', checked)`; place below the existing "Show ended sessions" row
+- [X] T107 [P] [US4] Add `hideReposWithNoActiveSessions: boolean` field (default `false`) to `DashboardSettings` interface in `frontend/src/types.ts` and to `DEFAULT_SETTINGS` constant
+- [X] T108 [US4] In `frontend/src/pages/DashboardPage.tsx`: define `ACTIVE_STATUSES = new Set(['active','idle','waiting','error'])`; after building `reposWithSessions`, when `settings.hideReposWithNoActiveSessions` is `true`, filter the array to only include repos where `sessions.some(s => ACTIVE_STATUSES.has(s.status))` using the **full** `sessions` list (not the already-filtered `visibleSessions`) — check against the raw `sessions` data query result per repo; update the global empty-state message to account for all repos being hidden by this filter
+- [X] T109 [US4] In `frontend/src/components/SettingsPanel/SettingsPanel.tsx`: add a second toggle row labelled "Hide repos with no active sessions"; wire to `onToggle('hideReposWithNoActiveSessions', checked)`; place below the existing "Show ended sessions" row
 
 **Checkpoint**: "Hide repos with no active sessions" toggle works, persists (via existing `useSettings` localStorage mechanism), and E2E tests pass.
 
@@ -131,9 +131,9 @@
 
 ## Phase 8: Polish (US4)
 
-- [ ] T110 Update `README.md` — add `hideReposWithNoActiveSessions` row to the Dashboard Settings table
-- [ ] T111 [P] Run `cd frontend && npm run build` and confirm zero TypeScript errors
-- [ ] T112 [P] Run `npm test` from repo root and confirm all backend tests still pass
+- [X] T110 Update `README.md` — add `hideReposWithNoActiveSessions` row to the Dashboard Settings table
+- [X] T111 [P] Run `cd frontend && npm run build` and confirm zero TypeScript errors
+- [X] T112 [P] Run `npm test` from repo root and confirm all backend tests still pass
 
 ---
 
