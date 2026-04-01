@@ -7,9 +7,17 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
 import { loadConfig } from './config/config-loader.js';
+import { addClient, removeClient, broadcast } from './api/ws/event-dispatcher.js';
+import repositoriesRoutes from './api/routes/repositories.js';
+import sessionsRoutes from './api/routes/sessions.js';
+import hooksRoutes, { setClaudeDetector } from './api/routes/hooks.js';
+import { SessionMonitor } from './services/session-monitor.js';
+import type { Session, Repository } from './models/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+let monitor: SessionMonitor | null = null;
 
 export async function buildServer() {
   const config = loadConfig();
@@ -29,11 +37,7 @@ export async function buildServer() {
 
   await app.register(fastifySwagger, {
     openapi: {
-      info: {
-        title: 'Argus API',
-        description: 'Argus Session Dashboard API',
-        version: '1.0.0',
-      },
+      info: { title: 'Argus API', description: 'Argus Session Dashboard API', version: '1.0.0' },
       servers: [{ url: 'http://127.0.0.1:7411' }],
     },
   });
@@ -44,13 +48,11 @@ export async function buildServer() {
   });
 
   const frontendDist = join(__dirname, '..', '..', 'frontend', 'dist');
-  await app.register(fastifyStatic, {
-    root: frontendDist,
-    wildcard: false,
-    decorateReply: false,
-  }).catch(() => {
+  try {
+    await app.register(fastifyStatic, { root: frontendDist, wildcard: false, decorateReply: false });
+  } catch {
     app.log.warn('Frontend dist not found, skipping static file serving');
-  });
+  }
 
   app.addHook('onSend', async (request, reply) => {
     reply.header('X-Request-Id', request.id);
@@ -58,11 +60,25 @@ export async function buildServer() {
 
   app.setErrorHandler((error, request, reply) => {
     request.log.error({ err: error, requestId: request.id }, 'Request error');
-    const statusCode = error.statusCode ?? 500;
-    reply.status(statusCode).send({
+    reply.status(error.statusCode ?? 500).send({
       error: error.code ?? 'INTERNAL_ERROR',
       message: error.message,
       requestId: request.id,
+    });
+  });
+
+  await app.register(repositoriesRoutes);
+  await app.register(sessionsRoutes);
+  await app.register(hooksRoutes);
+
+  app.get('/api/health', async (_req, reply) => {
+    return reply.send({ status: 'ok', version: '1.0.0', uptime: process.uptime() });
+  });
+
+  app.register(async (fastify) => {
+    fastify.get('/ws', { websocket: true }, (socket) => {
+      addClient(socket);
+      socket.on('close', () => removeClient(socket));
     });
   });
 
@@ -72,14 +88,27 @@ export async function buildServer() {
 export async function startServer() {
   const { app, config } = await buildServer();
 
-  const shutdown = async (signal: string) => {
-    app.log.info({ signal }, 'Shutting down gracefully');
-    await app.close();
-    process.exit(0);
-  };
+  monitor = new SessionMonitor();
+  const claudeDetector = monitor.getClaudeCodeDetector();
+  setClaudeDetector(claudeDetector);
 
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdown('SIGINT'));
+  monitor.on('session.created', (session: Session) => {
+    broadcast({ type: 'session.created', timestamp: new Date().toISOString(), data: session as unknown as Record<string, unknown> });
+  });
+  monitor.on('session.updated', (session: Session) => {
+    broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: session as unknown as Record<string, unknown> });
+  });
+  monitor.on('session.ended', (session: Session) => {
+    broadcast({ type: 'session.ended', timestamp: new Date().toISOString(), data: session as unknown as Record<string, unknown> });
+  });
+  monitor.on('repository.added', (repo: Repository) => {
+    broadcast({ type: 'repository.added', timestamp: new Date().toISOString(), data: repo as unknown as Record<string, unknown> });
+  });
+
+  await monitor.start();
+
+  process.on('SIGTERM', async () => { monitor?.stop(); await app.close(); process.exit(0); });
+  process.on('SIGINT', async () => { monitor?.stop(); await app.close(); process.exit(0); });
 
   await app.listen({ port: config.port, host: '127.0.0.1' });
   app.log.info({ port: config.port }, 'Argus server started');
