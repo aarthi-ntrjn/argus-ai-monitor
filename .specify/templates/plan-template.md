@@ -33,6 +33,9 @@
 
 [Gates determined based on constitution file]
 
+> **§XI Documentation**: README.md MUST be updated in the same PR as any user-facing or
+> architectural change. Include a README update task in the task list.
+
 ## Project Structure
 
 ### Documentation (this feature)
