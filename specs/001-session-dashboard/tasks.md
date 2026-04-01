@@ -158,6 +158,10 @@
 - [X] T060 Run all quickstart.md acceptance scenarios manually and confirm SC-001 through SC-005 pass
   > **Note**: T060 requires manual validation with live sessions. See quickstart.md for steps.
 
+### Addendum: Remove axios dependency
+
+- [ ] T061 Remove `axios` from `frontend/package.json` and replace all usages in `frontend/src/services/api.ts` with native `fetch`; ensure all existing TypeScript types are preserved and no behaviour changes
+
 **Checkpoint**: All acceptance criteria met. `npm test` passes. E2E suite green.
 
 ---
