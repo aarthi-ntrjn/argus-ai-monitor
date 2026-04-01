@@ -29,11 +29,11 @@ npm run dev
 
 Open **http://localhost:7411**
 
-## Add a repository
+## Add repositories
 
-1. Click **Add Repository** on the dashboard
-2. Use the folder browser to navigate to a git repo and click **Select**, or type the path directly
-3. To add many repos at once, switch to the **Scan Folder** tab, pick a parent directory, and check the repos you want
+**Single repo**: Click **Add Repository** → native folder picker opens → select any git repo folder → it appears on the dashboard immediately.
+
+**Bulk import**: Click **Add Multiple** → pick a parent folder → Argus recursively scans all subdirectories → every git repo found is added in one go. Already-registered repos are skipped automatically.
 
 ## Config
 
@@ -58,8 +58,8 @@ Default port: **7411**. Override in `~/.argus/config.json`:
 | `DELETE` | `/api/v1/repositories/:id` | Remove a repository |
 | `GET` | `/api/v1/sessions` | List sessions (filterable by repo, status, type) |
 | `POST` | `/api/v1/sessions/:id/stop` | Stop a running session |
-| `GET` | `/api/v1/fs/browse?path=` | Browse filesystem directories |
-| `GET` | `/api/v1/fs/scan?path=` | Scan a directory for git repositories |
+| `POST` | `/api/v1/fs/pick-folder` | Open native OS folder picker, returns selected path |
+| `POST` | `/api/v1/fs/scan-folder` | Recursively scan a folder for git repos, returns list |
 
 ## Tech stack
 

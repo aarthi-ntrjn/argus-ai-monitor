@@ -1,33 +1,27 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { getRepositories, getSessions, addRepository, apiFetch, queryClient } from '../services/api';
+import { getRepositories, getSessions, addRepository, removeRepository, pickFolder, scanFolder, queryClient } from '../services/api';
 import type { Repository, Session } from '../types';
 import SessionCard from '../components/SessionCard/SessionCard';
-import { FolderBrowser } from '../components/FolderBrowser';
 
 interface RepoWithSessions extends Repository {
   sessions: Session[];
 }
 
-interface ScannedRepo {
-  name: string;
-  path: string;
-  selected: boolean;
-}
+const SKIP_REMOVE_CONFIRM_KEY = 'argus:skipRemoveConfirm';
 
 export default function DashboardPage() {
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [addTab, setAddTab] = useState<'single' | 'scan'>('single');
-  const [newRepoPath, setNewRepoPath] = useState('');
-  const [showBrowser, setShowBrowser] = useState(false);
-  const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
+  const [addInfo, setAddInfo] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null);
+  const [removing, setRemoving] = useState(false);
+  const [skipConfirm, setSkipConfirm] = useState(() => localStorage.getItem(SKIP_REMOVE_CONFIRM_KEY) === 'true');
 
-  // Scan tab state
-  const [scanPath, setScanPath] = useState('');
-  const [showScanBrowser, setShowScanBrowser] = useState(false);
-  const [scannedRepos, setScannedRepos] = useState<ScannedRepo[]>([]);
-  const [scanning, setScanning] = useState(false);
+  const showInfo = (msg: string) => {
+    setAddInfo(msg);
+    setTimeout(() => setAddInfo(null), 5000);
+  };
 
   const { data: repos = [], isLoading: reposLoading } = useQuery({
     queryKey: ['repositories'],
@@ -44,16 +38,36 @@ export default function DashboardPage() {
     sessions: sessions.filter((s) => s.repositoryId === repo.id),
   }));
 
-  const handleAddRepo = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAdding(true);
+  const handleAddRepo = async () => {
     setAddError(null);
+    setAddInfo(null);
+    setAdding(true);
     try {
-      await addRepository(newRepoPath);
+      const folderPath = await pickFolder();
+      if (!folderPath) return;
+      const found = await scanFolder(folderPath);
+      const registeredPaths = new Set(repos.map(r => r.path));
+      const newRepos = found.filter(r => !registeredPaths.has(r.path));
+      if (newRepos.length === 0) {
+        showInfo('No new git repositories found in the selected folder.');
+        return;
+      }
+      let added = 0;
+      let failed = 0;
+      for (const repo of newRepos) {
+        try {
+          await addRepository(repo.path);
+          added++;
+        } catch {
+          failed++;
+        }
+      }
       await queryClient.invalidateQueries({ queryKey: ['repositories'] });
-      setShowAddModal(false);
-      setNewRepoPath('');
-      setShowBrowser(false);
+      if (failed === 0) {
+        showInfo(`Added ${added} repositor${added === 1 ? 'y' : 'ies'}.`);
+      } else {
+        setAddError(`Added ${added} of ${newRepos.length} repositories — ${failed} failed.`);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to add repository';
       setAddError(msg);
@@ -62,51 +76,19 @@ export default function DashboardPage() {
     }
   };
 
-  const handleScan = async () => {
-    if (!scanPath) return;
-    setScanning(true);
+  const handleRemoveRepoById = async (id: string) => {
+    setRemoving(true);
     try {
-      const result = await apiFetch<{ scannedPath: string; repos: { name: string; path: string }[] }>(
-        `/fs/scan?path=${encodeURIComponent(scanPath)}`
-      );
-      setScannedRepos(result.repos.map(r => ({ ...r, selected: true })));
-    } catch {
-      setAddError('Failed to scan directory');
-    } finally {
-      setScanning(false);
-    }
-  };
-
-  const handleAddSelected = async () => {
-    setAdding(true);
-    setAddError(null);
-    const selected = scannedRepos.filter(r => r.selected);
-    try {
-      for (const repo of selected) {
-        await addRepository(repo.path);
-      }
+      await removeRepository(id);
       await queryClient.invalidateQueries({ queryKey: ['repositories'] });
-      setShowAddModal(false);
-      setScannedRepos([]);
-      setScanPath('');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to add repositories';
-      setAddError(msg);
+      await queryClient.invalidateQueries({ queryKey: ['sessions'] });
     } finally {
-      setAdding(false);
+      setRemoving(false);
+      setRemoveConfirmId(null);
     }
   };
 
-  const closeModal = () => {
-    setShowAddModal(false);
-    setNewRepoPath('');
-    setShowBrowser(false);
-    setAddError(null);
-    setAddTab('single');
-    setScanPath('');
-    setScannedRepos([]);
-    setShowScanBrowser(false);
-  };
+  const handleRemoveRepo = () => handleRemoveRepoById(removeConfirmId!);
 
   if (reposLoading || sessionsLoading) {
     return (
@@ -126,12 +108,27 @@ export default function DashboardPage() {
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Argus Dashboard</h1>
           <button
-            onClick={() => setShowAddModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+            onClick={handleAddRepo}
+            disabled={adding}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
           >
-            Add Repository
+            {adding ? 'Adding...' : 'Add Repository'}
           </button>
         </div>
+
+        {addInfo && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-green-700 text-sm flex justify-between">
+            <span>{addInfo}</span>
+            <button onClick={() => setAddInfo(null)} className="ml-4 font-bold">x</button>
+          </div>
+        )}
+
+        {addError && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm flex justify-between">
+            <span>{addError}</span>
+            <button onClick={() => setAddError(null)} className="ml-4 font-bold">x</button>
+          </div>
+        )}
 
         {reposWithSessions.length === 0 ? (
           <div className="text-center py-16 text-gray-500">
@@ -147,9 +144,27 @@ export default function DashboardPage() {
                     <h2 className="text-xl font-semibold text-gray-900">{repo.name}</h2>
                     <p className="text-sm text-gray-500 mt-1">{repo.path}</p>
                   </div>
-                  <span className="bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded">
-                    {repo.sessions.length} session{repo.sessions.length !== 1 ? 's' : ''}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded">
+                      {repo.sessions.length} session{repo.sessions.length !== 1 ? 's' : ''}
+                    </span>
+    <button
+                      onClick={() => {
+                        if (skipConfirm) {
+                          setRemoveConfirmId(repo.id);
+                          handleRemoveRepoById(repo.id);
+                        } else {
+                          setRemoveConfirmId(repo.id);
+                        }
+                      }}
+                      title="Remove repository"
+                      className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
                 {repo.sessions.length === 0 ? (
                   <p className="text-gray-400 text-sm">No active sessions</p>
@@ -166,124 +181,34 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {showAddModal && (
+      {removeConfirmId && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-semibold mb-4">Add Repository</h2>
-
-            {/* Tabs */}
-            <div className="flex border-b mb-4">
-              <button
-                className={`px-4 py-2 text-sm font-medium ${addTab === 'single' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-                onClick={() => setAddTab('single')}
-              >
-                Single
-              </button>
-              <button
-                className={`px-4 py-2 text-sm font-medium ${addTab === 'scan' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-                onClick={() => setAddTab('scan')}
-              >
-                Scan Folder
-              </button>
-            </div>
-
-            {addTab === 'single' && (
-              <form onSubmit={handleAddRepo}>
-                <div className="mb-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowBrowser(!showBrowser)}
-                    className="text-sm text-blue-600 hover:underline mb-2"
-                  >
-                    {showBrowser ? 'Hide browser' : 'Browse…'}
-                  </button>
-                  {showBrowser && (
-                    <div className="border rounded mb-3 max-h-64 overflow-y-auto">
-                      <FolderBrowser onSelect={(p) => { setNewRepoPath(p); setShowBrowser(false); }} />
-                    </div>
-                  )}
-                  <input
-                    type="text"
-                    value={newRepoPath}
-                    onChange={(e) => setNewRepoPath(e.target.value)}
-                    placeholder="Enter repository path..."
-                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                {addError && <p className="text-red-500 text-sm mb-3">{addError}</p>}
-                <div className="flex justify-end gap-2">
-                  <button type="button" onClick={closeModal} className="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
-                  <button type="submit" disabled={adding || !newRepoPath} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50">
-                    {adding ? 'Adding...' : 'Add'}
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {addTab === 'scan' && (
-              <div>
-                <div className="mb-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowScanBrowser(!showScanBrowser)}
-                    className="text-sm text-blue-600 hover:underline mb-2"
-                  >
-                    {showScanBrowser ? 'Hide browser' : 'Browse for folder…'}
-                  </button>
-                  {showScanBrowser && (
-                    <div className="border rounded mb-3 max-h-64 overflow-y-auto">
-                      <FolderBrowser onSelect={(p) => { setScanPath(p); setShowScanBrowser(false); }} />
-                    </div>
-                  )}
-                  {scanPath && <p className="text-sm text-gray-600 mb-2">Selected: <span className="font-mono">{scanPath}</span></p>}
-                  <button
-                    type="button"
-                    onClick={handleScan}
-                    disabled={!scanPath || scanning}
-                    className="bg-gray-100 text-gray-800 px-4 py-2 rounded hover:bg-gray-200 disabled:opacity-50"
-                  >
-                    {scanning ? 'Scanning...' : 'Scan'}
-                  </button>
-                </div>
-
-                {scannedRepos.length > 0 && (
-                  <div className="mb-3">
-                    <p className="text-sm text-gray-600 mb-2">Found {scannedRepos.length} git repositories:</p>
-                    <ul className="border rounded divide-y max-h-48 overflow-y-auto">
-                      {scannedRepos.map((repo, i) => (
-                        <li key={repo.path} className="flex items-center gap-2 px-3 py-2">
-                          <input
-                            type="checkbox"
-                            checked={repo.selected}
-                            onChange={(e) => {
-                              const updated = [...scannedRepos];
-                              updated[i] = { ...repo, selected: e.target.checked };
-                              setScannedRepos(updated);
-                            }}
-                          />
-                          <span className="text-sm font-mono truncate" title={repo.path}>{repo.name}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {addError && <p className="text-red-500 text-sm mb-3">{addError}</p>}
-                <div className="flex justify-end gap-2">
-                  <button type="button" onClick={closeModal} className="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
-                  {scannedRepos.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={handleAddSelected}
-                      disabled={adding || scannedRepos.filter(r => r.selected).length === 0}
-                      className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-                    >
-                      {adding ? 'Adding...' : `Add Selected (${scannedRepos.filter(r => r.selected).length})`}
-                    </button>
-                  )}
-                </div>
+          <div className="bg-white rounded-lg p-6 w-full max-w-sm">
+            <h2 className="text-lg font-semibold mb-2">Remove Repository</h2>
+            <p className="text-gray-600 text-sm mb-4">
+              Remove <span className="font-semibold">{reposWithSessions.find(r => r.id === removeConfirmId)?.name}</span>?
+              This will also delete all associated sessions and output history.
+            </p>
+            <div className="flex items-center justify-between mt-4">
+              <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={skipConfirm}
+                  onChange={e => {
+                    setSkipConfirm(e.target.checked);
+                    localStorage.setItem(SKIP_REMOVE_CONFIRM_KEY, String(e.target.checked));
+                  }}
+                  className="rounded"
+                />
+                Don't ask again
+              </label>
+              <div className="flex gap-2">
+                <button onClick={() => setRemoveConfirmId(null)} disabled={removing} className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50">Cancel</button>
+                <button onClick={handleRemoveRepo} disabled={removing} className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50">
+                  {removing ? 'Removing...' : 'Remove'}
+                </button>
               </div>
-            )}
+            </div>
           </div>
         </div>
       )}
