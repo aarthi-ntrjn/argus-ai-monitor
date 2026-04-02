@@ -157,12 +157,12 @@
 
 ### Implementation for Phase 9
 
-- [ ] T137 [US7] Create `frontend/src/components/SessionPromptBar/SessionPromptBar.tsx`: unified component that renders (a) for claude-code — `[input] [Send] [⋮ menu]` inline row, (b) for all session types — a `⋮` dropdown button containing Esc, Exit (confirm), Merge (confirm), Pull latest (confirm); dropdown opens on click and closes on outside click or Escape; error shown inline below; merge all logic from `QuickCommands.tsx` and `InlinePrompt.tsx`
-- [ ] T138 [US7] Update `frontend/src/components/SessionCard/SessionCard.tsx`: remove `QuickCommands` and `InlinePrompt` imports and JSX, add `SessionPromptBar` import, replace both `<div onClick stopPropagation>` sections with a single `<div onClick={e => e.stopPropagation()}><SessionPromptBar session={session} /></div>`; also move last-output preview BELOW the SessionPromptBar row so the send input is never obscured by output text
-- [ ] T139 [P] [US7] Delete `frontend/src/components/QuickCommands/QuickCommands.tsx` — merged into SessionPromptBar
-- [ ] T140 [P] [US7] Delete `frontend/src/components/InlinePrompt/InlinePrompt.tsx` — merged into SessionPromptBar
-- [ ] T141 [P] [US7] Update `frontend/tests/e2e/sc-006-session-ux.spec.ts`: fix quick command tests to open the `⋮` menu first before looking for Esc/Exit/Merge/Pull; fix inline prompt test to still find `placeholder=/send a prompt/i`; add test that copilot-cli card shows the `⋮` menu with Merge and Pull visible
-- [ ] T142 Verify `cd frontend && npm run build` passes — 0 TypeScript errors
+- [X] T137 [US7] Create `frontend/src/components/SessionPromptBar/SessionPromptBar.tsx`: unified component that renders (a) for claude-code — `[input] [Send] [⋮ menu]` inline row, (b) for all session types — a `⋮` dropdown button containing Esc, Exit (confirm), Merge (confirm), Pull latest (confirm); dropdown opens on click and closes on outside click or Escape; error shown inline below; merge all logic from `QuickCommands.tsx` and `InlinePrompt.tsx`
+- [X] T138 [US7] Update `frontend/src/components/SessionCard/SessionCard.tsx`: remove `QuickCommands` and `InlinePrompt` imports and JSX, add `SessionPromptBar` import, replace both `<div onClick stopPropagation>` sections with a single `<div onClick={e => e.stopPropagation()}><SessionPromptBar session={session} /></div>`; also move last-output preview BELOW the SessionPromptBar row so the send input is never obscured by output text
+- [X] T139 [P] [US7] Delete `frontend/src/components/QuickCommands/QuickCommands.tsx` — merged into SessionPromptBar
+- [X] T140 [P] [US7] Delete `frontend/src/components/InlinePrompt/InlinePrompt.tsx` — merged into SessionPromptBar
+- [X] T141 [P] [US7] Update `frontend/tests/e2e/sc-006-session-ux.spec.ts`: fix quick command tests to open the `⋮` menu first before looking for Esc/Exit/Merge/Pull; fix inline prompt test to still find `placeholder=/send a prompt/i`; add test that copilot-cli card shows the `⋮` menu with Merge and Pull visible
+- [X] T142 Verify `cd frontend && npm run build` passes — 0 TypeScript errors
 
 ---
 
@@ -176,10 +176,10 @@
 
 ### Implementation for Phase 10
 
-- [ ] T143 [US8] Create `frontend/src/components/SessionTypeIcon/SessionTypeIcon.tsx`: a component that accepts `type: string` and renders a 14×14 inline SVG; for `'claude-code'` render the Claude/Anthropic logo SVG path; for `'copilot-cli'` render the GitHub Copilot SVG path; for unknown types render nothing (`null`); no external dependency — paths are embedded directly
-- [ ] T144 [P] [US8] Update the type badge in `frontend/src/components/SessionCard/SessionCard.tsx` to render `<SessionTypeIcon type={session.type} />` immediately before the label text inside the badge `<span>`, with `inline-flex items-center gap-1` on the span
-- [ ] T145 [P] [US8] Update the type badge in `frontend/src/pages/SessionPage.tsx` with the same `<SessionTypeIcon>` and `inline-flex items-center gap-1` treatment
-- [ ] T146 Verify `cd frontend && npm run build` passes — 0 TypeScript errors
+- [X] T143 [US8] Create `frontend/src/components/SessionTypeIcon/SessionTypeIcon.tsx`: a component that accepts `type: string` and renders a 14×14 inline SVG; for `'claude-code'` render the Claude/Anthropic logo SVG path; for `'copilot-cli'` render the GitHub Copilot SVG path; for unknown types render nothing (`null`); no external dependency — paths are embedded directly
+- [X] T144 [P] [US8] Update the type badge in `frontend/src/components/SessionCard/SessionCard.tsx` to render `<SessionTypeIcon type={session.type} />` immediately before the label text inside the badge `<span>`, with `inline-flex items-center gap-1` on the span
+- [X] T145 [P] [US8] Update the type badge in `frontend/src/pages/SessionPage.tsx` with the same `<SessionTypeIcon>` and `inline-flex items-center gap-1` treatment
+- [X] T146 Verify `cd frontend && npm run build` passes — 0 TypeScript errors
 
 ---
 
@@ -191,15 +191,15 @@
 
 **Fix**: Remove the `isClaudeCode` condition so the input + Send button render for all session types.
 
-- [ ] T147 [US9] In `frontend/src/components/SessionPromptBar/SessionPromptBar.tsx`, remove the `isClaudeCode` guard from both the `<input>` and Send `<button>` blocks so they render for all session types (delete the `{isClaudeCode && (...)}` wrappers, keep the elements unconditionally); also remove the now-unused `isClaudeCode` variable
-- [ ] T148 [P] [US9] Update `frontend/tests/e2e/sc-006-session-ux.spec.ts`: add assertion that the copilot-cli card (`Another session`) also shows a prompt input (`getByPlaceholder(/send a prompt/i).nth(1)`)
-- [ ] T149 Verify `cd frontend && npm run build` passes — 0 TypeScript errors
+- [X] T147 [US9] In `frontend/src/components/SessionPromptBar/SessionPromptBar.tsx`, remove the `isClaudeCode` guard from both the `<input>` and Send `<button>` blocks so they render for all session types (delete the `{isClaudeCode && (...)}` wrappers, keep the elements unconditionally); also remove the now-unused `isClaudeCode` variable
+- [X] T148 [P] [US9] Update `frontend/tests/e2e/sc-006-session-ux.spec.ts`: add assertion that the copilot-cli card (`Another session`) also shows a prompt input (`getByPlaceholder(/send a prompt/i).nth(1)`)
+- [X] T149 Verify `cd frontend && npm run build` passes — 0 TypeScript errors
 
 ---
 
 ## Phase 12: Polish — Dashboard Title Font Weight
 
-- [ ] T150 In `frontend/src/pages/DashboardPage.tsx` line 139, change `font-bold` to `font-semibold` on the `<h1>` "Argus Dashboard" title (reduces weight from 700 → 600)
+- [X] T150 In `frontend/src/pages/DashboardPage.tsx` line 139, change `font-bold` to `font-semibold` on the `<h1>` "Argus Dashboard" title (reduces weight from 700 → 600)
 
 ---
 
@@ -211,9 +211,9 @@
 
 **Fix**: Replace the raw `.slice(0, 8)` with a helper that extracts the first UUID-format hex segment using the regex `/[0-9a-f]{8}-[0-9a-f]{4}/`, returning its first 8 characters (e.g. `8c20d263`). Fall back to `.slice(0, 8)` for unknown formats.
 
-- [ ] T151 [US10] Add a `claudeShortId(id: string): string` helper at the top of `frontend/src/components/SessionCard/SessionCard.tsx`; the function uses `id.match(/[0-9a-f]{8}-[0-9a-f]{4}/)?.[0].slice(0, 8) ?? id.slice(0, 8)` to extract the first UUID hex segment; apply it to the `ID:` badge span replacing `session.id.slice(0, 8)` with `claudeShortId(session.id)`
-- [ ] T152 [P] [US10] Apply the same `claudeShortId` fix to the short-ID badge in `frontend/src/pages/SessionPage.tsx` (the `ID: {session.id.slice(0, 8)}` span around line 100); import or inline the helper
-- [ ] T153 Verify `cd frontend && npm run build` passes — 0 TypeScript errors
+- [X] T151 [US10] Add a `claudeShortId(id: string): string` helper at the top of `frontend/src/components/SessionCard/SessionCard.tsx`; the function uses `id.match(/[0-9a-f]{8}-[0-9a-f]{4}/)?.[0].slice(0, 8) ?? id.slice(0, 8)` to extract the first UUID hex segment; apply it to the `ID:` badge span replacing `session.id.slice(0, 8)` with `claudeShortId(session.id)`
+- [X] T152 [P] [US10] Apply the same `claudeShortId` fix to the short-ID badge in `frontend/src/pages/SessionPage.tsx` (the `ID: {session.id.slice(0, 8)}` span around line 100); import or inline the helper
+- [X] T153 Verify `cd frontend && npm run build` passes — 0 TypeScript errors
 
 ---
 
@@ -225,8 +225,8 @@
 
 **Independent Test**: Navigate to `/sessions/:id` for an active session — the Controls section shows the prompt input + Send button + `⋮` menu; opening the menu shows Esc, Exit, Merge, Pull latest.
 
-- [ ] T154 [US11] Update `frontend/src/pages/SessionPage.tsx`: remove the `ControlPanel` import and its enclosing "Controls" card; add `import SessionPromptBar from '../components/SessionPromptBar/SessionPromptBar'`; replace the controls card with a new card titled "Controls" that renders `<SessionPromptBar session={session} />` followed by a "Stop Session" button (calls `stopMutation.mutateAsync()` with a confirm dialog, disabled when session is ended); remove the now-unused `stopMutation`, `sendMutation`, `sendPrompt`, `stopSession`, `useMutation` imports if no longer needed
-- [ ] T155 Verify `cd frontend && npm run build` passes — 0 TypeScript errors
+- [X] T154 [US11] Update `frontend/src/pages/SessionPage.tsx`: remove the `ControlPanel` import and its enclosing "Controls" card; add `import SessionPromptBar from '../components/SessionPromptBar/SessionPromptBar'`; replace the controls card with a new card titled "Controls" that renders `<SessionPromptBar session={session} />` followed by a "Stop Session" button (calls `stopMutation.mutateAsync()` with a confirm dialog, disabled when session is ended); remove the now-unused `stopMutation`, `sendMutation`, `sendPrompt`, `stopSession`, `useMutation` imports if no longer needed
+- [X] T155 Verify `cd frontend && npm run build` passes — 0 TypeScript errors
 
 ---
 
@@ -330,17 +330,17 @@ Task T128: E2E tests in frontend/tests/e2e/sc-006-session-ux.spec.ts
 
 ### Implementation for US7
 
-- [ ] T156 [P] Create `frontend/src/utils/sessionUtils.ts` with: `export const INACTIVE_THRESHOLD_MS = 20 * 60 * 1000;` and `export function isInactive(session: Session): boolean` — returns `true` when `session.status` is not `'completed'` or `'ended'` AND `Date.now() - new Date(session.lastActivityAt).getTime() > INACTIVE_THRESHOLD_MS`; import `Session` from `'../types'`
+- [X] T156 [P] Create `frontend/src/utils/sessionUtils.ts` with: `export const INACTIVE_THRESHOLD_MS = 20 * 60 * 1000;` and `export function isInactive(session: Session): boolean` — returns `true` when `session.status` is not `'completed'` or `'ended'` AND `Date.now() - new Date(session.lastActivityAt).getTime() > INACTIVE_THRESHOLD_MS`; import `Session` from `'../types'`
 
-- [ ] T157 [US7] Update `frontend/src/components/SessionCard/SessionCard.tsx`: import `isInactive` from `'../../utils/sessionUtils'`; in the status pills row, add an amber "inactive" badge (`<span className="text-xs px-2 py-0.5 rounded font-medium bg-amber-100 text-amber-700">inactive</span>`) conditionally rendered when `isInactive(session)` is true; also update the card wrapper `className` to include `opacity-75` when `isInactive(session) && !selected`
+- [X] T157 [US7] Update `frontend/src/components/SessionCard/SessionCard.tsx`: import `isInactive` from `'../../utils/sessionUtils'`; in the status pills row, add an amber "inactive" badge (`<span className="text-xs px-2 py-0.5 rounded font-medium bg-amber-100 text-amber-700">inactive</span>`) conditionally rendered when `isInactive(session)` is true; also update the card wrapper `className` to include `opacity-75` when `isInactive(session) && !selected`
 
-- [ ] T158 [P] [US7] Add `hideInactiveSessions: boolean` to the `DashboardSettings` interface in `frontend/src/types.ts` and add `hideInactiveSessions: false` to `DEFAULT_SETTINGS`
+- [X] T158 [P] [US7] Add `hideInactiveSessions: boolean` to the `DashboardSettings` interface in `frontend/src/types.ts` and add `hideInactiveSessions: false` to `DEFAULT_SETTINGS`
 
-- [ ] T159 [US7] Add a "Hide inactive sessions (no activity > 20 min)" toggle to `frontend/src/components/SettingsPanel/SettingsPanel.tsx` — follow the existing label+checkbox pattern, bind to `settings.hideInactiveSessions` via `onToggle('hideInactiveSessions', e.target.checked)`
+- [X] T159 [US7] Add a "Hide inactive sessions (no activity > 20 min)" toggle to `frontend/src/components/SettingsPanel/SettingsPanel.tsx` — follow the existing label+checkbox pattern, bind to `settings.hideInactiveSessions` via `onToggle('hideInactiveSessions', e.target.checked)`
 
-- [ ] T160 [US7] Update `frontend/src/pages/DashboardPage.tsx`: import `isInactive` from `'../utils/sessionUtils'`; in the `reposWithSessions` map, extend the `visibleSessions` filter chain to also filter out inactive sessions when `settings.hideInactiveSessions` is true — i.e. `!settings.hideInactiveSessions || !isInactive(s)` (applied after the existing `hideEndedSessions` filter)
+- [X] T160 [US7] Update `frontend/src/pages/DashboardPage.tsx`: import `isInactive` from `'../utils/sessionUtils'`; in the `reposWithSessions` map, extend the `visibleSessions` filter chain to also filter out inactive sessions when `settings.hideInactiveSessions` is true — i.e. `!settings.hideInactiveSessions || !isInactive(s)` (applied after the existing `hideEndedSessions` filter)
 
-- [ ] T161 Run `cd frontend && npm run build` to verify 0 TypeScript errors and successful Vite bundle
+- [X] T161 Run `cd frontend && npm run build` to verify 0 TypeScript errors and successful Vite bundle
 
 **Checkpoint**: Inactive sessions show an amber badge on cards; Settings panel toggle hides them; ended sessions are unaffected
 
@@ -354,9 +354,9 @@ Task T128: E2E tests in frontend/tests/e2e/sc-006-session-ux.spec.ts
 
 **Independent Test**: Open any session detail page — no "Stop Session" button appears. The ⋮ menu still contains Exit.
 
-- [ ] T162 [US11] In `frontend/src/pages/SessionPage.tsx`, remove: the Stop Session button block (the `<div>` with `mt-3 pt-3 border-t` containing the button, helper text, and error span); the `handleStop` function; the `stopMutation` useMutation call; the `stopError` useState; the `useState` import (no longer used); the `useMutation` import (no longer used); the `stopSession` import from `'../services/api'`; also remove the "Controls" `<h2>` heading above `SessionPromptBar` to declutter the card
+- [X] T162 [US11] In `frontend/src/pages/SessionPage.tsx`, remove: the Stop Session button block (the `<div>` with `mt-3 pt-3 border-t` containing the button, helper text, and error span); the `handleStop` function; the `stopMutation` useMutation call; the `stopError` useState; the `useState` import (no longer used); the `useMutation` import (no longer used); the `stopSession` import from `'../services/api'`; also remove the "Controls" `<h2>` heading above `SessionPromptBar` to declutter the card
 
-- [ ] T163 Run `cd frontend && npm run build` to verify 0 TypeScript errors
+- [X] T163 Run `cd frontend && npm run build` to verify 0 TypeScript errors
 
 **Checkpoint**: Details page Controls card contains only `SessionPromptBar`. All dead code removed.
 
@@ -370,12 +370,13 @@ Task T128: E2E tests in frontend/tests/e2e/sc-006-session-ux.spec.ts
 
 **Independent Test**: Open the dashboard right pane → items show timestamps and type badges. Open the details page → same visual layout, same dark background.
 
-- [ ] T164 Update `frontend/src/components/SessionDetail/SessionDetail.tsx`: add an optional `dark?: boolean` prop; when `dark` is true apply dark-theme classes — wrapper `bg-gray-900 text-gray-300`, timestamp `text-gray-500`, content `text-gray-200`, type badge colors adjusted for dark bg (e.g. `bg-blue-900 text-blue-300`, `bg-purple-900 text-purple-300`, `bg-green-900 text-green-300`, `bg-red-900 text-red-300`, `bg-yellow-900 text-yellow-300`), empty-state text `text-gray-500`; default (`dark` false/absent) keeps existing light-theme classes unchanged
+- [X] T164 Update `frontend/src/components/SessionDetail/SessionDetail.tsx`: add an optional `dark?: boolean` prop; when `dark` is true apply dark-theme classes — wrapper `bg-gray-900 text-gray-300`, timestamp `text-gray-500`, content `text-gray-200`, type badge colors adjusted for dark bg (e.g. `bg-blue-900 text-blue-300`, `bg-purple-900 text-purple-300`, `bg-green-900 text-green-300`, `bg-red-900 text-red-300`, `bg-yellow-900 text-yellow-300`), empty-state text `text-gray-500`; default (`dark` false/absent) keeps existing light-theme classes unchanged
 
-- [ ] T165 Update `frontend/src/components/OutputPane/OutputPane.tsx`: import `SessionDetail`; replace the inline items `<div>` rendering block (the `data?.items.map(...)` section and the "No output yet…" paragraph) with `<SessionDetail sessionId={session.id} items={data?.items ?? []} dark />`; remove the now-unused inline rendering — keep the header bar, scroll container `flex-1 overflow-y-auto p-4`, and `bottomRef`; the `bottomRef` scroll-to-bottom effect stays on `OutputPane` since it owns the scroll container
+- [X] T165 Update `frontend/src/components/OutputPane/OutputPane.tsx`: import `SessionDetail`; replace the inline items `<div>` rendering block (the `data?.items.map(...)` section and the "No output yet…" paragraph) with `<SessionDetail sessionId={session.id} items={data?.items ?? []} dark />`; remove the now-unused inline rendering — keep the header bar, scroll container `flex-1 overflow-y-auto p-4`, and `bottomRef`; the `bottomRef` scroll-to-bottom effect stays on `OutputPane` since it owns the scroll container
 
-- [ ] T166 Update `frontend/src/pages/SessionPage.tsx` Output Stream card: wrap the `<SessionDetail>` with a dark container — change the card from `bg-white rounded-lg shadow` to `bg-gray-900 rounded-lg shadow`; update the "Output Stream" heading to `text-gray-200`; update the border to `border-gray-700`; pass `dark` prop to `<SessionDetail>`; remove the wrapping `p-4 border-b border-gray-200` header div adjusting colors to match dark theme (`border-gray-700`, `text-gray-200`)
+- [X] T166 Update `frontend/src/pages/SessionPage.tsx` Output Stream card: wrap the `<SessionDetail>` with a dark container — change the card from `bg-white rounded-lg shadow` to `bg-gray-900 rounded-lg shadow`; update the "Output Stream" heading to `text-gray-200`; update the border to `border-gray-700`; pass `dark` prop to `<SessionDetail>`; remove the wrapping `p-4 border-b border-gray-200` header div adjusting colors to match dark theme (`border-gray-700`, `text-gray-200`)
 
-- [ ] T167 Run `cd frontend && npm run build` to verify 0 TypeScript errors
+- [X] T167 Run `cd frontend && npm run build` to verify 0 TypeScript errors
 
 **Checkpoint**: Identical output rendering (timestamps + type badges + tool names + dark bg) in both the dashboard right pane and the details page
+
