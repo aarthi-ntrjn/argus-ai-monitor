@@ -62,12 +62,14 @@ export default function SessionDetail({ items, dark = false, className }: Props)
             <span className={`text-xs whitespace-nowrap mt-0.5 w-20 shrink-0 ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
               {formatTime(item.timestamp)}
             </span>
-            <span className={`text-xs px-1.5 py-0.5 rounded font-medium whitespace-nowrap shrink-0 ${badgeColor}`}>
-              {typeInfo.label}
-            </span>
-            {item.toolName && (
-              <span className={`text-xs whitespace-nowrap shrink-0 ${dark ? 'text-purple-400' : 'text-purple-600'}`}>[{item.toolName}]</span>
-            )}
+            <div className="flex flex-col gap-0.5 w-24 shrink-0">
+              <span className={`text-xs px-1.5 py-0.5 rounded font-medium whitespace-nowrap self-start ${badgeColor}`}>
+                {typeInfo.label}
+              </span>
+              {item.toolName && (
+                <span className={`text-xs truncate ${dark ? 'text-purple-400' : 'text-purple-600'}`}>[{item.toolName}]</span>
+              )}
+            </div>
             <span className={`min-w-0 break-words whitespace-pre-wrap ${dark ? 'text-gray-200' : 'text-gray-800'}`}>{item.content}</span>
           </div>
         );

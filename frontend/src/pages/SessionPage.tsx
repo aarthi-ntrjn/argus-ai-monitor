@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { Moon, Play } from 'lucide-react';
 import { getSession, getSessionOutput } from '../services/api';
 import SessionDetail from '../components/SessionDetail/SessionDetail';
 import SessionPromptBar from '../components/SessionPromptBar/SessionPromptBar';
@@ -22,6 +23,7 @@ function claudeShortId(id: string): string {
 
 const STATUS_COLORS: Record<string, string> = {
   active: 'bg-green-100 text-green-800',
+  running: 'bg-green-100 text-green-800',
   idle: 'bg-yellow-100 text-yellow-800',
   waiting: 'bg-blue-100 text-blue-800',
   error: 'bg-red-100 text-red-800',
@@ -89,10 +91,13 @@ export default function SessionPage() {
               <span className="text-xs text-gray-500 font-mono">{session.model}</span>
             )}
             {isInactive(session) ? (
-              <span className="text-sm px-3 py-1 rounded-full font-medium bg-amber-100 text-amber-700">inactive</span>
+              <span className="inline-flex items-center gap-1 text-sm px-3 py-1 rounded-full font-medium bg-amber-100 text-amber-700">
+                <Moon size={12} />resting
+              </span>
             ) : (
-              <span className={`text-sm px-3 py-1 rounded-full font-medium ${STATUS_COLORS[session.status] ?? 'bg-gray-100'}`}>
-                {session.status}
+              <span className={`inline-flex items-center gap-1 text-sm px-3 py-1 rounded-full font-medium ${STATUS_COLORS[session.status] ?? 'bg-gray-100'}`}>
+                {session.status === 'active' && <Play size={12} />}
+                {session.status === 'active' ? 'running' : session.status}
               </span>
             )}
             {session.pid && (

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { Moon, Play } from 'lucide-react';
 import type { Session } from '../../types';
 import { getSessionOutput } from '../../services/api';
 import { isInactive } from '../../utils/sessionUtils';
@@ -14,6 +15,7 @@ interface Props {
 
 const STATUS_COLORS: Record<string, string> = {
   active: 'bg-green-100 text-green-800',
+  running: 'bg-green-100 text-green-800',
   idle: 'bg-yellow-100 text-yellow-800',
   waiting: 'bg-blue-100 text-blue-800',
   error: 'bg-red-100 text-red-800',
@@ -66,10 +68,13 @@ export default function SessionCard({ session, selected, onSelect }: Props) {
             <span className="text-[10px] text-gray-400 font-mono truncate max-w-[120px]">{session.model}</span>
           )}
           {isInactive(session) ? (
-            <span className="text-xs px-2 py-0.5 rounded font-medium bg-amber-100 text-amber-700">inactive</span>
+            <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded font-medium bg-amber-100 text-amber-700">
+              <Moon size={10} />resting
+            </span>
           ) : (
-            <span className={`text-xs px-2 py-0.5 rounded font-medium ${STATUS_COLORS[session.status] ?? 'bg-gray-100'}`}>
-              {session.status}
+            <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded font-medium ${STATUS_COLORS[session.status] ?? 'bg-gray-100'}`}>
+              {session.status === 'active' && <Play size={10} />}
+              {session.status === 'active' ? 'running' : session.status}
             </span>
           )}
           {session.pid && <span className="text-xs text-gray-400">PID: {session.pid}</span>}
