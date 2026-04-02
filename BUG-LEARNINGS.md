@@ -74,6 +74,17 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 
 ---
 
+## T086 — Copilot CLI sessions never show model name
+
+**Date**: 2026-04-02
+**Symptom**: Model name was always absent on Copilot CLI session cards, even when the session had `assistant.message` events with a `model` field in `events.jsonl`.
+**Root cause**: Three compounding problems: (1) `processSessionDir` hardcoded `model: null` — no extraction was attempted from the events file; (2) `upsertSession` used `model = excluded.model` in the ON CONFLICT clause, which overwrote any previously-detected model with `null` on every scan cycle; (3) `readNewLines` parsed output events but never checked for a `model` field on `assistant.message` events.
+**Why it was missed**: Model detection was built for Claude Code via a dedicated `parseModel` helper but was never ported to the Copilot CLI detector. The `upsertSession` overwrite bug was masked because model was always null for CLI sessions — no test existed that set a model then re-scanned.
+**How to prevent**: When porting a feature to a second session type, audit all fields the first type sets — ensure none are silently defaulted. For any `ON CONFLICT DO UPDATE`, check every field: use `COALESCE(excluded.field, field)` for fields that should only move from null→non-null, never the reverse.
+**Fix summary**: Added `parseModelFromEvent` to `events-parser.ts`; added `extractModelFromEventsFile` helper in `copilot-cli-detector.ts`; `processSessionDir` now passes extracted model; `readNewLines` detects model from new events; `upsertSession` now uses `COALESCE(excluded.model, model)` to preserve any previously-detected model.
+
+---
+
 ## T085 — Copilot CLI tool events show raw JSON dump in output stream
 
 **Date**: 2026-04-02
