@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseJsonlLine } from '../../src/services/events-parser.js';
+import { parseJsonlLine, parseModelFromEvent } from '../../src/services/events-parser.js';
 
 describe('EventsParser', () => {
   it('maps assistant.message to message type', () => {
@@ -126,6 +126,56 @@ describe('EventsParser', () => {
     });
     const result = parseJsonlLine(line, 'session-1', 11);
     expect(result?.content).toBe('exit code 0');
+  });
+});
+
+// T086 regression tests — model extraction from Copilot CLI events
+describe('parseModelFromEvent', () => {
+  it('should extract model from assistant.message event', () => {
+    const line = JSON.stringify({
+      type: 'assistant.message',
+      timestamp: '2024-01-01T00:00:00.000Z',
+      content: 'Hello!',
+      model: 'gpt-4o',
+    });
+    expect(parseModelFromEvent(line)).toBe('gpt-4o');
+  });
+
+  it('should return null for non-assistant events', () => {
+    const line = JSON.stringify({
+      type: 'user.message',
+      timestamp: '2024-01-01T00:00:00.000Z',
+      content: 'Hello!',
+      model: 'gpt-4o',
+    });
+    expect(parseModelFromEvent(line)).toBeNull();
+  });
+
+  it('should return null when assistant.message has no model field', () => {
+    const line = JSON.stringify({
+      type: 'assistant.message',
+      timestamp: '2024-01-01T00:00:00.000Z',
+      content: 'Hello!',
+    });
+    expect(parseModelFromEvent(line)).toBeNull();
+  });
+
+  it('should return null for non-string model field', () => {
+    const line = JSON.stringify({
+      type: 'assistant.message',
+      timestamp: '2024-01-01T00:00:00.000Z',
+      content: 'Hello!',
+      model: 42,
+    });
+    expect(parseModelFromEvent(line)).toBeNull();
+  });
+
+  it('should return null for empty line', () => {
+    expect(parseModelFromEvent('')).toBeNull();
+  });
+
+  it('should return null for invalid JSON', () => {
+    expect(parseModelFromEvent('not-json')).toBeNull();
   });
 });
 

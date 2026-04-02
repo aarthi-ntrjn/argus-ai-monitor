@@ -35,6 +35,17 @@ function extractContent(event: JsonlEvent): string {
   return JSON.stringify(rest);
 }
 
+export function parseModelFromEvent(line: string): string | null {
+  if (!line.trim()) return null;
+  try {
+    const event = JSON.parse(line) as JsonlEvent;
+    if (event.type === 'assistant.message' && typeof event.model === 'string') {
+      return event.model;
+    }
+    return null;
+  } catch { return null; }
+}
+
 export function parseJsonlLine(line: string, sessionId: string, sequenceNumber: number): SessionOutput | null {
   if (!line.trim()) return null;
   try {

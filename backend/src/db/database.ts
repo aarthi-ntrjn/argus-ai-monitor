@@ -94,7 +94,7 @@ export function upsertSession(session: Session): void {
     ON CONFLICT(id) DO UPDATE SET
       pid = excluded.pid, status = excluded.status, ended_at = excluded.ended_at,
       last_activity_at = excluded.last_activity_at, summary = excluded.summary,
-      expires_at = excluded.expires_at, model = excluded.model
+      expires_at = excluded.expires_at, model = COALESCE(excluded.model, model)
   `).run(session.id, session.repositoryId, session.type, session.pid, session.status,
     session.startedAt, session.endedAt, session.lastActivityAt, session.summary, session.expiresAt, session.model ?? null);
 }
@@ -107,6 +107,10 @@ export function getOutputForSession(sessionId: string, limit = 100, before?: str
   params.push(limit);
   const rows = getDb().prepare(sql).all(...params) as SessionOutput[];
   return rows.reverse();
+}
+
+export function deleteSessionOutput(sessionId: string): void {
+  getDb().prepare('DELETE FROM session_output WHERE session_id = ?').run(sessionId);
 }
 
 export function insertOutput(output: SessionOutput): void {
