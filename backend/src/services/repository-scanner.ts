@@ -1,9 +1,19 @@
 import { readdirSync, existsSync } from 'fs';
 import { join, basename } from 'path';
 import { randomUUID } from 'crypto';
+import { execSync } from 'child_process';
 import { getRepositories, insertRepository, getRepositoryByPath } from '../db/database.js';
 import type { Repository } from '../models/index.js';
 import { broadcast } from '../api/ws/event-dispatcher.js';
+
+export function getCurrentBranch(repoPath: string): string | null {
+  try {
+    const branch = execSync('git branch --show-current', { cwd: repoPath, encoding: 'utf8' }).trim();
+    return branch || null;
+  } catch {
+    return null;
+  }
+}
 
 export class RepositoryScanner {
   constructor(private watchDirectories: string[]) {}
@@ -52,6 +62,7 @@ export class RepositoryScanner {
       source,
       addedAt: new Date().toISOString(),
       lastScannedAt: new Date().toISOString(),
+      branch: getCurrentBranch(repoPath),
     };
     insertRepository(repo);
     broadcast({ type: 'repository.added', timestamp: new Date().toISOString(), data: repo as unknown as Record<string, unknown> });

@@ -208,7 +208,12 @@ export default function DashboardPage() {
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h2 className="text-xl font-semibold text-gray-900">{repo.name}</h2>
-                      <p className="text-sm text-gray-500 mt-1">{repo.path}</p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <p className="text-sm text-gray-500">{repo.path}</p>
+                        {repo.branch && (
+                          <span className="inline-flex items-center gap-1 text-xs font-mono text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">⎇ {repo.branch}</span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded">

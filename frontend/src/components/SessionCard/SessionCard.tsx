@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Moon, Play } from 'lucide-react';
+import { ExternalLink, Moon, Play } from 'lucide-react';
 import type { Session } from '../../types';
 import { getSessionOutput } from '../../services/api';
 import { isInactive } from '../../utils/sessionUtils';
@@ -58,7 +58,7 @@ export default function SessionCard({ session, selected, onSelect }: Props) {
     [...items].reverse().find((i: import('../../types').SessionOutput) => i.type === 'message') ??
     items[items.length - 1] ??
     null;
-  const previewLine = previewItem?.content?.split('\n').find((l: string) => l.trim()) ?? null;
+  const previewContent = previewItem?.content?.trim() ?? null;
 
   return (
     <div
@@ -75,6 +75,13 @@ export default function SessionCard({ session, selected, onSelect }: Props) {
           {session.model && (
             <span className="text-[10px] text-gray-400 font-mono truncate max-w-[120px]">{session.model}</span>
           )}
+          {session.pid && <span className="text-xs text-gray-400">PID: {session.pid}</span>}
+          {!session.pid && session.type === 'claude-code' && (
+            <span className="text-xs text-gray-400 font-mono">ID: {claudeShortId(session.id)}</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs text-gray-400">{getElapsed(session.startedAt)}</span>
           {isInactive(session) ? (
             <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded font-medium bg-amber-100 text-amber-700">
               <Moon size={10} />resting
@@ -85,20 +92,13 @@ export default function SessionCard({ session, selected, onSelect }: Props) {
               {session.status === 'active' ? 'running' : session.status}
             </span>
           )}
-          {session.pid && <span className="text-xs text-gray-400">PID: {session.pid}</span>}
-          {!session.pid && session.type === 'claude-code' && (
-            <span className="text-xs text-gray-400 font-mono">ID: {claudeShortId(session.id)}</span>
-          )}
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-xs text-gray-400">{getElapsed(session.startedAt)}</span>
           <Link
             to={`/sessions/${session.id}`}
             onClick={e => e.stopPropagation()}
-            className="text-xs text-blue-500 hover:underline"
+            className="text-gray-400 hover:text-blue-500 transition-colors"
             aria-label="View details"
           >
-            View details
+            <ExternalLink size={14} />
           </Link>
         </div>
       </div>
@@ -112,8 +112,8 @@ export default function SessionCard({ session, selected, onSelect }: Props) {
       </div>
 
       {/* Last output preview — below interactive controls so it never obscures the prompt */}
-      {previewLine && (
-        <p className="text-xs text-gray-300 bg-gray-900 mt-1 px-2 py-1 rounded truncate font-mono">{previewLine}</p>
+      {previewContent && (
+        <p className="text-xs text-gray-300 bg-gray-900 mt-1 px-2 py-1 rounded line-clamp-2 whitespace-pre-wrap break-words font-mono">{previewContent}</p>
       )}
     </div>
   );
