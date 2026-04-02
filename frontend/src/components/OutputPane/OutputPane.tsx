@@ -50,7 +50,7 @@ export default function OutputPane({ session, onClose }: Props) {
         </button>
       </div>
       <div className="flex-1 overflow-y-auto rounded-b-lg">
-        <SessionDetail sessionId={session.id} items={data?.items ?? []} dark />
+        <SessionDetail sessionId={session.id} items={data?.items ?? []} dark className="max-h-none pb-0" />
         <div ref={bottomRef} />
       </div>
     </section>

@@ -5,6 +5,7 @@ interface Props {
   sessionId: string;
   items: SessionOutput[];
   dark?: boolean;
+  className?: string;
 }
 
 const TYPE_LABELS: Record<string, { label: string; light: string; dark: string }> = {
@@ -19,7 +20,7 @@ function formatTime(timestamp: string): string {
   return new Date(timestamp).toLocaleTimeString();
 }
 
-export default function SessionDetail({ items, dark = false }: Props) {
+export default function SessionDetail({ items, dark = false, className }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,7 +36,7 @@ export default function SessionDetail({ items, dark = false }: Props) {
   }
 
   return (
-    <div className={`overflow-y-auto max-h-[600px] p-4 space-y-2 font-mono text-sm ${dark ? 'bg-gray-900' : ''}`}>
+    <div className={`overflow-y-auto max-h-[600px] p-4 space-y-2 font-mono text-sm ${dark ? 'bg-gray-900' : ''} ${className ?? ''}`}>
       {items.map((item) => {
         const typeInfo = TYPE_LABELS[item.type] ?? {
           label: item.type.toUpperCase(),
