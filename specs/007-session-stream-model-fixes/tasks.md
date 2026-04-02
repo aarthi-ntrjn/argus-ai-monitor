@@ -112,7 +112,7 @@
 
 ### Addendum: US4 — PST timestamp display
 
-- [ ] T021 [US4] Update `formatTime` in `frontend/src/components/SessionDetail/SessionDetail.tsx`: change `new Date(timestamp).toLocaleTimeString()` to `new Date(timestamp).toLocaleTimeString('en-US', { timeZone: 'America/Los_Angeles', hour: '2-digit', minute: '2-digit', second: '2-digit' })` so all output stream timestamps display in Pacific time (PST/PDT) regardless of the browser's local time zone
+- [X] T021 [US4] Update `formatTime` in `frontend/src/components/SessionDetail/SessionDetail.tsx`: change `new Date(timestamp).toLocaleTimeString()` to `new Date(timestamp).toLocaleTimeString('en-US', { timeZone: 'America/Los_Angeles', hour: '2-digit', minute: '2-digit', second: '2-digit' })` so all output stream timestamps display in Pacific time (PST/PDT) regardless of the browser's local time zone
 
 ---
 

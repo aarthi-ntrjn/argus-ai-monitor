@@ -30,7 +30,12 @@ function getBadge(item: SessionOutput): BadgeStyle {
 }
 
 function formatTime(timestamp: string): string {
-  return new Date(timestamp).toLocaleTimeString();
+  return new Date(timestamp).toLocaleTimeString('en-US', {
+    timeZone: 'America/Los_Angeles',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
 }
 
 export default function SessionDetail({ items, dark = false, className }: Props) {
