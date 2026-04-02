@@ -135,3 +135,13 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 **How to prevent**: Any session type that uses a hook-driven lifecycle needs a complementary periodic process check as a safety net. For each status a session can enter, verify there is a code path that exits that status — `idle` had no exit path to `ended` except server restart.
 **Fix summary**: `session-monitor.ts` — `reconcileStaleSessions()` now also processes `idle` sessions; added `reconcileClaudeCodeSessions()` method called from `runScan()` every 5s that ends Claude Code sessions with dead PIDs or ends all null-PID Claude Code sessions if no `claude` process is running.
 
+---
+
+## T092 — Claude Code `idle` status is wrong; Stop hook should keep session `active`
+
+**Date**: 2026-04-02
+**Symptom**: After each Claude Code AI response, the session showed a distinct `idle` status badge in the UI instead of staying "running" (active). This diverged from Copilot CLI which only uses `active`/`ended`.
+**Root cause**: T090 fixed the original bug (Stop → `ended`) by introducing `idle` as a new intermediate status. But the UI already handles "resting vs running" purely via `isInactive()` — a time-based check on `lastActivityAt` (20-min threshold) — with no backing status field. Claude Code sessions should stay `active` between turns, exactly like Copilot CLI sessions stay `active` between prompts.
+**Why it was missed**: T090 was written to fix the immediate `ended` regression without consulting how "resting" is displayed in the frontend. The `idle` status already existed in `SessionStatus` as an unused bucket, which made it easy to reach for without questioning whether it was the right abstraction.
+**How to prevent**: Before adding a new status value, check how the frontend renders existing statuses. `isInactive()` is the single source of truth for "resting" display — any backend-driven intermediate state that duplicates it is wrong. New statuses should only be added when they require distinct frontend rendering that time-based logic cannot provide.
+**Fix summary**: `claude-code-detector.ts` — removed `if (hook_event_name === 'Stop')` branch; all hooks now set `status: 'active'` and update `lastActivityAt`. `session-monitor.ts` — removed `idle` from reconciliation queries.
