@@ -201,14 +201,10 @@ export class ClaudeCodeDetector {
       model: null,
     };
 
-    if (hook_event_name === 'Stop') {
-      // Stop fires at the end of every AI turn — the session is idle, not exited.
-      // Actual session end is detected by reconcileStaleSessions() via PID check.
-      session.status = 'idle';
-    } else {
-      session.status = 'active';
-      session.lastActivityAt = now;
-    }
+    // All hook events keep the session active and update lastActivityAt.
+    // The UI's isInactive() (20-min threshold on lastActivityAt) handles the "resting" display.
+    session.status = 'active';
+    session.lastActivityAt = now;
 
     upsertSession(session);
 

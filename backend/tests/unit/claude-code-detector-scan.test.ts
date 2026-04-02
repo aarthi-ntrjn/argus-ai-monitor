@@ -250,20 +250,20 @@ describe('ClaudeCodeDetector.handleHookPayload — Stop hook', () => {
     vi.resetModules();
   });
 
-  // T090 regression: Stop hook fires at end of every AI turn, NOT session exit.
-  // Session must transition to 'idle', never 'ended', when Stop hook arrives.
-  it('T090: Stop hook sets session to idle, not ended', async () => {
+  // T090/T092: Stop hook fires at end of every AI turn, NOT session exit.
+  // Session must stay 'active' (not idle or ended) — resting display is UI-only via isInactive().
+  it('T092: Stop hook keeps session active and updates lastActivityAt, not ended or idle', async () => {
     const sessionId = 'stop-test-session';
-    const now = new Date().toISOString();
+    const before = new Date(Date.now() - 5000).toISOString();
     dbModule.upsertSession({
       id: sessionId,
       repositoryId: 'repo-hook-test',
       type: 'claude-code',
       pid: null,
       status: 'active',
-      startedAt: now,
+      startedAt: before,
       endedAt: null,
-      lastActivityAt: now,
+      lastActivityAt: before,
       summary: null,
       expiresAt: null,
       model: null,
@@ -278,11 +278,12 @@ describe('ClaudeCodeDetector.handleHookPayload — Stop hook', () => {
     });
 
     const session = dbModule.getSession(sessionId);
-    expect(session?.status).toBe('idle');
+    expect(session?.status).toBe('active');
     expect(session?.endedAt).toBeNull();
+    expect(session?.lastActivityAt).not.toBe(before);
   });
 
-  it('T090: PreToolUse hook keeps session active', async () => {
+  it('T092: PreToolUse hook keeps session active', async () => {
     const sessionId = 'stop-test-session';
     const now = new Date().toISOString();
     dbModule.upsertSession({
@@ -290,7 +291,7 @@ describe('ClaudeCodeDetector.handleHookPayload — Stop hook', () => {
       repositoryId: 'repo-hook-test',
       type: 'claude-code',
       pid: null,
-      status: 'idle',
+      status: 'active',
       startedAt: now,
       endedAt: null,
       lastActivityAt: now,

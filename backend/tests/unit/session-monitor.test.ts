@@ -138,15 +138,16 @@ describe('SessionMonitor.reconcileStaleSessions', () => {
     expect(session?.status).toBe('ended');
   });
 
-  // T091 regression: idle sessions (post-Stop hook) must also be reconciled at startup
-  it('T091: should mark an idle Claude Code session with a dead PID as ended on startup', async () => {
+  // T092: idle status no longer exists for Claude Code — remove this test scenario.
+  // Active Claude Code sessions with a dead PID are ended by reconcileClaudeCodeSessions().
+  it('T092: should mark an active Claude Code session with a dead PID as ended via periodic check', async () => {
     const now = new Date().toISOString();
     upsertSession({
-      id: 'claude-idle-dead-pid',
+      id: 'claude-active-dead-pid',
       repositoryId: 'repo-1',
       type: 'claude-code',
       pid: 55555,          // dead PID — not in ps-list
-      status: 'idle',      // session was idle (Stop hook fired before process exit)
+      status: 'active',
       startedAt: now,
       endedAt: null,
       lastActivityAt: now,
@@ -160,7 +161,7 @@ describe('SessionMonitor.reconcileStaleSessions', () => {
     monitor.stop();
 
     const allSessions = getSessions({}) as Array<{ id: string; status: string }>;
-    const session = allSessions.find(s => s.id === 'claude-idle-dead-pid');
+    const session = allSessions.find(s => s.id === 'claude-active-dead-pid');
     expect(session?.status).toBe('ended');
   });
 
@@ -174,7 +175,7 @@ describe('SessionMonitor.reconcileStaleSessions', () => {
       repositoryId: 'repo-1',
       type: 'claude-code',
       pid: null,
-      status: 'idle',
+      status: 'active',
       startedAt: now,
       endedAt: null,
       lastActivityAt: now,

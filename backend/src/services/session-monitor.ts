@@ -41,10 +41,7 @@ export class SessionMonitor extends EventEmitter {
 
   private async reconcileStaleSessions(): Promise<void> {
     try {
-      const sessions = [
-        ...getSessions({ status: 'active' }),
-        ...getSessions({ status: 'idle' }),
-      ];
+      const sessions = getSessions({ status: 'active' });
       if (sessions.length === 0) return;
       const processes = await psList();
       const runningPids = new Set(processes.map((p) => p.pid));
@@ -59,10 +56,7 @@ export class SessionMonitor extends EventEmitter {
 
   private async reconcileClaudeCodeSessions(): Promise<void> {
     try {
-      const liveSessions = [
-        ...getSessions({ status: 'active', type: 'claude-code' }),
-        ...getSessions({ status: 'idle', type: 'claude-code' }),
-      ];
+      const liveSessions = getSessions({ status: 'active', type: 'claude-code' });
       if (liveSessions.length === 0) return;
 
       const processes = await psList();
