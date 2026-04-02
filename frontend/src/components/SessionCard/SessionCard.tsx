@@ -73,7 +73,7 @@ export default function SessionCard({ session, selected, onSelect }: Props) {
             {session.type}
           </span>
           {session.model && (
-            <span className="text-[10px] text-gray-500 font-mono truncate max-w-[120px]">{session.model}</span>
+            <span className="text-xs text-gray-500 font-mono truncate max-w-[120px]">{session.model}</span>
           )}
           {session.pid && <span className="text-xs text-gray-500 font-mono">PID: {session.pid}</span>}
           {!session.pid && session.type === 'claude-code' && (
