@@ -4,6 +4,7 @@ import { getSession, getSessionOutput } from '../services/api';
 import SessionDetail from '../components/SessionDetail/SessionDetail';
 import SessionPromptBar from '../components/SessionPromptBar/SessionPromptBar';
 import SessionTypeIcon from '../components/SessionTypeIcon/SessionTypeIcon';
+import { isInactive } from '../utils/sessionUtils';
 
 function getElapsed(startedAt: string, endedAt: string | null): string {
   const end = endedAt ? new Date(endedAt) : new Date();
@@ -84,9 +85,13 @@ export default function SessionPage() {
               <SessionTypeIcon type={session.type} size={14} />
               {session.type}
             </span>
-            <span className={`text-sm px-3 py-1 rounded-full font-medium ${STATUS_COLORS[session.status] ?? 'bg-gray-100'}`}>
-              {session.status}
-            </span>
+            {isInactive(session) ? (
+              <span className="text-sm px-3 py-1 rounded-full font-medium bg-amber-100 text-amber-700">inactive</span>
+            ) : (
+              <span className={`text-sm px-3 py-1 rounded-full font-medium ${STATUS_COLORS[session.status] ?? 'bg-gray-100'}`}>
+                {session.status}
+              </span>
+            )}
             {session.pid && (
               <span className="text-sm text-gray-500">PID: {session.pid}</span>
             )}

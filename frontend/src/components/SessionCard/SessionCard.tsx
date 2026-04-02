@@ -62,11 +62,12 @@ export default function SessionCard({ session, selected, onSelect }: Props) {
             <SessionTypeIcon type={session.type} size={13} />
             {session.type}
           </span>
-          <span className={`text-xs px-2 py-0.5 rounded font-medium ${STATUS_COLORS[session.status] ?? 'bg-gray-100'}`}>
-            {session.status}
-          </span>
-          {isInactive(session) && (
+          {isInactive(session) ? (
             <span className="text-xs px-2 py-0.5 rounded font-medium bg-amber-100 text-amber-700">inactive</span>
+          ) : (
+            <span className={`text-xs px-2 py-0.5 rounded font-medium ${STATUS_COLORS[session.status] ?? 'bg-gray-100'}`}>
+              {session.status}
+            </span>
           )}
           {session.pid && <span className="text-xs text-gray-400">PID: {session.pid}</span>}
           {!session.pid && session.type === 'claude-code' && (

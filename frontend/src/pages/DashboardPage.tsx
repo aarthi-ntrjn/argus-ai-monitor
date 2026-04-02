@@ -256,7 +256,7 @@ export default function DashboardPage() {
             {selectedSessionId && (() => {
               const selectedSession = sessions.find(s => s.id === selectedSessionId);
               return selectedSession ? (
-                <div className="w-[480px] shrink-0 sticky top-8 h-[calc(100vh-8rem)]">
+                <div className="w-[640px] shrink-0 sticky top-8 h-[calc(100vh-8rem)]">
                   <OutputPane
                     session={selectedSession}
                     onClose={() => setSelectedSessionId(null)}
