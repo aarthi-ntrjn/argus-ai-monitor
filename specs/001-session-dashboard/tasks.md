@@ -228,6 +228,10 @@ Remove all modal complexity (tabs, scan folder, manual path input, FolderBrowser
 
 - [ ] T081 Simplify "Add Repository" in `frontend/src/pages/DashboardPage.tsx`: clicking "Add Repository" calls `pickFolder()` directly (no modal); on a path being returned, immediately call `addRepository(path)` and invalidate queries; on cancel (null), do nothing; on error, show a brief inline toast/banner at the top of the dashboard; delete all modal state (`showAddModal`, `addTab`, `newRepoPath`, `adding`, `addError`, `pickingFolder`, `scanPath`, `scannedRepos`, `scanning`, `removeConfirmId` stays), all modal JSX, the `ScannedRepo` interface, `handleAddRepo`, `handleBrowse`, `handleBrowseForScan`, `handleScan`, `handleAddSelected`, `closeModal`; delete unused imports (`apiFetch`); also delete `frontend/src/components/FolderBrowser/FolderBrowser.tsx` and `frontend/src/components/FolderBrowser/index.ts` entirely since they are no longer used anywhere
 
+### Addendum: Bug — model not detected for Claude Code sessions
+
+- [ ] T082 Fix `readNewJsonlLines` in `backend/src/services/claude-code-detector.ts`: the `updateModel` boolean parameter is `false` for all incremental file-change reads (chokidar `change` event calls `this.readNewJsonlLines(sessionId, jsonlPath, false)`), so model extraction is never attempted on new lines; if the initial load had no assistant entries yet (JSONL had only user messages or was empty at the time `watchJsonlFile` was called), the model stays `null` forever; fix by removing the `updateModel` parameter and instead computing `let needsModel = !(getSession(sessionId)?.model)` at the start of each call so model extraction runs whenever the session still lacks a model, and stop once found by setting `needsModel = false`; update both call sites to drop the boolean argument
+
 **Checkpoint**: All acceptance criteria met. `npm test` passes. E2E suite green.
 
 ---
