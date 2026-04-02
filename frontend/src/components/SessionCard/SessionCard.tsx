@@ -72,14 +72,13 @@ export default function SessionCard({ session, selected, onSelect }: Props) {
             <SessionTypeIcon type={session.type} size={13} />
             {session.type}
           </span>
-          {session.model && (
-            <span className="text-[10px] text-gray-500 font-mono truncate max-w-[120px]">{session.model}</span>
-          )}
-          {session.pid && <span className="text-[10px] text-gray-500 font-mono">PID: {session.pid}</span>}
-          {!session.pid && session.type === 'claude-code' && (
-            <span className="text-[10px] text-gray-500 font-mono">ID: {claudeShortId(session.id)}</span>
-          )}
-          <span className="text-[10px] text-gray-500 font-mono">{getElapsed(session.startedAt)}</span>
+          <span className="text-[10px] text-gray-500 font-mono">
+            {[
+              session.model,
+              session.pid ? `PID: ${session.pid}` : (session.type === 'claude-code' ? `ID: ${claudeShortId(session.id)}` : null),
+              getElapsed(session.startedAt),
+            ].filter(Boolean).join(' | ')}
+          </span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {isInactive(session) ? (
