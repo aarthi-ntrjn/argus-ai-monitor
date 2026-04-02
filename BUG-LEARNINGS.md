@@ -123,3 +123,15 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 **Why it was missed**: The `Stop` hook was assumed to be analogous to a process exit signal. No test exercised the session's status after a `Stop` hook arrived, only that the HTTP 200 was returned.
 **How to prevent**: When mapping external hook events to session lifecycle states, verify the exact semantics of each event in the source tool's documentation. Add a test that checks the DB-persisted session status after each hook type fires — not just the HTTP response code.
 **Fix summary**: `claude-code-detector.ts` — `Stop` branch now sets `status: 'idle'` and leaves `endedAt` null. Session transitions to `ended` only via `reconcileStaleSessions()` when the PID is no longer running.
+
+---
+
+## T091 — Claude Code sessions never marked ended when process exits while Argus is running
+
+**Date**: 2026-04-02
+**Symptom**: Killing a Claude Code process (via kill or `/exit`) left the session showing as active/idle in the dashboard indefinitely. It was only detected as ended after an Argus server restart.
+**Root cause**: Three compounding problems: (1) `reconcileStaleSessions()` in `session-monitor.ts` only ran once at startup — there was no periodic liveness check while Argus was running; (2) it only queried `status: 'active'` sessions — after T090, sessions go `idle` on Stop hook, making them invisible to this check even at startup restart; (3) hook-created sessions have `pid: null`, and the PID-based guard (`session.pid != null`) meant they were never ended by any code path regardless of Claude process state.
+**Why it was missed**: The T074/T075 fixes focused on not ending null-PID sessions (which was the bug at the time). No periodic Claude Code liveness check was ever added — it was deferred under the assumption that hooks would handle session lifecycle. T090 changed the Stop hook to `idle` without auditing what actually ended idle sessions.
+**How to prevent**: Any session type that uses a hook-driven lifecycle needs a complementary periodic process check as a safety net. For each status a session can enter, verify there is a code path that exits that status — `idle` had no exit path to `ended` except server restart.
+**Fix summary**: `session-monitor.ts` — `reconcileStaleSessions()` now also processes `idle` sessions; added `reconcileClaudeCodeSessions()` method called from `runScan()` every 5s that ends Claude Code sessions with dead PIDs or ends all null-PID Claude Code sessions if no `claude` process is running.
+
