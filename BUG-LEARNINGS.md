@@ -46,3 +46,17 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 **Fix summary**: Removed per-process `cwd` match from `scanExistingSessions()`; now checks if any `claude` process is running at all. For each matching project directory, re-activates the most recently ended session (or creates a new startup one). Added 3 regression tests in `tests/unit/claude-code-detector-scan.test.ts`.
 
 *Addendum*: The path-matching logic itself was also wrong — it used `decodeURIComponent(name.replace(/-/g, '/'))` to decode dir names, but Claude actually encodes paths by replacing `:`, `\`, `/` with `-` (e.g. `C:\source\argus` → `C--source-argus`). Decoding this back is lossy (hyphens in dir names are ambiguous). Fixed by encoding registered repo paths forward using the same convention and matching against dir names, instead of decoding dir names backward.
+
+---
+
+## T082 — Model information not shown for Claude Code sessions
+
+**Date**: 2026-04-02
+**Symptom**: Model name (e.g. `claude-opus-4-5`) never appeared on session cards or the session detail page for Claude Code sessions, even after conversations had run.
+**Root cause**: `readNewJsonlLines` in `claude-code-detector.ts` accepted an `updateModel: boolean` parameter. The chokidar `change` event always called it with `updateModel = false`, meaning model extraction was never attempted for any incremental file-change read. If the initial load (called with `updateModel = true`) happened when the JSONL file had no assistant entries yet (e.g. the user had typed a prompt but Claude hadn't responded), the session's model stayed `null` permanently — every subsequent assistant message arrived via a `change` event where `updateModel = false` suppressed the extraction entirely.
+**Why it was missed**: The parser tests verified `parseModel()` in isolation, and the feature was accepted with unit tests that only checked the initial-load path (with `updateModel = true`). No test covered the scenario where the initial load had no assistant entries and the model arrived via a subsequent file-change event.
+**How to prevent**:
+- Avoid boolean "mode" parameters that alter core behavior; prefer computing the condition from actual state (`needsModel = !(session?.model)`) so the method is always correct regardless of caller context.
+- Write regression tests that cover the "deferred detection" scenario: initial load with no data to extract → incremental load containing the data → verify the field is eventually set.
+- When a feature depends on "eventually" receiving data (model in first assistant reply), test both the "data present on initial load" and "data arrives later" code paths.
+**Fix summary**: Removed the `updateModel` boolean parameter from `readNewJsonlLines`; replaced with `let needsModel = !(getSession(sessionId)?.model)` computed at call-start, so model extraction runs on every call until the model is found. Added 3 regression tests in `tests/unit/claude-code-detector-model.test.ts`.
