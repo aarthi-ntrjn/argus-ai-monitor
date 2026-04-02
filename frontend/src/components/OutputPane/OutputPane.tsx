@@ -49,7 +49,7 @@ export default function OutputPane({ session, onClose }: Props) {
           </svg>
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto bg-gray-900 rounded-b-lg">
+      <div className="flex-1 overflow-y-auto rounded-b-lg">
         <SessionDetail sessionId={session.id} items={data?.items ?? []} dark />
         <div ref={bottomRef} />
       </div>
