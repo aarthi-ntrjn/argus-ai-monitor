@@ -232,6 +232,10 @@ Remove all modal complexity (tabs, scan folder, manual path input, FolderBrowser
 
 - [X] T082 Fix `readNewJsonlLines` in `backend/src/services/claude-code-detector.ts`: the `updateModel` boolean parameter is `false` for all incremental file-change reads (chokidar `change` event calls `this.readNewJsonlLines(sessionId, jsonlPath, false)`), so model extraction is never attempted on new lines; if the initial load had no assistant entries yet (JSONL had only user messages or was empty at the time `watchJsonlFile` was called), the model stays `null` forever; fix by removing the `updateModel` parameter and instead computing `let needsModel = !(getSession(sessionId)?.model)` at the start of each call so model extraction runs whenever the session still lacks a model, and stop once found by setting `needsModel = false`; update both call sites to drop the boolean argument
 
+### Addendum: Bug — Claude Code sessions not appearing as active on dashboard
+
+- [ ] T083 Fix `handleHookPayload` in `backend/src/services/claude-code-detector.ts`: when a Claude Code hook fires (`SessionStart`, `PreToolUse`, `PostToolUse`, `Stop`), the method calls `upsertSession(session)` to write to the DB but emits **no WebSocket event**; `SessionMonitor.runScan()` only iterates `CopilotCliDetector.scan()` results so Claude Code sessions are never included in the broadcast loop; the frontend's TanStack Query cache is never invalidated so the dashboard never updates; fix by importing `broadcast` from `../api/ws/event-dispatcher.js` (already imported for model updates) and calling `broadcast({ type: isNew ? 'session.created' : 'session.updated', timestamp: now, data: session })` immediately after `upsertSession` in `handleHookPayload`, where `isNew = !existing`; similarly broadcast `session.updated` (or `session.created` for new startup sessions) from `scanExistingSessions` after each `upsertSession` call so reactivated sessions appear immediately on startup
+
 **Checkpoint**: All acceptance criteria met. `npm test` passes. E2E suite green.
 
 ---
