@@ -129,6 +129,66 @@ describe('EventsParser', () => {
   });
 });
 
+// T088 regression tests — real Copilot CLI events use nested data object
+describe('EventsParser T088 — nested data format', () => {
+  it('should extract content from user.message data.content', () => {
+    const line = JSON.stringify({
+      type: 'user.message',
+      data: { content: 'hello world', transformedContent: 'expanded...', attachments: [] },
+      id: 'abc', timestamp: '2024-01-01T00:00:00.000Z', parentId: null,
+    });
+    const result = parseJsonlLine(line, 'session-1', 1);
+    expect(result?.content).toBe('hello world');
+    expect(result?.role).toBe('user');
+  });
+
+  it('should extract content from assistant.message data.content', () => {
+    const line = JSON.stringify({
+      type: 'assistant.message',
+      data: { messageId: 'msg-1', content: 'Here is my answer', toolRequests: [] },
+      id: 'abc', timestamp: '2024-01-01T00:00:00.000Z', parentId: null,
+    });
+    const result = parseJsonlLine(line, 'session-1', 2);
+    expect(result?.content).toBe('Here is my answer');
+    expect(result?.role).toBe('assistant');
+  });
+
+  it('should extract toolName from tool.execution_start data.toolName', () => {
+    const line = JSON.stringify({
+      type: 'tool.execution_start',
+      data: { toolCallId: 'tc-1', toolName: 'bash', arguments: { command: 'ls -la' } },
+      id: 'abc', timestamp: '2024-01-01T00:00:00.000Z', parentId: null,
+    });
+    const result = parseJsonlLine(line, 'session-1', 3);
+    expect(result?.toolName).toBe('bash');
+    expect(result?.content).toBe('ls -la');
+  });
+
+  it('should extract result.content from tool.execution_complete', () => {
+    const line = JSON.stringify({
+      type: 'tool.execution_complete',
+      data: { toolCallId: 'tc-1', model: 'gpt-4o', success: true, result: { content: 'Intent logged', detailedContent: 'Exploring codebase' } },
+      id: 'abc', timestamp: '2024-01-01T00:00:00.000Z', parentId: null,
+    });
+    const result = parseJsonlLine(line, 'session-1', 4);
+    expect(result?.content).toBe('Intent logged');
+    expect(result?.type).toBe('tool_result');
+  });
+
+  it('should not show raw JSON for real Copilot CLI events', () => {
+    const line = JSON.stringify({
+      type: 'user.message',
+      data: { content: 'my prompt', transformedContent: 'expanded', attachments: [] },
+      id: 'evt-1', timestamp: '2024-01-01T00:00:00.000Z', parentId: null,
+    });
+    const result = parseJsonlLine(line, 'session-1', 5);
+    expect(result?.content).not.toContain('"type"');
+    expect(result?.content).not.toContain('"id"');
+    expect(result?.content).not.toContain('"parentId"');
+    expect(result?.content).toBe('my prompt');
+  });
+});
+
 // T086 regression tests — model extraction from Copilot CLI events
 describe('parseModelFromEvent', () => {
   it('should extract model from assistant.message event', () => {
@@ -168,6 +228,15 @@ describe('parseModelFromEvent', () => {
       model: 42,
     });
     expect(parseModelFromEvent(line)).toBeNull();
+  });
+
+  it('should extract model from tool.execution_complete data.model', () => {
+    const line = JSON.stringify({
+      type: 'tool.execution_complete',
+      data: { toolCallId: 'tc-1', model: 'claude-sonnet-4.6', success: true, result: { content: 'done' } },
+      id: 'abc', timestamp: '2024-01-01T00:00:00.000Z', parentId: null,
+    });
+    expect(parseModelFromEvent(line)).toBe('claude-sonnet-4.6');
   });
 
   it('should return null for empty line', () => {
