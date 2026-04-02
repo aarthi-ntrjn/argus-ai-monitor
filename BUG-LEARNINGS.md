@@ -145,3 +145,12 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 **Why it was missed**: T090 was written to fix the immediate `ended` regression without consulting how "resting" is displayed in the frontend. The `idle` status already existed in `SessionStatus` as an unused bucket, which made it easy to reach for without questioning whether it was the right abstraction.
 **How to prevent**: Before adding a new status value, check how the frontend renders existing statuses. `isInactive()` is the single source of truth for "resting" display — any backend-driven intermediate state that duplicates it is wrong. New statuses should only be added when they require distinct frontend rendering that time-based logic cannot provide.
 **Fix summary**: `claude-code-detector.ts` — removed `if (hook_event_name === 'Stop')` branch; all hooks now set `status: 'active'` and update `lastActivityAt`. `session-monitor.ts` — removed `idle` from reconciliation queries.
+
+## T093  Preview strip lost dark theme after T108 refactor
+
+**Date**: 2026-04-02
+**Symptom**: Session card preview strips appeared light grey (bg-gray-100) instead of the expected dark code-output style, looking washed out and inconsistent with the rest of the UI's dark output aesthetic.
+**Root cause**: T108 changed `bg-gray-900 text-gray-300`  `bg-gray-100 text-gray-600` to "fix inconsistency," but the actual inconsistency was the shade label, not dark-vs-light intent. The user's desire was always a dark code-preview strip; the fix went in the wrong direction.
+**Why it was missed**: The refactor task T108 was implemented based on a misinterpretation of "different gray colors"  assumed the user wanted lighter/consistent grays, when they actually wanted the dark style kept but applied uniformly.
+**How to prevent**: When a user says "make consistent," clarify whether they mean consistent with the light card theme or consistent dark. Do not change darklight without explicit confirmation.
+**Fix summary**: Reverted `SessionCard.tsx` preview `<p>` classes back to `bg-gray-900 text-gray-300`.
