@@ -100,15 +100,15 @@ When a browser connects to the Argus frontend, HTTP responses include standard s
 
 **Process Control Safety**
 
-- **FR-001**: The system MUST validate that a session's PID belongs to a running Claude Code or Copilot CLI process before executing any stop, interrupt, or signal operation.
+- **FR-001**: The system MUST validate that a session's PID belongs to a running Claude Code or Copilot CLI process before executing any stop, interrupt, or signal operation. Validation MUST apply two checks in order: (1) the PID is present in the internal session registry (set via internal session-creation flow, never from hook input), and (2) the OS-reported executable name for that PID matches a known-safe allowlist (e.g., `claude.exe`, `gh.exe` on Windows; `claude`, `gh` on Unix). Both checks must pass.
 - **FR-002**: The system MUST NOT construct OS shell commands by interpolating PID or session data into strings; all process signals MUST use native OS APIs with typed numeric arguments.
-- **FR-003**: The system MUST reject stop/interrupt requests where the stored PID cannot be verified as belonging to a monitored AI process.
-- **FR-004**: The system MUST NOT allow a hook payload to overwrite the `pid` of an already-active session with a different value.
+- **FR-003**: The system MUST reject stop/interrupt requests where the stored PID fails either the registry check or the OS executable name check.
+- **FR-004**: The system MUST NOT allow a hook payload to overwrite the `pid` of an already-active session with a different value. If a hook payload arrives for an existing `session_id` with a conflicting `pid`, the server MUST return 409 and leave the existing session unchanged.
 
 **Hook Endpoint Validation**
 
 - **FR-005**: The system MUST enforce a maximum request body size on the `/hooks/claude` endpoint and return 400 for oversized payloads.
-- **FR-006**: The system MUST validate that `session_id` in hook payloads contains only characters valid for use as a file path segment before constructing any file path from it.
+- **FR-006**: The system MUST validate that `session_id` in hook payloads matches the UUID format (`[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}`, exactly 36 characters) before constructing any file path from it. Both Claude Code and Copilot CLI use UUIDs for session identifiers.
 - **FR-007**: The system MUST only start a file watcher for a `cwd` path that matches a registered repository — unrecognized `cwd` values MUST NOT trigger any filesystem activity.
 
 **Filesystem Route Safety**
@@ -146,3 +146,11 @@ When a browser connects to the Argus frontend, HTTP responses include standard s
 - Rate limiting is out of scope — the localhost constraint is the accepted primary DoS mitigation.
 - Claude Code's JSONL files on disk are considered trusted input (written by Claude Code itself, not by users).
 - WebSocket broadcast authentication (filtering events per client) is out of scope for this review given the localhost constraint.
+
+## Clarifications
+
+### Session 2026-04-02
+
+- Q: How should the system verify a PID belongs to a Claude Code or Copilot process? → A: Both checks required — registry membership first, then OS executable name match against a known allowlist.
+- Q: What is the valid character set for `session_id` in hook payloads? → A: UUID format only (`[a-f0-9-]{36}`). Confirmed from real Copilot CLI session data — both tools use UUIDs.
+- Q: When two hook payloads arrive with the same `session_id` but different `pid` values, which wins? → A: First write wins; subsequent conflicting payloads return 409 and the existing session is unchanged.
