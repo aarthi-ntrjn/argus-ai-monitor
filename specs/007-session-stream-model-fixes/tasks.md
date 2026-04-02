@@ -18,7 +18,7 @@
 
 **Purpose**: Confirm the working baseline before any changes.
 
-- [ ] T001 Verify branch is `007-session-stream-model-fixes` and run `cd backend && npm test` — confirm all existing tests pass (green baseline)
+- [X] T001 Verify branch is `007-session-stream-model-fixes` and run `cd backend && npm test` — confirm all existing tests pass (green baseline)
 
 ---
 
@@ -28,9 +28,9 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T002 [P] Add `model: string | null` to `Session` interface and add `OutputRole = 'user' | 'assistant'` type + `role: OutputRole | null` field to `SessionOutput` interface in `backend/src/models/index.ts`; export `OutputRole`
-- [ ] T003 [P] Mirror T002 changes in `frontend/src/types.ts` — add `model: string | null` to `Session`, add `OutputRole` type, add `role: OutputRole | null` to `SessionOutput`
-- [ ] T004 Add DB schema migration in `backend/src/db/schema.ts` — add `model TEXT` to the sessions CREATE TABLE and `role TEXT` to the session_output CREATE TABLE; add runtime migration in `backend/src/db/database.ts` `getDb()` after `db.exec(SCHEMA_SQL)` using `PRAGMA table_info` checks to `ALTER TABLE sessions ADD COLUMN model TEXT` and `ALTER TABLE session_output ADD COLUMN role TEXT` for existing databases; update `getSessions` and `getSession` SELECT to include `, model`; update `upsertSession` INSERT column list and ON CONFLICT SET clause to include `model = excluded.model`; update `getOutputForSession` SELECT to include `, role`; update `insertOutput` INSERT column list to include `role` and bind `output.role`
+- [X] T002 [P] Add `model: string | null` to `Session` interface and add `OutputRole = 'user' | 'assistant'` type + `role: OutputRole | null` field to `SessionOutput` interface in `backend/src/models/index.ts`; export `OutputRole`
+- [X] T003 [P] Mirror T002 changes in `frontend/src/types.ts` — add `model: string | null` to `Session`, add `OutputRole` type, add `role: OutputRole | null` to `SessionOutput`
+- [X] T004 Add DB schema migration in `backend/src/db/schema.ts` — add `model TEXT` to the sessions CREATE TABLE and `role TEXT` to the session_output CREATE TABLE; add runtime migration in `backend/src/db/database.ts` `getDb()` after `db.exec(SCHEMA_SQL)` using `PRAGMA table_info` checks to `ALTER TABLE sessions ADD COLUMN model TEXT` and `ALTER TABLE session_output ADD COLUMN role TEXT` for existing databases; update `getSessions` and `getSession` SELECT to include `, model`; update `upsertSession` INSERT column list and ON CONFLICT SET clause to include `model = excluded.model`; update `getOutputForSession` SELECT to include `, role`; update `insertOutput` INSERT column list to include `role` and bind `output.role`
 
 **Checkpoint**: `cd frontend && npm run build` must succeed (all types resolve). `cd backend && npm test` must still pass (schema migration is backward-compatible).
 
@@ -42,13 +42,10 @@
 
 **Independent Test**: Run Claude Code in a monitored repo, send a message, open Argus dashboard → output pane shows the message. Described in `quickstart.md` § "Manual Testing: Claude Code Output Stream".
 
-- [ ] T005 [P] [US1] Write failing unit tests for new `backend/src/services/claude-code-jsonl-parser.ts` in `backend/tests/unit/claude-code-jsonl-parser.test.ts` — cover: (a) `file-history-snapshot` entries are skipped; (b) `user` entry with plain string content → `SessionOutput` with `type:'message'`, `role:'user'`; (c) `user` entry with `text` content block → `type:'message'`, `role:'user'`; (d) `user` entry with `tool_result` content block → `type:'tool_result'`, `role:null`, `toolName` set to `tool_use_id`; (e) `assistant` entry with text block → `type:'message'`, `role:'assistant'`; (f) `assistant` entry with `tool_use` block → `type:'tool_use'`, `role:null`, `toolName:block.name`, `content:JSON.stringify(block.input)`; (g) mixed entry with both text + tool_use blocks emits two `SessionOutput` items; (h) malformed/partial JSON line returns empty array; (i) `parseModel()` returns `message.model` from first assistant entry, null otherwise — tests must fail (red) before implementation
-
-- [ ] T006 [US1] Create `backend/src/services/claude-code-jsonl-parser.ts` — export `parseClaudeJsonlLine(line: string, sessionId: string, sequenceNumber: number): SessionOutput[]` (returns array because one JSONL entry can yield multiple output items for mixed-content assistant messages); export `parseModel(line: string): string | null` returning `entry.message.model` when `entry.type === 'assistant'`; skip entries where `type === 'file-history-snapshot'`; handle `isSidechain` entries the same as root entries (subagent activity is real activity); parse `content` as string or array of content blocks per data-model.md mapping table; catch all JSON.parse errors and return `[]`
-
-- [ ] T007 [US1] Update `ClaudeCodeDetector.handleHookPayload()` in `backend/src/services/claude-code-detector.ts` — after `upsertSession()` on a `SessionStart` or new session creation, resolve the JSONL file path as `join(homedir(), '.claude', 'projects', claudeProjectDirName(repo.path), session_id + '.jsonl')`; if the file exists, load and parse all existing lines via `parseClaudeJsonlLine()` and call `this.outputStore.insertOutput()` with each result; then start a chokidar file watcher (same pattern as `CopilotCliDetector.watchEventsFile()`) that reads new lines on `change` events; track file positions per sessionId in a private `Map`; when the first assistant entry is parsed, call `upsertSession({ ...session, model: parsedModel })` to persist the model; also add `private outputStore = new OutputStore()` field to `ClaudeCodeDetector` and import `OutputStore`
-
-- [ ] T008 [US1] Add `stopWatchers()` method to `ClaudeCodeDetector` in `backend/src/services/claude-code-detector.ts` (matches pattern from `CopilotCliDetector`) — close all chokidar watchers on shutdown; call `stopWatchers()` in the backend's server shutdown handler (wherever `CopilotCliDetector.stopWatchers()` is already called)
+- [X] T005 [P] [US1] Write failing unit tests for new `backend/src/services/claude-code-jsonl-parser.ts`
+- [X] T006 [US1] Create `backend/src/services/claude-code-jsonl-parser.ts`
+- [X] T007 [US1] Update `ClaudeCodeDetector.handleHookPayload()` with JSONL watcher
+- [X] T008 [US1] Add `stopWatchers()` method to `ClaudeCodeDetector`
 
 **Checkpoint**: Claude Code session output pane shows conversation history. Model badge visible (may be null until first assistant message).
 
@@ -139,6 +136,31 @@
 - [ ] T090 Run `cd frontend && npm run build` — confirm 0 TypeScript errors and build succeeds
 
 ---
+
+### Addendum: T091–T093 — Markdown rendering in output stream
+
+**Goal**: Render `message` type output items as formatted Markdown instead of plain text. Code blocks, inline code, lists, headers, bold/italic, and links should all render correctly. Non-message items (tool_use, tool_result, status_change, error) continue to render as plain monospace text. Styling must work in both light and dark modes.
+
+- [ ] T091 Install `react-markdown` and `remark-gfm` into the frontend: run `npm install react-markdown remark-gfm` in the `frontend/` directory; verify both packages appear in `frontend/package.json` dependencies.
+
+- [ ] T092 [US3] Update `frontend/src/components/SessionDetail/SessionDetail.tsx` to render message content as Markdown:
+  - Import `ReactMarkdown` from `'react-markdown'` and `remarkGfm` from `'remark-gfm'`
+  - Replace the plain `<span>` for content in Column 2 with a conditional: when `item.type === 'message'`, render `<ReactMarkdown remarkPlugins={[remarkGfm]} components={{...}}>` with Tailwind-styled `components` prop; for all other types keep the existing `<span className="min-w-0 break-words whitespace-pre-wrap ...">` unchanged
+  - Apply `components` prop to style rendered Markdown elements with Tailwind classes:
+    - `p` → `className="mb-1 last:mb-0"`
+    - `code` (inline, no `node.data?.meta`) → `className="bg-gray-100 dark:bg-gray-800 px-1 rounded text-xs font-mono"` (pass `dark` prop into closure)
+    - `pre` → `className="bg-gray-100 rounded text-xs overflow-x-auto my-1 p-2"` (dark: `bg-gray-800`)
+    - `ul` → `className="list-disc list-inside ml-2 space-y-0.5 mb-1"`
+    - `ol` → `className="list-decimal list-inside ml-2 space-y-0.5 mb-1"`
+    - `li` → `className="text-sm"`
+    - `a` → `className="text-blue-500 underline"` with `target="_blank" rel="noopener"`
+    - `strong` → `className="font-semibold"`
+    - `h1`–`h3` → `className="font-semibold text-sm mt-1 mb-0.5"`
+    - `blockquote` → `className="border-l-2 border-gray-300 pl-2 text-gray-500 italic"`
+  - Wrap the ReactMarkdown in `<div className="min-w-0 prose-none text-sm">` (using `prose-none` to prevent Tailwind Typography conflicts if the plugin is added later)
+  - The `dark` prop is already available in the render scope — use it in the `components` closures to swap `bg-gray-100` for `bg-gray-700` etc.
+
+- [ ] T093 Run `cd frontend && npm run build` — confirm 0 TypeScript errors and build succeeds; also confirm `cd backend && npm test` still passes (no backend regressions)
 
 ## Dependencies & Execution Order
 
