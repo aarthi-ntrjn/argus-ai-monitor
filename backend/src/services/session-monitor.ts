@@ -1,8 +1,11 @@
 import { EventEmitter } from 'events';
+import { existsSync, statSync } from 'fs';
+import { join } from 'path';
+import { homedir } from 'os';
 import psList from 'ps-list';
 import { RepositoryScanner } from './repository-scanner.js';
 import { CopilotCliDetector } from './copilot-cli-detector.js';
-import { ClaudeCodeDetector } from './claude-code-detector.js';
+import { ClaudeCodeDetector, ACTIVE_JSONL_THRESHOLD_MS } from './claude-code-detector.js';
 import { loadConfig } from '../config/config-loader.js';
 import { getSessions, updateSessionStatus, getRepositories, updateRepositoryBranch } from '../db/database.js';
 import { getCurrentBranch } from './repository-scanner.js';
@@ -62,15 +65,33 @@ export class SessionMonitor extends EventEmitter {
 
       const processes = await psList();
       const runningPids = new Set(processes.map((p) => p.pid));
-      const claudeRunning = processes.some(p =>
-        p.name.toLowerCase().includes('claude') || p.cmd?.toLowerCase().includes('claude')
-      );
+      const repos = getRepositories();
       const now = new Date().toISOString();
 
       for (const session of liveSessions) {
-        const shouldEnd =
-          (session.pid != null && !runningPids.has(session.pid)) ||
-          (session.pid == null && !claudeRunning);
+        let shouldEnd = false;
+        if (session.pid != null) {
+          shouldEnd = !runningPids.has(session.pid);
+        } else {
+          // For null-PID sessions, check JSONL file freshness rather than a global "is claude running"
+          // guard — that guard fails when another Claude session is active.
+          const repo = repos.find(r => r.id === session.repositoryId);
+          if (!repo) {
+            shouldEnd = true;
+          } else {
+            const jsonlPath = join(
+              homedir(), '.claude', 'projects',
+              ClaudeCodeDetector.projectDirName(repo.path),
+              `${session.id}.jsonl`
+            );
+            try {
+              const mtime = statSync(jsonlPath).mtime.getTime();
+              shouldEnd = Date.now() - mtime > ACTIVE_JSONL_THRESHOLD_MS;
+            } catch {
+              shouldEnd = true; // file missing
+            }
+          }
+        }
         if (shouldEnd) {
           updateSessionStatus(session.id, 'ended', now);
           const endedSession: Session = { ...session, status: 'ended', endedAt: now };

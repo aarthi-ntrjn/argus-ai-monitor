@@ -28,7 +28,7 @@ interface HookPayload {
   [key: string]: unknown;
 }
 
-const ACTIVE_JSONL_THRESHOLD_MS = 30 * 60 * 1000;
+export const ACTIVE_JSONL_THRESHOLD_MS = 30 * 60 * 1000;
 
 export class ClaudeCodeDetector {
   private outputStore = new OutputStore();
@@ -93,8 +93,12 @@ export class ClaudeCodeDetector {
   // Claude names project dirs by replacing path separators (:, \, /) with hyphens.
   // e.g. C:\source\argus → C--source-argus
   // Encoding forward is deterministic; decoding back is lossy (hyphens in names are ambiguous).
-  private claudeProjectDirName(repoPath: string): string {
+  static projectDirName(repoPath: string): string {
     return repoPath.replace(/[:\\/]/g, '-');
+  }
+
+  private claudeProjectDirName(repoPath: string): string {
+    return ClaudeCodeDetector.projectDirName(repoPath);
   }
 
   async scanExistingSessions(): Promise<void> {
