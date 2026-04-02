@@ -116,6 +116,13 @@ test.describe('SC-006: Session Detail UX', () => {
     await expect(page.getByPlaceholder(/send a prompt/i).first()).toBeVisible();
   });
 
+  test('US3: copilot-cli card also shows prompt input field', async ({ page }) => {
+    await mockApis(page);
+    await page.goto('/');
+    await expect(page.getByText('Another session')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByPlaceholder(/send a prompt/i).nth(1)).toBeVisible();
+  });
+
   // ─── US4: Last Output Preview ───────────────────────────────────────────────
 
   test('US4: session card shows truncated last output line', async ({ page }) => {

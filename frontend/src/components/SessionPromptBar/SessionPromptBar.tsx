@@ -31,8 +31,6 @@ export default function SessionPromptBar({ session }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const isClaudeCode = session.type === 'claude-code';
-
   // Close dropdown when clicking outside
   useEffect(() => {
     if (!menuOpen) return;
@@ -112,30 +110,26 @@ export default function SessionPromptBar({ session }: Props) {
   return (
     <div className="mt-2">
       <div className="flex gap-1 items-center">
-        {/* Prompt input — claude-code only */}
-        {isClaudeCode && (
-          <input
-            ref={inputRef}
-            type="text"
-            value={prompt}
-            onChange={e => setPrompt(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Send a prompt…"
-            disabled={sending}
-            className="flex-1 text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50"
-          />
-        )}
+        {/* Prompt input */}
+        <input
+          ref={inputRef}
+          type="text"
+          value={prompt}
+          onChange={e => setPrompt(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Send a prompt…"
+          disabled={sending}
+          className="flex-1 text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50"
+        />
 
-        {/* Send button — claude-code only */}
-        {isClaudeCode && (
-          <button
-            onClick={handleSend}
-            disabled={sending || !prompt.trim()}
-            className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40 transition-colors"
-          >
-            {sending ? '…' : 'Send'}
-          </button>
-        )}
+        {/* Send button */}
+        <button
+          onClick={handleSend}
+          disabled={sending || !prompt.trim()}
+          className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40 transition-colors"
+        >
+          {sending ? '…' : 'Send'}
+        </button>
 
         {/* ⋮ Actions dropdown */}
         <div className="relative" ref={menuRef}>
