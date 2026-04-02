@@ -203,6 +203,33 @@
 
 ---
 
+## Phase 13: Bug Fix — Claude Session Short ID Shows Prefix Instead of UUID
+
+**Problem**: Claude Code session IDs take the form `claude-startup-8c20d263-780c-4a6d-9726-fdc12d17c0cf-1775067221187`. Both `SessionCard` and the `SessionPage` badge use `.slice(0, 8)` which blindly returns `claude-s` — the non-unique text prefix — instead of the meaningful UUID hex segment `8c20d263`.
+
+**Root cause**: The 8-character slice assumes IDs start with hex characters (e.g. a raw UUID), but Claude session IDs have a human-readable prefix before the UUID portion.
+
+**Fix**: Replace the raw `.slice(0, 8)` with a helper that extracts the first UUID-format hex segment using the regex `/[0-9a-f]{8}-[0-9a-f]{4}/`, returning its first 8 characters (e.g. `8c20d263`). Fall back to `.slice(0, 8)` for unknown formats.
+
+- [ ] T151 [US10] Add a `claudeShortId(id: string): string` helper at the top of `frontend/src/components/SessionCard/SessionCard.tsx`; the function uses `id.match(/[0-9a-f]{8}-[0-9a-f]{4}/)?.[0].slice(0, 8) ?? id.slice(0, 8)` to extract the first UUID hex segment; apply it to the `ID:` badge span replacing `session.id.slice(0, 8)` with `claudeShortId(session.id)`
+- [ ] T152 [P] [US10] Apply the same `claudeShortId` fix to the short-ID badge in `frontend/src/pages/SessionPage.tsx` (the `ID: {session.id.slice(0, 8)}` span around line 100); import or inline the helper
+- [ ] T153 Verify `cd frontend && npm run build` passes — 0 TypeScript errors
+
+---
+
+## Phase 14: Bug Fix — Details Page Missing Esc / Exit / Merge / Pull Commands
+
+**Problem**: The `SessionPage` (details/drill-in page) renders a `ControlPanel` component that only provides Stop Session (SIGTERM) and a Send Prompt textarea. The Esc (interrupt), Exit, Merge, and Pull latest commands available on the dashboard cards via `SessionPromptBar` are entirely absent.
+
+**Fix**: Replace the `ControlPanel` component in `SessionPage` with `SessionPromptBar`. `SessionPromptBar` already contains the full prompt input, Send button, and `⋮` dropdown with all four commands (Esc, Exit, Merge, Pull). The Stop Session capability can be retained as a separate destructive action below the prompt bar.
+
+**Independent Test**: Navigate to `/sessions/:id` for an active session — the Controls section shows the prompt input + Send button + `⋮` menu; opening the menu shows Esc, Exit, Merge, Pull latest.
+
+- [ ] T154 [US11] Update `frontend/src/pages/SessionPage.tsx`: remove the `ControlPanel` import and its enclosing "Controls" card; add `import SessionPromptBar from '../components/SessionPromptBar/SessionPromptBar'`; replace the controls card with a new card titled "Controls" that renders `<SessionPromptBar session={session} />` followed by a "Stop Session" button (calls `stopMutation.mutateAsync()` with a confirm dialog, disabled when session is ended); remove the now-unused `stopMutation`, `sendMutation`, `sendPrompt`, `stopSession`, `useMutation` imports if no longer needed
+- [ ] T155 Verify `cd frontend && npm run build` passes — 0 TypeScript errors
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

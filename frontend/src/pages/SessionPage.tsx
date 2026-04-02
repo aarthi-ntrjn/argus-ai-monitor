@@ -1,8 +1,9 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { getSession, getSessionOutput, stopSession, sendPrompt, queryClient } from '../services/api';
+import { getSession, getSessionOutput, stopSession, queryClient } from '../services/api';
 import SessionDetail from '../components/SessionDetail/SessionDetail';
-import ControlPanel from '../components/ControlPanel/ControlPanel';
+import SessionPromptBar from '../components/SessionPromptBar/SessionPromptBar';
 import SessionTypeIcon from '../components/SessionTypeIcon/SessionTypeIcon';
 
 function getElapsed(startedAt: string, endedAt: string | null): string {
@@ -13,6 +14,10 @@ function getElapsed(startedAt: string, endedAt: string | null): string {
   const m = Math.floor(s / 60);
   if (m < 60) return `${m}m`;
   return `${Math.floor(m / 60)}h ${m % 60}m`;
+}
+
+function claudeShortId(id: string): string {
+  return id.match(/[0-9a-f]{8}-[0-9a-f]{4}/)?.[0].slice(0, 8) ?? id.slice(0, 8);
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -50,10 +55,14 @@ export default function SessionPage() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['session', id] }); },
   });
 
-  const sendMutation = useMutation({
-    mutationFn: (prompt: string) => sendPrompt(id!, prompt),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['session', id] }); },
-  });
+  const [stopError, setStopError] = useState<string | null>(null);
+
+  const handleStop = async () => {
+    if (!window.confirm('Stop this session? This sends SIGTERM to the process.')) return;
+    setStopError(null);
+    try { await stopMutation.mutateAsync(); }
+    catch (err) { setStopError(err instanceof Error ? err.message : 'Failed to stop'); }
+  };
 
   if (sessionLoading) {
     return (
@@ -97,7 +106,7 @@ export default function SessionPage() {
               <span className="text-sm text-gray-500">PID: {session.pid}</span>
             )}
             {!session.pid && session.type === 'claude-code' && (
-              <span className="text-sm text-gray-500 font-mono">ID: {session.id.slice(0, 8)}</span>
+              <span className="text-sm text-gray-500 font-mono">ID: {claudeShortId(session.id)}</span>
             )}
             <span className="text-sm text-gray-500">
               Duration: {getElapsed(session.startedAt, session.endedAt)}
@@ -109,15 +118,22 @@ export default function SessionPage() {
           <p className="text-xs text-gray-400 mt-1">ID: {session.id}</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow mb-6">
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Controls</h2>
-          </div>
-          <ControlPanel
-            session={session}
-            onStop={async () => { await stopMutation.mutateAsync(); }}
-            onSendPrompt={async (prompt) => { await sendMutation.mutateAsync(prompt); }}
-          />
+        <div className="bg-white rounded-lg shadow p-4 mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Controls</h2>
+          <SessionPromptBar session={session} />
+          {session.status !== 'ended' && session.status !== 'completed' && (
+            <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-3">
+              <button
+                onClick={handleStop}
+                disabled={stopMutation.isPending}
+                className="text-xs px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                {stopMutation.isPending ? 'Stopping…' : 'Stop Session'}
+              </button>
+              <span className="text-xs text-gray-400">Sends SIGTERM to the process</span>
+              {stopError && <span className="text-xs text-red-500">{stopError}</span>}
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-lg shadow">

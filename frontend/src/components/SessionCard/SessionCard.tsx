@@ -34,6 +34,12 @@ function getElapsed(startedAt: string): string {
   return `${Math.floor(m / 60)}h ${m % 60}m`;
 }
 
+// Claude session IDs are prefixed (e.g. 'claude-startup-8c20d263-780c-…').
+// Extract the first UUID hex segment to get a meaningful short identifier.
+function claudeShortId(id: string): string {
+  return id.match(/[0-9a-f]{8}-[0-9a-f]{4}/)?.[0].slice(0, 8) ?? id.slice(0, 8);
+}
+
 export default function SessionCard({ session, selected, onSelect }: Props) {
   const { data: lastOutput } = useQuery({
     queryKey: ['session-output-last', session.id],
@@ -60,7 +66,7 @@ export default function SessionCard({ session, selected, onSelect }: Props) {
           </span>
           {session.pid && <span className="text-xs text-gray-400">PID: {session.pid}</span>}
           {!session.pid && session.type === 'claude-code' && (
-            <span className="text-xs text-gray-400 font-mono">ID: {session.id.slice(0, 8)}</span>
+            <span className="text-xs text-gray-400 font-mono">ID: {claudeShortId(session.id)}</span>
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
