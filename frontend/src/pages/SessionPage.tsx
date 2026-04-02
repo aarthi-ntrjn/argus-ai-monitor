@@ -94,6 +94,9 @@ export default function SessionPage() {
             {session.pid && (
               <span className="text-sm text-gray-500">PID: {session.pid}</span>
             )}
+            {!session.pid && session.type === 'claude-code' && (
+              <span className="text-sm text-gray-500 font-mono">ID: {session.id.slice(0, 8)}</span>
+            )}
             <span className="text-sm text-gray-500">
               Duration: {getElapsed(session.startedAt, session.endedAt)}
             </span>

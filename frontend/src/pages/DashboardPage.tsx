@@ -5,6 +5,7 @@ import type { Repository, Session } from '../types';
 import { useSettings } from '../hooks/useSettings';
 import { SettingsPanel } from '../components/SettingsPanel';
 import SessionCard from '../components/SessionCard/SessionCard';
+import OutputPane from '../components/OutputPane/OutputPane';
 
 interface RepoWithSessions extends Repository {
   sessions: Session[];
@@ -22,6 +23,7 @@ export default function DashboardPage() {
   const [removing, setRemoving] = useState(false);
   const [skipConfirm, setSkipConfirm] = useState(() => localStorage.getItem(SKIP_REMOVE_CONFIRM_KEY) === 'true');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
 
   const [settings, updateSetting] = useSettings();
@@ -132,7 +134,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto">
+      <div className={`mx-auto ${selectedSessionId ? 'max-w-7xl' : 'max-w-4xl'}`}>
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Argus Dashboard</h1>
           <div className="flex items-center gap-2">
@@ -195,49 +197,70 @@ export default function DashboardPage() {
             )}
           </div>
         ) : (
-          <div className="space-y-6">
-            {reposWithSessions.map((repo) => (
-              <div key={repo.id} className="bg-white rounded-lg shadow p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-900">{repo.name}</h2>
-                    <p className="text-sm text-gray-500 mt-1">{repo.path}</p>
+          <div className={`flex gap-6 ${selectedSessionId ? 'items-start' : ''}`}>
+            {/* Repo/session list */}
+            <div className={`space-y-6 ${selectedSessionId ? 'flex-1 min-w-0' : 'w-full'}`}>
+              {reposWithSessions.map((repo) => (
+                <div key={repo.id} className="bg-white rounded-lg shadow p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h2 className="text-xl font-semibold text-gray-900">{repo.name}</h2>
+                      <p className="text-sm text-gray-500 mt-1">{repo.path}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded">
+                        {repo.sessions.length} session{repo.sessions.length !== 1 ? 's' : ''}
+                      </span>
+          <button
+                        onClick={() => {
+                          if (skipConfirm) {
+                            setRemoveConfirmId(repo.id);
+                            handleRemoveRepoById(repo.id);
+                          } else {
+                            setRemoveConfirmId(repo.id);
+                          }
+                        }}
+                        title="Remove repository"
+                        className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded">
-                      {repo.sessions.length} session{repo.sessions.length !== 1 ? 's' : ''}
-                    </span>
-    <button
-                      onClick={() => {
-                        if (skipConfirm) {
-                          setRemoveConfirmId(repo.id);
-                          handleRemoveRepoById(repo.id);
-                        } else {
-                          setRemoveConfirmId(repo.id);
-                        }
-                      }}
-                      title="Remove repository"
-                      className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </div>
+                  {repo.sessions.length === 0 ? (
+                    <p className="text-gray-400 text-sm">
+                      {settings.hideEndedSessions ? 'No active sessions' : 'No sessions'}
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {repo.sessions.map((session) => (
+                        <SessionCard
+                          key={session.id}
+                          session={session}
+                          selected={selectedSessionId === session.id}
+                          onSelect={id => setSelectedSessionId(prev => prev === id ? null : id)}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
-                {repo.sessions.length === 0 ? (
-                  <p className="text-gray-400 text-sm">
-                    {settings.hideEndedSessions ? 'No active sessions' : 'No sessions'}
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {repo.sessions.map((session) => (
-                      <SessionCard key={session.id} session={session} />
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+              ))}
+            </div>
+
+            {/* Output pane */}
+            {selectedSessionId && (() => {
+              const selectedSession = sessions.find(s => s.id === selectedSessionId);
+              return selectedSession ? (
+                <div className="w-[480px] shrink-0 sticky top-8 h-[calc(100vh-8rem)]">
+                  <OutputPane
+                    session={selectedSession}
+                    onClose={() => setSelectedSessionId(null)}
+                  />
+                </div>
+              ) : null;
+            })()}
           </div>
         )}
       </div>

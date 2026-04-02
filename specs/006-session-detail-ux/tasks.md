@@ -17,8 +17,8 @@
 
 **Purpose**: Type system updates needed by all phases
 
-- [ ] T113 Add `'interrupt'` to `ControlActionType` union in `backend/src/models/index.ts`
-- [ ] T114 Add `'interrupt'` to `ControlActionType` union in `frontend/src/types.ts`
+- [X] T113 Add `'interrupt'` to `ControlActionType` union in `backend/src/models/index.ts`
+- [X] T114 Add `'interrupt'` to `ControlActionType` union in `frontend/src/types.ts`
 
 **Checkpoint**: Type system updated — all subsequent tasks can reference the `interrupt` action type
 
@@ -38,13 +38,13 @@
 
 > **Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T115 [P] [US6] Write unit tests for PID capture in `backend/tests/unit/claude-pid.test.ts`: test that `scanExistingSessions()` sets `pid` on the session record when a matching Claude process is found in `psList`, and leaves `pid: null` when no Claude process is running
+- [X] T115 [P] [US6] Write unit tests for PID capture in `backend/tests/unit/claude-pid.test.ts`: test that `scanExistingSessions()` sets `pid` on the session record when a matching Claude process is found in `psList`, and leaves `pid: null` when no Claude process is running
 
 ### Implementation for US6
 
-- [ ] T116 [US6] Update `ClaudeCodeDetector.scanExistingSessions()` in `backend/src/services/claude-code-detector.ts` to capture the OS PID from the first matching Claude process in `psList` output and pass it to `upsertSession` / `updateSessionStatus` — store it on the session `pid` field (depends on T115 test failing first)
-- [ ] T117 [P] [US6] Update `SessionCard` in `frontend/src/components/SessionCard/SessionCard.tsx` to always display the Claude session `id` as an identifier (e.g. `ID: abc-12345`) for `claude-code` sessions, in addition to `pid` when present — replace `{session.pid && ...}` with a Claude-aware display block
-- [ ] T118 [P] [US6] Update `SessionPage` in `frontend/src/pages/SessionPage.tsx` with the same Claude session ID display logic (mirrors T117 for the drill-in page)
+- [X] T116 [US6] Update `ClaudeCodeDetector.scanExistingSessions()` in `backend/src/services/claude-code-detector.ts` to capture the OS PID from the first matching Claude process in `psList` output and pass it to `upsertSession` / `updateSessionStatus` — store it on the session `pid` field (depends on T115 test failing first)
+- [X] T117 [P] [US6] Update `SessionCard` in `frontend/src/components/SessionCard/SessionCard.tsx` to always display the Claude session `id` as an identifier (e.g. `ID: abc-12345`) for `claude-code` sessions, in addition to `pid` when present — replace `{session.pid && ...}` with a Claude-aware display block
+- [X] T118 [P] [US6] Update `SessionPage` in `frontend/src/pages/SessionPage.tsx` with the same Claude session ID display logic (mirrors T117 for the drill-in page)
 
 **Checkpoint**: Claude Code sessions now show OS PID (when detectable) and their session ID on both the card and drill-in page
 
@@ -58,12 +58,12 @@
 
 ### Tests for US1
 
-- [ ] T119 [US1] Write E2E tests for the two-pane layout in `frontend/tests/e2e/sc-006-session-ux.spec.ts`: (a) clicking a card opens right pane with output, (b) clicking a second card switches pane, (c) Escape key closes pane, (d) click outside closes pane, (e) ended session keeps output visible in pane but hides controls
+- [X] T119 [US1] Write E2E tests for the two-pane layout in `frontend/tests/e2e/sc-006-session-ux.spec.ts`: (a) clicking a card opens right pane with output, (b) clicking a second card switches pane, (c) Escape key closes pane, (d) click outside closes pane, (e) ended session keeps output visible in pane but hides controls
 
 ### Implementation for US1
 
-- [ ] T120 [US1] Create `OutputPane` component in `frontend/src/components/OutputPane/OutputPane.tsx`: accepts `sessionId: string` and `onClose: () => void` props; fetches session output using `getSessionOutput` via TanStack Query (keyed `['session-output', sessionId]`); renders the same output stream as `SessionDetail`; includes a close button (✕) and handles Escape keydown; shows session type, status, elapsed time, and process info in a header strip; scrolls to bottom on new items
-- [ ] T121 [US1] Update `DashboardPage` in `frontend/src/pages/DashboardPage.tsx`: add `selectedSessionId: string | null` state (default `null`); switch to a `flex` two-column layout when `selectedSessionId` is set — left column is the card list, right column renders `OutputPane`; clicking a card sets `selectedSessionId`; closing pane resets to `null`; on narrow viewports (< `lg`) the `OutputPane` overlays full-width
+- [X] T120 [US1] Create `OutputPane` component in `frontend/src/components/OutputPane/OutputPane.tsx`: accepts `sessionId: string` and `onClose: () => void` props; fetches session output using `getSessionOutput` via TanStack Query (keyed `['session-output', sessionId]`); renders the same output stream as `SessionDetail`; includes a close button (✕) and handles Escape keydown; shows session type, status, elapsed time, and process info in a header strip; scrolls to bottom on new items
+- [X] T121 [US1] Update `DashboardPage` in `frontend/src/pages/DashboardPage.tsx`: add `selectedSessionId: string | null` state (default `null`); switch to a `flex` two-column layout when `selectedSessionId` is set — left column is the card list, right column renders `OutputPane`; clicking a card sets `selectedSessionId`; closing pane resets to `null`; on narrow viewports (< `lg`) the `OutputPane` overlays full-width
 
 **Checkpoint**: Two-pane layout functional — users can view live session output from the dashboard without navigating away
 
@@ -77,16 +77,16 @@
 
 ### Tests for US2
 
-- [ ] T122 [P] [US2] Write contract test for interrupt endpoint in `backend/tests/contract/sessions.test.ts`: test `POST /api/v1/sessions/:id/interrupt` returns 202 with `actionId` for active session, 404 for unknown session, 409 for ended session, 501 when no PID available
+- [X] T122 [P] [US2] Write contract test for interrupt endpoint in `backend/tests/contract/sessions.test.ts`: test `POST /api/v1/sessions/:id/interrupt` returns 202 with `actionId` for active session, 404 for unknown session, 409 for ended session, 501 when no PID available
 
 ### Implementation for US2
 
-- [ ] T123 [US2] Add `interruptSession()` method to `backend/src/services/session-controller.ts`: mirrors `stopSession()` but sends SIGINT instead of SIGTERM (Unix: `process.kill(pid, 'SIGINT')`; Windows: `taskkill /PID {pid}` without `/F`); creates a `ControlAction` with `type: 'interrupt'`; if session has no PID, throws `NOT_SUPPORTED` error with code (depends on T122 failing first)
-- [ ] T124 [US2] Add `POST /api/v1/sessions/:id/interrupt` route to `backend/src/api/routes/sessions.ts`: calls `sessionController.interruptSession(id)`, returns 202 `{actionId, status}`, handles NOT_FOUND (404), CONFLICT (409), NOT_SUPPORTED (501) — all with `{ error, message, requestId: request.id }` body (§XII)
-- [ ] T125 [P] [US2] Add `interruptSession(id: string)` API helper to `frontend/src/services/api.ts`: `POST /api/v1/sessions/{id}/interrupt`, returns `ControlAction`
-- [ ] T126 [US2] Create `QuickCommands` component in `frontend/src/components/QuickCommands/QuickCommands.tsx`: accepts `session: Session`, `onInterrupt`, `onSendPrompt`, `onExitConfirm` callbacks; renders four buttons for `claude-code` sessions; tracks `exitConfirming: boolean` local state for the Exit inline confirm (`Confirm exit?` + `Yes` + `Cancel` buttons); no buttons shown for ended/completed sessions; each button is compact (icon+label) and has a disabled state while the action is in-flight
-- [ ] T127 [US2] Wire `QuickCommands` into `SessionCard` in `frontend/src/components/SessionCard/SessionCard.tsx`: pass `session`, wire `onInterrupt` to call `interruptSession()` mutation, `onSendPrompt` to call `sendPrompt()` mutation with the fixed prompt strings; show inline error below buttons on failure (§XII: plain language, no HTTP codes)
-- [ ] T128 [US2] Add E2E tests for quick commands to `frontend/tests/e2e/sc-006-session-ux.spec.ts`: (a) Esc button calls interrupt endpoint, (b) Exit requires confirm, (c) Exit cancel does nothing, (d) Merge/Pull send correct prompts, (e) no buttons on ended session
+- [X] T123 [US2] Add `interruptSession()` method to `backend/src/services/session-controller.ts`: mirrors `stopSession()` but sends SIGINT instead of SIGTERM (Unix: `process.kill(pid, 'SIGINT')`; Windows: `taskkill /PID {pid}` without `/F`); creates a `ControlAction` with `type: 'interrupt'`; if session has no PID, throws `NOT_SUPPORTED` error with code (depends on T122 failing first)
+- [X] T124 [US2] Add `POST /api/v1/sessions/:id/interrupt` route to `backend/src/api/routes/sessions.ts`: calls `sessionController.interruptSession(id)`, returns 202 `{actionId, status}`, handles NOT_FOUND (404), CONFLICT (409), NOT_SUPPORTED (501) — all with `{ error, message, requestId: request.id }` body (§XII)
+- [X] T125 [P] [US2] Add `interruptSession(id: string)` API helper to `frontend/src/services/api.ts`: `POST /api/v1/sessions/{id}/interrupt`, returns `ControlAction`
+- [X] T126 [US2] Create `QuickCommands` component in `frontend/src/components/QuickCommands/QuickCommands.tsx`: accepts `session: Session`, `onInterrupt`, `onSendPrompt`, `onExitConfirm` callbacks; renders four buttons for `claude-code` sessions; tracks `exitConfirming: boolean` local state for the Exit inline confirm (`Confirm exit?` + `Yes` + `Cancel` buttons); no buttons shown for ended/completed sessions; each button is compact (icon+label) and has a disabled state while the action is in-flight
+- [X] T127 [US2] Wire `QuickCommands` into `SessionCard` in `frontend/src/components/SessionCard/SessionCard.tsx`: pass `session`, wire `onInterrupt` to call `interruptSession()` mutation, `onSendPrompt` to call `sendPrompt()` mutation with the fixed prompt strings; show inline error below buttons on failure (§XII: plain language, no HTTP codes)
+- [X] T128 [US2] Add E2E tests for quick commands to `frontend/tests/e2e/sc-006-session-ux.spec.ts`: (a) Esc button calls interrupt endpoint, (b) Exit requires confirm, (c) Exit cancel does nothing, (d) Merge/Pull send correct prompts, (e) no buttons on ended session
 
 **Checkpoint**: All four quick commands functional from the dashboard card
 
@@ -100,12 +100,12 @@
 
 ### Tests for US3
 
-- [ ] T129 [US3] Add E2E tests for inline prompt to `frontend/tests/e2e/sc-006-session-ux.spec.ts`: (a) input visible on Claude Code card, (b) absent on Copilot CLI card, (c) absent on ended session, (d) Enter sends and clears, (e) empty input does not send, (f) error shown inline on send failure
+- [X] T129 [US3] Add E2E tests for inline prompt to `frontend/tests/e2e/sc-006-session-ux.spec.ts`: (a) input visible on Claude Code card, (b) absent on Copilot CLI card, (c) absent on ended session, (d) Enter sends and clears, (e) empty input does not send, (f) error shown inline on send failure
 
 ### Implementation for US3
 
-- [ ] T130 [US3] Create `InlinePrompt` component in `frontend/src/components/InlinePrompt/InlinePrompt.tsx`: accepts `onSend: (prompt: string) => Promise<void>` prop; renders a single-row `<input>` with a send `→` button; tracks `value`, `sending`, `error` state; pressing Enter or clicking send calls `onSend`; clears on success; shows inline error message on failure; disabled while `sending`; input is `placeholder="Send a message…"`
-- [ ] T131 [US3] Wire `InlinePrompt` into `SessionCard` in `frontend/src/components/SessionCard/SessionCard.tsx`: shown only for `claude-code` sessions that are not ended/completed; `onSend` calls `sendPrompt()` mutation; no visible change to ended session cards
+- [X] T130 [US3] Create `InlinePrompt` component in `frontend/src/components/InlinePrompt/InlinePrompt.tsx`: accepts `onSend: (prompt: string) => Promise<void>` prop; renders a single-row `<input>` with a send `→` button; tracks `value`, `sending`, `error` state; pressing Enter or clicking send calls `onSend`; clears on success; shows inline error message on failure; disabled while `sending`; input is `placeholder="Send a message…"`
+- [X] T131 [US3] Wire `InlinePrompt` into `SessionCard` in `frontend/src/components/SessionCard/SessionCard.tsx`: shown only for `claude-code` sessions that are not ended/completed; `onSend` calls `sendPrompt()` mutation; no visible change to ended session cards
 
 **Checkpoint**: Users can send custom prompts directly from any active Claude Code card
 
@@ -119,7 +119,7 @@
 
 ### Implementation for US4
 
-- [ ] T132 [US4] Update `SessionCard` in `frontend/src/components/SessionCard/SessionCard.tsx` to fetch the last output item using `getSessionOutput(session.id, { limit: 1 })` via TanStack Query (key `['session-output-last', session.id]`); display the `content` of the first item as a single truncated line using `truncate` / `line-clamp-1`; show nothing if no output yet (not a loading spinner — keep the card lightweight)
+- [X] T132 [US4] Update `SessionCard` in `frontend/src/components/SessionCard/SessionCard.tsx` to fetch the last output item using `getSessionOutput(session.id, { limit: 1 })` via TanStack Query (key `['session-output-last', session.id]`); display the `content` of the first item as a single truncated line using `truncate` / `line-clamp-1`; show nothing if no output yet (not a loading spinner — keep the card lightweight)
 
 **Checkpoint**: Glanceable output preview visible on all session cards
 
@@ -133,7 +133,7 @@
 
 ### Implementation for US5
 
-- [ ] T133 [US5] Add a drill-in link (↗ icon using `useNavigate`) to `frontend/src/components/SessionCard/SessionCard.tsx`: a small icon button in the card header (top-right corner); clicking it calls `navigate(\`/sessions/\${session.id}\`)` and stops click propagation so it doesn't also select the card for the output pane; tooltip text "Open full session view"
+- [X] T133 [US5] Add a drill-in link (↗ icon using `useNavigate`) to `frontend/src/components/SessionCard/SessionCard.tsx`: a small icon button in the card header (top-right corner); clicking it calls `navigate(\`/sessions/\${session.id}\`)` and stops click propagation so it doesn't also select the card for the output pane; tooltip text "Open full session view"
 
 **Checkpoint**: Users can access the full drill-in page from any card via a single click
 

@@ -81,4 +81,52 @@ describe('Sessions API', () => {
       expect(res.status).toBe(404);
     });
   });
+
+  describe('POST /api/v1/sessions/:id/interrupt', () => {
+    it('returns 404 for unknown session', async () => {
+      const res = await request.post('/api/v1/sessions/unknown-id/interrupt');
+      expect(res.status).toBe(404);
+      expect(res.body).toMatchObject({ error: 'NOT_FOUND' });
+    });
+
+    it('returns 409 for already-ended session', async () => {
+      const { upsertSession, insertRepository } = await import('../../src/db/database.js');
+      insertRepository({ id: 'interrupt-test-repo', path: '/tmp/interrupt-test', name: 'interrupt-test', source: 'ui', addedAt: new Date().toISOString(), lastScannedAt: null });
+      upsertSession({
+        id: 'interrupt-ended-test',
+        repositoryId: 'interrupt-test-repo',
+        type: 'claude-code',
+        pid: null,
+        status: 'ended',
+        startedAt: new Date().toISOString(),
+        endedAt: new Date().toISOString(),
+        lastActivityAt: new Date().toISOString(),
+        summary: null,
+        expiresAt: null,
+      });
+      const res = await request.post('/api/v1/sessions/interrupt-ended-test/interrupt');
+      expect(res.status).toBe(409);
+      expect(res.body).toMatchObject({ error: 'CONFLICT' });
+    });
+
+    it('returns 501 for session without PID', async () => {
+      const { upsertSession, insertRepository } = await import('../../src/db/database.js');
+      insertRepository({ id: 'interrupt-test-repo-2', path: '/tmp/interrupt-test-2', name: 'interrupt-test-2', source: 'ui', addedAt: new Date().toISOString(), lastScannedAt: null });
+      upsertSession({
+        id: 'interrupt-no-pid-test',
+        repositoryId: 'interrupt-test-repo-2',
+        type: 'claude-code',
+        pid: null,
+        status: 'active',
+        startedAt: new Date().toISOString(),
+        endedAt: null,
+        lastActivityAt: new Date().toISOString(),
+        summary: null,
+        expiresAt: null,
+      });
+      const res = await request.post('/api/v1/sessions/interrupt-no-pid-test/interrupt');
+      expect(res.status).toBe(501);
+      expect(res.body).toMatchObject({ error: 'NOT_SUPPORTED' });
+    });
+  });
 });

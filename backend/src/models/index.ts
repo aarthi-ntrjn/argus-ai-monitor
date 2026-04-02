@@ -1,6 +1,6 @@
 export type SessionType = 'copilot-cli' | 'claude-code';
 export type SessionStatus = 'active' | 'idle' | 'waiting' | 'error' | 'completed' | 'ended';
-export type ControlActionType = 'stop' | 'send_prompt';
+export type ControlActionType = 'stop' | 'send_prompt' | 'interrupt';
 export type ControlActionStatus = 'pending' | 'sent' | 'completed' | 'failed' | 'not_supported';
 export type RepositorySource = 'config' | 'ui';
 export type OutputType = 'message' | 'tool_use' | 'tool_result' | 'error' | 'status_change';

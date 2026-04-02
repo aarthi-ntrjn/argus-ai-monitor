@@ -80,6 +80,52 @@ export class SessionController {
     return action;
   }
 
+  async interruptSession(sessionId: string): Promise<ControlAction> {
+    const session = getSession(sessionId);
+    if (!session) throw Object.assign(new Error(`Session ${sessionId} not found`), { code: 'NOT_FOUND' });
+    if (session.status === 'ended' || session.status === 'completed') {
+      throw Object.assign(new Error('Session already ended'), { code: 'CONFLICT' });
+    }
+    if (!session.pid) {
+      throw Object.assign(new Error('Session has no PID — cannot send interrupt signal'), { code: 'NOT_SUPPORTED' });
+    }
+
+    const action: ControlAction = {
+      id: randomUUID(),
+      sessionId,
+      type: 'interrupt',
+      payload: null,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      completedAt: null,
+      result: null,
+    };
+    insertControlAction(action);
+    this.broadcastAction(action);
+
+    try {
+      await this.interruptProcess(session.pid);
+      const completed = { ...action, status: 'completed' as const, completedAt: new Date().toISOString() };
+      updateControlAction(action.id, 'completed', completed.completedAt, null);
+      this.broadcastAction(completed);
+      return completed;
+    } catch (err) {
+      const failed = { ...action, status: 'failed' as const, completedAt: new Date().toISOString(), result: String(err) };
+      updateControlAction(action.id, 'failed', failed.completedAt, failed.result);
+      this.broadcastAction(failed);
+      return failed;
+    }
+  }
+
+  private async interruptProcess(pid: number): Promise<void> {
+    if (process.platform === 'win32') {
+      // Windows: taskkill without /F sends Ctrl+Break (closest to SIGINT)
+      await execAsync(`taskkill /PID ${pid}`);
+    } else {
+      process.kill(pid, 'SIGINT');
+    }
+  }
+
   private async killProcess(pid: number): Promise<void> {
     if (process.platform === 'win32') {
       await execAsync(`taskkill /PID ${pid} /T /F`);
