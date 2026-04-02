@@ -238,11 +238,11 @@ Remove all modal complexity (tabs, scan folder, manual path input, FolderBrowser
 
 ### Addendum: Bug — timestamp displays in hardcoded PST instead of browser timezone
 
-- [ ] T084 Fix `formatTime` in `frontend/src/components/SessionDetail/SessionDetail.tsx`: T021 incorrectly hardcoded `timeZone: 'America/Los_Angeles'` — all users see PST regardless of their local timezone; fix by removing the explicit `timeZone` option and passing `undefined` as the locale so `toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })` uses the browser's detected local timezone automatically
+- [X] T084 Fix `formatTime` in `frontend/src/components/SessionDetail/SessionDetail.tsx`: T021 incorrectly hardcoded `timeZone: 'America/Los_Angeles'` — all users see PST regardless of their local timezone; fix by removing the explicit `timeZone` option and passing `undefined` as the locale so `toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })` uses the browser's detected local timezone automatically
 
 ### Addendum: Bug — Copilot CLI tool events show raw JSON in output stream
 
-- [ ] T085 Fix `parseJsonlLine` in `backend/src/services/events-parser.ts` line 36: when a Copilot CLI event has no `content` field (e.g. `tool.execution_start`, `tool.execution_complete`, `session.start`), the fallback `JSON.stringify(event)` dumps the entire raw event object into `content`; the frontend renders this as unreadable JSON; fix by replacing the fallback with a helper that strips fields already shown elsewhere (`type`, `timestamp`, `tool_name`, `content`) from the event, then JSON.stringifies only the remaining meaningful fields — if no remaining fields exist, use an empty string; this ensures tool parameter/result data is shown without the redundant metadata clutter
+- [X] T085 Fix `parseJsonlLine` in `backend/src/services/events-parser.ts` line 36: when a Copilot CLI event has no `content` field (e.g. `tool.execution_start`, `tool.execution_complete`, `session.start`), the fallback `JSON.stringify(event)` dumps the entire raw event object into `content`; the frontend renders this as unreadable JSON; fix by replacing the fallback with a helper that strips fields already shown elsewhere (`type`, `timestamp`, `tool_name`, `content`) from the event, then JSON.stringifies only the remaining meaningful fields — if no remaining fields exist, use an empty string; this ensures tool parameter/result data is shown without the redundant metadata clutter
 
 **Checkpoint**: All acceptance criteria met. `npm test` passes. E2E suite green.
 

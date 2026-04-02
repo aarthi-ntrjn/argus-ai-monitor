@@ -60,3 +60,25 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 - Write regression tests that cover the "deferred detection" scenario: initial load with no data to extract → incremental load containing the data → verify the field is eventually set.
 - When a feature depends on "eventually" receiving data (model in first assistant reply), test both the "data present on initial load" and "data arrives later" code paths.
 **Fix summary**: Removed the `updateModel` boolean parameter from `readNewJsonlLines`; replaced with `let needsModel = !(getSession(sessionId)?.model)` computed at call-start, so model extraction runs on every call until the model is found. Added 3 regression tests in `tests/unit/claude-code-detector-model.test.ts`.
+
+---
+
+## T084 — Output stream timestamps hardcoded to PST instead of browser timezone
+
+**Date**: 2026-04-02
+**Symptom**: All output stream timestamps showed in PST (UTC−8/−7) regardless of the user's local timezone. Non-PST users saw incorrect times.
+**Root cause**: T021 fixed a real timezone bug by adding `timeZone: 'America/Los_Angeles'` to `toLocaleTimeString()` in `SessionDetail.tsx` — but the correct fix was to omit the `timeZone` option entirely so the browser's detected local timezone is used automatically.
+**Why it was missed**: The fix was written from the perspective of a PST user. Using `undefined` as the locale (no explicit locale string) plus no `timeZone` option is the correct pattern for "use the user's browser timezone" but it's easy to conflate with "use UTC" or forget that omitting `timeZone` means local timezone.
+**How to prevent**: When formatting dates for display in a multi-timezone user context, use `toLocaleTimeString(undefined, { ... })` with NO `timeZone` key to get browser-local timezone. Only set `timeZone` explicitly when you want a specific fixed timezone for all users.
+**Fix summary**: Changed `formatTime` in `SessionDetail.tsx` to call `toLocaleTimeString(undefined, { hour, minute, second })` with no explicit `timeZone` — browser's local timezone is used automatically.
+
+---
+
+## T085 — Copilot CLI tool events show raw JSON dump in output stream
+
+**Date**: 2026-04-02
+**Symptom**: Tool invocation and tool result items in the Copilot CLI output stream displayed raw JSON strings like `{"type":"tool.execution_start","tool_name":"bash","timestamp":"...","path":"..."}` instead of readable content.
+**Root cause**: `parseJsonlLine` in `events-parser.ts` used `JSON.stringify(event)` as the fallback content when `event.content` was not a string. Tool events (`tool.execution_start`, `tool.execution_complete`, `session.start`) have no `content` field — so the entire event object, including redundant metadata fields (`type`, `timestamp`, `tool_name`) already displayed via other UI columns, was serialised into the content cell.
+**Why it was missed**: The spec said "tool name displayed prominently without raw JSON" but the frontend rendering was considered the implementation scope. The backend parser's fallback was not scrutinised — it looked reasonable for unknown events but silently broke known tool event types.
+**How to prevent**: When extracting content from a structured event, always strip metadata fields that are already surfaced through other channels before stringifying. Add a regression test for each known event type that has no `content` field to assert the rendered content is clean.
+**Fix summary**: Added `extractContent()` helper in `events-parser.ts` that strips `type`, `timestamp`, `tool_name`, and `content` from the event before stringifying remaining fields; returns empty string if nothing remains; returns the raw string value when only one string field remains.
