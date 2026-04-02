@@ -93,3 +93,12 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 **Why it was missed**: The spec said "tool name displayed prominently without raw JSON" but the frontend rendering was considered the implementation scope. The backend parser's fallback was not scrutinised — it looked reasonable for unknown events but silently broke known tool event types.
 **How to prevent**: When extracting content from a structured event, always strip metadata fields that are already surfaced through other channels before stringifying. Add a regression test for each known event type that has no `content` field to assert the rendered content is clean.
 **Fix summary**: Added `extractContent()` helper in `events-parser.ts` that strips `type`, `timestamp`, `tool_name`, and `content` from the event before stringifying remaining fields; returns empty string if nothing remains; returns the raw string value when only one string field remains.
+
+## T088  Copilot CLI events use nested data object, not flat fields
+
+**Date**: 2026-04-02
+**Symptom**: Copilot CLI output stream showed raw JSON blobs instead of readable content
+**Root cause**: Real Copilot CLI vents.jsonl lines wrap all payload inside vent.data (e.g. {"type":"user.message","data":{"content":"hello",...},...}). The parser checked for vent.content (always undefined) and fell back to JSON.stringify({data, id, parentId}). vent.tool_name was also always undefined; real field is vent.data.toolName. Model appeared in vent.data.model (on 	ool.execution_complete), not top-level.
+**Why it was missed**: Unit tests used simplified flat event objects that matched the old assumed shape, so all tests passed even though real events had a completely different structure.
+**How to prevent**: When adding a new event-source parser, always sample real on-disk event files first and write tests against those exact shapes. Never write parser tests using hand-crafted events without verifying against real data.
+**Fix summary**: vents-parser.ts  xtractContent reads vent.data.content, vent.data.arguments, vent.data.result.content; 	oolName reads vent.data.toolName; parseModelFromEvent also checks vent.data.model on 	ool.execution_complete events.
