@@ -75,7 +75,7 @@ export default function SessionDetail({ items, dark = false, className }: Props)
             </div>
             {/* Column 2: content */}
             {item.type === 'message' ? (
-              <div className={`min-w-0 prose prose-xs max-w-none break-words leading-snug ${dark ? 'prose-invert text-gray-200' : 'text-gray-800'}`}>
+              <div className={`min-w-0 max-w-none break-words leading-snug ${dark ? 'text-gray-200' : 'text-gray-800'}`}>
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   components={{
@@ -87,13 +87,13 @@ export default function SessionDetail({ items, dark = false, className }: Props)
                         : <code className={`text-xs px-1 rounded ${dark ? 'bg-gray-800 text-green-300' : 'bg-gray-100 text-gray-800'}`}>{children}</code>;
                     },
                     pre: ({ children }) => <pre className="my-1 overflow-x-auto">{children}</pre>,
-                    ul: ({ children }) => <ul className="list-disc list-inside my-0.5 space-y-0.5">{children}</ul>,
-                    ol: ({ children }) => <ol className="list-decimal list-inside my-0.5 space-y-0.5">{children}</ol>,
-                    li: ({ children }) => <li className="text-sm">{children}</li>,
-                    h1: ({ children }) => <h1 className="text-base font-bold my-1">{children}</h1>,
-                    h2: ({ children }) => <h2 className="text-sm font-bold my-1">{children}</h2>,
-                    h3: ({ children }) => <h3 className="text-sm font-semibold my-0.5">{children}</h3>,
-                    blockquote: ({ children }) => <blockquote className={`border-l-2 pl-2 my-1 ${dark ? 'border-gray-600 text-gray-400' : 'border-gray-300 text-gray-600'}`}>{children}</blockquote>,
+                    ul: ({ children }) => <ul className="list-disc list-inside my-0.5 space-y-0">{children}</ul>,
+                    ol: ({ children }) => <ol className="list-decimal list-inside my-0.5 space-y-0">{children}</ol>,
+                    li: ({ children }) => <li className="text-xs leading-snug">{children}</li>,
+                    h1: ({ children }) => <h1 className="text-xs font-bold my-0.5 uppercase tracking-wide">{children}</h1>,
+                    h2: ({ children }) => <h2 className="text-xs font-bold my-0.5">{children}</h2>,
+                    h3: ({ children }) => <h3 className="text-xs font-semibold my-0.5">{children}</h3>,
+                    blockquote: ({ children }) => <blockquote className={`border-l-2 pl-2 my-0.5 ${dark ? 'border-gray-600 text-gray-400' : 'border-gray-300 text-gray-600'}`}>{children}</blockquote>,
                     a: ({ children, href }) => <a href={href} className={`underline ${dark ? 'text-blue-400' : 'text-blue-600'}`}>{children}</a>,
                   }}
                 >
