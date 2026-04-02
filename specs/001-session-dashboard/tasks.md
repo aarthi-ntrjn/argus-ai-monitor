@@ -361,3 +361,7 @@ Each phase checkpoint delivers independently demonstrable value:
 - All versioned REST routes use the `/api/v1/` prefix; `/api/health`, `/api/metrics`, `/api/docs`, and `/hooks/claude` are unversioned
 - `frontend/src/services/socket.ts` is built incrementally across 3 phases: T016 (base) → T032 (US1 handlers) → T043 (US2 handlers). Each task MUST complete before the next begins.
 - VS Code GitHub Copilot extension detection is **out of scope for v1**; `copilot-vscode` type is reserved in constitution but not implemented. Post-v1 work item.
+
+### Addendum: Bug  Copilot CLI events use nested data object, not flat fields
+
+- [ ] T088 Fix vents-parser.ts to read content from vent.data: real Copilot CLI events nest ALL payload under vent.data (not flat top-level fields). vent.content is always undefined, causing xtractContent() to fall back to serializing data, id, parentId as raw JSON. Also vent.tool_name is always undefined (real field is vent.data.toolName). Fix: (1) Update JsonlEvent to add data?: Record<string, unknown>; (2) In xtractContent, check data.content (string) first for messages, use data.arguments for 	ool.execution_start, use data.result.content for 	ool.execution_complete; (3) Update 	oolName extraction to use vent.data?.toolName; (4) Update parseModelFromEvent to also check vent.data?.model (model appears on 	ool.execution_complete events in real CLI output)
