@@ -244,6 +244,10 @@ Remove all modal complexity (tabs, scan folder, manual path input, FolderBrowser
 
 - [X] T085 Fix `parseJsonlLine` in `backend/src/services/events-parser.ts` line 36: when a Copilot CLI event has no `content` field (e.g. `tool.execution_start`, `tool.execution_complete`, `session.start`), the fallback `JSON.stringify(event)` dumps the entire raw event object into `content`; the frontend renders this as unreadable JSON; fix by replacing the fallback with a helper that strips fields already shown elsewhere (`type`, `timestamp`, `tool_name`, `content`) from the event, then JSON.stringifies only the remaining meaningful fields — if no remaining fields exist, use an empty string; this ensures tool parameter/result data is shown without the redundant metadata clutter
 
+### Addendum: Bug — Copilot CLI sessions never show model name
+
+- [ ] T086 Fix model detection for Copilot CLI sessions — three problems: (1) `processSessionDir` in `backend/src/services/copilot-cli-detector.ts` always sets `model: null` with no attempt to read the model from events.jsonl; (2) `upsertSession` in `backend/src/db/database.ts` uses `model = excluded.model` in the ON CONFLICT clause which overwrites any previously-detected model with null on every scan cycle — fix by changing to `model = COALESCE(excluded.model, model)` so a non-null model is never clobbered; (3) `readNewLines` in `copilot-cli-detector.ts` parses output events but never extracts the model; fix by: adding `parseModelFromEvent(line: string): string | null` to `events-parser.ts` that returns `event.model` (string) when `event.type === 'assistant.message'` and the field is a string; adding an `extractModelFromEventsFile(path: string): string | null` helper in the detector that reads the file and returns the first model found via `parseModelFromEvent`; calling `extractModelFromEventsFile` in `processSessionDir` and passing the result as `model` instead of `null`; and in `readNewLines`, scanning new lines for a model and calling `upsertSession` with the found model if the session currently has none
+
 **Checkpoint**: All acceptance criteria met. `npm test` passes. E2E suite green.
 
 ---
