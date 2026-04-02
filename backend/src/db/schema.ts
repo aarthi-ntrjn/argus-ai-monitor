@@ -2,18 +2,19 @@ export const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS repositories (
   id TEXT PRIMARY KEY, path TEXT NOT NULL UNIQUE, name TEXT NOT NULL,
   source TEXT NOT NULL CHECK(source IN ('config','ui')),
-  added_at TEXT NOT NULL, last_scanned_at TEXT
+  added_at TEXT NOT NULL, last_scanned_at TEXT, branch TEXT
 );
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY, repository_id TEXT NOT NULL REFERENCES repositories(id),
   type TEXT NOT NULL CHECK(type IN ('copilot-cli','claude-code')),
   pid INTEGER, status TEXT NOT NULL, started_at TEXT NOT NULL,
-  ended_at TEXT, last_activity_at TEXT NOT NULL, summary TEXT, expires_at TEXT
+  ended_at TEXT, last_activity_at TEXT NOT NULL, summary TEXT, expires_at TEXT,
+  model TEXT
 );
 CREATE TABLE IF NOT EXISTS session_output (
   id TEXT PRIMARY KEY, session_id TEXT NOT NULL REFERENCES sessions(id),
   timestamp TEXT NOT NULL, type TEXT NOT NULL, content TEXT NOT NULL,
-  tool_name TEXT, sequence_number INTEGER NOT NULL
+  tool_name TEXT, sequence_number INTEGER NOT NULL, role TEXT
 );
 CREATE TABLE IF NOT EXISTS control_actions (
   id TEXT PRIMARY KEY, session_id TEXT NOT NULL REFERENCES sessions(id),

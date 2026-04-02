@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { Moon, Play } from 'lucide-react';
 import { getSession, getSessionOutput } from '../services/api';
 import SessionDetail from '../components/SessionDetail/SessionDetail';
 import SessionPromptBar from '../components/SessionPromptBar/SessionPromptBar';
@@ -22,6 +23,7 @@ function claudeShortId(id: string): string {
 
 const STATUS_COLORS: Record<string, string> = {
   active: 'bg-green-100 text-green-800',
+  running: 'bg-green-100 text-green-800',
   idle: 'bg-yellow-100 text-yellow-800',
   waiting: 'bg-blue-100 text-blue-800',
   error: 'bg-red-100 text-red-800',
@@ -52,7 +54,7 @@ export default function SessionPage() {
 
   if (sessionLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
+      <div className="min-h-screen bg-slate-50 p-8">
         <div className="animate-pulse">
           <div className="h-8 bg-gray-200 rounded w-1/3 mb-4" />
           <div className="h-64 bg-gray-200 rounded" />
@@ -63,7 +65,7 @@ export default function SessionPage() {
 
   if (sessionError || !session) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
+      <div className="min-h-screen bg-slate-50 p-8">
         <button onClick={() => navigate('/')} className="text-blue-600 hover:text-blue-800 mb-4 flex items-center gap-1">
           ← Back to Dashboard
         </button>
@@ -73,7 +75,7 @@ export default function SessionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-slate-50 p-8">
       <div className="max-w-4xl mx-auto">
         <button onClick={() => navigate('/')} className="text-blue-600 hover:text-blue-800 mb-6 flex items-center gap-1">
           ← Back to Dashboard
@@ -85,20 +87,26 @@ export default function SessionPage() {
               <SessionTypeIcon type={session.type} size={14} />
               {session.type}
             </span>
+            {session.model && (
+              <span className="text-xs text-gray-500 font-mono">{session.model}</span>
+            )}
             {isInactive(session) ? (
-              <span className="text-sm px-3 py-1 rounded-full font-medium bg-amber-100 text-amber-700">inactive</span>
+              <span className="inline-flex items-center gap-1 text-sm px-3 py-1 rounded-full font-medium bg-amber-100 text-amber-700">
+                <Moon size={12} />resting
+              </span>
             ) : (
-              <span className={`text-sm px-3 py-1 rounded-full font-medium ${STATUS_COLORS[session.status] ?? 'bg-gray-100'}`}>
-                {session.status}
+              <span className={`inline-flex items-center gap-1 text-sm px-3 py-1 rounded-full font-medium ${STATUS_COLORS[session.status] ?? 'bg-gray-100'}`}>
+                {session.status === 'active' && <Play size={12} />}
+                {session.status === 'active' ? 'running' : session.status}
               </span>
             )}
             {session.pid && (
-              <span className="text-sm text-gray-500">PID: {session.pid}</span>
+              <span className="text-xs text-gray-500 font-mono">PID: {session.pid}</span>
             )}
             {!session.pid && session.type === 'claude-code' && (
-              <span className="text-sm text-gray-500 font-mono">ID: {claudeShortId(session.id)}</span>
+              <span className="text-xs text-gray-500 font-mono">ID: {claudeShortId(session.id)}</span>
             )}
-            <span className="text-sm text-gray-500">
+            <span className="text-xs text-gray-500 font-mono">
               Duration: {getElapsed(session.startedAt, session.endedAt)}
             </span>
           </div>
@@ -132,3 +140,8 @@ export default function SessionPage() {
     </div>
   );
 }
+
+
+
+
+

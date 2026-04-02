@@ -16,6 +16,13 @@ export function getDb(): Database.Database {
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
     db.exec(SCHEMA_SQL);
+    // Runtime migrations for existing databases (SQLite has no ADD COLUMN IF NOT EXISTS)
+    const repoCols = (db.pragma('table_info(repositories)') as Array<{ name: string }>).map(c => c.name);
+    if (!repoCols.includes('branch')) db.exec('ALTER TABLE repositories ADD COLUMN branch TEXT');
+    const sessionCols = (db.pragma('table_info(sessions)') as Array<{ name: string }>).map(c => c.name);
+    if (!sessionCols.includes('model')) db.exec('ALTER TABLE sessions ADD COLUMN model TEXT');
+    const outputCols = (db.pragma('table_info(session_output)') as Array<{ name: string }>).map(c => c.name);
+    if (!outputCols.includes('role')) db.exec('ALTER TABLE session_output ADD COLUMN role TEXT');
   }
   return db;
 }
@@ -29,26 +36,30 @@ export function closeDb(): void {
 
 export function getRepositories(): Repository[] {
   return getDb().prepare(
-    'SELECT id, path, name, source, added_at as addedAt, last_scanned_at as lastScannedAt FROM repositories ORDER BY added_at DESC'
+    'SELECT id, path, name, source, added_at as addedAt, last_scanned_at as lastScannedAt, branch FROM repositories ORDER BY added_at DESC'
   ).all() as Repository[];
 }
 
 export function getRepository(id: string): Repository | undefined {
   return getDb().prepare(
-    'SELECT id, path, name, source, added_at as addedAt, last_scanned_at as lastScannedAt FROM repositories WHERE id = ?'
+    'SELECT id, path, name, source, added_at as addedAt, last_scanned_at as lastScannedAt, branch FROM repositories WHERE id = ?'
   ).get(id) as Repository | undefined;
 }
 
 export function getRepositoryByPath(path: string): Repository | undefined {
   return getDb().prepare(
-    'SELECT id, path, name, source, added_at as addedAt, last_scanned_at as lastScannedAt FROM repositories WHERE LOWER(path) = LOWER(?)'
+    'SELECT id, path, name, source, added_at as addedAt, last_scanned_at as lastScannedAt, branch FROM repositories WHERE LOWER(path) = LOWER(?)'
   ).get(path) as Repository | undefined;
 }
 
 export function insertRepository(repo: Repository): void {
   getDb().prepare(
-    'INSERT INTO repositories (id, path, name, source, added_at, last_scanned_at) VALUES (?, ?, ?, ?, ?, ?)'
-  ).run(repo.id, normalize(repo.path), repo.name, repo.source, repo.addedAt, repo.lastScannedAt);
+    'INSERT INTO repositories (id, path, name, source, added_at, last_scanned_at, branch) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  ).run(repo.id, normalize(repo.path), repo.name, repo.source, repo.addedAt, repo.lastScannedAt, repo.branch ?? null);
+}
+
+export function updateRepositoryBranch(id: string, branch: string | null): void {
+  getDb().prepare('UPDATE repositories SET branch = ? WHERE id = ?').run(branch, id);
 }
 
 export function deleteRepository(id: string): void {
@@ -61,7 +72,7 @@ export function deleteRepository(id: string): void {
 export interface SessionFilters { repositoryId?: string; status?: string; type?: string; }
 
 export function getSessions(filters: SessionFilters = {}): Session[] {
-  let sql = 'SELECT id, repository_id as repositoryId, type, pid, status, started_at as startedAt, ended_at as endedAt, last_activity_at as lastActivityAt, summary, expires_at as expiresAt FROM sessions WHERE 1=1';
+  let sql = 'SELECT id, repository_id as repositoryId, type, pid, status, started_at as startedAt, ended_at as endedAt, last_activity_at as lastActivityAt, summary, expires_at as expiresAt, model FROM sessions WHERE 1=1';
   const params: unknown[] = [];
   if (filters.repositoryId) { sql += ' AND repository_id = ?'; params.push(filters.repositoryId); }
   if (filters.status) { sql += ' AND status = ?'; params.push(filters.status); }
@@ -72,7 +83,7 @@ export function getSessions(filters: SessionFilters = {}): Session[] {
 
 export function getSession(id: string): Session | undefined {
   return getDb().prepare(
-    'SELECT id, repository_id as repositoryId, type, pid, status, started_at as startedAt, ended_at as endedAt, last_activity_at as lastActivityAt, summary, expires_at as expiresAt FROM sessions WHERE id = ?'
+    'SELECT id, repository_id as repositoryId, type, pid, status, started_at as startedAt, ended_at as endedAt, last_activity_at as lastActivityAt, summary, expires_at as expiresAt, model FROM sessions WHERE id = ?'
   ).get(id) as Session | undefined;
 }
 
@@ -84,17 +95,18 @@ export function updateSessionStatus(id: string, status: string, endedAt: string 
 
 export function upsertSession(session: Session): void {
   getDb().prepare(`
-    INSERT INTO sessions (id, repository_id, type, pid, status, started_at, ended_at, last_activity_at, summary, expires_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO sessions (id, repository_id, type, pid, status, started_at, ended_at, last_activity_at, summary, expires_at, model)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       pid = excluded.pid, status = excluded.status, ended_at = excluded.ended_at,
-      last_activity_at = excluded.last_activity_at, summary = excluded.summary, expires_at = excluded.expires_at
+      last_activity_at = excluded.last_activity_at, summary = excluded.summary,
+      expires_at = excluded.expires_at, model = COALESCE(excluded.model, model)
   `).run(session.id, session.repositoryId, session.type, session.pid, session.status,
-    session.startedAt, session.endedAt, session.lastActivityAt, session.summary, session.expiresAt);
+    session.startedAt, session.endedAt, session.lastActivityAt, session.summary, session.expiresAt, session.model ?? null);
 }
 
 export function getOutputForSession(sessionId: string, limit = 100, before?: string): SessionOutput[] {
-  let sql = 'SELECT id, session_id as sessionId, timestamp, type, content, tool_name as toolName, sequence_number as sequenceNumber FROM session_output WHERE session_id = ?';
+  let sql = 'SELECT id, session_id as sessionId, timestamp, type, content, tool_name as toolName, role, sequence_number as sequenceNumber FROM session_output WHERE session_id = ?';
   const params: unknown[] = [sessionId];
   if (before) { sql += ' AND sequence_number < ?'; params.push(parseInt(before, 10)); }
   sql += ' ORDER BY sequence_number DESC LIMIT ?';
@@ -103,10 +115,14 @@ export function getOutputForSession(sessionId: string, limit = 100, before?: str
   return rows.reverse();
 }
 
+export function deleteSessionOutput(sessionId: string): void {
+  getDb().prepare('DELETE FROM session_output WHERE session_id = ?').run(sessionId);
+}
+
 export function insertOutput(output: SessionOutput): void {
   getDb().prepare(
-    'INSERT OR IGNORE INTO session_output (id, session_id, timestamp, type, content, tool_name, sequence_number) VALUES (?, ?, ?, ?, ?, ?, ?)'
-  ).run(output.id, output.sessionId, output.timestamp, output.type, output.content, output.toolName, output.sequenceNumber);
+    'INSERT OR IGNORE INTO session_output (id, session_id, timestamp, type, content, tool_name, sequence_number, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(output.id, output.sessionId, output.timestamp, output.type, output.content, output.toolName, output.sequenceNumber, output.role ?? null);
 }
 
 export function insertControlAction(action: ControlAction): void {
