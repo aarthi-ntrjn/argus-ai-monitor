@@ -44,13 +44,21 @@ function claudeShortId(id: string): string {
 }
 
 export default function SessionCard({ session, selected, onSelect }: Props) {
+  const isActive = !isInactive(session);
   const { data: lastOutput } = useQuery({
     queryKey: ['session-output-last', session.id],
-    queryFn: () => getSessionOutput(session.id, { limit: 1 }),
-    staleTime: 5000,
+    queryFn: () => getSessionOutput(session.id, { limit: 10 }),
+    staleTime: 2000,
+    refetchInterval: isActive ? 3000 : false,
   });
 
-  const lastLine = lastOutput?.items[0]?.content?.split('\n').find(l => l.trim()) ?? null;
+  const items = lastOutput?.items ?? [];
+  const previewItem =
+    [...items].reverse().find((i: import('../../types').SessionOutput) => i.type === 'tool_result') ??
+    [...items].reverse().find((i: import('../../types').SessionOutput) => i.type === 'message') ??
+    items[items.length - 1] ??
+    null;
+  const previewLine = previewItem?.content?.split('\n').find((l: string) => l.trim()) ?? null;
 
   return (
     <div
@@ -104,8 +112,8 @@ export default function SessionCard({ session, selected, onSelect }: Props) {
       </div>
 
       {/* Last output preview — below interactive controls so it never obscures the prompt */}
-      {lastLine && (
-        <p className="text-xs text-gray-400 mt-1 truncate font-mono">{lastLine}</p>
+      {previewLine && (
+        <p className="text-xs text-gray-300 bg-gray-900 mt-1 px-2 py-1 rounded truncate font-mono">{previewLine}</p>
       )}
     </div>
   );

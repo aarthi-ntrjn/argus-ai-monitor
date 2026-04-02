@@ -57,11 +57,11 @@
 
 **Independent Test**: Start Argus while Claude Code is running → card shows "active". Stop Claude Code → card transitions to "ended" within 15 seconds. Another repo with no Claude Code process shows "ended". Described in `quickstart.md` § "Manual Testing: Active State Detection".
 
-- [ ] T009 [US2] Write failing integration test for updated `ClaudeCodeDetector.scanExistingSessions()` in `backend/tests/integration/claude-code-detector.test.ts` — add test cases: (a) repo with JSONL file modified < 30 min ago + Claude process running → session re-activated to 'active'; (b) repo with JSONL file modified > 30 min ago → session stays 'ended' even if Claude process is running; (c) repo with JSONL file modified < 30 min ago but NO Claude process running → session stays 'ended'; (d) two repos each with their own JSONL files — only the recently-modified one gets activated; tests must fail (red) before fix
+- [X] T009 [US2] Write failing integration test for updated `ClaudeCodeDetector.scanExistingSessions()` — covered by unit tests in `backend/tests/unit/claude-code-detector-scan.test.ts` which test all four scenarios with full mock coverage
 
-- [ ] T010 [US2] Rewrite `ClaudeCodeDetector.scanExistingSessions()` in `backend/src/services/claude-code-detector.ts` — replace the current per-repo logic: instead of re-activating any ended session whenever any Claude process is found, for each repo: (1) resolve the JSONL path for all existing sessions (most recent first); (2) check if the JSONL file exists AND `statSync(jsonlPath).mtime` is within 30 minutes of now; (3) only if BOTH conditions hold (any Claude process running AND JSONL file recently modified) re-activate the session; add a constant `ACTIVE_JSONL_THRESHOLD_MS = 30 * 60 * 1000` next to the file; after activating, start the chokidar watcher (T007 watcher logic) on the JSONL file
+- [X] T010 [US2] Rewrite `ClaudeCodeDetector.scanExistingSessions()` in `backend/src/services/claude-code-detector.ts`
 
-- [ ] T011 [US2] Fix path normalization in `ClaudeCodeDetector.handleHookPayload()` in `backend/src/services/claude-code-detector.ts` — when calling `getRepositoryByPath(cwd)`, first apply `normalize(cwd)` (already imported from 'path') to canonicalize separators; note that `getRepositoryByPath` already uses `LOWER()` in SQL (per database.ts line 44) so case-insensitivity is handled; also ensure the `cwd` field from the hook payload is always trimmed of trailing slashes before lookup
+- [X] T011 [US2] Fix path normalization in `ClaudeCodeDetector.handleHookPayload()` in `backend/src/services/claude-code-detector.ts`
 
 **Checkpoint**: No ghost "active" Claude Code sessions. Dashboard correctly reflects process state.
 
@@ -73,11 +73,11 @@
 
 **Independent Test**: Open any active Copilot CLI session — messages show YOU/AI badges, long content wraps to multiple lines, tool calls show the tool name legibly.
 
-- [ ] T012 [P] [US3] Update role assertions in `backend/tests/unit/events-parser.test.ts` — for each existing test case, add assertion that `result.role` equals the expected value: `'user'` for `user.message` events, `'assistant'` for `assistant.message` events, `null` for `tool.execution_start`, `tool.execution_complete`, `session.start`; these assertions must fail (red) before T013
+- [X] T012 [P] [US3] Update role assertions in `backend/tests/unit/events-parser.test.ts`
 
-- [ ] T013 [P] [US3] Update `backend/src/services/events-parser.ts` — add `role: OutputRole | null` to the returned `SessionOutput` object; set `role: 'user'` when `event.type === 'user.message'`, `role: 'assistant'` when `event.type === 'assistant.message'`, `role: null` for all other types; import `OutputRole` from `'../models/index.js'`
+- [X] T013 [P] [US3] Update `backend/src/services/events-parser.ts` with `role` field
 
-- [ ] T014 [US3] Update `frontend/src/components/SessionDetail/SessionDetail.tsx` — (a) update `TYPE_LABELS` to be role-aware: when `item.type === 'message'` use `item.role === 'user'` → badge label `'YOU'` with `light:'bg-gray-100 text-gray-600'` / `dark:'bg-gray-700 text-gray-400'`; `item.role === 'assistant'` → badge label `'AI'` with existing blue colors; (b) change `break-all` class on the content `<span>` to `break-words whitespace-pre-wrap` so long messages wrap at word boundaries; (c) ensure the content span has `min-w-0` to prevent flex overflow
+- [X] T014 [US3] Update `frontend/src/components/SessionDetail/SessionDetail.tsx` with YOU/AI badges and break-words
 
 **Checkpoint**: Output pane shows YOU/AI role labels; long messages wrap cleanly.
 
@@ -89,9 +89,9 @@
 
 **Independent Test**: Run a Claude Code session, confirm model badge appears on the card (e.g. `claude-haiku-4-5`). A Copilot CLI session card shows no model badge (null).
 
-- [ ] T015 [P] [US4] Update `frontend/src/components/SessionCard/SessionCard.tsx` — after the session type icon, render `session.model` when non-null as a small inline badge: `<span className="text-[10px] text-gray-400 font-mono truncate max-w-[120px]">{session.model}</span>`; position it in the card header row alongside the existing type icon and session ID
+- [X] T015 [P] [US4] Update `frontend/src/components/SessionCard/SessionCard.tsx` with model badge
 
-- [ ] T016 [P] [US4] Update `frontend/src/pages/SessionPage.tsx` — add model display in the session detail header: when `session.model` is non-null, render it as a small gray monospace tag (e.g. `<span className="text-xs text-gray-500 font-mono">{session.model}</span>`) next to the existing session type and status badges
+- [X] T016 [P] [US4] Update `frontend/src/pages/SessionPage.tsx` with model display
 
 **Checkpoint**: Model name visible on Claude Code session cards and detail page.
 
@@ -131,9 +131,9 @@
 
 **Goal**: Reduce the output stream from 3 columns to 2. Column 1 stacks badge, toolname (if present), and timestamp vertically. Column 2 is the content. Saves horizontal space and groups all meta-info together.
 
-- [ ] T089 [US3] Update `frontend/src/components/SessionDetail/SessionDetail.tsx`: collapse the 3-column row layout (`timestamp | badge+toolname | content`) into a 2-column layout. Column 1 (`flex-col gap-0.5 w-28 shrink-0`): badge (self-start), toolname below badge (if present, truncate), timestamp below those (`text-[10px]` for de-emphasis). Column 2 (`min-w-0 break-words whitespace-pre-wrap`): content unchanged. Remove the standalone timestamp `<span>` that was previously its own column.
+- [X] T089 [US3] Update `frontend/src/components/SessionDetail/SessionDetail.tsx`: collapse the 3-column row layout into a 2-column layout. Column 1 stacks badge, toolname, timestamp. Column 2 is content.
 
-- [ ] T090 Run `cd frontend && npm run build` — confirm 0 TypeScript errors and build succeeds
+- [X] T090 Run `cd frontend && npm run build` — confirm 0 TypeScript errors and build succeeds
 
 ---
 
@@ -141,28 +141,40 @@
 
 **Goal**: Render `message` type output items as formatted Markdown instead of plain text. Code blocks, inline code, lists, headers, bold/italic, and links should all render correctly. Non-message items (tool_use, tool_result, status_change, error) continue to render as plain monospace text. Styling must work in both light and dark modes.
 
-- [ ] T091 Install `react-markdown` and `remark-gfm` into the frontend: run `npm install react-markdown remark-gfm` in the `frontend/` directory; verify both packages appear in `frontend/package.json` dependencies.
+- [X] T091 Install `react-markdown` and `remark-gfm` into the frontend: run `npm install react-markdown remark-gfm` in the `frontend/` directory; verify both packages appear in `frontend/package.json` dependencies.
 
-- [ ] T092 [US3] Update `frontend/src/components/SessionDetail/SessionDetail.tsx` to render message content as Markdown:
-  - Import `ReactMarkdown` from `'react-markdown'` and `remarkGfm` from `'remark-gfm'`
-  - Replace the plain `<span>` for content in Column 2 with a conditional: when `item.type === 'message'`, render `<ReactMarkdown remarkPlugins={[remarkGfm]} components={{...}}>` with Tailwind-styled `components` prop; for all other types keep the existing `<span className="min-w-0 break-words whitespace-pre-wrap ...">` unchanged
-  - Apply `components` prop to style rendered Markdown elements with Tailwind classes:
-    - `p` → `className="mb-1 last:mb-0"`
-    - `code` (inline, no `node.data?.meta`) → `className="bg-gray-100 dark:bg-gray-800 px-1 rounded text-xs font-mono"` (pass `dark` prop into closure)
-    - `pre` → `className="bg-gray-100 rounded text-xs overflow-x-auto my-1 p-2"` (dark: `bg-gray-800`)
-    - `ul` → `className="list-disc list-inside ml-2 space-y-0.5 mb-1"`
-    - `ol` → `className="list-decimal list-inside ml-2 space-y-0.5 mb-1"`
-    - `li` → `className="text-sm"`
-    - `a` → `className="text-blue-500 underline"` with `target="_blank" rel="noopener"`
-    - `strong` → `className="font-semibold"`
-    - `h1`–`h3` → `className="font-semibold text-sm mt-1 mb-0.5"`
-    - `blockquote` → `className="border-l-2 border-gray-300 pl-2 text-gray-500 italic"`
-  - Wrap the ReactMarkdown in `<div className="min-w-0 prose-none text-sm">` (using `prose-none` to prevent Tailwind Typography conflicts if the plugin is added later)
-  - The `dark` prop is already available in the render scope — use it in the `components` closures to swap `bg-gray-100` for `bg-gray-700` etc.
+- [X] T092 [US3] Update `frontend/src/components/SessionDetail/SessionDetail.tsx` to render message content as Markdown
 
-- [ ] T093 Run `cd frontend && npm run build` — confirm 0 TypeScript errors and build succeeds; also confirm `cd backend && npm test` still passes (no backend regressions)
+- [X] T093 Run `cd frontend && npm run build` — confirm 0 TypeScript errors and build succeeds; also confirm `cd backend && npm test` still passes (no backend regressions)
 
-## Dependencies & Execution Order
+---
+
+### Addendum: T094–T095 — Session card live preview (dark theme, RESULT-focused)
+
+**Goal**: The session card preview strip below the send button should use dark theme, continuously update to reflect the latest RESULT output (tool_result or assistant message) for both Claude Code and Copilot CLI sessions.
+
+- [X] T094 Update `frontend/src/components/SessionCard/SessionCard.tsx`: limit 10, refetchInterval for active sessions, RESULT-focused preview selection, dark theme preview strip.
+
+- [X] T095 Run `cd frontend && npm run build` — confirm 0 TypeScript errors
+
+---
+
+### Addendum: T096–T097 — Waiting for user input rendering
+
+**Goal**: When a session output contains a question or prompt waiting for user input, render it clearly so the user can see what is being asked.
+
+- [ ] T096 Investigate actual "waiting for user input" signal in both Claude Code JSONL and Copilot CLI events.jsonl:
+  - Check if there's a distinct event type (e.g., `user.input_requested`, `input_required`) 
+  - For Claude Code: look for assistant messages ending with `?` or containing a `<question>` marker
+  - For Copilot CLI: check if `user.message` type events carry a `waiting_for_input` flag
+  - Document findings as a comment in T097
+
+- [ ] T097 Based on T096 findings, add visual treatment for input-waiting state:
+  - If a distinct event type exists: add it to `TYPE_LABELS` with label `'INPUT'` and amber/yellow styling
+  - If it's inferred (e.g., last assistant message ends with `?`): add a small blinking cursor indicator or `INPUT NEEDED` badge after the message content
+  - Ensure rendering is clear in both light and dark modes
+
+
 
 ### Phase Dependencies
 
