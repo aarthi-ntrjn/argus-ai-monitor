@@ -216,14 +216,14 @@ export class ClaudeCodeDetector {
     // Load all existing lines
     this.filePositions.set(sessionId, 0);
     this.sequenceCounters.set(sessionId, 0);
-    this.readNewJsonlLines(sessionId, jsonlPath, true);
+    this.readNewJsonlLines(sessionId, jsonlPath);
 
     const watcher = chokidar.watch(jsonlPath, { persistent: false, usePolling: false });
-    watcher.on('change', () => this.readNewJsonlLines(sessionId, jsonlPath, false));
+    watcher.on('change', () => this.readNewJsonlLines(sessionId, jsonlPath));
     this.watchers.set(sessionId, watcher);
   }
 
-  private readNewJsonlLines(sessionId: string, filePath: string, updateModel: boolean): void {
+  private readNewJsonlLines(sessionId: string, filePath: string): void {
     try {
       const currentSize = statSync(filePath).size;
       const lastPos = this.filePositions.get(sessionId) ?? 0;
@@ -238,20 +238,19 @@ export class ClaudeCodeDetector {
       const lines = buffer.toString('utf-8').split('\n').filter(l => l.trim());
       let seq = this.sequenceCounters.get(sessionId) ?? 0;
       const outputs = [];
+      let needsModel = !(getSession(sessionId)?.model);
 
       for (const line of lines) {
         seq++;
         const items = parseClaudeJsonlLine(line, sessionId, seq);
         outputs.push(...items);
 
-        if (updateModel) {
+        if (needsModel) {
           const model = parseModel(line);
           if (model) {
             const existing = getSession(sessionId);
-            if (existing && !existing.model) {
-              upsertSession({ ...existing, model });
-            }
-            updateModel = false;
+            if (existing) upsertSession({ ...existing, model });
+            needsModel = false;
           }
         }
       }
