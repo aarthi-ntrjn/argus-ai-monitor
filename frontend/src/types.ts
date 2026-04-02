@@ -13,6 +13,7 @@ export interface Repository {
   source: RepositorySource;
   addedAt: string;
   lastScannedAt: string | null;
+  branch: string | null;
 }
 
 export interface Session {

@@ -4,7 +4,8 @@ import { RepositoryScanner } from './repository-scanner.js';
 import { CopilotCliDetector } from './copilot-cli-detector.js';
 import { ClaudeCodeDetector } from './claude-code-detector.js';
 import { loadConfig } from '../config/config-loader.js';
-import { getSessions, updateSessionStatus } from '../db/database.js';
+import { getSessions, updateSessionStatus, getRepositories, updateRepositoryBranch } from '../db/database.js';
+import { getCurrentBranch } from './repository-scanner.js';
 import type { Session, Repository } from '../models/index.js';
 
 export interface SessionMonitorEvents {
@@ -96,9 +97,21 @@ export class SessionMonitor extends EventEmitter {
     return this.claudeDetector;
   }
 
+  private refreshRepositoryBranches(): void {
+    try {
+      for (const repo of getRepositories()) {
+        const branch = getCurrentBranch(repo.path);
+        if (branch !== repo.branch) {
+          updateRepositoryBranch(repo.id, branch);
+        }
+      }
+    } catch { /* ignore — branch refresh is best-effort */ }
+  }
+
   private async runScan(): Promise<void> {
     try {
       await this.scanner.scan();
+      this.refreshRepositoryBranches();
       await this.reconcileClaudeCodeSessions();
       const sessions = await this.cliDetector.scan();
       const currentScanIds = new Set<string>(sessions.map((s) => s.id));

@@ -176,6 +176,60 @@
 
 
 
+---
+
+### Addendum: T100–T105 — Repository branch name display
+
+**Goal**: Show the current git branch name next to the directory path in the dashboard repo header, so users can see at a glance which branch each monitored repo is on.
+
+- [X] T100 [P] Add `branch: string | null` to the `Repository` interface in `backend/src/models/index.ts`
+
+- [X] T101 [P] Add `branch: string | null` to the `Repository` interface in `frontend/src/types.ts`
+
+- [X] T102 Update `backend/src/db/database.ts`:
+  - Add `branch TEXT` column to the `repositories` CREATE TABLE statement in `backend/src/db/schema.ts` (or wherever SCHEMA_SQL is defined)
+  - Add runtime migration in `getDb()` alongside the existing `sessions`/`session_output` migrations: check `pragma table_info(repositories)`, if `branch` column missing run `ALTER TABLE repositories ADD COLUMN branch TEXT`
+  - Update `getRepositories()`, `getRepository()`, and `getRepositoryByPath()` SELECT column lists to include `branch`
+  - Update `insertRepository()` INSERT to include `branch` (`?, ?, ?, ?, ?, ?, ?` + `repo.branch ?? null`)
+  - Add new `updateRepositoryBranch(id: string, branch: string | null): void` that runs `UPDATE repositories SET branch = ? WHERE id = ?`
+
+- [X] T103 Add `getCurrentBranch(repoPath: string): string | null` helper in `backend/src/services/repository-scanner.ts`:
+  - Use `execSync('git branch --show-current', { cwd: repoPath, encoding: 'utf8' })` from Node `child_process`, wrapped in try/catch returning `null` on failure
+  - Trim the result; return `null` if blank (detached HEAD)
+  - Update `registerIfNew()` to call `getCurrentBranch(repoPath)` and set `repo.branch`
+
+- [X] T104 Add `refreshRepositoryBranches()` to `backend/src/services/session-monitor.ts`:
+  - Import `getRepositories` and `updateRepositoryBranch` from `database.js`; import `getCurrentBranch` helper (extract it to a shared util or re-import from `repository-scanner.ts`)
+  - For each repo in `getRepositories()`, call `getCurrentBranch(repo.path)` and call `updateRepositoryBranch(repo.id, branch)` only if the branch changed
+  - Call `refreshRepositoryBranches()` from `runScan()` on every scan cycle
+
+- [X] T105 [P] Update `frontend/src/pages/DashboardPage.tsx`:
+  - Next to `<p className="text-sm text-gray-500 mt-1">{repo.path}</p>`, render a branch badge when `repo.branch` is non-null: `<span className="inline-flex items-center gap-1 text-xs font-mono text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded ml-1">⎇ {repo.branch}</span>` on the same line as the path (make the `<p>` a flex row or add it inline after the path text)
+
+---
+
+### Addendum: T099 — Session card preview: 2-line wrap
+
+**Goal**: Show up to 2 wrapped lines of the last output preview instead of a single truncated line, so users can read more context at a glance.
+
+- [X] T099 [US1] Update the output preview in `frontend/src/components/SessionCard/SessionCard.tsx`:
+  - Rename `previewLine` to `previewContent` and change its derivation from `content?.split('\n').find(l => l.trim())` (first non-empty line) to `previewItem?.content?.trim() ?? null` (full content, trimmed)
+  - Update the `<p>` element that renders the preview: replace `truncate` with `line-clamp-2 whitespace-pre-wrap break-words` so the text wraps and is clamped at 2 lines
+  - Rename the `{previewLine &&` guard and `{previewLine}` render to `previewContent`
+
+---
+
+### Addendum: T098 — Session card header layout polish
+
+**Goal**: Replace the "View details" text link with an icon and move the status badge to the right-justified area of the card header (left of the details icon), so the left side stays clean with just type/model/PID info.
+
+- [X] T098 [US2] Restructure `SessionCard` header in `frontend/src/components/SessionCard/SessionCard.tsx`:
+  - Remove the status badge (isInactive moon + status badge) from the left `flex flex-wrap gap-2 items-center` group
+  - Add the status badge into the right `flex items-center gap-2` group, positioned between the elapsed time and the details link
+  - Replace the `<Link>` "View details" text with a `<ExternalLink size={14} />` icon from `lucide-react` (keep the same `to`, `onClick`, and `aria-label="View details"` props; change className to `text-gray-400 hover:text-blue-500 transition-colors`)
+
+
+
 ### Phase Dependencies
 
 - **Phase 1 (Baseline)**: No dependencies — start immediately

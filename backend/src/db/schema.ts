@@ -2,7 +2,7 @@ export const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS repositories (
   id TEXT PRIMARY KEY, path TEXT NOT NULL UNIQUE, name TEXT NOT NULL,
   source TEXT NOT NULL CHECK(source IN ('config','ui')),
-  added_at TEXT NOT NULL, last_scanned_at TEXT
+  added_at TEXT NOT NULL, last_scanned_at TEXT, branch TEXT
 );
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY, repository_id TEXT NOT NULL REFERENCES repositories(id),

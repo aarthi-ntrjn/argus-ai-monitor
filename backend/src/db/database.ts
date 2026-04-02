@@ -17,6 +17,8 @@ export function getDb(): Database.Database {
     db.pragma('foreign_keys = ON');
     db.exec(SCHEMA_SQL);
     // Runtime migrations for existing databases (SQLite has no ADD COLUMN IF NOT EXISTS)
+    const repoCols = (db.pragma('table_info(repositories)') as Array<{ name: string }>).map(c => c.name);
+    if (!repoCols.includes('branch')) db.exec('ALTER TABLE repositories ADD COLUMN branch TEXT');
     const sessionCols = (db.pragma('table_info(sessions)') as Array<{ name: string }>).map(c => c.name);
     if (!sessionCols.includes('model')) db.exec('ALTER TABLE sessions ADD COLUMN model TEXT');
     const outputCols = (db.pragma('table_info(session_output)') as Array<{ name: string }>).map(c => c.name);
@@ -34,26 +36,30 @@ export function closeDb(): void {
 
 export function getRepositories(): Repository[] {
   return getDb().prepare(
-    'SELECT id, path, name, source, added_at as addedAt, last_scanned_at as lastScannedAt FROM repositories ORDER BY added_at DESC'
+    'SELECT id, path, name, source, added_at as addedAt, last_scanned_at as lastScannedAt, branch FROM repositories ORDER BY added_at DESC'
   ).all() as Repository[];
 }
 
 export function getRepository(id: string): Repository | undefined {
   return getDb().prepare(
-    'SELECT id, path, name, source, added_at as addedAt, last_scanned_at as lastScannedAt FROM repositories WHERE id = ?'
+    'SELECT id, path, name, source, added_at as addedAt, last_scanned_at as lastScannedAt, branch FROM repositories WHERE id = ?'
   ).get(id) as Repository | undefined;
 }
 
 export function getRepositoryByPath(path: string): Repository | undefined {
   return getDb().prepare(
-    'SELECT id, path, name, source, added_at as addedAt, last_scanned_at as lastScannedAt FROM repositories WHERE LOWER(path) = LOWER(?)'
+    'SELECT id, path, name, source, added_at as addedAt, last_scanned_at as lastScannedAt, branch FROM repositories WHERE LOWER(path) = LOWER(?)'
   ).get(path) as Repository | undefined;
 }
 
 export function insertRepository(repo: Repository): void {
   getDb().prepare(
-    'INSERT INTO repositories (id, path, name, source, added_at, last_scanned_at) VALUES (?, ?, ?, ?, ?, ?)'
-  ).run(repo.id, normalize(repo.path), repo.name, repo.source, repo.addedAt, repo.lastScannedAt);
+    'INSERT INTO repositories (id, path, name, source, added_at, last_scanned_at, branch) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  ).run(repo.id, normalize(repo.path), repo.name, repo.source, repo.addedAt, repo.lastScannedAt, repo.branch ?? null);
+}
+
+export function updateRepositoryBranch(id: string, branch: string | null): void {
+  getDb().prepare('UPDATE repositories SET branch = ? WHERE id = ?').run(branch, id);
 }
 
 export function deleteRepository(id: string): void {
