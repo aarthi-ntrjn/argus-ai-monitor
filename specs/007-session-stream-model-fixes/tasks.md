@@ -118,13 +118,17 @@
 
 **Goal**: Replace the text-only "active"/"inactive" status badges with labelled icon badges using `lucide-react`. Rename statuses: **active → running** (▶ Play icon), **inactive → resting** (💤 Zzzz icon).
 
-- [ ] T022 Install `lucide-react` into `frontend/package.json` by running `npm install lucide-react` in the `frontend/` directory; verify it appears in `dependencies`
+- [X] T022 Install `lucide-react` into `frontend/package.json` by running `npm install lucide-react` in the `frontend/` directory; verify it appears in `dependencies`
 
-- [ ] T023 [US5] Update `frontend/src/components/SessionCard/SessionCard.tsx`: (a) import `Play` and `ZzzIcon` from `lucide-react`; (b) in `STATUS_COLORS`, rename the `active` key to `running` keeping the same `bg-green-100 text-green-800` classes; (c) in the status badge render: replace the inline `inactive` span with a new span showing `<ZzzIcon size={11} className="inline mr-0.5" /> resting` using `bg-amber-100 text-amber-700` classes; (d) for the active/running case (the else branch using `STATUS_COLORS[session.status]`), when `session.status === 'active'` or `session.status === 'running'` render `<Play size={11} className="inline mr-0.5" /> running` using `bg-green-100 text-green-800` classes; all other statuses fall through to the existing `{session.status}` text rendering
+- [X] T023 [US5] Update `frontend/src/components/SessionCard/SessionCard.tsx`: import `Moon` and `Play` from `lucide-react`; inactive sessions show `<Moon size={10} /> resting` (amber); active sessions show `<Play size={10} /> running` (green)
 
-- [ ] T024 [US5] Update `frontend/src/components/SessionPage/SessionPage.tsx`: (a) import `Play` and `ZzzIcon` from `lucide-react`; (b) rename `active` key to `running` in the local `STATUS_COLORS` map (same green classes); (c) mirror the same inactive→resting badge replacement from T023 (use larger `size={13}` for this page's larger badge, `text-sm px-3 py-1` classes); (d) for the running/active case render `<Play size={13} className="inline mr-0.5" /> running` with green classes
+- [X] T024 [US5] Update `frontend/src/pages/SessionPage.tsx`: same changes with larger `size={12}`, `text-sm px-3 py-1 rounded-full` classes
 
-- [ ] T025 Run `cd frontend && npm run build` — confirm 0 TypeScript errors and build succeeds; fix any type or import errors before committing
+- [X] T025 Run `cd frontend && npm run build` — confirm 0 TypeScript errors and build succeeds
+
+### Addendum: T087 — Output stream column layout
+
+- [X] T087 Fix output stream column layout in `frontend/src/components/SessionDetail/SessionDetail.tsx`: wrap badge and toolname in a `flex-col w-24 shrink-0` container so toolname stacks below the badge (capped width); remove standalone toolname span
 
 ---
 
