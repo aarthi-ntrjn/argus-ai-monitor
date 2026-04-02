@@ -1,6 +1,6 @@
 export type SessionType = 'copilot-cli' | 'claude-code';
 export type SessionStatus = 'active' | 'idle' | 'waiting' | 'error' | 'completed' | 'ended';
-export type ControlActionType = 'stop' | 'send_prompt';
+export type ControlActionType = 'stop' | 'send_prompt' | 'interrupt';
 export type ControlActionStatus = 'pending' | 'sent' | 'completed' | 'failed' | 'not_supported';
 export type RepositorySource = 'config' | 'ui';
 export type OutputType = 'message' | 'tool_use' | 'tool_result' | 'error' | 'status_change';
@@ -42,11 +42,13 @@ export interface SessionOutput {
 export interface DashboardSettings {
   hideEndedSessions: boolean;
   hideReposWithNoActiveSessions: boolean;
+  hideInactiveSessions: boolean;
 }
 
 export const DEFAULT_SETTINGS: DashboardSettings = {
   hideEndedSessions: false,
   hideReposWithNoActiveSessions: false,
+  hideInactiveSessions: false,
 };
 
 export interface ControlAction {

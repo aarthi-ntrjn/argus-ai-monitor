@@ -1,8 +1,10 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { getSession, getSessionOutput, stopSession, sendPrompt, queryClient } from '../services/api';
+import { useQuery } from '@tanstack/react-query';
+import { getSession, getSessionOutput } from '../services/api';
 import SessionDetail from '../components/SessionDetail/SessionDetail';
-import ControlPanel from '../components/ControlPanel/ControlPanel';
+import SessionPromptBar from '../components/SessionPromptBar/SessionPromptBar';
+import SessionTypeIcon from '../components/SessionTypeIcon/SessionTypeIcon';
+import { isInactive } from '../utils/sessionUtils';
 
 function getElapsed(startedAt: string, endedAt: string | null): string {
   const end = endedAt ? new Date(endedAt) : new Date();
@@ -12,6 +14,10 @@ function getElapsed(startedAt: string, endedAt: string | null): string {
   const m = Math.floor(s / 60);
   if (m < 60) return `${m}m`;
   return `${Math.floor(m / 60)}h ${m % 60}m`;
+}
+
+function claudeShortId(id: string): string {
+  return id.match(/[0-9a-f]{8}-[0-9a-f]{4}/)?.[0].slice(0, 8) ?? id.slice(0, 8);
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -42,16 +48,6 @@ export default function SessionPage() {
     queryKey: ['session-output', id],
     queryFn: () => getSessionOutput(id!, { limit: 100 }),
     enabled: !!id,
-  });
-
-  const stopMutation = useMutation({
-    mutationFn: () => stopSession(id!),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['session', id] }); },
-  });
-
-  const sendMutation = useMutation({
-    mutationFn: (prompt: string) => sendPrompt(id!, prompt),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['session', id] }); },
   });
 
   if (sessionLoading) {
@@ -85,14 +81,22 @@ export default function SessionPage() {
 
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="flex flex-wrap gap-3 items-center mb-2">
-            <span className={`text-sm px-3 py-1 rounded-full font-medium ${TYPE_COLORS[session.type] ?? 'bg-gray-100'}`}>
+            <span className={`inline-flex items-center gap-1 text-sm px-3 py-1 rounded-full font-medium ${TYPE_COLORS[session.type] ?? 'bg-gray-100'}`}>
+              <SessionTypeIcon type={session.type} size={14} />
               {session.type}
             </span>
-            <span className={`text-sm px-3 py-1 rounded-full font-medium ${STATUS_COLORS[session.status] ?? 'bg-gray-100'}`}>
-              {session.status}
-            </span>
+            {isInactive(session) ? (
+              <span className="text-sm px-3 py-1 rounded-full font-medium bg-amber-100 text-amber-700">inactive</span>
+            ) : (
+              <span className={`text-sm px-3 py-1 rounded-full font-medium ${STATUS_COLORS[session.status] ?? 'bg-gray-100'}`}>
+                {session.status}
+              </span>
+            )}
             {session.pid && (
               <span className="text-sm text-gray-500">PID: {session.pid}</span>
+            )}
+            {!session.pid && session.type === 'claude-code' && (
+              <span className="text-sm text-gray-500 font-mono">ID: {claudeShortId(session.id)}</span>
             )}
             <span className="text-sm text-gray-500">
               Duration: {getElapsed(session.startedAt, session.endedAt)}
@@ -104,28 +108,24 @@ export default function SessionPage() {
           <p className="text-xs text-gray-400 mt-1">ID: {session.id}</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow mb-6">
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Controls</h2>
-          </div>
-          <ControlPanel
-            session={session}
-            onStop={async () => { await stopMutation.mutateAsync(); }}
-            onSendPrompt={async (prompt) => { await sendMutation.mutateAsync(prompt); }}
-          />
+        <div className="bg-white rounded-lg shadow p-4 mb-6">
+          <SessionPromptBar session={session} />
         </div>
 
-        <div className="bg-white rounded-lg shadow">
+        <div className="bg-white border border-gray-200 rounded-lg shadow">
           <div className="p-4 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">Output Stream</h2>
           </div>
           {outputLoading ? (
             <div className="p-8 text-center text-gray-400">Loading output...</div>
           ) : (
-            <SessionDetail
-              sessionId={session.id}
-              items={outputPage?.items ?? []}
-            />
+            <div className="rounded-b-lg overflow-hidden bg-gray-900">
+              <SessionDetail
+                sessionId={session.id}
+                items={outputPage?.items ?? []}
+                dark
+              />
+            </div>
           )}
         </div>
       </div>

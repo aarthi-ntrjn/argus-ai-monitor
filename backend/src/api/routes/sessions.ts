@@ -51,6 +51,23 @@ const sessionsRoutes: FastifyPluginAsync = async (app) => {
     }
   );
 
+  app.post<{ Params: { id: string } }>(
+    '/api/v1/sessions/:id/interrupt',
+    async (req, reply) => {
+      try {
+        const action = await sessionController.interruptSession(req.params.id);
+        return reply.status(202).send({ actionId: action.id, status: action.status });
+      } catch (err: unknown) {
+        const e = err as { code?: string; message?: string };
+        if (e.code === 'NOT_FOUND') return reply.status(404).send({ error: 'NOT_FOUND', message: e.message, requestId: req.id });
+        if (e.code === 'CONFLICT') return reply.status(409).send({ error: 'CONFLICT', message: e.message, requestId: req.id });
+        if (e.code === 'NOT_SUPPORTED') return reply.status(501).send({ error: 'NOT_SUPPORTED', message: e.message, requestId: req.id });
+        throw err;
+      }
+    }
+  );
+
+
   app.post<{ Params: { id: string }; Body: { prompt?: string } }>(
     '/api/v1/sessions/:id/send',
     async (req, reply) => {
