@@ -33,23 +33,23 @@ export default function OutputPane({ session, onClose }: Props) {
   return (
     <section
       aria-label="Session output"
-      className="flex flex-col h-full bg-gray-900 rounded-lg overflow-hidden"
+      className="flex flex-col h-full bg-white border border-gray-200 rounded-lg overflow-hidden"
     >
-      <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
-        <span className="text-sm font-medium text-gray-200 truncate">
+      <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200">
+        <span className="text-sm font-medium text-gray-700 truncate">
           Output — {session.id.slice(0, 8)}
         </span>
         <button
           onClick={onClose}
           aria-label="Close output pane"
-          className="text-gray-400 hover:text-white transition-colors p-1 rounded"
+          className="text-gray-400 hover:text-gray-700 transition-colors p-1 rounded"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto bg-gray-900 rounded-b-lg">
         <SessionDetail sessionId={session.id} items={data?.items ?? []} dark />
         <div ref={bottomRef} />
       </div>

@@ -112,18 +112,20 @@ export default function SessionPage() {
           <SessionPromptBar session={session} />
         </div>
 
-        <div className="bg-gray-900 rounded-lg shadow">
-          <div className="p-4 border-b border-gray-700">
-            <h2 className="text-lg font-semibold text-gray-200">Output Stream</h2>
+        <div className="bg-white border border-gray-200 rounded-lg shadow">
+          <div className="p-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">Output Stream</h2>
           </div>
           {outputLoading ? (
-            <div className="p-8 text-center text-gray-500">Loading output...</div>
+            <div className="p-8 text-center text-gray-400">Loading output...</div>
           ) : (
-            <SessionDetail
-              sessionId={session.id}
-              items={outputPage?.items ?? []}
-              dark
-            />
+            <div className="rounded-b-lg overflow-hidden bg-gray-900">
+              <SessionDetail
+                sessionId={session.id}
+                items={outputPage?.items ?? []}
+                dark
+              />
+            </div>
           )}
         </div>
       </div>
