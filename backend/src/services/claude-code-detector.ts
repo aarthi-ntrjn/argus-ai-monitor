@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 
 import { join, dirname } from 'path';
 import { homedir } from 'os';
 import psList from 'ps-list';
-import { getSession, upsertSession, getRepositories, getRepositoryByPath, getSessions, updateSessionStatus } from '../db/database.js';
+import { getSession, upsertSession, getRepositories, getRepositoryByPath, getSessions } from '../db/database.js';
 import type { Session } from '../models/index.js';
 
 const CLAUDE_SETTINGS_PATH = join(homedir(), '.claude', 'settings.json');
@@ -99,11 +99,12 @@ export class ClaudeCodeDetector {
     }
 
     // On Windows psList does not return process cwd, so we cannot match by path.
-    // Instead check whether any Claude process is running at all.
-    const claudeRunning = processes.some(p =>
+    // Instead check whether any Claude process is running at all and capture its PID.
+    const claudeProcess = processes.find(p =>
       p.name.toLowerCase().includes('claude') || p.cmd?.toLowerCase().includes('claude')
     );
-    if (!claudeRunning) return;
+    if (!claudeProcess) return;
+    const claudePid = claudeProcess.pid;
 
     try {
       const projectDirNames = new Set(
@@ -130,13 +131,13 @@ export class ClaudeCodeDetector {
           .sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt))[0];
 
         if (mostRecentEnded) {
-          updateSessionStatus(mostRecentEnded.id, 'active', null);
+          upsertSession({ ...mostRecentEnded, status: 'active', endedAt: null, lastActivityAt: now, pid: claudePid });
         } else {
           upsertSession({
             id: `claude-startup-${repo.id}-${Date.now()}`,
             repositoryId: repo.id,
             type: 'claude-code',
-            pid: null,
+            pid: claudePid,
             status: 'active',
             startedAt: now,
             endedAt: null,
