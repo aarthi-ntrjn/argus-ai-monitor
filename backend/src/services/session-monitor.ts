@@ -1,10 +1,14 @@
 import { EventEmitter } from 'events';
+import { existsSync, statSync } from 'fs';
+import { join } from 'path';
+import { homedir } from 'os';
 import psList from 'ps-list';
 import { RepositoryScanner } from './repository-scanner.js';
 import { CopilotCliDetector } from './copilot-cli-detector.js';
-import { ClaudeCodeDetector } from './claude-code-detector.js';
+import { ClaudeCodeDetector, ACTIVE_JSONL_THRESHOLD_MS } from './claude-code-detector.js';
 import { loadConfig } from '../config/config-loader.js';
-import { getSessions, updateSessionStatus } from '../db/database.js';
+import { getSessions, updateSessionStatus, getRepositories, updateRepositoryBranch } from '../db/database.js';
+import { getCurrentBranch } from './repository-scanner.js';
 import type { Session, Repository } from '../models/index.js';
 
 export interface SessionMonitorEvents {
@@ -41,12 +45,12 @@ export class SessionMonitor extends EventEmitter {
 
   private async reconcileStaleSessions(): Promise<void> {
     try {
-      const activeSessions = getSessions({ status: 'active' });
-      if (activeSessions.length === 0) return;
+      const sessions = getSessions({ status: 'active' });
+      if (sessions.length === 0) return;
       const processes = await psList();
       const runningPids = new Set(processes.map((p) => p.pid));
       const now = new Date().toISOString();
-      for (const session of activeSessions) {
+      for (const session of sessions) {
         if (session.pid != null && !runningPids.has(session.pid)) {
           updateSessionStatus(session.id, 'ended', now);
         }
@@ -54,11 +58,56 @@ export class SessionMonitor extends EventEmitter {
     } catch { /* ignore — stale reconciliation is best-effort */ }
   }
 
+  private async reconcileClaudeCodeSessions(): Promise<void> {
+    try {
+      const liveSessions = getSessions({ status: 'active', type: 'claude-code' });
+      if (liveSessions.length === 0) return;
+
+      const processes = await psList();
+      const runningPids = new Set(processes.map((p) => p.pid));
+      const repos = getRepositories();
+      const now = new Date().toISOString();
+
+      for (const session of liveSessions) {
+        let shouldEnd = false;
+        if (session.pid != null) {
+          shouldEnd = !runningPids.has(session.pid);
+        } else {
+          // For null-PID sessions, check JSONL file freshness rather than a global "is claude running"
+          // guard — that guard fails when another Claude session is active.
+          const repo = repos.find(r => r.id === session.repositoryId);
+          if (!repo) {
+            shouldEnd = true;
+          } else {
+            const jsonlPath = join(
+              homedir(), '.claude', 'projects',
+              ClaudeCodeDetector.projectDirName(repo.path),
+              `${session.id}.jsonl`
+            );
+            try {
+              const mtime = statSync(jsonlPath).mtime.getTime();
+              shouldEnd = Date.now() - mtime > ACTIVE_JSONL_THRESHOLD_MS;
+            } catch {
+              shouldEnd = true; // file missing
+            }
+          }
+        }
+        if (shouldEnd) {
+          updateSessionStatus(session.id, 'ended', now);
+          const endedSession: Session = { ...session, status: 'ended', endedAt: now };
+          this.emit('session.ended', endedSession);
+        }
+      }
+    } catch { /* ignore — liveness check is best-effort */ }
+  }
+
   stop(): void {
     if (this.scanInterval) {
       clearInterval(this.scanInterval);
       this.scanInterval = null;
     }
+    this.cliDetector.stopWatchers();
+    this.claudeDetector.stopWatchers();
   }
 
   getCopilotCliDetector(): CopilotCliDetector {
@@ -69,9 +118,22 @@ export class SessionMonitor extends EventEmitter {
     return this.claudeDetector;
   }
 
+  private refreshRepositoryBranches(): void {
+    try {
+      for (const repo of getRepositories()) {
+        const branch = getCurrentBranch(repo.path);
+        if (branch !== repo.branch) {
+          updateRepositoryBranch(repo.id, branch);
+        }
+      }
+    } catch { /* ignore — branch refresh is best-effort */ }
+  }
+
   private async runScan(): Promise<void> {
     try {
       await this.scanner.scan();
+      this.refreshRepositoryBranches();
+      await this.reconcileClaudeCodeSessions();
       const sessions = await this.cliDetector.scan();
       const currentScanIds = new Set<string>(sessions.map((s) => s.id));
 

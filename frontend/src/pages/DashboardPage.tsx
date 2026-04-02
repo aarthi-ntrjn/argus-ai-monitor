@@ -125,7 +125,7 @@ export default function DashboardPage() {
 
   if (reposLoading || sessionsLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
+      <div className="min-h-screen bg-slate-50 p-8">
         <div className="animate-pulse space-y-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-24 bg-gray-200 rounded-lg" />
@@ -136,7 +136,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-slate-50 p-8">
       <div className={`mx-auto ${selectedSessionId ? 'max-w-7xl' : 'max-w-4xl'}`}>
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-semibold text-gray-900">Argus Dashboard</h1>
@@ -164,7 +164,7 @@ export default function DashboardPage() {
             <button
               onClick={handleAddRepo}
               disabled={adding}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-blue-700 disabled:opacity-40 transition-colors"
             >
               {adding ? 'Adding...' : 'Add Repository'}
             </button>
@@ -208,10 +208,15 @@ export default function DashboardPage() {
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h2 className="text-xl font-semibold text-gray-900">{repo.name}</h2>
-                      <p className="text-sm text-gray-500 mt-1">{repo.path}</p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <p className="text-xs text-gray-500 font-mono">{repo.path}</p>
+                        {repo.branch && (
+                          <span className="inline-flex items-center gap-1 text-xs font-mono text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">⎇ {repo.branch}</span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded">
+                      <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded">
                         {repo.sessions.length} session{repo.sessions.length !== 1 ? 's' : ''}
                       </span>
           <button
@@ -302,3 +307,8 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+
+
+
+

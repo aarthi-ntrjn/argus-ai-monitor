@@ -6,11 +6,14 @@ Local dashboard that monitors GitHub Copilot CLI and Claude Code sessions across
 
 - **Session visibility** — see every active Copilot CLI and Claude Code session, which repo it's running in, and live output as it streams
 - **Two-pane output view** — click any session card to open a live output pane on the right without leaving the dashboard
+- **Role-labelled output** — messages from you and the AI are labelled **YOU** / **AI** so conversations are easy to follow at a glance
+- **Model badge** — the AI model in use (e.g. `claude-opus-4-5`) is shown on each session card and the session detail page
+- **Claude Code output streaming** — Argus reads Claude Code's JSONL conversation files in real-time and streams all content into the output pane, including tool calls
 - **Quick commands** — send **Esc** (interrupt), **Exit**, **Merge** with main, or **Pull latest** directly from the session card
 - **Inline prompt** — type and send prompts to active Claude Code sessions straight from the dashboard card
 - **Last output preview** — each card shows the most recent output line at a glance
 - **Remote control** — stop or interrupt a session from the dashboard without touching the terminal; drill into the full session page for complete history
-- **Auto-detection** — detects sessions already running when Argus starts; watches for new ones every 5 seconds; captures the OS PID for Claude Code sessions when possible
+- **Auto-detection** — detects sessions already running when Argus starts; for Claude Code, only re-activates sessions whose JSONL conversation file was modified in the last 30 minutes (prevents ghost sessions); watches for new ones every 5 seconds; captures the OS PID for Claude Code sessions when possible
 - **Repository management** — add repos one at a time, browse your filesystem to pick the right folder, or scan a parent directory to bulk-import all git repos inside it
 
 ## Requirements
@@ -38,6 +41,7 @@ Open **http://localhost:7411**
 Each session card on the dashboard shows:
 
 - **Type badge** (copilot-cli / claude-code) and **status badge** (active / idle / ended / …)
+- **Model** — the AI model name when known (e.g. `claude-opus-4-5`), displayed in small monospace text next to the type badge
 - **PID** when known, or **session ID prefix** (e.g. `ID: abc12345`) for Claude Code sessions without a detected PID
 - **Elapsed time** and a **View details** link to the full session page
 - **Last output line** — most recent output truncated to one line

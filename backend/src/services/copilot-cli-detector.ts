@@ -5,9 +5,9 @@ import { load as yamlLoad } from 'js-yaml';
 import psList from 'ps-list';
 import { randomUUID } from 'crypto';
 import chokidar, { type FSWatcher } from 'chokidar';
-import { upsertSession, getRepositoryByPath } from '../db/database.js';
+import { upsertSession, getRepositoryByPath, deleteSessionOutput, getSession } from '../db/database.js';
 import { OutputStore } from './output-store.js';
-import { parseJsonlLine } from './events-parser.js';
+import { parseJsonlLine, parseModelFromEvent } from './events-parser.js';
 import type { Session } from '../models/index.js';
 
 const DEFAULT_SESSION_DIR = join(homedir(), '.copilot', 'session-state');
@@ -85,6 +85,7 @@ export class CopilotCliDetector {
       lastActivityAt: toIso(workspace.updated_at),
       summary: workspace.summary ?? null,
       expiresAt: null,
+      model: this.extractModelFromEventsFile(join(dirPath, 'events.jsonl')),
     };
 
     upsertSession(session);
@@ -101,12 +102,29 @@ export class CopilotCliDetector {
     const eventsFile = join(dirPath, 'events.jsonl');
     if (!existsSync(eventsFile)) return;
 
-    this.filePositions.set(sessionId, statSync(eventsFile).size);
+    // Clear any stale output (may be raw JSON from before parser fix) and reload from scratch
+    deleteSessionOutput(sessionId);
+    this.filePositions.set(sessionId, 0);
     this.sequenceCounters.set(sessionId, 0);
+
+    // Load all historical lines immediately before starting the watcher
+    this.readNewLines(sessionId, eventsFile);
 
     const watcher = chokidar.watch(eventsFile, { persistent: false, usePolling: false });
     watcher.on('change', () => this.readNewLines(sessionId, eventsFile));
     this.watchers.set(sessionId, watcher);
+  }
+
+  private extractModelFromEventsFile(filePath: string): string | null {
+    if (!existsSync(filePath)) return null;
+    try {
+      const lines = readFileSync(filePath, 'utf-8').split('\n');
+      for (const line of lines) {
+        const model = parseModelFromEvent(line);
+        if (model) return model;
+      }
+    } catch { /* ignore */ }
+    return null;
   }
 
   private readNewLines(sessionId: string, filePath: string): void {
@@ -125,14 +143,21 @@ export class CopilotCliDetector {
       const lines = newContent.split('\n').filter((l) => l.trim());
       let seq = this.sequenceCounters.get(sessionId) ?? 0;
 
+      let detectedModel: string | null = null;
       const outputs = lines.map((line) => {
         seq++;
+        if (!detectedModel) detectedModel = parseModelFromEvent(line);
         return parseJsonlLine(line, sessionId, seq);
       }).filter((o): o is NonNullable<typeof o> => o !== null);
 
       this.sequenceCounters.set(sessionId, seq);
       if (outputs.length > 0) {
         this.outputStore.insertOutput(sessionId, outputs);
+      }
+
+      if (detectedModel && !getSession(sessionId)?.model) {
+        const existing = getSession(sessionId);
+        if (existing) upsertSession({ ...existing, model: detectedModel });
       }
     } catch { /* ignore */ }
   }
