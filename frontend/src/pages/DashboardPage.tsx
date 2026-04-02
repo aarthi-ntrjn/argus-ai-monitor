@@ -136,7 +136,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-50 p-8">
       <div className={`mx-auto ${selectedSessionId ? 'max-w-7xl' : 'max-w-4xl'}`}>
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Argus Dashboard</h1>
+          <h1 className="text-3xl font-semibold text-gray-900">Argus Dashboard</h1>
           <div className="flex items-center gap-2">
             <div className="relative" ref={settingsRef}>
               <button

@@ -183,6 +183,26 @@
 
 ---
 
+## Phase 11: Bug Fix — Prompt Input Missing on copilot-cli Cards
+
+**Problem**: `SessionPromptBar` only renders the text input and Send button when `session.type === 'claude-code'`. Copilot CLI cards show only the `⋮` menu with no way to send a prompt.
+
+**Root cause**: The `isClaudeCode` guard in `SessionPromptBar.tsx` was carried forward from the old `InlinePrompt` component. The backend `/send` endpoint already handles copilot-cli gracefully — it returns HTTP 501 with `{ message: 'Prompt injection not supported for Copilot CLI in v1' }`, which surfaces as an inline error.
+
+**Fix**: Remove the `isClaudeCode` condition so the input + Send button render for all session types.
+
+- [ ] T147 [US9] In `frontend/src/components/SessionPromptBar/SessionPromptBar.tsx`, remove the `isClaudeCode` guard from both the `<input>` and Send `<button>` blocks so they render for all session types (delete the `{isClaudeCode && (...)}` wrappers, keep the elements unconditionally); also remove the now-unused `isClaudeCode` variable
+- [ ] T148 [P] [US9] Update `frontend/tests/e2e/sc-006-session-ux.spec.ts`: add assertion that the copilot-cli card (`Another session`) also shows a prompt input (`getByPlaceholder(/send a prompt/i).nth(1)`)
+- [ ] T149 Verify `cd frontend && npm run build` passes — 0 TypeScript errors
+
+---
+
+## Phase 12: Polish — Dashboard Title Font Weight
+
+- [ ] T150 In `frontend/src/pages/DashboardPage.tsx` line 139, change `font-bold` to `font-semibold` on the `<h1>` "Argus Dashboard" title (reduces weight from 700 → 600)
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
