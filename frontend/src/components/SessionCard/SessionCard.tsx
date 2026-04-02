@@ -79,9 +79,9 @@ export default function SessionCard({ session, selected, onSelect }: Props) {
           {!session.pid && session.type === 'claude-code' && (
             <span className="text-[10px] text-gray-500 font-mono">ID: {claudeShortId(session.id)}</span>
           )}
+          <span className="text-[10px] text-gray-500 font-mono">{getElapsed(session.startedAt)}</span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[10px] text-gray-500 font-mono">{getElapsed(session.startedAt)}</span>
           {isInactive(session) ? (
             <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded font-medium bg-amber-100 text-amber-700">
               <Moon size={10} />resting
