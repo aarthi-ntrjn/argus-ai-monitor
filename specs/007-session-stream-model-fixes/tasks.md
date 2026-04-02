@@ -130,6 +130,14 @@
 
 - [X] T087 Fix output stream column layout in `frontend/src/components/SessionDetail/SessionDetail.tsx`: wrap badge and toolname in a `flex-col w-24 shrink-0` container so toolname stacks below the badge (capped width); remove standalone toolname span
 
+### Addendum: T089 — Output stream 2-column layout (merge timestamp into meta column)
+
+**Goal**: Reduce the output stream from 3 columns to 2. Column 1 stacks badge, toolname (if present), and timestamp vertically. Column 2 is the content. Saves horizontal space and groups all meta-info together.
+
+- [ ] T089 [US3] Update `frontend/src/components/SessionDetail/SessionDetail.tsx`: collapse the 3-column row layout (`timestamp | badge+toolname | content`) into a 2-column layout. Column 1 (`flex-col gap-0.5 w-28 shrink-0`): badge (self-start), toolname below badge (if present, truncate), timestamp below those (`text-[10px]` for de-emphasis). Column 2 (`min-w-0 break-words whitespace-pre-wrap`): content unchanged. Remove the standalone timestamp `<span>` that was previously its own column.
+
+- [ ] T090 Run `cd frontend && npm run build` — confirm 0 TypeScript errors and build succeeds
+
 ---
 
 ## Dependencies & Execution Order
