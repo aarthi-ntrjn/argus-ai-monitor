@@ -164,7 +164,7 @@ export default function DashboardPage() {
             <button
               onClick={handleAddRepo}
               disabled={adding}
-              className="bg-blue-600 text-white text-sm px-3 py-1.5 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="bg-blue-600 text-white text-xs px-2.5 py-1 rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
               {adding ? 'Adding...' : 'Add Repository'}
             </button>
