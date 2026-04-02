@@ -226,3 +226,89 @@ describe('ClaudeCodeDetector.scanExistingSessions', () => {
   });
 });
 
+describe('ClaudeCodeDetector.handleHookPayload — Stop hook', () => {
+  let dbModule: typeof import('../../src/db/database.js');
+
+  beforeEach(async () => {
+    process.env.ARGUS_DB_PATH = join(tmpdir(), `argus-claude-hook-test-${randomUUID()}.db`);
+    vi.resetModules();
+    mockMtime = new Date();
+    fakeJsonlFiles = ['stop-test-session.jsonl'];
+    dbModule = await import('../../src/db/database.js');
+    dbModule.insertRepository({
+      id: 'repo-hook-test',
+      path: FAKE_REPO_PATH,
+      name: 'hook-test',
+      source: 'ui',
+      addedAt: new Date().toISOString(),
+      lastScannedAt: null,
+    });
+  });
+
+  afterEach(() => {
+    dbModule.closeDb();
+    vi.resetModules();
+  });
+
+  // T090 regression: Stop hook fires at end of every AI turn, NOT session exit.
+  // Session must transition to 'idle', never 'ended', when Stop hook arrives.
+  it('T090: Stop hook sets session to idle, not ended', async () => {
+    const sessionId = 'stop-test-session';
+    const now = new Date().toISOString();
+    dbModule.upsertSession({
+      id: sessionId,
+      repositoryId: 'repo-hook-test',
+      type: 'claude-code',
+      pid: null,
+      status: 'active',
+      startedAt: now,
+      endedAt: null,
+      lastActivityAt: now,
+      summary: null,
+      expiresAt: null,
+      model: null,
+    });
+
+    const { ClaudeCodeDetector } = await import('../../src/services/claude-code-detector.js');
+    const detector = new ClaudeCodeDetector();
+    await detector.handleHookPayload({
+      hook_event_name: 'Stop',
+      session_id: sessionId,
+      cwd: FAKE_REPO_PATH,
+    });
+
+    const session = dbModule.getSession(sessionId);
+    expect(session?.status).toBe('idle');
+    expect(session?.endedAt).toBeNull();
+  });
+
+  it('T090: PreToolUse hook keeps session active', async () => {
+    const sessionId = 'stop-test-session';
+    const now = new Date().toISOString();
+    dbModule.upsertSession({
+      id: sessionId,
+      repositoryId: 'repo-hook-test',
+      type: 'claude-code',
+      pid: null,
+      status: 'idle',
+      startedAt: now,
+      endedAt: null,
+      lastActivityAt: now,
+      summary: null,
+      expiresAt: null,
+      model: null,
+    });
+
+    const { ClaudeCodeDetector } = await import('../../src/services/claude-code-detector.js');
+    const detector = new ClaudeCodeDetector();
+    await detector.handleHookPayload({
+      hook_event_name: 'PreToolUse',
+      session_id: sessionId,
+      cwd: FAKE_REPO_PATH,
+    });
+
+    const session = dbModule.getSession(sessionId);
+    expect(session?.status).toBe('active');
+  });
+});
+
