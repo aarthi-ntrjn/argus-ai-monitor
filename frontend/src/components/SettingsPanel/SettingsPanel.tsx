@@ -30,6 +30,16 @@ export function SettingsPanel({ settings, onToggle }: SettingsPanelProps) {
         />
         <span className="text-sm text-gray-700">Hide repos with no active sessions</span>
       </label>
+      <label className="flex items-center gap-3 cursor-pointer select-none py-1">
+        <input
+          type="checkbox"
+          aria-label="Hide inactive sessions"
+          checked={settings.hideInactiveSessions}
+          onChange={e => onToggle('hideInactiveSessions', e.target.checked)}
+          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        />
+        <span className="text-sm text-gray-700">Hide inactive sessions (&gt;20 min)</span>
+      </label>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import type { Session } from '../../types';
 import { getSessionOutput } from '../../services/api';
+import { isInactive } from '../../utils/sessionUtils';
 import SessionPromptBar from '../SessionPromptBar/SessionPromptBar';
 import SessionTypeIcon from '../SessionTypeIcon/SessionTypeIcon';
 
@@ -51,7 +52,7 @@ export default function SessionCard({ session, selected, onSelect }: Props) {
 
   return (
     <div
-      className={`border rounded-lg p-4 transition-colors cursor-pointer ${selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}
+      className={`border rounded-lg p-4 transition-colors cursor-pointer ${selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'} ${isInactive(session) && !selected ? 'opacity-75' : ''}`}
       onClick={() => onSelect?.(session.id)}
     >
       {/* Header row */}
@@ -64,6 +65,9 @@ export default function SessionCard({ session, selected, onSelect }: Props) {
           <span className={`text-xs px-2 py-0.5 rounded font-medium ${STATUS_COLORS[session.status] ?? 'bg-gray-100'}`}>
             {session.status}
           </span>
+          {isInactive(session) && (
+            <span className="text-xs px-2 py-0.5 rounded font-medium bg-amber-100 text-amber-700">inactive</span>
+          )}
           {session.pid && <span className="text-xs text-gray-400">PID: {session.pid}</span>}
           {!session.pid && session.type === 'claude-code' && (
             <span className="text-xs text-gray-400 font-mono">ID: {claudeShortId(session.id)}</span>

@@ -115,6 +115,24 @@ Active Claude Code sessions currently show no process identifier anywhere in the
 
 ---
 
+### User Story 7 - Inactive Session Indicator (Priority: P2)
+
+A session is **inactive** when it has been running (not `completed` or `ended`) but has had no activity for more than 20 minutes. Inactive sessions are visually distinguished on the dashboard so users can quickly identify stalled or forgotten sessions without opening each one. An optional Settings toggle lets users hide inactive sessions entirely.
+
+**Why this priority**: Users often leave sessions running that have gone quiet. Without a visual signal, it is hard to tell at a glance which sessions need attention and which are simply idle. This is additive — it does not change behaviour for active sessions.
+
+**Independent Test**: Set `lastActivityAt` on a session to 21 minutes ago (or advance the clock in tests). Verify the card shows an amber "inactive" badge. Enable "Hide inactive sessions" in Settings and verify the card is no longer shown.
+
+**Acceptance Scenarios**:
+
+1. **Given** a session with `lastActivityAt` more than 20 minutes ago and status not `completed`/`ended`, **When** the dashboard renders, **Then** an amber "inactive" badge is shown in the session card's status row.
+2. **Given** a session with `lastActivityAt` less than 20 minutes ago, **When** the card renders, **Then** no "inactive" badge is shown.
+3. **Given** a `completed` or `ended` session with old `lastActivityAt`, **When** the card renders, **Then** it is NOT marked inactive (it is already in a terminal state).
+4. **Given** the "Hide inactive sessions" setting is enabled, **When** the dashboard renders, **Then** inactive sessions are excluded from all repository session lists.
+5. **Given** an inactive session, **When** new output arrives and `lastActivityAt` updates to now, **Then** the inactive badge disappears on the next re-render.
+
+---
+
 ### Edge Cases
 
 - What happens when a command (Merge, Pull latest) is sent but the session is in a waiting/busy state? The command is queued/sent and the output pane shows the result. No special blocking is required.
@@ -142,6 +160,8 @@ Active Claude Code sessions currently show no process identifier anywhere in the
 - **FR-013**: The backend MUST capture the OS PID of the running Claude process during session detection and store it on the session record.
 - **FR-014**: Claude Code session cards MUST display the Claude internal session ID at all times.
 - **FR-015**: Claude Code session cards MUST display the OS PID when it has been captured.
+- **FR-016**: Sessions with no activity for more than 20 minutes that are not `completed` or `ended` MUST display an amber "inactive" badge on the session card.
+- **FR-017**: The Settings panel MUST include a "Hide inactive sessions" toggle that removes inactive sessions from the dashboard when enabled.
 
 ### Key Entities
 

@@ -6,6 +6,7 @@ import { useSettings } from '../hooks/useSettings';
 import { SettingsPanel } from '../components/SettingsPanel';
 import SessionCard from '../components/SessionCard/SessionCard';
 import OutputPane from '../components/OutputPane/OutputPane';
+import { isInactive } from '../utils/sessionUtils';
 
 interface RepoWithSessions extends Repository {
   sessions: Session[];
@@ -57,9 +58,11 @@ export default function DashboardPage() {
 
   const reposWithSessions: RepoWithSessions[] = repos.map((repo) => {
     const repoSessions = sessions.filter((s) => s.repositoryId === repo.id);
-    const visibleSessions = settings.hideEndedSessions
-      ? repoSessions.filter(s => !ENDED_STATUSES.has(s.status))
-      : repoSessions;
+    const visibleSessions = repoSessions.filter(s => {
+      if (settings.hideEndedSessions && ENDED_STATUSES.has(s.status)) return false;
+      if (settings.hideInactiveSessions && isInactive(s)) return false;
+      return true;
+    });
     return { ...repo, sessions: visibleSessions };
   }).filter((repo) => {
     if (!settings.hideReposWithNoActiveSessions) return true;

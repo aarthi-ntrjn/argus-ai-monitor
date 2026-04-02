@@ -310,3 +310,72 @@ Task T128: E2E tests in frontend/tests/e2e/sc-006-session-ux.spec.ts
 - `SessionCard.tsx` is modified in multiple phases — take care not to conflict between T117, T127, T131, T132, T133. Work sequentially when touching the same file.
 - The E2E test file `sc-006-session-ux.spec.ts` accumulates tests across phases — write the relevant describe block per phase
 - Commit after each phase checkpoint
+
+---
+
+## Phase 15: US7 — Inactive Sessions (Priority: P2)
+
+**Purpose**: Sessions with no activity for more than 20 minutes are visually flagged as "inactive" on the dashboard. Users can optionally hide inactive sessions via the Settings panel.
+
+**Goal**: Any session (not `completed`/`ended`) whose `lastActivityAt` is older than 20 minutes shows an amber "inactive" badge on its card. A new Settings toggle lets users hide all inactive sessions from the dashboard.
+
+**Independent Test**: Run the dashboard with a session whose `lastActivityAt` is >20 min ago — the card shows an amber "inactive" badge. Enable "Hide inactive sessions" in Settings — the card disappears.
+
+**Acceptance Scenarios**:
+
+1. **Given** a session with `lastActivityAt` more than 20 minutes ago and status not `completed`/`ended`, **When** the dashboard renders, **Then** the card shows an amber "inactive" badge.
+2. **Given** a session that just received activity, **When** the card re-renders, **Then** the "inactive" badge is not shown.
+3. **Given** the "Hide inactive sessions" toggle is enabled in Settings, **When** the dashboard renders, **Then** inactive sessions are not shown in any repo list.
+4. **Given** a `completed` or `ended` session with old `lastActivityAt`, **When** the dashboard renders, **Then** it is NOT marked inactive (it is already ended).
+
+### Implementation for US7
+
+- [ ] T156 [P] Create `frontend/src/utils/sessionUtils.ts` with: `export const INACTIVE_THRESHOLD_MS = 20 * 60 * 1000;` and `export function isInactive(session: Session): boolean` — returns `true` when `session.status` is not `'completed'` or `'ended'` AND `Date.now() - new Date(session.lastActivityAt).getTime() > INACTIVE_THRESHOLD_MS`; import `Session` from `'../types'`
+
+- [ ] T157 [US7] Update `frontend/src/components/SessionCard/SessionCard.tsx`: import `isInactive` from `'../../utils/sessionUtils'`; in the status pills row, add an amber "inactive" badge (`<span className="text-xs px-2 py-0.5 rounded font-medium bg-amber-100 text-amber-700">inactive</span>`) conditionally rendered when `isInactive(session)` is true; also update the card wrapper `className` to include `opacity-75` when `isInactive(session) && !selected`
+
+- [ ] T158 [P] [US7] Add `hideInactiveSessions: boolean` to the `DashboardSettings` interface in `frontend/src/types.ts` and add `hideInactiveSessions: false` to `DEFAULT_SETTINGS`
+
+- [ ] T159 [US7] Add a "Hide inactive sessions (no activity > 20 min)" toggle to `frontend/src/components/SettingsPanel/SettingsPanel.tsx` — follow the existing label+checkbox pattern, bind to `settings.hideInactiveSessions` via `onToggle('hideInactiveSessions', e.target.checked)`
+
+- [ ] T160 [US7] Update `frontend/src/pages/DashboardPage.tsx`: import `isInactive` from `'../utils/sessionUtils'`; in the `reposWithSessions` map, extend the `visibleSessions` filter chain to also filter out inactive sessions when `settings.hideInactiveSessions` is true — i.e. `!settings.hideInactiveSessions || !isInactive(s)` (applied after the existing `hideEndedSessions` filter)
+
+- [ ] T161 Run `cd frontend && npm run build` to verify 0 TypeScript errors and successful Vite bundle
+
+**Checkpoint**: Inactive sessions show an amber badge on cards; Settings panel toggle hides them; ended sessions are unaffected
+
+---
+
+## Phase 16: Remove Stop Button from Details Page (Cleanup)
+
+**Purpose**: The "Stop Session" button on the `/sessions/:id` details page is redundant now that Exit is available in the `SessionPromptBar` ⋮ dropdown menu. Remove it and all code that exists solely to support it.
+
+**Goal**: The Controls card on the details page contains only the `SessionPromptBar`. No Stop Session button, no SIGTERM helper text, no confirmation flow.
+
+**Independent Test**: Open any session detail page — no "Stop Session" button appears. The ⋮ menu still contains Exit.
+
+- [ ] T162 [US11] In `frontend/src/pages/SessionPage.tsx`, remove: the Stop Session button block (the `<div>` with `mt-3 pt-3 border-t` containing the button, helper text, and error span); the `handleStop` function; the `stopMutation` useMutation call; the `stopError` useState; the `useState` import (no longer used); the `useMutation` import (no longer used); the `stopSession` import from `'../services/api'`; also remove the "Controls" `<h2>` heading above `SessionPromptBar` to declutter the card
+
+- [ ] T163 Run `cd frontend && npm run build` to verify 0 TypeScript errors
+
+**Checkpoint**: Details page Controls card contains only `SessionPromptBar`. All dead code removed.
+
+---
+
+## Phase 17: Unified Output Stream Rendering
+
+**Purpose**: The right-pane `OutputPane` on the dashboard uses a minimal renderer (no timestamps, no type badges). The `SessionDetail` renderer on the details page is richer (timestamps, MSG/TOOL/RESULT/ERR/STATUS badges, tool names). Both should use the same rendering. The dark theme (bg-gray-900) is used in both places.
+
+**Goal**: `SessionDetail` gains a `dark` prop. `OutputPane` delegates item rendering to `SessionDetail dark`. `SessionPage` Output Stream card also switches to the dark theme. No output rendering logic is duplicated.
+
+**Independent Test**: Open the dashboard right pane → items show timestamps and type badges. Open the details page → same visual layout, same dark background.
+
+- [ ] T164 Update `frontend/src/components/SessionDetail/SessionDetail.tsx`: add an optional `dark?: boolean` prop; when `dark` is true apply dark-theme classes — wrapper `bg-gray-900 text-gray-300`, timestamp `text-gray-500`, content `text-gray-200`, type badge colors adjusted for dark bg (e.g. `bg-blue-900 text-blue-300`, `bg-purple-900 text-purple-300`, `bg-green-900 text-green-300`, `bg-red-900 text-red-300`, `bg-yellow-900 text-yellow-300`), empty-state text `text-gray-500`; default (`dark` false/absent) keeps existing light-theme classes unchanged
+
+- [ ] T165 Update `frontend/src/components/OutputPane/OutputPane.tsx`: import `SessionDetail`; replace the inline items `<div>` rendering block (the `data?.items.map(...)` section and the "No output yet…" paragraph) with `<SessionDetail sessionId={session.id} items={data?.items ?? []} dark />`; remove the now-unused inline rendering — keep the header bar, scroll container `flex-1 overflow-y-auto p-4`, and `bottomRef`; the `bottomRef` scroll-to-bottom effect stays on `OutputPane` since it owns the scroll container
+
+- [ ] T166 Update `frontend/src/pages/SessionPage.tsx` Output Stream card: wrap the `<SessionDetail>` with a dark container — change the card from `bg-white rounded-lg shadow` to `bg-gray-900 rounded-lg shadow`; update the "Output Stream" heading to `text-gray-200`; update the border to `border-gray-700`; pass `dark` prop to `<SessionDetail>`; remove the wrapping `p-4 border-b border-gray-200` header div adjusting colors to match dark theme (`border-gray-700`, `text-gray-200`)
+
+- [ ] T167 Run `cd frontend && npm run build` to verify 0 TypeScript errors
+
+**Checkpoint**: Identical output rendering (timestamps + type badges + tool names + dark bg) in both the dashboard right pane and the details page

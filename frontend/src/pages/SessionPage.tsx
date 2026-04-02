@@ -1,7 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { getSession, getSessionOutput, stopSession, queryClient } from '../services/api';
+import { useQuery } from '@tanstack/react-query';
+import { getSession, getSessionOutput } from '../services/api';
 import SessionDetail from '../components/SessionDetail/SessionDetail';
 import SessionPromptBar from '../components/SessionPromptBar/SessionPromptBar';
 import SessionTypeIcon from '../components/SessionTypeIcon/SessionTypeIcon';
@@ -49,20 +48,6 @@ export default function SessionPage() {
     queryFn: () => getSessionOutput(id!, { limit: 100 }),
     enabled: !!id,
   });
-
-  const stopMutation = useMutation({
-    mutationFn: () => stopSession(id!),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['session', id] }); },
-  });
-
-  const [stopError, setStopError] = useState<string | null>(null);
-
-  const handleStop = async () => {
-    if (!window.confirm('Stop this session? This sends SIGTERM to the process.')) return;
-    setStopError(null);
-    try { await stopMutation.mutateAsync(); }
-    catch (err) { setStopError(err instanceof Error ? err.message : 'Failed to stop'); }
-  };
 
   if (sessionLoading) {
     return (
@@ -119,33 +104,20 @@ export default function SessionPage() {
         </div>
 
         <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">Controls</h2>
           <SessionPromptBar session={session} />
-          {session.status !== 'ended' && session.status !== 'completed' && (
-            <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-3">
-              <button
-                onClick={handleStop}
-                disabled={stopMutation.isPending}
-                className="text-xs px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 transition-colors"
-              >
-                {stopMutation.isPending ? 'Stopping…' : 'Stop Session'}
-              </button>
-              <span className="text-xs text-gray-400">Sends SIGTERM to the process</span>
-              {stopError && <span className="text-xs text-red-500">{stopError}</span>}
-            </div>
-          )}
         </div>
 
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Output Stream</h2>
+        <div className="bg-gray-900 rounded-lg shadow">
+          <div className="p-4 border-b border-gray-700">
+            <h2 className="text-lg font-semibold text-gray-200">Output Stream</h2>
           </div>
           {outputLoading ? (
-            <div className="p-8 text-center text-gray-400">Loading output...</div>
+            <div className="p-8 text-center text-gray-500">Loading output...</div>
           ) : (
             <SessionDetail
               sessionId={session.id}
               items={outputPage?.items ?? []}
+              dark
             />
           )}
         </div>

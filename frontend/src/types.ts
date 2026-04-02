@@ -42,11 +42,13 @@ export interface SessionOutput {
 export interface DashboardSettings {
   hideEndedSessions: boolean;
   hideReposWithNoActiveSessions: boolean;
+  hideInactiveSessions: boolean;
 }
 
 export const DEFAULT_SETTINGS: DashboardSettings = {
   hideEndedSessions: false,
   hideReposWithNoActiveSessions: false,
+  hideInactiveSessions: false,
 };
 
 export interface ControlAction {

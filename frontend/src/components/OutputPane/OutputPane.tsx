@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getSessionOutput } from '../../services/api';
 import type { Session } from '../../types';
+import SessionDetail from '../SessionDetail/SessionDetail';
 
 interface Props {
   session: Session;
@@ -48,18 +49,8 @@ export default function OutputPane({ session, onClose }: Props) {
           </svg>
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto p-4 space-y-1 font-mono text-xs text-gray-300">
-        {data?.items.length === 0 && (
-          <p className="text-gray-500 italic">No output yet…</p>
-        )}
-        {data?.items.map(item => (
-          <div key={item.id} className="whitespace-pre-wrap break-words">
-            {item.toolName && (
-              <span className="text-yellow-400 mr-2">[{item.toolName}]</span>
-            )}
-            {item.content}
-          </div>
-        ))}
+      <div className="flex-1 overflow-y-auto">
+        <SessionDetail sessionId={session.id} items={data?.items ?? []} dark />
         <div ref={bottomRef} />
       </div>
     </section>
