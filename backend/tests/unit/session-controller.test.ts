@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock the database module
 vi.mock('../../src/db/database.js', () => ({
   getSession: vi.fn(),
   insertControlAction: vi.fn(),
@@ -11,9 +10,23 @@ vi.mock('../../src/api/ws/event-dispatcher.js', () => ({
   broadcast: vi.fn(),
 }));
 
+// Mock ps-list so PID ownership validation is controlled in tests
+let mockPsListResult: Array<{ pid: number; name: string; cmd?: string }> = [];
+vi.mock('ps-list', () => ({
+  default: vi.fn(async () => mockPsListResult),
+}));
+
+// Mock child_process.spawnSync so we can assert it is used (not exec)
+const mockSpawnSync = vi.fn(() => ({ status: 0, error: undefined }));
+vi.mock('child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('child_process')>();
+  return { ...actual, spawnSync: mockSpawnSync };
+});
+
 describe('SessionController', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPsListResult = [];
   });
 
   it('returns not_supported action for copilot-cli sendPrompt', async () => {
@@ -31,6 +44,7 @@ describe('SessionController', () => {
       lastActivityAt: new Date().toISOString(),
       summary: null,
       expiresAt: null,
+      model: null,
     };
     (getSession as ReturnType<typeof vi.fn>).mockReturnValue(mockSession);
 
@@ -40,33 +54,137 @@ describe('SessionController', () => {
     expect(action.type).toBe('send_prompt');
   });
 
-  it('creates control action for stopSession', async () => {
-    const { getSession, insertControlAction } = await import('../../src/db/database.js');
+  it('throws PID_NOT_SET when session has no pid on stopSession', async () => {
+    const { getSession } = await import('../../src/db/database.js');
     const { SessionController } = await import('../../src/services/session-controller.js');
 
-    const mockSession = {
+    (getSession as ReturnType<typeof vi.fn>).mockReturnValue({
       id: 'test-session',
       repositoryId: 'repo-1',
-      type: 'copilot-cli',
-      pid: 99999, // unlikely PID
+      type: 'claude-code',
+      pid: null,
       status: 'active',
       startedAt: new Date().toISOString(),
       endedAt: null,
       lastActivityAt: new Date().toISOString(),
       summary: null,
       expiresAt: null,
-    };
-    (getSession as ReturnType<typeof vi.fn>).mockReturnValue(mockSession);
-    (insertControlAction as ReturnType<typeof vi.fn>).mockImplementation(() => {});
+      model: null,
+    });
 
     const controller = new SessionController();
-    // This will fail to kill PID 99999 but should still create the action
-    try {
-      await controller.stopSession('test-session');
-    } catch {
-      // ignore kill errors in test
-    }
-    // insertControlAction should have been called
+    await expect(controller.stopSession('test-session')).rejects.toMatchObject({ code: 'PID_NOT_SET' });
+  });
+
+  it('throws PID_NOT_FOUND when pid is not in OS process list on stopSession', async () => {
+    const { getSession } = await import('../../src/db/database.js');
+    const { SessionController } = await import('../../src/services/session-controller.js');
+
+    mockPsListResult = []; // PID 99999 not running
+    (getSession as ReturnType<typeof vi.fn>).mockReturnValue({
+      id: 'test-session',
+      repositoryId: 'repo-1',
+      type: 'claude-code',
+      pid: 99999,
+      status: 'active',
+      startedAt: new Date().toISOString(),
+      endedAt: null,
+      lastActivityAt: new Date().toISOString(),
+      summary: null,
+      expiresAt: null,
+      model: null,
+    });
+
+    const controller = new SessionController();
+    await expect(controller.stopSession('test-session')).rejects.toMatchObject({ code: 'PID_NOT_FOUND' });
+  });
+
+  it('throws PID_NOT_AI_TOOL when pid belongs to a non-AI process on stopSession', async () => {
+    const { getSession } = await import('../../src/db/database.js');
+    const { SessionController } = await import('../../src/services/session-controller.js');
+
+    mockPsListResult = [{ pid: 12345, name: 'chrome', cmd: '/usr/bin/chrome' }];
+    (getSession as ReturnType<typeof vi.fn>).mockReturnValue({
+      id: 'test-session',
+      repositoryId: 'repo-1',
+      type: 'claude-code',
+      pid: 12345,
+      status: 'active',
+      startedAt: new Date().toISOString(),
+      endedAt: null,
+      lastActivityAt: new Date().toISOString(),
+      summary: null,
+      expiresAt: null,
+      model: null,
+    });
+
+    const controller = new SessionController();
+    await expect(controller.stopSession('test-session')).rejects.toMatchObject({ code: 'PID_NOT_AI_TOOL' });
+  });
+
+  it('creates control action and calls spawnSync (not exec) on Windows for stopSession', async () => {
+    const { getSession, insertControlAction, updateControlAction } = await import('../../src/db/database.js');
+    const { SessionController } = await import('../../src/services/session-controller.js');
+
+    mockPsListResult = [{ pid: 5555, name: 'claude', cmd: '/usr/local/bin/claude' }];
+    (getSession as ReturnType<typeof vi.fn>).mockReturnValue({
+      id: 'test-session',
+      repositoryId: 'repo-1',
+      type: 'claude-code',
+      pid: 5555,
+      status: 'active',
+      startedAt: new Date().toISOString(),
+      endedAt: null,
+      lastActivityAt: new Date().toISOString(),
+      summary: null,
+      expiresAt: null,
+      model: null,
+    });
+    (insertControlAction as ReturnType<typeof vi.fn>).mockImplementation(() => {});
+    (updateControlAction as ReturnType<typeof vi.fn>).mockImplementation(() => {});
+
+    const originalPlatform = process.platform;
+    Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+
+    const controller = new SessionController();
+    await controller.stopSession('test-session');
+
+    // Verify spawnSync was called with explicit args array (not exec string)
+    expect(mockSpawnSync).toHaveBeenCalledWith('taskkill', ['/PID', '5555', '/T', '/F']);
     expect(insertControlAction).toHaveBeenCalled();
+
+    Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+  });
+
+  it('calls spawnSync (not exec) for interruptSession on Windows', async () => {
+    const { getSession, insertControlAction, updateControlAction } = await import('../../src/db/database.js');
+    const { SessionController } = await import('../../src/services/session-controller.js');
+
+    mockPsListResult = [{ pid: 6666, name: 'claude', cmd: 'claude' }];
+    (getSession as ReturnType<typeof vi.fn>).mockReturnValue({
+      id: 'interrupt-session',
+      repositoryId: 'repo-1',
+      type: 'claude-code',
+      pid: 6666,
+      status: 'active',
+      startedAt: new Date().toISOString(),
+      endedAt: null,
+      lastActivityAt: new Date().toISOString(),
+      summary: null,
+      expiresAt: null,
+      model: null,
+    });
+    (insertControlAction as ReturnType<typeof vi.fn>).mockImplementation(() => {});
+    (updateControlAction as ReturnType<typeof vi.fn>).mockImplementation(() => {});
+
+    const originalPlatform = process.platform;
+    Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+
+    const controller = new SessionController();
+    await controller.interruptSession('interrupt-session');
+
+    expect(mockSpawnSync).toHaveBeenCalledWith('taskkill', ['/PID', '6666']);
+
+    Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
   });
 });

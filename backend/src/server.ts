@@ -64,6 +64,8 @@ export async function buildServer() {
 
   app.addHook('onSend', async (request, reply) => {
     reply.header('X-Request-Id', request.id);
+    reply.header('X-Content-Type-Options', 'nosniff');
+    reply.header('X-Frame-Options', 'DENY');
   });
 
   app.setErrorHandler((error, request, reply) => {

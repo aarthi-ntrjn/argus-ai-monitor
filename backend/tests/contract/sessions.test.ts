@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import supertest from 'supertest';
 import { buildServer } from '../../src/server.js';
 
@@ -109,7 +109,7 @@ describe('Sessions API', () => {
       expect(res.body).toMatchObject({ error: 'CONFLICT' });
     });
 
-    it('returns 501 for session without PID', async () => {
+    it('returns 422 for active session without PID (PID_NOT_SET)', async () => {
       const { upsertSession, insertRepository } = await import('../../src/db/database.js');
       insertRepository({ id: 'interrupt-test-repo-2', path: '/tmp/interrupt-test-2', name: 'interrupt-test-2', source: 'ui', addedAt: new Date().toISOString(), lastScannedAt: null });
       upsertSession({
@@ -123,10 +123,107 @@ describe('Sessions API', () => {
         lastActivityAt: new Date().toISOString(),
         summary: null,
         expiresAt: null,
+        model: null,
       });
       const res = await request.post('/api/v1/sessions/interrupt-no-pid-test/interrupt');
-      expect(res.status).toBe(501);
-      expect(res.body).toMatchObject({ error: 'NOT_SUPPORTED' });
+      expect(res.status).toBe(422);
+      expect(res.body).toMatchObject({ error: 'PID_NOT_SET' });
+    });
+  });
+
+  describe('PID ownership validation (stop + interrupt)', () => {
+    beforeAll(() => {
+      // Mock ps-list so we control which PIDs are "running" during contract tests
+      vi.mock('ps-list', () => ({ default: vi.fn(async () => []) }));
+    });
+
+    it('stop: returns 422 PID_NOT_SET when session has no pid', async () => {
+      const { upsertSession, insertRepository } = await import('../../src/db/database.js');
+      insertRepository({ id: 'pid-val-repo-1', path: '/tmp/pid-val-1', name: 'pid-val-1', source: 'ui', addedAt: new Date().toISOString(), lastScannedAt: null });
+      upsertSession({
+        id: 'pid-val-stop-nopid',
+        repositoryId: 'pid-val-repo-1',
+        type: 'claude-code',
+        pid: null,
+        status: 'active',
+        startedAt: new Date().toISOString(),
+        endedAt: null,
+        lastActivityAt: new Date().toISOString(),
+        summary: null,
+        expiresAt: null,
+        model: null,
+      });
+      const res = await request.post('/api/v1/sessions/pid-val-stop-nopid/stop');
+      expect(res.status).toBe(422);
+      expect(res.body).toMatchObject({ error: 'PID_NOT_SET' });
+    });
+
+    it('stop: returns 422 PID_NOT_FOUND when pid is not in running OS processes', async () => {
+      // ps-list returns [] so PID 99999 will not be found
+      const { upsertSession, insertRepository } = await import('../../src/db/database.js');
+      insertRepository({ id: 'pid-val-repo-2', path: '/tmp/pid-val-2', name: 'pid-val-2', source: 'ui', addedAt: new Date().toISOString(), lastScannedAt: null });
+      upsertSession({
+        id: 'pid-val-stop-notfound',
+        repositoryId: 'pid-val-repo-2',
+        type: 'claude-code',
+        pid: 99999,
+        status: 'active',
+        startedAt: new Date().toISOString(),
+        endedAt: null,
+        lastActivityAt: new Date().toISOString(),
+        summary: null,
+        expiresAt: null,
+        model: null,
+      });
+      const res = await request.post('/api/v1/sessions/pid-val-stop-notfound/stop');
+      expect(res.status).toBe(422);
+      expect(res.body).toMatchObject({ error: 'PID_NOT_FOUND' });
+    });
+
+    it('stop: returns 403 PID_NOT_AI_TOOL when pid belongs to non-AI process', async () => {
+      const psList = await import('ps-list');
+      (psList.default as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+        { pid: 88888, name: 'chrome', cmd: '/usr/bin/chrome' },
+      ]);
+      const { upsertSession, insertRepository } = await import('../../src/db/database.js');
+      insertRepository({ id: 'pid-val-repo-3', path: '/tmp/pid-val-3', name: 'pid-val-3', source: 'ui', addedAt: new Date().toISOString(), lastScannedAt: null });
+      upsertSession({
+        id: 'pid-val-stop-notai',
+        repositoryId: 'pid-val-repo-3',
+        type: 'claude-code',
+        pid: 88888,
+        status: 'active',
+        startedAt: new Date().toISOString(),
+        endedAt: null,
+        lastActivityAt: new Date().toISOString(),
+        summary: null,
+        expiresAt: null,
+        model: null,
+      });
+      const res = await request.post('/api/v1/sessions/pid-val-stop-notai/stop');
+      expect(res.status).toBe(403);
+      expect(res.body).toMatchObject({ error: 'PID_NOT_AI_TOOL' });
+    });
+
+    it('interrupt: returns 422 PID_NOT_SET when session has no pid', async () => {
+      const { upsertSession, insertRepository } = await import('../../src/db/database.js');
+      insertRepository({ id: 'pid-val-repo-4', path: '/tmp/pid-val-4', name: 'pid-val-4', source: 'ui', addedAt: new Date().toISOString(), lastScannedAt: null });
+      upsertSession({
+        id: 'pid-val-int-nopid',
+        repositoryId: 'pid-val-repo-4',
+        type: 'claude-code',
+        pid: null,
+        status: 'active',
+        startedAt: new Date().toISOString(),
+        endedAt: null,
+        lastActivityAt: new Date().toISOString(),
+        summary: null,
+        expiresAt: null,
+        model: null,
+      });
+      const res = await request.post('/api/v1/sessions/pid-val-int-nopid/interrupt');
+      expect(res.status).toBe(422);
+      expect(res.body).toMatchObject({ error: 'PID_NOT_SET' });
     });
   });
 });

@@ -15,7 +15,7 @@
 
 **Purpose**: No new project or dependency setup required — this is a hardening PR on an existing TypeScript/Fastify project. The only structural addition is a new `backend/src/utils/` directory for `path-sandbox.ts`.
 
-- [ ] T001 Create directory `backend/src/utils/` (create placeholder if needed) and confirm `backend/tests/unit/` and `backend/tests/contract/` exist per plan structure
+- [x] T001 Create directory `backend/src/utils/` (create placeholder if needed) and confirm `backend/tests/unit/` and `backend/tests/contract/` exist per plan structure
 
 ---
 
@@ -25,10 +25,10 @@
 
 **⚠️ CRITICAL**: US1 (T007) and US4 (T015–T016) cannot begin until T003 and T004 are complete respectively.
 
-- [ ] T002 [P] Write unit tests for `pid-validator` covering: valid PID passes both checks, PID not in registry rejected, PID not in OS process list rejected, PID belongs to non-AI-tool process rejected, non-integer PID rejected — in `backend/tests/unit/pid-validator.test.ts` (new file; mock `psList` and `getSessionByPid` DB helper)
-- [ ] T003 [P] Write unit tests for `path-sandbox` covering: path within home dir allowed, path equal to boundary allowed, path outside home dir rejected, `../` traversal sequences resolved and rejected, Windows system paths (e.g. `C:\Windows`) rejected, boundary separator guard (`/home/user` does not allow `/home/userother`) — in `backend/tests/unit/path-sandbox.test.ts` (new file)
-- [ ] T004 Implement `pid-validator.ts` — export `validatePidOwnership(pid: number, sessionType: 'claude-code' | 'copilot-cli'): Promise<{ valid: boolean; reason?: 'not_in_registry' | 'process_not_found' | 'process_not_ai_tool' }>` using `psList` and a DB lookup by PID; allowlist: claude-code → `name/cmd.includes('claude')`, copilot-cli → `name/cmd.includes('gh') || cmd.includes('copilot')` — in `backend/src/services/pid-validator.ts` (new file)
-- [ ] T005 Implement `path-sandbox.ts` — export `isPathWithinBoundary(inputPath: string, allowedBoundaries: string[]): boolean` using `path.resolve()` for canonicalization and `resolved === boundary || resolved.startsWith(boundary + path.sep)` for boundary check — in `backend/src/utils/path-sandbox.ts` (new file)
+- [x] T002 [P] Write unit tests for `pid-validator` covering: valid PID passes both checks, PID not in registry rejected, PID not in OS process list rejected, PID belongs to non-AI-tool process rejected, non-integer PID rejected — in `backend/tests/unit/pid-validator.test.ts` (new file; mock `psList` and `getSessionByPid` DB helper)
+- [x] T003 [P] Write unit tests for `path-sandbox` covering: path within home dir allowed, path equal to boundary allowed, path outside home dir rejected, `../` traversal sequences resolved and rejected, Windows system paths (e.g. `C:\Windows`) rejected, boundary separator guard (`/home/user` does not allow `/home/userother`) — in `backend/tests/unit/path-sandbox.test.ts` (new file)
+- [x] T004 Implement `pid-validator.ts` — export `validatePidOwnership(pid: number, sessionType: 'claude-code' | 'copilot-cli'): Promise<{ valid: boolean; reason?: 'not_in_registry' | 'process_not_found' | 'process_not_ai_tool' }>` using `psList` and a DB lookup by PID; allowlist: claude-code → `name/cmd.includes('claude')`, copilot-cli → `name/cmd.includes('gh') || cmd.includes('copilot')` — in `backend/src/services/pid-validator.ts` (new file)
+- [x] T005 Implement `path-sandbox.ts` — export `isPathWithinBoundary(inputPath: string, allowedBoundaries: string[]): boolean` using `path.resolve()` for canonicalization and `resolved === boundary || resolved.startsWith(boundary + path.sep)` for boundary check — in `backend/src/utils/path-sandbox.ts` (new file)
 
 **Checkpoint**: Run `npm test` in `backend/` — T002 and T003 tests must be green before proceeding.
 
@@ -40,10 +40,10 @@
 
 **Independent Test**: Send a stop request for a session whose PID does not pass the ownership check → expect 422/403. Send a hook payload with a `pid` field for a session that already has a different PID stored → expect 409.
 
-- [ ] T006 [P] [US1] Write contract tests for PID ownership validation in stop and interrupt routes: (a) session with no PID → 422 `PID_NOT_SET`, (b) session PID not found in OS process list → 422 `PID_NOT_FOUND`, (c) session PID belongs to non-AI-tool → 403 `PID_NOT_AI_TOOL`, (d) valid PID passes through — extend `backend/tests/contract/sessions.test.ts`
-- [ ] T007 [P] [US1] Write contract test for 409 conflict when hook payload includes a `pid` field that differs from the existing session's stored PID — create `backend/tests/contract/hooks.test.ts` (new file)
-- [ ] T008 [US1] Update `stopSession` and `interruptSession` in `backend/src/services/session-controller.ts` to call `validatePidOwnership(session.pid, session.type)` before issuing any signal; throw typed errors (`PID_NOT_SET`, `PID_NOT_FOUND`, `PID_NOT_AI_TOOL`) that the error handler maps to 422/403 responses
-- [ ] T009 [US1] Add 409 guard to `/hooks/claude` handler in `backend/src/api/routes/hooks.ts`: after UUID validation, if the incoming payload contains a `pid` field and the existing session for that `session_id` has a non-null `pid` that differs, return `409 { error: 'SESSION_PID_CONFLICT', message: 'Session already has an established PID', requestId }`
+- [x] T006 [P] [US1] Write contract tests for PID ownership validation in stop and interrupt routes: (a) session with no PID → 422 `PID_NOT_SET`, (b) session PID not found in OS process list → 422 `PID_NOT_FOUND`, (c) session PID belongs to non-AI-tool → 403 `PID_NOT_AI_TOOL`, (d) valid PID passes through — extend `backend/tests/contract/sessions.test.ts`
+- [x] T007 [P] [US1] Write contract test for 409 conflict when hook payload includes a `pid` field that differs from the existing session's stored PID — create `backend/tests/contract/hooks.test.ts` (new file)
+- [x] T008 [US1] Update `stopSession` and `interruptSession` in `backend/src/services/session-controller.ts` to call `validatePidOwnership(session.pid, session.type)` before issuing any signal; throw typed errors (`PID_NOT_SET`, `PID_NOT_FOUND`, `PID_NOT_AI_TOOL`) that the error handler maps to 422/403 responses
+- [x] T009 [US1] Add 409 guard to `/hooks/claude` handler in `backend/src/api/routes/hooks.ts`: after UUID validation, if the incoming payload contains a `pid` field and the existing session for that `session_id` has a non-null `pid` that differs, return `409 { error: 'SESSION_PID_CONFLICT', message: 'Session already has an established PID', requestId }`
 
 ---
 
@@ -53,9 +53,9 @@
 
 **Independent Test**: POST with (a) 10 MB body → 413, (b) `session_id: "../../etc/passwd"` → 400, (c) unrecognized `cwd` → 200 `{ ok: true }` with no watcher started.
 
-- [ ] T010 [P] [US2] Write contract tests for hook validation — extend `backend/tests/contract/hooks.test.ts`: (a) body > 64 KB → 413, (b) `session_id` not UUID v4 (traversal string, empty string, numeric, missing) → 400 `INVALID_SESSION_ID`, (c) valid UUID with unrecognized `cwd` → 200 with no side effects (mock detector to confirm `handleHookPayload` not called), (d) confirm FR-007 cwd registry check is exercised
-- [ ] T011 [US2] Add `{ bodyLimit: 64 * 1024 }` to the `app.post('/hooks/claude', ...)` route options in `backend/src/api/routes/hooks.ts`
-- [ ] T012 [US2] Add UUID v4 regex validation for `session_id` in the `/hooks/claude` handler (before calling the detector) in `backend/src/api/routes/hooks.ts`; return `400 { error: 'INVALID_SESSION_ID', message: 'session_id must be a valid UUID v4', requestId }` on mismatch
+- [x] T010 [P] [US2] Write contract tests for hook validation — extend `backend/tests/contract/hooks.test.ts`: (a) body > 64 KB → 413, (b) `session_id` not UUID v4 (traversal string, empty string, numeric, missing) → 400 `INVALID_SESSION_ID`, (c) valid UUID with unrecognized `cwd` → 200 with no side effects (mock detector to confirm `handleHookPayload` not called), (d) confirm FR-007 cwd registry check is exercised
+- [x] T011 [US2] Add `{ bodyLimit: 64 * 1024 }` to the `app.post('/hooks/claude', ...)` route options in `backend/src/api/routes/hooks.ts`
+- [x] T012 [US2] Add UUID v4 regex validation for `session_id` in the `/hooks/claude` handler (before calling the detector) in `backend/src/api/routes/hooks.ts`; return `400 { error: 'INVALID_SESSION_ID', message: 'session_id must be a valid UUID v4', requestId }` on mismatch
 
 ---
 
@@ -65,8 +65,8 @@
 
 **Independent Test**: Code inspection and unit test confirm `execAsync` is absent from process control paths; `spawnSync('taskkill', ['/PID', String(pid), ...])` is present.
 
-- [ ] T013 [P] [US3] Write unit tests confirming `spawnSync` is used (not `exec`/`execAsync`) in `killProcess` and `interruptProcess` on Windows — extend `backend/tests/unit/session-controller.test.ts`; mock `spawnSync` and assert it is called with `['taskkill', ['/PID', expect.any(String), ...]]`
-- [ ] T014 [US3] Replace both `execAsync('taskkill /PID ${pid} /T /F')` and `execAsync('taskkill /PID ${pid}')` with `spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'])` and `spawnSync('taskkill', ['/PID', String(pid)])` respectively in `backend/src/services/session-controller.ts`; remove `execAsync`/`promisify` imports if no longer used
+- [x] T013 [P] [US3] Write unit tests confirming `spawnSync` is used (not `exec`/`execAsync`) in `killProcess` and `interruptProcess` on Windows — extend `backend/tests/unit/session-controller.test.ts`; mock `spawnSync` and assert it is called with `['taskkill', ['/PID', expect.any(String), ...]]`
+- [x] T014 [US3] Replace both `execAsync('taskkill /PID ${pid} /T /F')` and `execAsync('taskkill /PID ${pid}')` with `spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'])` and `spawnSync('taskkill', ['/PID', String(pid)])` respectively in `backend/src/services/session-controller.ts`; remove `execAsync`/`promisify` imports if no longer used
 
 ---
 
@@ -76,10 +76,10 @@
 
 **Independent Test**: POST to `/api/v1/fs/scan-folder` with `path: "C:\\Windows\\System32"` → 403. GET `/api/v1/fs/browse?path=../../../../etc` → 403. `findGitRepos` returns without hanging when a symlink-to-parent is present in the test directory.
 
-- [ ] T015 [P] [US4] Write contract tests for path boundary enforcement — extend `backend/tests/contract/fs.test.ts`: (a) `/browse?path=<outside-home>` → 403 `PATH_OUTSIDE_BOUNDARY`, (b) `/scan?path=<traversal>` → 403, (c) `/scan-folder` with `path: "C:\\Windows\\System32"` → 403, (d) valid home subdir path → 200
-- [ ] T016 [US4] Apply `isPathWithinBoundary(input, [homedir(), ...getRepositories().map(r => r.path)])` to `/api/v1/fs/browse` and `/api/v1/fs/scan` GET routes in `backend/src/api/routes/fs.ts`; return `403 { error: 'PATH_OUTSIDE_BOUNDARY', message: 'Path is outside the allowed directory boundary', requestId: request.id }` on rejection
-- [ ] T017 [US4] Apply `isPathWithinBoundary` to `/api/v1/fs/scan-folder` POST route in `backend/src/api/routes/fs.ts` with same 403 response
-- [ ] T018 [US4] Fix `findGitRepos` in `backend/src/api/routes/fs.ts`: replace `statSync(fullPath).isDirectory()` with `lstatSync(fullPath)` followed by an `isSymbolicLink()` guard that skips symlink entries before recursing
+- [x] T015 [P] [US4] Write contract tests for path boundary enforcement — extend `backend/tests/contract/fs.test.ts`: (a) `/browse?path=<outside-home>` → 403 `PATH_OUTSIDE_BOUNDARY`, (b) `/scan?path=<traversal>` → 403, (c) `/scan-folder` with `path: "C:\\Windows\\System32"` → 403, (d) valid home subdir path → 200
+- [x] T016 [US4] Apply `isPathWithinBoundary(input, [homedir(), ...getRepositories().map(r => r.path)])` to `/api/v1/fs/browse` and `/api/v1/fs/scan` GET routes in `backend/src/api/routes/fs.ts`; return `403 { error: 'PATH_OUTSIDE_BOUNDARY', message: 'Path is outside the allowed directory boundary', requestId: request.id }` on rejection
+- [x] T017 [US4] Apply `isPathWithinBoundary` to `/api/v1/fs/scan-folder` POST route in `backend/src/api/routes/fs.ts` with same 403 response
+- [x] T018 [US4] Fix `findGitRepos` in `backend/src/api/routes/fs.ts`: replace `statSync(fullPath).isDirectory()` with `lstatSync(fullPath)` followed by an `isSymbolicLink()` guard that skips symlink entries before recursing
 
 ---
 
@@ -89,14 +89,14 @@
 
 **Independent Test**: Inspect response headers on health, sessions, hooks, and fs endpoints — confirm required headers present and `Server` header absent.
 
-- [ ] T019 [P] [US5] Write contract tests for security headers — create `backend/tests/contract/security-headers.test.ts` (new file): assert `X-Content-Type-Options: nosniff` and `X-Frame-Options: DENY` are present and `Server` header is absent on responses from `/health`, `/api/v1/sessions`, `/hooks/claude` (OPTIONS or GET), and `/api/v1/fs/browse`
-- [ ] T020 [US5] Add `reply.header('X-Content-Type-Options', 'nosniff')` and `reply.header('X-Frame-Options', 'DENY')` to the existing `onSend` hook in `backend/src/server.ts`
+- [x] T019 [P] [US5] Write contract tests for security headers — create `backend/tests/contract/security-headers.test.ts` (new file): assert `X-Content-Type-Options: nosniff` and `X-Frame-Options: DENY` are present and `Server` header is absent on responses from `/health`, `/api/v1/sessions`, `/hooks/claude` (OPTIONS or GET), and `/api/v1/fs/browse`
+- [x] T020 [US5] Add `reply.header('X-Content-Type-Options', 'nosniff')` and `reply.header('X-Frame-Options', 'DENY')` to the existing `onSend` hook in `backend/src/server.ts`
 
 ---
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T021 Update `README.md` to document the security model: localhost-only binding, PID ownership validation, hook endpoint constraints (body limit, UUID validation), filesystem path boundary enforcement, and security headers (§XI requirement)
+- [x] T021 Update `README.md` to document the security model: localhost-only binding, PID ownership validation, hook endpoint constraints (body limit, UUID validation), filesystem path boundary enforcement, and security headers (§XI requirement)
 
 ---
 

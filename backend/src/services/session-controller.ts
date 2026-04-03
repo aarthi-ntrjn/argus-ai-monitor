@@ -1,11 +1,9 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { spawnSync } from 'child_process';
 import { randomUUID } from 'crypto';
 import { getSession, insertControlAction, updateControlAction } from '../db/database.js';
 import { broadcast } from '../api/ws/event-dispatcher.js';
+import { validatePidOwnership } from './pid-validator.js';
 import type { ControlAction } from '../models/index.js';
-
-const execAsync = promisify(exec);
 
 export class SessionController {
   async stopSession(sessionId: string): Promise<ControlAction> {
@@ -13,6 +11,18 @@ export class SessionController {
     if (!session) throw Object.assign(new Error(`Session ${sessionId} not found`), { code: 'NOT_FOUND' });
     if (session.status === 'ended' || session.status === 'completed') {
       throw Object.assign(new Error('Session already ended'), { code: 'CONFLICT' });
+    }
+    if (!session.pid) {
+      throw Object.assign(new Error('Session has no PID on record'), { code: 'PID_NOT_SET' });
+    }
+
+    const validation = await validatePidOwnership(session.pid, session.type as 'claude-code' | 'copilot-cli');
+    if (!validation.valid) {
+      const code = validation.reason === 'process_not_ai_tool' ? 'PID_NOT_AI_TOOL' : 'PID_NOT_FOUND';
+      const message = validation.reason === 'process_not_ai_tool'
+        ? 'PID does not belong to a monitored AI process'
+        : 'Process is no longer running';
+      throw Object.assign(new Error(message), { code });
     }
 
     const action: ControlAction = {
@@ -29,7 +39,7 @@ export class SessionController {
     this.broadcastAction(action);
 
     try {
-      if (session.pid) await this.killProcess(session.pid);
+      await this.killProcess(session.pid);
       const completed = { ...action, status: 'completed' as const, completedAt: new Date().toISOString() };
       updateControlAction(action.id, 'completed', completed.completedAt, null);
       this.broadcastAction(completed);
@@ -87,7 +97,16 @@ export class SessionController {
       throw Object.assign(new Error('Session already ended'), { code: 'CONFLICT' });
     }
     if (!session.pid) {
-      throw Object.assign(new Error('Session has no PID — cannot send interrupt signal'), { code: 'NOT_SUPPORTED' });
+      throw Object.assign(new Error('Session has no PID on record'), { code: 'PID_NOT_SET' });
+    }
+
+    const validation = await validatePidOwnership(session.pid, session.type as 'claude-code' | 'copilot-cli');
+    if (!validation.valid) {
+      const code = validation.reason === 'process_not_ai_tool' ? 'PID_NOT_AI_TOOL' : 'PID_NOT_FOUND';
+      const message = validation.reason === 'process_not_ai_tool'
+        ? 'PID does not belong to a monitored AI process'
+        : 'Process is no longer running';
+      throw Object.assign(new Error(message), { code });
     }
 
     const action: ControlAction = {
@@ -120,7 +139,8 @@ export class SessionController {
   private async interruptProcess(pid: number): Promise<void> {
     if (process.platform === 'win32') {
       // Windows: taskkill without /F sends Ctrl+Break (closest to SIGINT)
-      await execAsync(`taskkill /PID ${pid}`);
+      // spawnSync with args array avoids shell string interpolation (FR-002)
+      spawnSync('taskkill', ['/PID', String(pid)]);
     } else {
       process.kill(pid, 'SIGINT');
     }
@@ -128,7 +148,8 @@ export class SessionController {
 
   private async killProcess(pid: number): Promise<void> {
     if (process.platform === 'win32') {
-      await execAsync(`taskkill /PID ${pid} /T /F`);
+      // spawnSync with args array avoids shell string interpolation (FR-002)
+      spawnSync('taskkill', ['/PID', String(pid), '/T', '/F']);
     } else {
       process.kill(pid, 'SIGTERM');
     }

@@ -110,10 +110,22 @@ Default port: **7411**. Override in `~/.argus/config.json`:
 | `DELETE` | `/api/v1/repositories/:id` | Remove a repository |
 | `GET` | `/api/v1/sessions` | List sessions (filterable by repo, status, type) |
 | `POST` | `/api/v1/sessions/:id/stop` | Stop a running session (SIGTERM) |
-| `POST` | `/api/v1/sessions/:id/interrupt` | Interrupt the current operation in a session (SIGINT / Ctrl+Break). Returns 501 if the session has no OS PID. |
+| `POST` | `/api/v1/sessions/:id/interrupt` | Interrupt the current operation in a session (SIGINT / Ctrl+Break). Returns 422 if PID not on record or process not running; 403 if PID does not belong to an AI tool. |
 | `POST` | `/api/v1/sessions/:id/send` | Send a prompt string to an active Claude Code session |
 | `POST` | `/api/v1/fs/pick-folder` | Open native OS folder picker, returns selected path |
 | `POST` | `/api/v1/fs/scan-folder` | Recursively scan a folder for git repos, returns list |
+
+## Security Model
+
+Argus is a single-user localhost tool (`127.0.0.1` only). The following hardening measures are in place:
+
+| Area | Protection |
+|------|-----------|
+| **Process control** | Stop/interrupt requests validate PID ownership in two stages: (1) the session must have a PID on record, and (2) the OS process at that PID must match the AI tool allowlist (Claude/Copilot). Requests that fail either check are rejected with 422 or 403. |
+| **Shell injection** | All `taskkill` calls on Windows use `spawnSync` with an explicit args array — no shell string interpolation. |
+| **Hook endpoint** | `POST /hooks/claude` enforces a 64 KB body limit, validates `session_id` as UUID v4, and ignores `cwd` values not registered as known repositories. Payloads attempting to overwrite an active session's PID are rejected with 409. |
+| **Filesystem routes** | Browse, scan, and scan-folder endpoints resolve and validate all user-supplied paths against `homedir()` and registered repository paths. Paths outside this boundary return 403. Recursive directory scans skip symlinks to prevent traversal loops. |
+| **HTTP headers** | All responses include `X-Content-Type-Options: nosniff` and `X-Frame-Options: DENY`. No server version or runtime information is exposed. |
 
 ## Tech stack
 
