@@ -44,8 +44,11 @@ const sessionsRoutes: FastifyPluginAsync = async (app) => {
         return reply.status(202).send({ actionId: action.id, status: action.status });
       } catch (err: unknown) {
         const e = err as { code?: string; message?: string };
-        if (e.code === 'NOT_FOUND') return reply.status(404).send({ error: 'NOT_FOUND', message: e.message });
-        if (e.code === 'CONFLICT') return reply.status(409).send({ error: 'CONFLICT', message: e.message });
+        if (e.code === 'NOT_FOUND') return reply.status(404).send({ error: 'NOT_FOUND', message: e.message, requestId: req.id });
+        if (e.code === 'CONFLICT') return reply.status(409).send({ error: 'CONFLICT', message: e.message, requestId: req.id });
+        if (e.code === 'PID_NOT_SET') return reply.status(422).send({ error: 'PID_NOT_SET', message: e.message, requestId: req.id });
+        if (e.code === 'PID_NOT_FOUND') return reply.status(422).send({ error: 'PID_NOT_FOUND', message: e.message, requestId: req.id });
+        if (e.code === 'PID_NOT_AI_TOOL') return reply.status(403).send({ error: 'PID_NOT_AI_TOOL', message: e.message, requestId: req.id });
         throw err;
       }
     }
@@ -61,7 +64,9 @@ const sessionsRoutes: FastifyPluginAsync = async (app) => {
         const e = err as { code?: string; message?: string };
         if (e.code === 'NOT_FOUND') return reply.status(404).send({ error: 'NOT_FOUND', message: e.message, requestId: req.id });
         if (e.code === 'CONFLICT') return reply.status(409).send({ error: 'CONFLICT', message: e.message, requestId: req.id });
-        if (e.code === 'NOT_SUPPORTED') return reply.status(501).send({ error: 'NOT_SUPPORTED', message: e.message, requestId: req.id });
+        if (e.code === 'PID_NOT_SET') return reply.status(422).send({ error: 'PID_NOT_SET', message: e.message, requestId: req.id });
+        if (e.code === 'PID_NOT_FOUND') return reply.status(422).send({ error: 'PID_NOT_FOUND', message: e.message, requestId: req.id });
+        if (e.code === 'PID_NOT_AI_TOOL') return reply.status(403).send({ error: 'PID_NOT_AI_TOOL', message: e.message, requestId: req.id });
         throw err;
       }
     }

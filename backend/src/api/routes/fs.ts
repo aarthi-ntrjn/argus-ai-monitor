@@ -1,8 +1,14 @@
 import { FastifyInstance } from 'fastify';
-import { readdirSync, existsSync, statSync } from 'fs';
+import { readdirSync, existsSync, lstatSync } from 'fs';
 import { join, dirname, normalize, basename } from 'path';
 import { homedir } from 'os';
 import { spawnSync } from 'child_process';
+import { getRepositories } from '../../db/database.js';
+import { isPathWithinBoundary } from '../../utils/path-sandbox.js';
+
+function getAllowedBoundaries(): string[] {
+  return [homedir(), ...getRepositories().map(r => r.path)];
+}
 
 export function findGitRepos(dirPath: string, results: Array<{ path: string; name: string }> = []): Array<{ path: string; name: string }> {
   // If this dir is itself a git repo, add it and don't recurse into it
@@ -21,8 +27,9 @@ export function findGitRepos(dirPath: string, results: Array<{ path: string; nam
     if (entry.name === 'node_modules' || entry.name === '.git') continue;
     const fullPath = join(dirPath, entry.name);
     try {
-      // Avoid symlink loops
-      if (!statSync(fullPath).isDirectory()) continue;
+      const stat = lstatSync(fullPath);
+      // FR-010: skip symlinks to avoid loops
+      if (stat.isSymbolicLink() || !stat.isDirectory()) continue;
     } catch {
       continue;
     }
@@ -35,6 +42,16 @@ export async function fsRoutes(app: FastifyInstance) {
   app.get('/api/v1/fs/browse', async (request, reply) => {
     const query = request.query as { path?: string };
     const dirPath = normalize(query.path ?? homedir());
+
+    // FR-008/FR-009: reject paths outside safe boundaries
+    if (!isPathWithinBoundary(dirPath, getAllowedBoundaries())) {
+      return reply.status(403).send({
+        error: 'PATH_OUTSIDE_BOUNDARY',
+        message: 'Path is outside the allowed directory boundary',
+        requestId: request.id,
+      });
+    }
+
     if (!existsSync(dirPath)) {
       return reply.status(404).send({ error: 'Path not found' });
     }
@@ -56,6 +73,16 @@ export async function fsRoutes(app: FastifyInstance) {
   app.get('/api/v1/fs/scan', async (request, reply) => {
     const query = request.query as { path?: string };
     const dirPath = normalize(query.path ?? homedir());
+
+    // FR-008/FR-009: reject paths outside safe boundaries
+    if (!isPathWithinBoundary(dirPath, getAllowedBoundaries())) {
+      return reply.status(403).send({
+        error: 'PATH_OUTSIDE_BOUNDARY',
+        message: 'Path is outside the allowed directory boundary',
+        requestId: request.id,
+      });
+    }
+
     if (!existsSync(dirPath)) {
       return reply.status(404).send({ error: 'Path not found' });
     }
@@ -76,6 +103,16 @@ export async function fsRoutes(app: FastifyInstance) {
     if (!scanPath) {
       return reply.status(400).send({ error: 'MISSING_PATH', message: 'path is required', requestId: request.id });
     }
+
+    // FR-008/FR-009: reject paths outside safe boundaries
+    if (!isPathWithinBoundary(scanPath, getAllowedBoundaries())) {
+      return reply.status(403).send({
+        error: 'PATH_OUTSIDE_BOUNDARY',
+        message: 'Path is outside the allowed directory boundary',
+        requestId: request.id,
+      });
+    }
+
     if (!existsSync(scanPath)) {
       return reply.status(404).send({ error: 'PATH_NOT_FOUND', message: 'The specified folder does not exist.', requestId: request.id });
     }
