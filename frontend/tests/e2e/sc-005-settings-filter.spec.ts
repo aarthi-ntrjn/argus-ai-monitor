@@ -104,6 +104,174 @@ test.describe('SC-005: Dashboard Settings — Filter Ended Sessions', () => {
   });
 });
 
+// ─── US1 missing: re-toggle off, empty-state, filter independence ─────────────
+
+test.describe('SC-005: Dashboard Settings — Additional Filter Behaviors', () => {
+
+  test('re-toggling hideEndedSessions off brings ended sessions back', async ({ page }) => {
+    await mockApis(page);
+    await page.addInitScript(() => {
+      localStorage.setItem('argus:settings', JSON.stringify({ hideEndedSessions: true }));
+    });
+    await page.goto('/');
+    await expect(page.getByText('Active session')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Completed session')).not.toBeVisible();
+    await page.getByRole('button', { name: /settings/i }).click();
+    await page.getByRole('checkbox', { name: /hide ended sessions/i }).uncheck();
+    await expect(page.getByText('Completed session', { exact: true })).toBeVisible({ timeout: 2000 });
+    await expect(page.getByText('Ended session', { exact: true })).toBeVisible({ timeout: 2000 });
+  });
+
+  test('empty-state message shown when hideEndedSessions=true and no active sessions exist', async ({ page }) => {
+    await page.route('**/api/v1/repositories', route =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify(REPOS) })
+    );
+    // Only ended sessions — no active ones
+    await page.route('**/api/v1/sessions**', route =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify([
+          { id: 's-c', repositoryId: 'repo-1', type: 'claude-code', pid: null, status: 'completed', startedAt: new Date().toISOString(), endedAt: new Date().toISOString(), lastActivityAt: new Date().toISOString(), summary: 'Done', expiresAt: null },
+        ]),
+      })
+    );
+    await page.addInitScript(() => {
+      localStorage.setItem('argus:settings', JSON.stringify({ hideEndedSessions: true }));
+    });
+    await page.goto('/');
+    await expect(page.getByText('Done')).not.toBeVisible();
+    // When hideEndedSessions=true and no active sessions remain, the repo card shows this message
+    await expect(page.getByText('No active sessions')).toBeVisible({ timeout: 5000 });
+  });
+
+  test('hideEndedSessions and hideReposWithNoActiveSessions are evaluated independently', async ({ page }) => {
+    // One repo has only ended sessions → hidden by hideReposWithNoActiveSessions
+    // The other has an active session → visible even though hideEndedSessions is also on
+    const repos = [
+      { id: 'r-active', name: 'has-active', path: 'C:\\p\\a', source: 'ui', addedAt: new Date().toISOString(), lastScannedAt: null },
+      { id: 'r-idle', name: 'only-ended', path: 'C:\\p\\b', source: 'ui', addedAt: new Date().toISOString(), lastScannedAt: null },
+    ];
+    const sessions = [
+      { id: 'sa', repositoryId: 'r-active', type: 'claude-code', pid: null, status: 'active', startedAt: new Date().toISOString(), endedAt: null, lastActivityAt: new Date().toISOString(), summary: 'Active work', expiresAt: null },
+      { id: 'se', repositoryId: 'r-idle', type: 'copilot-cli', pid: null, status: 'completed', startedAt: new Date().toISOString(), endedAt: new Date().toISOString(), lastActivityAt: new Date().toISOString(), summary: 'Old work', expiresAt: null },
+    ];
+    await page.route('**/api/v1/repositories', route =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify(repos) })
+    );
+    await page.route('**/api/v1/sessions**', route =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify(sessions) })
+    );
+    await page.addInitScript(() => {
+      localStorage.setItem('argus:settings', JSON.stringify({ hideEndedSessions: true, hideReposWithNoActiveSessions: true }));
+    });
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'has-active' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'only-ended' })).not.toBeVisible();
+    // The active session is visible; the ended session is hidden
+    await expect(page.getByText('Active work')).toBeVisible({ timeout: 2000 });
+    await expect(page.getByText('Old work')).not.toBeVisible();
+  });
+
+});
+
+// ─── US5: Hide Inactive Sessions (>20 min) ───────────────────────────────────
+
+const STALE_ACTIVITY = new Date(Date.now() - 25 * 60 * 1000).toISOString(); // 25 min ago
+const RECENT_ACTIVITY = new Date(Date.now() - 2 * 60 * 1000).toISOString();  // 2 min ago
+
+const INACTIVE_REPO = [
+  { id: 'repo-i', name: 'inactive-repo', path: 'C:\\projects\\inactive-repo', source: 'ui', addedAt: new Date().toISOString(), lastScannedAt: null },
+];
+
+const INACTIVE_SESSIONS = [
+  { id: 'si-stale', repositoryId: 'repo-i', type: 'claude-code', pid: null, status: 'active', startedAt: new Date().toISOString(), endedAt: null, lastActivityAt: STALE_ACTIVITY, summary: 'Stale session', expiresAt: null },
+  { id: 'si-fresh', repositoryId: 'repo-i', type: 'copilot-cli', pid: 1, status: 'active', startedAt: new Date().toISOString(), endedAt: null, lastActivityAt: RECENT_ACTIVITY, summary: 'Fresh session', expiresAt: null },
+  { id: 'si-ended', repositoryId: 'repo-i', type: 'claude-code', pid: null, status: 'completed', startedAt: new Date().toISOString(), endedAt: new Date().toISOString(), lastActivityAt: STALE_ACTIVITY, summary: 'Old ended session', expiresAt: null },
+];
+
+function mockInactiveApis(page: import('@playwright/test').Page) {
+  return Promise.all([
+    page.route('**/api/v1/repositories', route =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify(INACTIVE_REPO) })
+    ),
+    page.route('**/api/v1/sessions**', route =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify(INACTIVE_SESSIONS) })
+    ),
+  ]);
+}
+
+test.describe('SC-005: Dashboard Settings — Hide Inactive Sessions (US5)', () => {
+
+  test('"Hide inactive sessions" toggle is visible in settings panel', async ({ page }) => {
+    await mockInactiveApis(page);
+    await page.goto('/');
+    await page.getByRole('button', { name: /settings/i }).click();
+    await expect(page.getByText(/hide inactive sessions/i)).toBeVisible({ timeout: 3000 });
+  });
+
+  test('hideInactiveSessions=false (default) shows all active sessions regardless of age', async ({ page }) => {
+    await mockInactiveApis(page);
+    await page.goto('/');
+    await expect(page.getByText('Stale session')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Fresh session')).toBeVisible({ timeout: 5000 });
+  });
+
+  test('hideInactiveSessions=true hides active sessions with lastActivityAt >20 min ago', async ({ page }) => {
+    await mockInactiveApis(page);
+    await page.addInitScript(() => {
+      localStorage.setItem('argus:settings', JSON.stringify({ hideInactiveSessions: true }));
+    });
+    await page.goto('/');
+    await expect(page.getByText('Fresh session')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Stale session')).not.toBeVisible();
+  });
+
+  test('hideInactiveSessions=true does NOT hide ended sessions even if they are old', async ({ page }) => {
+    await mockInactiveApis(page);
+    await page.addInitScript(() => {
+      localStorage.setItem('argus:settings', JSON.stringify({ hideInactiveSessions: true }));
+    });
+    await page.goto('/');
+    // Ended sessions are excluded from the inactive check — they stay visible (unless hideEndedSessions is also on)
+    await expect(page.getByText('Old ended session')).toBeVisible({ timeout: 5000 });
+  });
+
+  test('toggling hide-inactive-sessions via panel hides stale session immediately', async ({ page }) => {
+    await mockInactiveApis(page);
+    await page.goto('/');
+    await expect(page.getByText('Stale session')).toBeVisible({ timeout: 5000 });
+    await page.getByRole('button', { name: /settings/i }).click();
+    await page.getByRole('checkbox', { name: /hide inactive sessions/i }).check();
+    await expect(page.getByText('Stale session')).not.toBeVisible();
+    await expect(page.getByText('Fresh session')).toBeVisible();
+  });
+
+  test('re-toggling hide-inactive-sessions off restores stale session', async ({ page }) => {
+    await mockInactiveApis(page);
+    await page.addInitScript(() => {
+      localStorage.setItem('argus:settings', JSON.stringify({ hideInactiveSessions: true }));
+    });
+    await page.goto('/');
+    await expect(page.getByText('Stale session')).not.toBeVisible();
+    await page.getByRole('button', { name: /settings/i }).click();
+    await page.getByRole('checkbox', { name: /hide inactive sessions/i }).uncheck();
+    await expect(page.getByText('Stale session')).toBeVisible({ timeout: 2000 });
+  });
+
+  test('hideInactiveSessions preference persists across page reload', async ({ page }) => {
+    await mockInactiveApis(page);
+    await page.addInitScript(() => {
+      localStorage.setItem('argus:settings', JSON.stringify({ hideInactiveSessions: true }));
+    });
+    await page.goto('/');
+    await expect(page.getByText('Stale session')).not.toBeVisible();
+    await page.reload();
+    await expect(page.getByText('Fresh session')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Stale session')).not.toBeVisible();
+  });
+
+});
+
 // ─── US4: Hide Repos with No Active Sessions ──────────────────────────────────
 
 const TWO_REPOS = [
