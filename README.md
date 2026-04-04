@@ -77,6 +77,7 @@ Click the **⚙ gear icon** in the top-right of the dashboard header to open the
 |---------|---------|-------------|
 | Hide ended sessions | Off | When turned on, sessions with status `completed` or `ended` are hidden from all repository cards |
 | Hide repos with no active sessions | Off | When turned on, repository cards are hidden if they have no sessions with status `active`, `idle`, `waiting`, or `error` (including repos with zero sessions) |
+| Hide inactive sessions | Off | When turned on, sessions with no output in the last 20 minutes are hidden from all repository cards |
 
 Settings are saved automatically in your browser (`localStorage`) and restored on every page load.
 
@@ -85,7 +86,7 @@ Settings are saved automatically in your browser (`localStorage`) and restored o
 1. Add a field with a default to `DashboardSettings` in `frontend/src/types.ts`
 2. Add the default value to `DEFAULT_SETTINGS` in the same file
 3. Add a toggle row in `frontend/src/components/SettingsPanel/SettingsPanel.tsx`
-4. Consume it in any component via `const [settings] = useSettings()`
+4. Consume it in any component via `const [settings, updateSetting] = useSettings()`
 
 ## Config
 
@@ -109,11 +110,18 @@ Default port: **7411**. Override in `~/.argus/config.json`:
 | `POST` | `/api/v1/repositories` | Add a repository by path |
 | `DELETE` | `/api/v1/repositories/:id` | Remove a repository |
 | `GET` | `/api/v1/sessions` | List sessions (filterable by repo, status, type) |
+| `GET` | `/api/v1/sessions/:id` | Get a single session by ID |
+| `GET` | `/api/v1/sessions/:id/output` | Get paginated output for a session (`?limit=&before=`) |
 | `POST` | `/api/v1/sessions/:id/stop` | Stop a running session (SIGTERM) |
 | `POST` | `/api/v1/sessions/:id/interrupt` | Interrupt the current operation in a session (SIGINT / Ctrl+Break). Returns 422 if PID not on record or process not running; 403 if PID does not belong to an AI tool. |
 | `POST` | `/api/v1/sessions/:id/send` | Send a prompt string to an active Claude Code session |
+| `GET` | `/api/v1/fs/browse` | List contents of a directory (path-sandboxed) |
+| `GET` | `/api/v1/fs/scan` | Scan a directory for git repos (path-sandboxed) |
 | `POST` | `/api/v1/fs/pick-folder` | Open native OS folder picker, returns selected path |
 | `POST` | `/api/v1/fs/scan-folder` | Recursively scan a folder for git repos, returns list |
+| `POST` | `/hooks/claude` | Receive push events from Claude Code hooks (internal) |
+| `GET` | `/api/health` | Health check |
+| `GET` | `/api/metrics` | Session, output, and action record counts |
 
 ## Security Model
 
