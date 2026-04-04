@@ -85,9 +85,9 @@ export async function buildServer() {
   await app.register(fsRoutes);
 
   app.register(async (fastify) => {
-    fastify.get('/ws', { websocket: true }, (connection) => {
-      addClient(connection.socket);
-      connection.on('close', () => removeClient(connection.socket));
+    fastify.get('/ws', { websocket: true }, (socket) => {
+      addClient(socket);
+      socket.on('close', () => removeClient(socket));
     });
   });
 
