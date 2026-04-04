@@ -3,10 +3,13 @@ import { useRef, useState, useEffect } from 'react';
 import { getRepositories, getSessions, addRepository, removeRepository, pickFolder, scanFolder, queryClient } from '../services/api';
 import type { Repository, Session } from '../types';
 import { useSettings } from '../hooks/useSettings';
+import { useOnboarding } from '../hooks/useOnboarding';
 import { SettingsPanel } from '../components/SettingsPanel';
 import SessionCard from '../components/SessionCard/SessionCard';
 import OutputPane from '../components/OutputPane/OutputPane';
 import { isInactive } from '../utils/sessionUtils';
+import { OnboardingTour } from '../components/Onboarding';
+import { DASHBOARD_TOUR_STEPS } from '../config/dashboardTourSteps';
 
 interface RepoWithSessions extends Repository {
   sessions: Session[];
@@ -28,6 +31,17 @@ export default function DashboardPage() {
   const settingsRef = useRef<HTMLDivElement>(null);
 
   const [settings, updateSetting] = useSettings();
+  const { tourStatus, startTour, skipTour, completeTour, resetOnboarding } = useOnboarding();
+  const [tourRun, setTourRun] = useState(false);
+
+  // Auto-launch for first-time users
+  useEffect(() => {
+    if (tourStatus === 'not_started') {
+      startTour('auto');
+      setTourRun(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const showInfo = (msg: string) => {
     setAddInfo(msg);
@@ -141,10 +155,11 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-slate-50 p-8">
       <div className={`mx-auto ${selectedSessionId ? 'max-w-7xl' : 'max-w-4xl'}`}>
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-semibold text-gray-900">Argus Dashboard</h1>
+          <h1 data-tour-id="dashboard-header" className="text-3xl font-semibold text-gray-900">Argus Dashboard</h1>
           <div className="flex items-center gap-2">
             <div className="relative" ref={settingsRef}>
               <button
+                data-tour-id="dashboard-settings"
                 onClick={() => setSettingsOpen(o => !o)}
                 aria-label="Settings"
                 title="Settings"
@@ -160,10 +175,21 @@ export default function DashboardPage() {
                   settings={settings}
                   onToggle={(key, value) => updateSetting(key, value)}
                   onClose={() => setSettingsOpen(false)}
+                  onRestartTour={() => {
+                    setSettingsOpen(false);
+                    startTour('manual');
+                    setTourRun(true);
+                  }}
+                  onResetOnboarding={() => {
+                    setSettingsOpen(false);
+                    resetOnboarding();
+                    setTourRun(true);
+                  }}
                 />
               )}
             </div>
             <button
+              data-tour-id="dashboard-add-repo"
               onClick={handleAddRepo}
               disabled={adding}
               className="bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-blue-700 disabled:opacity-40 transition-colors"
@@ -206,7 +232,7 @@ export default function DashboardPage() {
             {/* Repo/session list */}
             <div className={`space-y-6 ${selectedSessionId ? 'flex-1 min-w-0' : 'w-full'}`}>
               {reposWithSessions.map((repo) => (
-                <div key={repo.id} className="bg-white rounded-lg shadow p-6">
+                <div key={repo.id} data-tour-id="dashboard-repo-card" className="bg-white rounded-lg shadow p-6">
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h2 className="text-xl font-semibold text-gray-900">{repo.name}</h2>
@@ -244,7 +270,7 @@ export default function DashboardPage() {
                       {settings.hideEndedSessions ? 'No active sessions' : 'No sessions'}
                     </p>
                   ) : (
-                    <div className="space-y-2">
+                    <div data-tour-id="dashboard-session-card" className="space-y-2">
                       {repo.sessions.map((session) => (
                         <SessionCard
                           key={session.id}
@@ -275,8 +301,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {removeConfirmId && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      {removeConfirmId && (        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-sm">
             <h2 className="text-lg font-semibold mb-2">Remove Repository</h2>
             <p className="text-gray-600 text-sm mb-4">
@@ -306,11 +331,13 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      <OnboardingTour
+        run={tourRun}
+        steps={DASHBOARD_TOUR_STEPS}
+        onComplete={() => { completeTour(); setTourRun(false); }}
+        onSkip={(reason) => { skipTour(reason); setTourRun(false); }}
+      />
     </div>
   );
 }
-
-
-
-
-

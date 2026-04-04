@@ -17,9 +17,9 @@
 
 **Purpose**: Install dependency and create scaffolding that all phases need.
 
-- [ ] T001 Install `react-joyride` npm dependency in `frontend/` workspace (`npm install react-joyride --workspace=frontend`)
-- [ ] T002 [P] Extend `frontend/src/types.ts` — add `OnboardingState`, `DashboardTourState`, `SessionHintsState`, `TourStep`, and `ContextualHint` interfaces per `data-model.md`
-- [ ] T003 [P] Create directory `frontend/src/components/Onboarding/` with empty barrel `frontend/src/components/Onboarding/index.ts`
+- [X] T001 Install `react-joyride` npm dependency in `frontend/` workspace (`npm install react-joyride --workspace=frontend`)
+- [X] T002 [P] Extend `frontend/src/types.ts` — add `OnboardingState`, `DashboardTourState`, `SessionHintsState`, `TourStep`, and `ContextualHint` interfaces per `data-model.md`
+- [X] T003 [P] Create directory `frontend/src/components/Onboarding/` with empty barrel `frontend/src/components/Onboarding/index.ts`
 
 ---
 
@@ -29,11 +29,11 @@
 
 **⚠️ CRITICAL**: All phases 3–6 depend on T007 being complete.
 
-- [ ] T004 [P] Write failing unit tests for `onboardingStorage` — cover: default state init, valid read, corrupt JSON fallback, unknown schemaVersion fallback, write, reset — in `frontend/tests/unit/onboardingStorage.test.ts`
-- [ ] T005 Implement `frontend/src/services/onboardingStorage.ts` — versioned localStorage read/write/reset per `contracts/onboarding-storage.md`; `argus:onboarding` key; silent fallback on `SecurityError`/`QuotaExceededError` (depends on T004)
-- [ ] T006 [P] Write failing unit tests for `useOnboarding` hook — cover: auto-launch flag, `startTour`, `skipTour`, `completeTour`, `dismissHint`, `resetOnboarding`, state persistence — in `frontend/tests/unit/useOnboarding.test.ts`
-- [ ] T007 Implement `frontend/src/hooks/useOnboarding.ts` — exposes `{ tourStatus, dismissedHints, startTour, skipTour, completeTour, dismissHint, resetOnboarding }`; reads/writes via `onboardingStorage`; calls event hooks from `onboardingEvents` (depends on T005, T006)
-- [ ] T008 [P] Create `frontend/src/services/onboardingEvents.ts` — export six named no-op stubs per `contracts/onboarding-events.md`: `onTourStarted`, `onTourCompleted`, `onTourSkipped`, `onStepAdvanced`, `onHintViewed`, `onHintDismissed`
+- [X] T004 [P] Write failing unit tests for `onboardingStorage` — cover: default state init, valid read, corrupt JSON fallback, unknown schemaVersion fallback, write, reset — in `frontend/tests/unit/onboardingStorage.test.ts`
+- [X] T005 Implement `frontend/src/services/onboardingStorage.ts` — versioned localStorage read/write/reset per `contracts/onboarding-storage.md`; `argus:onboarding` key; silent fallback on `SecurityError`/`QuotaExceededError` (depends on T004)
+- [X] T006 [P] Write failing unit tests for `useOnboarding` hook — cover: auto-launch flag, `startTour`, `skipTour`, `completeTour`, `dismissHint`, `resetOnboarding`, state persistence — in `frontend/tests/unit/useOnboarding.test.ts`
+- [X] T007 Implement `frontend/src/hooks/useOnboarding.ts` — exposes `{ tourStatus, dismissedHints, startTour, skipTour, completeTour, dismissHint, resetOnboarding }`; reads/writes via `onboardingStorage`; calls event hooks from `onboardingEvents` (depends on T005, T006)
+- [X] T008 [P] Create `frontend/src/services/onboardingEvents.ts` — export six named no-op stubs per `contracts/onboarding-events.md`: `onTourStarted`, `onTourCompleted`, `onTourSkipped`, `onStepAdvanced`, `onHintViewed`, `onHintDismissed`
 
 **Checkpoint**: Run `npm run test --workspace=frontend` — all unit tests for storage and hook must pass before proceeding.
 
@@ -45,12 +45,12 @@
 
 **Independent Test**: Clear `argus:onboarding` from localStorage, reload Dashboard — welcome step appears. Advance all steps — tour completes and does not reappear on next reload. Repeat with Skip — same persistence behaviour.
 
-- [ ] T009 Write failing Playwright e2e test: first-time user sees tour auto-launch on Dashboard; advance all steps; verify tour marks complete and does not re-launch — in `frontend/tests/e2e/onboarding.spec.ts`
-- [ ] T010 Write failing Playwright e2e test: tour active, user clicks Skip — tour dismisses silently; app remains fully functional; tour does not re-launch on reload — in `frontend/tests/e2e/onboarding.spec.ts`
-- [ ] T011 [P] Create `frontend/src/config/dashboardTourSteps.ts` — export `DASHBOARD_TOUR_STEPS` array of 6 `TourStep` configs with `target` (`[data-tour-id="..."]`), `title`, `content`, `placement` per `data-model.md` step table
-- [ ] T012 Add `data-tour-id` attributes to 5 target elements in `frontend/src/pages/DashboardPage.tsx`: `dashboard-header` (h1), `dashboard-settings` (settings button), `dashboard-add-repo` (Add Repository button), `dashboard-repo-card` (first repo card wrapper), `dashboard-session-card` (first session card wrapper)
-- [ ] T013 Create `frontend/src/components/Onboarding/OnboardingTour.tsx` — wraps `react-joyride` `<Joyride />` with: WCAG 2.1 AA `locale` labels, `showSkipButton`, `continuous`, `scrollToFirstStep`, `spotlightClicks: false`; maps joyride `callback` to `skipTour`/`completeTour`/`onStepAdvanced`/`onTourStarted`/`onTourCompleted`/`onTourSkipped` from `useOnboarding` and `onboardingEvents` (depends on T007, T008, T011)
-- [ ] T014 Mount `<OnboardingTour />` in `frontend/src/pages/DashboardPage.tsx`; pass `run={tourStatus === 'not_started'}` and `steps={DASHBOARD_TOUR_STEPS}`; call `startTour({ trigger: 'auto' })` on mount when `tourStatus === 'not_started'` (depends on T012, T013)
+- [X] T009 Write failing Playwright e2e test: first-time user sees tour auto-launch on Dashboard; advance all steps; verify tour marks complete and does not re-launch — in `frontend/tests/e2e/onboarding.spec.ts`
+- [X] T010 Write failing Playwright e2e test: tour active, user clicks Skip — tour dismisses silently; app remains fully functional; tour does not re-launch on reload — in `frontend/tests/e2e/onboarding.spec.ts`
+- [X] T011 [P] Create `frontend/src/config/dashboardTourSteps.ts` — export `DASHBOARD_TOUR_STEPS` array of 6 `TourStep` configs with `target` (`[data-tour-id="..."]`), `title`, `content`, `placement` per `data-model.md` step table
+- [X] T012 Add `data-tour-id` attributes to 5 target elements in `frontend/src/pages/DashboardPage.tsx`: `dashboard-header` (h1), `dashboard-settings` (settings button), `dashboard-add-repo` (Add Repository button), `dashboard-repo-card` (first repo card wrapper), `dashboard-session-card` (first session card wrapper)
+- [X] T013 Create `frontend/src/components/Onboarding/OnboardingTour.tsx` — wraps `react-joyride` `<Joyride />` with: WCAG 2.1 AA `locale` labels, `showSkipButton`, `continuous`, `scrollToFirstStep`, `spotlightClicks: false`; maps joyride `callback` to `skipTour`/`completeTour`/`onStepAdvanced`/`onTourStarted`/`onTourCompleted`/`onTourSkipped` from `useOnboarding` and `onboardingEvents` (depends on T007, T008, T011)
+- [X] T014 Mount `<OnboardingTour />` in `frontend/src/pages/DashboardPage.tsx`; pass `run={tourStatus === 'not_started'}` and `steps={DASHBOARD_TOUR_STEPS}`; call `startTour({ trigger: 'auto' })` on mount when `tourStatus === 'not_started'` (depends on T012, T013)
 
 **Checkpoint**: Run `npx playwright test tests/e2e/onboarding.spec.ts` — T009 and T010 tests must pass.
 
@@ -62,11 +62,11 @@
 
 **Independent Test**: Navigate to any session detail page with no dismissed hints — all 3 badges visible. Hover/focus each badge — tooltip appears. Dismiss one — reload page — badge gone. Visit a different session — dismissed badge still absent.
 
-- [ ] T015 Write failing Playwright e2e test: first session page visit shows 3 hint badges; hover reveals tooltip; dismiss one badge; reload — badge absent; visit second session — badge still absent — in `frontend/tests/e2e/onboarding.spec.ts`
-- [ ] T016 [P] Create `frontend/src/config/sessionHints.ts` — export `SESSION_HINTS` array of 3 `ContextualHint` configs: `session-status`, `session-prompt-bar`, `session-output-stream` with `label`, `ariaLabel`, `placement` per `data-model.md`
-- [ ] T017 Add `data-tour-id` attributes to 3 target elements in `frontend/src/pages/SessionPage.tsx`: `session-status` (status badge span), `session-prompt-bar` (SessionPromptBar wrapper div), `session-output-stream` (Output Stream h2 / panel header)
-- [ ] T018 Create `frontend/src/components/Onboarding/OnboardingHints.tsx` — renders a `?` badge button (`role="button"`, `aria-label`, `aria-describedby`) adjacent to its target; tooltip shown on hover/focus (`role="tooltip"`); close button dismisses (`Escape` key + click); calls `onHintViewed` and `onHintDismissed` from `onboardingEvents`; full keyboard access per WCAG 2.1 AA (depends on T007, T008, T016)
-- [ ] T019 Mount `<OnboardingHints hints={SESSION_HINTS} />` in `frontend/src/pages/SessionPage.tsx`; pass `dismissedHints` from `useOnboarding` and `dismissHint` callback; skip rendering hints whose ID is in `dismissedHints` (depends on T017, T018)
+- [X] T015 Write failing Playwright e2e test: first session page visit shows 3 hint badges; hover reveals tooltip; dismiss one badge; reload — badge absent; visit second session — badge still absent — in `frontend/tests/e2e/onboarding.spec.ts`
+- [X] T016 [P] Create `frontend/src/config/sessionHints.ts` — export `SESSION_HINTS` array of 3 `ContextualHint` configs: `session-status`, `session-prompt-bar`, `session-output-stream` with `label`, `ariaLabel`, `placement` per `data-model.md`
+- [X] T017 Add `data-tour-id` attributes to 3 target elements in `frontend/src/pages/SessionPage.tsx`: `session-status` (status badge span), `session-prompt-bar` (SessionPromptBar wrapper div), `session-output-stream` (Output Stream h2 / panel header)
+- [X] T018 Create `frontend/src/components/Onboarding/OnboardingHints.tsx` — renders a `?` badge button (`role="button"`, `aria-label`, `aria-describedby`) adjacent to its target; tooltip shown on hover/focus (`role="tooltip"`); close button dismisses (`Escape` key + click); calls `onHintViewed` and `onHintDismissed` from `onboardingEvents`; full keyboard access per WCAG 2.1 AA (depends on T007, T008, T016)
+- [X] T019 Mount `<OnboardingHints hints={SESSION_HINTS} />` in `frontend/src/pages/SessionPage.tsx`; pass `dismissedHints` from `useOnboarding` and `dismissHint` callback; skip rendering hints whose ID is in `dismissedHints` (depends on T017, T018)
 
 **Checkpoint**: Run `npx playwright test tests/e2e/onboarding.spec.ts` — T015 test must pass.
 
@@ -78,9 +78,9 @@
 
 **Independent Test**: Complete or skip tour so it does not auto-launch. Open Settings panel. Click "Restart Tour". Tour replays from step 1 identically to first-time experience. Complete replayed tour — completion state preserved.
 
-- [ ] T020 Write failing Playwright e2e test: after tour completion, open Settings, click "Restart Tour" — tour replays from step 1; completing replayed tour preserves completion state — in `frontend/tests/e2e/onboarding.spec.ts`
-- [ ] T021 Add `onRestartTour: () => void` prop to `SettingsPanel` interface and render a "Restart Tour" button at the bottom of `frontend/src/components/SettingsPanel/SettingsPanel.tsx`
-- [ ] T022 Wire `onRestartTour` in `frontend/src/pages/DashboardPage.tsx` — call `startTour({ trigger: 'manual' })` from `useOnboarding` and close settings panel (depends on T021)
+- [X] T020 Write failing Playwright e2e test: after tour completion, open Settings, click "Restart Tour" — tour replays from step 1; completing replayed tour preserves completion state — in `frontend/tests/e2e/onboarding.spec.ts`
+- [X] T021 Add `onRestartTour: () => void` prop to `SettingsPanel` interface and render a "Restart Tour" button at the bottom of `frontend/src/components/SettingsPanel/SettingsPanel.tsx`
+- [X] T022 Wire `onRestartTour` in `frontend/src/pages/DashboardPage.tsx` — call `startTour({ trigger: 'manual' })` from `useOnboarding` and close settings panel (depends on T021)
 
 **Checkpoint**: Run `npx playwright test tests/e2e/onboarding.spec.ts` — T020 test must pass.
 
@@ -92,9 +92,9 @@
 
 **Independent Test**: With tour completed, open Settings, click "Reset Onboarding". Reload Dashboard — first-time welcome step appears. Tour can be completed again.
 
-- [ ] T023 Write failing Playwright e2e test: user with completed tour opens Settings, clicks "Reset Onboarding", reloads Dashboard — tour auto-launches from step 1 — in `frontend/tests/e2e/onboarding.spec.ts`
-- [ ] T024 Add `onResetOnboarding: () => void` prop to `SettingsPanel` interface and render a "Reset Onboarding" button (visually distinct — e.g. secondary/ghost style) in `frontend/src/components/SettingsPanel/SettingsPanel.tsx`
-- [ ] T025 Wire `onResetOnboarding` in `frontend/src/pages/DashboardPage.tsx` — call `resetOnboarding()` from `useOnboarding` and close settings panel (depends on T024)
+- [X] T023 Write failing Playwright e2e test: user with completed tour opens Settings, clicks "Reset Onboarding", reloads Dashboard — tour auto-launches from step 1 — in `frontend/tests/e2e/onboarding.spec.ts`
+- [X] T024 Add `onResetOnboarding: () => void` prop to `SettingsPanel` interface and render a "Reset Onboarding" button (visually distinct — e.g. secondary/ghost style) in `frontend/src/components/SettingsPanel/SettingsPanel.tsx`
+- [X] T025 Wire `onResetOnboarding` in `frontend/src/pages/DashboardPage.tsx` — call `resetOnboarding()` from `useOnboarding` and close settings panel (depends on T024)
 
 **Checkpoint**: Run `npx playwright test tests/e2e/onboarding.spec.ts` — all onboarding e2e tests must pass.
 
@@ -104,11 +104,11 @@
 
 **Purpose**: Edge case handling, WCAG audit, barrel exports, and documentation.
 
-- [ ] T026 [P] [US1] Handle tour navigate-away edge case in `frontend/src/components/Onboarding/OnboardingTour.tsx` — listen to React Router location changes via `useLocation`; if location changes while tour is running, call `skipTour('navigation')` so tour dismisses silently per FR-011
-- [ ] T027 [P] [US1] Handle not-yet-rendered tour target (FR-010) in `frontend/src/components/Onboarding/OnboardingTour.tsx` — use joyride's `disableOverlay` + `disableScrollParentFix` safe defaults and verify each `data-tour-id` element exists before calling `run`; skip gracefully if missing
-- [ ] T028 [P] WCAG 2.1 AA audit pass across all Onboarding components — verify: focus trapped in joyride tooltip (`tabIndex`), `Escape` dismisses hints, all interactive elements have `aria-label`, Tailwind `focus:ring` visible on tour nav buttons, focus returns to triggering element on tour end — update `frontend/src/components/Onboarding/OnboardingTour.tsx` and `OnboardingHints.tsx` as needed
-- [ ] T029 Update barrel export `frontend/src/components/Onboarding/index.ts` — re-export `OnboardingTour` and `OnboardingHints`
-- [ ] T030 Update `README.md` — add "Onboarding" section documenting: feature overview, `react-joyride` dependency, `data-tour-id` targeting convention, developer reset instructions (`localStorage.removeItem('argus:onboarding')`), and link to `specs/012-user-onboarding/quickstart.md`
+- [X] T026 [P] [US1] Handle tour navigate-away edge case in `frontend/src/components/Onboarding/OnboardingTour.tsx` — listen to React Router location changes via `useLocation`; if location changes while tour is running, call `skipTour('navigation')` so tour dismisses silently per FR-011
+- [X] T027 [P] [US1] Handle not-yet-rendered tour target (FR-010) in `frontend/src/components/Onboarding/OnboardingTour.tsx` — use joyride's `disableOverlay` + `disableScrollParentFix` safe defaults and verify each `data-tour-id` element exists before calling `run`; skip gracefully if missing
+- [X] T028 [P] WCAG 2.1 AA audit pass across all Onboarding components — verify: focus trapped in joyride tooltip (`tabIndex`), `Escape` dismisses hints, all interactive elements have `aria-label`, Tailwind `focus:ring` visible on tour nav buttons, focus returns to triggering element on tour end — update `frontend/src/components/Onboarding/OnboardingTour.tsx` and `OnboardingHints.tsx` as needed
+- [X] T029 Update barrel export `frontend/src/components/Onboarding/index.ts` — re-export `OnboardingTour` and `OnboardingHints`
+- [X] T030 Update `README.md` — add "Onboarding" section documenting: feature overview, `react-joyride` dependency, `data-tour-id` targeting convention, developer reset instructions (`localStorage.removeItem('argus:onboarding')`), and link to `specs/012-user-onboarding/quickstart.md`
 
 ---
 
