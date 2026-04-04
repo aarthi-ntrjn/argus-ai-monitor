@@ -1,7 +1,7 @@
 # Main CI pipeline — runs on every push and on PRs targeting master.
 # Enforces lockfile-only dependency installs, validates action SHA pins,
-# rebuilds allowlisted native modules, runs backend tests and frontend build,
-# and audits for critical CVEs.
+# rebuilds allowlisted native modules, runs backend/frontend builds,
+# unit tests, mock e2e tests (Playwright/Chromium), and audits for critical CVEs.
 
 name: CI
 
@@ -53,11 +53,27 @@ jobs:
                   result = subprocess.run(['npm', 'rebuild', entry['package']], check=True)
           "
 
-      - name: Run backend tests
-        run: npm test --workspace=backend
+      - name: Build backend
+        run: npm run build --workspace=backend
 
       - name: Build frontend
         run: npm run build --workspace=frontend
+
+      - name: Run backend tests
+        run: npm test --workspace=backend
+
+      - name: Run frontend unit tests
+        run: npm test --workspace=frontend
+
+      - name: Install Playwright browser
+        # Only installs Chromium — the only browser used in playwright.config.ts.
+        # --with-deps installs the OS-level libraries Chromium needs on Ubuntu.
+        run: npx playwright install chromium --with-deps
+
+      - name: Run e2e mock tests
+        # Uses vite preview (port 4173) to serve the already-built dist/.
+        # All API calls are intercepted by page.route() — no backend required.
+        run: npm run test:e2e --workspace=frontend
 
       - name: Audit for critical CVEs
         # Fail if any package in the lockfile has a critical vulnerability.

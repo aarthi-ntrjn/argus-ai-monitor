@@ -19,8 +19,8 @@ const SESSION_NO_MODEL = {
 };
 
 const OUTPUT_WITH_ROLES = [
-  { id: 'out-1', sessionId: 'session-abc-123', timestamp: new Date().toISOString(), type: 'text', content: 'What should I do?', toolName: null, sequenceNumber: 1, role: 'user' },
-  { id: 'out-2', sessionId: 'session-abc-123', timestamp: new Date().toISOString(), type: 'text', content: 'I will help you with that.', toolName: null, sequenceNumber: 2, role: 'assistant' },
+  { id: 'out-1', sessionId: 'session-abc-123', timestamp: new Date().toISOString(), type: 'message', content: 'What should I do?', toolName: null, sequenceNumber: 1, role: 'user' },
+  { id: 'out-2', sessionId: 'session-abc-123', timestamp: new Date().toISOString(), type: 'message', content: 'I will help you with that.', toolName: null, sequenceNumber: 2, role: 'assistant' },
   { id: 'out-3', sessionId: 'session-abc-123', timestamp: new Date().toISOString(), type: 'tool_use', content: 'read_file(main.ts)', toolName: 'read_file', sequenceNumber: 3, role: null },
 ];
 
@@ -54,7 +54,7 @@ test.describe('SC-007: Output Stream & Model Display', () => {
   test('US3: model name shown on session card when available', async ({ page }) => {
     await mockApis(page);
     await page.goto('/');
-    await expect(page.getByText('my-project')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'my-project' })).toBeVisible({ timeout: 5000 });
 
     await expect(page.getByText('claude-opus-4-5')).toBeVisible();
   });
@@ -62,7 +62,7 @@ test.describe('SC-007: Output Stream & Model Display', () => {
   test('US3: no model text shown when model is null', async ({ page }) => {
     await mockApis(page);
     await page.goto('/');
-    await expect(page.getByText('my-project')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'my-project' })).toBeVisible({ timeout: 5000 });
 
     // copilot-cli session has no model, so only the type badge text should appear (no model label nearby)
     const cards = page.locator('[data-testid="session-card"], .session-card, [class*="SessionCard"]');
@@ -79,9 +79,10 @@ test.describe('SC-007: Output Stream & Model Display', () => {
 
     // Open the session output pane
     await page.getByText('Feature work').click();
-    await expect(page.getByRole('region', { name: /session output/i })).toBeVisible({ timeout: 3000 });
+    const outputPane = page.getByRole('region', { name: /session output/i });
+    await expect(outputPane).toBeVisible({ timeout: 3000 });
 
-    await expect(page.getByText('YOU')).toBeVisible();
+    await expect(outputPane.getByText('YOU', { exact: true })).toBeVisible();
   });
 
   test('US4: role AI badge shown for assistant messages in output pane', async ({ page }) => {
@@ -90,9 +91,10 @@ test.describe('SC-007: Output Stream & Model Display', () => {
     await expect(page.getByText('Feature work')).toBeVisible({ timeout: 5000 });
 
     await page.getByText('Feature work').click();
-    await expect(page.getByRole('region', { name: /session output/i })).toBeVisible({ timeout: 3000 });
+    const outputPane = page.getByRole('region', { name: /session output/i });
+    await expect(outputPane).toBeVisible({ timeout: 3000 });
 
-    await expect(page.getByText('AI')).toBeVisible();
+    await expect(outputPane.getByText('AI', { exact: true })).toBeVisible();
   });
 
   test('US4: tool_use messages have no role badge', async ({ page }) => {
@@ -101,10 +103,11 @@ test.describe('SC-007: Output Stream & Model Display', () => {
     await expect(page.getByText('Feature work')).toBeVisible({ timeout: 5000 });
 
     await page.getByText('Feature work').click();
-    await expect(page.getByRole('region', { name: /session output/i })).toBeVisible({ timeout: 3000 });
+    const outputPane = page.getByRole('region', { name: /session output/i });
+    await expect(outputPane).toBeVisible({ timeout: 3000 });
 
     // The tool_use output content should be visible
-    await expect(page.getByText('read_file(main.ts)')).toBeVisible();
+    await expect(outputPane.getByText('read_file(main.ts)').first()).toBeVisible();
   });
 
   // ─── US3: Model on session detail page ─────────────────────────────────────
@@ -113,6 +116,93 @@ test.describe('SC-007: Output Stream & Model Display', () => {
     await mockApis(page);
     await page.goto('/sessions/session-abc-123');
     await expect(page.getByText('claude-opus-4-5')).toBeVisible({ timeout: 5000 });
+  });
+
+  // ─── Output pane: remaining badge types ────────────────────────────────────
+
+  test('output pane shows RESULT badge for tool_result items', async ({ page }) => {
+    await Promise.all([
+      page.route('**/api/v1/repositories', route =>
+        route.fulfill({ contentType: 'application/json', body: JSON.stringify(REPOS) })
+      ),
+      page.route('**/api/v1/sessions**', route =>
+        route.fulfill({ contentType: 'application/json', body: JSON.stringify([SESSION_WITH_MODEL]) })
+      ),
+      page.route('**/api/v1/sessions/session-abc-123/output**', route =>
+        route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify({
+            items: [{ id: 'r-1', sessionId: 'session-abc-123', timestamp: new Date().toISOString(), type: 'tool_result', role: null, content: 'exit code 0', toolName: 'bash', sequenceNumber: 1 }],
+            nextBefore: null, total: 1,
+          }),
+        })
+      ),
+    ]);
+    await page.goto('/');
+    await expect(page.getByText('Feature work')).toBeVisible({ timeout: 5000 });
+    await page.getByText('Feature work').click();
+    await expect(page.getByRole('region', { name: /session output/i })).toBeVisible({ timeout: 3000 });
+    await expect(page.getByText('RESULT', { exact: true })).toBeVisible({ timeout: 2000 });
+  });
+
+  test('output pane shows ERR badge for error items', async ({ page }) => {
+    await Promise.all([
+      page.route('**/api/v1/repositories', route =>
+        route.fulfill({ contentType: 'application/json', body: JSON.stringify(REPOS) })
+      ),
+      page.route('**/api/v1/sessions**', route =>
+        route.fulfill({ contentType: 'application/json', body: JSON.stringify([SESSION_WITH_MODEL]) })
+      ),
+      page.route('**/api/v1/sessions/session-abc-123/output**', route =>
+        route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify({
+            items: [{ id: 'e-1', sessionId: 'session-abc-123', timestamp: new Date().toISOString(), type: 'error', role: null, content: 'Command failed', toolName: null, sequenceNumber: 1 }],
+            nextBefore: null, total: 1,
+          }),
+        })
+      ),
+    ]);
+    await page.goto('/');
+    await expect(page.getByText('Feature work')).toBeVisible({ timeout: 5000 });
+    await page.getByText('Feature work').click();
+    await expect(page.getByRole('region', { name: /session output/i })).toBeVisible({ timeout: 3000 });
+    await expect(page.getByText('ERR', { exact: true })).toBeVisible({ timeout: 2000 });
+  });
+
+  test('output pane shows STATUS badge for status_change items', async ({ page }) => {
+    await Promise.all([
+      page.route('**/api/v1/repositories', route =>
+        route.fulfill({ contentType: 'application/json', body: JSON.stringify(REPOS) })
+      ),
+      page.route('**/api/v1/sessions**', route =>
+        route.fulfill({ contentType: 'application/json', body: JSON.stringify([SESSION_WITH_MODEL]) })
+      ),
+      page.route('**/api/v1/sessions/session-abc-123/output**', route =>
+        route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify({
+            items: [{ id: 's-1', sessionId: 'session-abc-123', timestamp: new Date().toISOString(), type: 'status_change', role: null, content: 'Session became active', toolName: null, sequenceNumber: 1 }],
+            nextBefore: null, total: 1,
+          }),
+        })
+      ),
+    ]);
+    await page.goto('/');
+    await expect(page.getByText('Feature work')).toBeVisible({ timeout: 5000 });
+    await page.getByText('Feature work').click();
+    await expect(page.getByRole('region', { name: /session output/i })).toBeVisible({ timeout: 3000 });
+    await expect(page.getByText('STATUS', { exact: true })).toBeVisible({ timeout: 2000 });
+  });
+
+  test('output pane header shows first 8 chars of session ID', async ({ page }) => {
+    await mockApis(page);
+    await page.goto('/');
+    await expect(page.getByText('Feature work')).toBeVisible({ timeout: 5000 });
+    await page.getByText('Feature work').click();
+    await expect(page.getByRole('region', { name: /session output/i })).toBeVisible({ timeout: 3000 });
+    // OutputPane header: "Output — {session.id.slice(0, 8)}"
+    await expect(page.getByText(/Output — session-/)).toBeVisible({ timeout: 2000 });
   });
 
 });

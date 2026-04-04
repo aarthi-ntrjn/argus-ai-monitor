@@ -1,9 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtempSync, mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
-import { tmpdir, homedir } from 'os';
+import { homedir } from 'os';
 import supertest from 'supertest';
 import { buildServer } from '../../src/server.js';
+
+// A path that is definitely outside the home directory on both Windows and Linux
+const OUTSIDE_HOME = process.platform === 'win32' ? 'C:\\Windows\\System32' : '/etc/passwd';
 
 describe('POST /api/v1/fs/scan-folder', () => {
   let request: ReturnType<typeof supertest>;
@@ -15,7 +18,8 @@ describe('POST /api/v1/fs/scan-folder', () => {
     app = result.app;
     await app.ready();
     request = supertest(app.server);
-    tmp = mkdtempSync(join(tmpdir(), 'argus-fs-test-'));
+    // Use homedir() so the temp path is within the path sandbox boundary
+    tmp = mkdtempSync(join(homedir(), 'argus-fs-test-'));
   });
 
   afterAll(async () => {
@@ -80,7 +84,7 @@ describe('Filesystem path boundary enforcement (FR-008, FR-009)', () => {
     app = result.app;
     await app.ready();
     request = supertest(app.server);
-    tmp = mkdtempSync(join(tmpdir(), 'argus-boundary-test-'));
+    tmp = mkdtempSync(join(homedir(), 'argus-boundary-test-'));
   });
 
   afterAll(async () => {
@@ -89,10 +93,10 @@ describe('Filesystem path boundary enforcement (FR-008, FR-009)', () => {
   });
 
   describe('POST /api/v1/fs/scan-folder', () => {
-    it('returns 403 for path outside home dir (Windows system path)', async () => {
+    it('returns 403 for path outside home dir', async () => {
       const res = await request
         .post('/api/v1/fs/scan-folder')
-        .send({ path: 'C:\\Windows\\System32' });
+        .send({ path: OUTSIDE_HOME });
       expect(res.status).toBe(403);
       expect(res.body).toMatchObject({ error: 'PATH_OUTSIDE_BOUNDARY' });
     });
@@ -123,7 +127,7 @@ describe('Filesystem path boundary enforcement (FR-008, FR-009)', () => {
 
   describe('GET /api/v1/fs/browse', () => {
     it('returns 403 for path outside home dir', async () => {
-      const res = await request.get('/api/v1/fs/browse?path=C%3A%5CWindows%5CSystem32');
+      const res = await request.get(`/api/v1/fs/browse?path=${encodeURIComponent(OUTSIDE_HOME)}`);
       expect(res.status).toBe(403);
       expect(res.body).toMatchObject({ error: 'PATH_OUTSIDE_BOUNDARY' });
     });
@@ -143,7 +147,7 @@ describe('Filesystem path boundary enforcement (FR-008, FR-009)', () => {
 
   describe('GET /api/v1/fs/scan', () => {
     it('returns 403 for path outside home dir', async () => {
-      const res = await request.get('/api/v1/fs/scan?path=C%3A%5CWindows');
+      const res = await request.get(`/api/v1/fs/scan?path=${encodeURIComponent(OUTSIDE_HOME)}`);
       expect(res.status).toBe(403);
       expect(res.body).toMatchObject({ error: 'PATH_OUTSIDE_BOUNDARY' });
     });

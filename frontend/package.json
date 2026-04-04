@@ -9,7 +9,10 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test --config ../playwright.config.ts",
+    "test:e2e:real": "playwright test --config ../playwright.real.config.ts",
+    "test:e2e:ui": "playwright test --config ../playwright.config.ts --ui --ui-host=localhost --ui-port=9323",
+    "test:e2e:real:ui": "playwright test --config ../playwright.real.config.ts --ui --ui-host=localhost --ui-port=9324"
   },
   "dependencies": {
     "@tanstack/react-query": "5.96.0",
@@ -25,6 +28,7 @@
     "@playwright/test": "1.59.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "18.3.28",
     "@types/react-dom": "18.3.7",
     "@vitejs/plugin-react": "6.0.1",
