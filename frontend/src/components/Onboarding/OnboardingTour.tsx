@@ -15,16 +15,6 @@ const FONT_FAMILY =
   'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
 const tourStyles = {
-  options: {
-    primaryColor: '#2563eb',       // blue-600
-    backgroundColor: '#ffffff',
-    textColor: '#111827',          // gray-900
-    overlayColor: 'rgba(0,0,0,0.45)',
-    arrowColor: '#ffffff',
-    zIndex: 10000,
-    fontFamily: FONT_FAMILY,
-    fontSize: 13,
-  },
   tooltip: {
     borderRadius: 10,
     boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15), 0 4px 10px -5px rgba(0,0,0,0.1)',
@@ -36,13 +26,13 @@ const tourStyles = {
   tooltipTitle: {
     fontSize: 14,
     fontWeight: 600,
-    color: '#111827',              // gray-900
+    color: '#111827',
     marginBottom: 6,
     fontFamily: FONT_FAMILY,
   },
   tooltipContent: {
     fontSize: 13,
-    color: '#374151',              // gray-700
+    color: '#374151',
     lineHeight: 1.55,
     padding: '4px 0',
     fontFamily: FONT_FAMILY,
@@ -51,26 +41,28 @@ const tourStyles = {
     marginTop: 14,
     gap: 8,
   },
-  buttonNext: {
-    backgroundColor: '#2563eb',   // blue-600
-    borderRadius: 8,               // rounded-lg
-    fontSize: 14,                  // text-sm
-    fontWeight: 500,               // font-medium
-    padding: '8px 24px',           // py-2 px-6
+  buttonPrimary: {
+    backgroundColor: '#2563eb',
+    borderRadius: 8,
+    fontSize: 13,
+    fontWeight: 500,
+    padding: '6px 14px',
     fontFamily: FONT_FAMILY,
     color: '#ffffff',
     border: 'none',
   },
   buttonBack: {
-    color: '#6b7280',              // gray-500
+    color: '#6b7280',
     fontSize: 13,
     fontWeight: 500,
     fontFamily: FONT_FAMILY,
+    padding: '6px 8px',
   },
   buttonSkip: {
-    color: '#9ca3af',              // gray-400
+    color: '#9ca3af',
     fontSize: 12,
     fontFamily: FONT_FAMILY,
+    padding: '6px 8px',
   },
   buttonClose: {
     color: '#9ca3af',
@@ -123,6 +115,12 @@ export function OnboardingTour({ run, steps, onComplete, onSkip }: OnboardingTou
         overlayClickAction: false,
         blockTargetInteraction: false,
         showProgress: true,
+        primaryColor: '#2563eb',
+        backgroundColor: '#ffffff',
+        textColor: '#111827',
+        overlayColor: 'rgba(0,0,0,0.45)',
+        arrowColor: '#ffffff',
+        zIndex: 10000,
       }}
       locale={{
         back: 'Back',
