@@ -1,0 +1,65 @@
+# Main CI pipeline — runs on every push and on PRs targeting master.
+# Enforces lockfile-only dependency installs, validates action SHA pins,
+# rebuilds allowlisted native modules, runs backend tests and frontend build,
+# and audits for critical CVEs.
+
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Validate action SHA pins
+        # Fail fast if any workflow file references a third-party action without
+        # a full 40-character commit SHA. Self-referencing (./) actions are exempt.
+        run: bash .github/scripts/validate-action-pins.sh
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+
+      - name: Install dependencies (lockfile-enforced, scripts suppressed)
+        # npm ci enforces the committed package-lock.json:
+        #   - fails if package-lock.json is absent
+        #   - fails if any package hash does not match the lockfile
+        #   - never writes to the lockfile
+        # --ignore-scripts suppresses all package lifecycle scripts by default.
+        # Allowlisted packages are rebuilt explicitly in the next step.
+        run: npm ci --ignore-scripts
+
+      - name: Rebuild allowlisted lifecycle packages
+        # Read lifecycle-allowlist.yml and run `npm rebuild` for each package
+        # scoped to CI. This restores native module functionality (e.g.,
+        # better-sqlite3's node-gyp bindings) that --ignore-scripts suppressed.
+        run: |
+          python3 -c "
+          import yaml, subprocess, sys
+          with open('.github/supply-chain/lifecycle-allowlist.yml') as f:
+              data = yaml.safe_load(f)
+          for entry in data.get('allowed', []):
+              if 'ci' in entry.get('environments', []):
+                  print(f'Rebuilding {entry[\"package\"]}...')
+                  result = subprocess.run(['npm', 'rebuild', entry['package']], check=True)
+          "
+
+      - name: Run backend tests
+        run: npm test --workspace=backend
+
+      - name: Build frontend
+        run: npm run build --workspace=frontend
+
+      - name: Audit for critical CVEs
+        # Fail if any package in the lockfile has a critical vulnerability.
+        # This catches known CVEs that may have been introduced via dependency updates.
+        run: npm audit --audit-level=critical

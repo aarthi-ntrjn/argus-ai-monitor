@@ -7,7 +7,7 @@ const CONFIG_DIR = join(homedir(), '.argus');
 const CONFIG_PATH = join(CONFIG_DIR, 'config.json');
 
 const DEFAULTS: ArgusConfig = {
-  port: process.env.ARGUS_PORT ? parseInt(process.env.ARGUS_PORT, 10) : 7411,
+  port: 7411,
   watchDirectories: [],
   sessionRetentionHours: 24,
   outputRetentionMbPerSession: 10,
@@ -22,12 +22,7 @@ export function loadConfig(): ArgusConfig {
   }
   try {
     const raw = readFileSync(CONFIG_PATH, 'utf-8');
-    const fileConfig = JSON.parse(raw);
-    const merged = { ...DEFAULTS, ...fileConfig };
-    // Environment variables always override config file
-    if (process.env.ARGUS_PORT) merged.port = parseInt(process.env.ARGUS_PORT, 10);
-    if (process.env.ARGUS_DB_PATH) merged.dbPath = process.env.ARGUS_DB_PATH;
-    return merged;
+    return { ...DEFAULTS, ...JSON.parse(raw) };
   } catch {
     return { ...DEFAULTS };
   }

@@ -146,6 +146,13 @@ git push origin <MAIN_BRANCH>
 
 If the merge has conflicts, stop and report: list the conflicting files and ask the user to resolve them manually, then re-run `/merge`.
 
+Then delete the feature branch locally and remotely:
+
+```
+git branch -d <FEATURE_BRANCH>
+git push origin --delete <FEATURE_BRANCH>
+```
+
 ---
 
 ### Step 7 — Report
@@ -153,7 +160,7 @@ If the merge has conflicts, stop and report: list the conflicting files and ask 
 Output a final merge summary:
 
 - **Branch merged**: `<FEATURE_BRANCH>` → `<MAIN_BRANCH>`
+- **Branch deleted**: local and remote `<FEATURE_BRANCH>` removed
 - **Constitution gaps fixed**: list any items that were fixed (or "None")
 - **Warnings**: list any WARN items for follow-up
 - **Tests**: pass count
-- **Next steps**: e.g., delete the feature branch, open a release PR, tag a version

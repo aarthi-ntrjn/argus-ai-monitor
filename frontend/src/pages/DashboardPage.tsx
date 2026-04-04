@@ -49,11 +49,13 @@ export default function DashboardPage() {
   const { data: repos = [], isLoading: reposLoading } = useQuery({
     queryKey: ['repositories'],
     queryFn: getRepositories,
+    refetchInterval: 5000,
   });
 
   const { data: sessions = [], isLoading: sessionsLoading } = useQuery({
     queryKey: ['sessions'],
     queryFn: () => getSessions(),
+    refetchInterval: 5000,
   });
 
   const reposWithSessions: RepoWithSessions[] = repos.map((repo) => {

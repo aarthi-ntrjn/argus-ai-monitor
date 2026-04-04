@@ -1,4 +1,4 @@
-import Fastify from 'fastify';
+import Fastify, { type FastifyError } from 'fastify';
 import fastifyWebsocket from '@fastify/websocket';
 import fastifyStatic from '@fastify/static';
 import fastifySwagger from '@fastify/swagger';
@@ -64,9 +64,11 @@ export async function buildServer() {
 
   app.addHook('onSend', async (request, reply) => {
     reply.header('X-Request-Id', request.id);
+    reply.header('X-Content-Type-Options', 'nosniff');
+    reply.header('X-Frame-Options', 'DENY');
   });
 
-  app.setErrorHandler((error, request, reply) => {
+  app.setErrorHandler((error: FastifyError, request, reply) => {
     request.log.error({ err: error, requestId: request.id }, 'Request error');
     reply.status(error.statusCode ?? 500).send({
       error: error.code ?? 'INTERNAL_ERROR',
@@ -83,9 +85,9 @@ export async function buildServer() {
   await app.register(fsRoutes);
 
   app.register(async (fastify) => {
-    fastify.get('/ws', { websocket: true }, (connection) => {
-      addClient(connection.socket);
-      connection.on('close', () => removeClient(connection.socket));
+    fastify.get('/ws', { websocket: true }, (socket) => {
+      addClient(socket);
+      socket.on('close', () => removeClient(socket));
     });
   });
 

@@ -20,7 +20,7 @@ describe('ClaudeCodeDetector', () => {
   it('POST /hooks/claude accepts hook payload', async () => {
     const payload = {
       hook_event_name: 'SessionStart',
-      session_id: 'test-claude-session',
+      session_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
       cwd: 'C:\\source\\test-repo',
     };
     const res = await request.post('/hooks/claude').send(payload);
@@ -31,7 +31,7 @@ describe('ClaudeCodeDetector', () => {
   it('POST /hooks/claude accepts PreToolUse payload', async () => {
     const payload = {
       hook_event_name: 'PreToolUse',
-      session_id: 'test-claude-session',
+      session_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
       cwd: 'C:\\source\\test-repo',
       tool_name: 'bash',
       tool_input: { command: 'ls' },

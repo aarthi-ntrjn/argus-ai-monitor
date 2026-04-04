@@ -9,6 +9,9 @@ let mockPsListResult: Array<{ pid: number; name: string; cmd?: string }> = [
   { pid: 9999, name: 'some-process', cmd: 'some-process' },
 ];
 
+// Mutable so individual tests can control what branch getCurrentBranch returns
+let mockGetCurrentBranchResult: string | null = null;
+
 // Mock ps-list to control which PIDs are "running"
 vi.mock('ps-list', () => ({
   default: vi.fn(async () => mockPsListResult),
@@ -30,6 +33,7 @@ vi.mock('../../src/services/repository-scanner.js', () => ({
   RepositoryScanner: vi.fn().mockImplementation(() => ({
     scan: vi.fn(async () => []),
   })),
+  getCurrentBranch: vi.fn((..._args: unknown[]) => mockGetCurrentBranchResult),
 }));
 
 vi.mock('../../src/services/copilot-cli-detector.js', () => ({
@@ -64,6 +68,7 @@ describe('SessionMonitor.reconcileStaleSessions', () => {
     mkdirSync(tmpdir(), { recursive: true });
     vi.resetModules();
     mockPsListResult = [{ pid: 9999, name: 'some-process', cmd: 'some-process' }];
+    mockGetCurrentBranchResult = null;
     const db = await import('../../src/db/database.js');
     closeDb = db.closeDb;
     upsertSession = db.upsertSession;
@@ -200,5 +205,77 @@ describe('SessionMonitor.reconcileStaleSessions', () => {
     const session = allSessions.find(s => s.id === 'stale-null-pid-session');
     // JSONL file doesn't exist → session is stale → should be ended
     expect(session?.status).toBe('ended');
+  });
+});
+
+describe('SessionMonitor.refreshRepositoryBranches', () => {
+  let closeDb: () => void;
+  let insertRepository: (r: unknown) => void;
+  let getRepositories: () => unknown[];
+  let SessionMonitor: new () => { start(): Promise<void>; stop(): void };
+
+  beforeEach(async () => {
+    process.env.ARGUS_DB_PATH = join(tmpdir(), `argus-sm-branch-test-${randomUUID()}.db`);
+    mkdirSync(tmpdir(), { recursive: true });
+    vi.resetModules();
+    mockPsListResult = [{ pid: 9999, name: 'some-process', cmd: 'some-process' }];
+    mockGetCurrentBranchResult = null;
+    const db = await import('../../src/db/database.js');
+    closeDb = db.closeDb;
+    insertRepository = db.insertRepository as (r: unknown) => void;
+    getRepositories = db.getRepositories as () => unknown[];
+    const mod = await import('../../src/services/session-monitor.js');
+    SessionMonitor = mod.SessionMonitor as unknown as new () => { start(): Promise<void>; stop(): void };
+  });
+
+  afterEach(() => {
+    closeDb();
+    vi.resetModules();
+  });
+
+  // T095 regression: branch update must propagate to DB on each scan cycle (not just on window focus)
+  it('T095: should update repository branch in DB when git branch changes between scans', async () => {
+    insertRepository({
+      id: 'repo-branch-test',
+      path: '/stub/repo',
+      name: 'stub',
+      source: 'ui' as const,
+      addedAt: new Date().toISOString(),
+      lastScannedAt: null,
+      branch: 'main',
+    });
+
+    // Simulate user switching branch before the next scan cycle
+    mockGetCurrentBranchResult = 'feature/my-new-branch';
+
+    const monitor = new SessionMonitor();
+    await monitor.start();
+    monitor.stop();
+
+    const repos = getRepositories() as Array<{ id: string; branch: string | null }>;
+    const repo = repos.find(r => r.id === 'repo-branch-test');
+    expect(repo?.branch).toBe('feature/my-new-branch');
+  });
+
+  it('T095: should not update DB when branch is unchanged', async () => {
+    insertRepository({
+      id: 'repo-stable-branch',
+      path: '/stub/repo',
+      name: 'stub',
+      source: 'ui' as const,
+      addedAt: new Date().toISOString(),
+      lastScannedAt: null,
+      branch: 'main',
+    });
+
+    mockGetCurrentBranchResult = 'main'; // same as stored
+
+    const monitor = new SessionMonitor();
+    await monitor.start();
+    monitor.stop();
+
+    const repos = getRepositories() as Array<{ id: string; branch: string | null }>;
+    const repo = repos.find(r => r.id === 'repo-stable-branch');
+    expect(repo?.branch).toBe('main');
   });
 });

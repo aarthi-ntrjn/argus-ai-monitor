@@ -1,8 +1,7 @@
-import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Moon, Play } from 'lucide-react';
-import { getSession, getSessionOutput, stopSession, queryClient } from '../services/api';
+import { getSession, getSessionOutput } from '../services/api';
 import SessionDetail from '../components/SessionDetail/SessionDetail';
 import SessionPromptBar from '../components/SessionPromptBar/SessionPromptBar';
 import SessionTypeIcon from '../components/SessionTypeIcon/SessionTypeIcon';
@@ -40,20 +39,6 @@ const TYPE_COLORS: Record<string, string> = {
 export default function SessionPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [stopping, setStopping] = useState(false);
-
-  const handleStop = async () => {
-    if (!window.confirm('Stop this session?')) return;
-    setStopping(true);
-    try {
-      await stopSession(id!);
-      await queryClient.invalidateQueries({ queryKey: ['session', id] });
-    } catch {
-      // ignore
-    } finally {
-      setStopping(false);
-    }
-  };
 
   const { data: session, isLoading: sessionLoading, error: sessionError } = useQuery({
     queryKey: ['session', id],
@@ -124,15 +109,6 @@ export default function SessionPage() {
             <span className="text-xs text-gray-500 font-mono">
               Duration: {getElapsed(session.startedAt, session.endedAt)}
             </span>
-            {session.status !== 'ended' && session.status !== 'completed' && (
-              <button
-                onClick={handleStop}
-                disabled={stopping}
-                className="ml-auto text-sm px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 transition-colors"
-              >
-                {stopping ? 'Stopping…' : 'Stop Session'}
-              </button>
-            )}
           </div>
           {session.summary && (
             <p className="text-gray-600 text-sm mt-2">{session.summary}</p>

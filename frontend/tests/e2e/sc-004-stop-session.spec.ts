@@ -44,7 +44,7 @@ test.describe('SC-004: Stop Session', () => {
     await page.goto(`/sessions/${sessionId}`);
     page.on('dialog', (dialog) => dialog.dismiss());
     await page.getByText('Stop Session').click();
-    // After dismissing, session should still be running
-    await expect(page.getByText('running')).toBeVisible({ timeout: 2000 });
+    // After dismissing, session should still be active
+    await expect(page.getByText('active')).toBeVisible({ timeout: 2000 });
   });
 });

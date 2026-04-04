@@ -1,8 +1,12 @@
-# CLAUDE.md
+﻿# CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-@CLAUDE.aarthin.md
+## Git Workflow
+
+- After every commit, always run `git push`.
+- After creating a local branch, always publish it to the remote (`git push --set-upstream origin <branch>`).
+- During implementation, commit after completing each task (use the task ID in the commit message).
 
 ## Project Purpose
 

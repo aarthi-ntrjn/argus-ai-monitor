@@ -1,0 +1,31 @@
+# Supply chain PR check — runs only on pull requests targeting master.
+# Compares the dependency snapshot of the PR head against the base branch
+# using the GitHub Advisory Database. Fails if any new dependency carries
+# a critical severity advisory or is flagged as malicious.
+#
+# No-op when package-lock.json is identical between base and head.
+
+name: Dependency Review
+
+on:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Dependency review
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+        with:
+          # Block PRs that introduce dependencies with critical advisories or
+          # active malicious flags. Lower severities are reported but not blocked.
+          fail-on-severity: critical

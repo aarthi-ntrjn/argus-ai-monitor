@@ -34,7 +34,7 @@ Returns all registered repositories.
 [
   {
     "id": "uuid",
-    "path": "/Users/aarthin/repos/argus",
+    "path": "/home/user/repos/argus",
     "name": "argus",
     "source": "config",
     "addedAt": "2026-04-01T10:00:00Z",

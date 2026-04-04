@@ -1,0 +1,18 @@
+# Lifecycle Script Allowlist
+# Packages listed here are permitted to run npm lifecycle scripts
+# (preinstall, install, postinstall, prepare) via `npm rebuild` after
+# a `npm ci --ignore-scripts` install.
+#
+# Schema:
+#   allowed:
+#     - package: <exact npm package name>
+#       reason: <non-empty justification>
+#       environments: [ci] | [local] | [ci, local]
+#
+# Any addition to this list requires a PR with reviewer approval.
+# The CI workflow reads this file to determine which packages to rebuild.
+
+allowed:
+  - package: better-sqlite3
+    reason: "Compiles native SQLite bindings via node-gyp. Required for the backend database layer."
+    environments: [ci, local]
