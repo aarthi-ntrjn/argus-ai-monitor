@@ -4,7 +4,13 @@ import { join, sep } from 'path';
 import { isPathWithinBoundary } from '../../src/utils/path-sandbox.js';
 
 const home = homedir();
-const allowedBoundaries = [home, 'C:\\repos\\myproject', '/home/user/projects/myrepo'];
+
+// Use platform-appropriate extra boundary so tests pass on both Windows and Linux
+const extraBoundary = process.platform === 'win32'
+  ? 'C:\\repos\\myproject'
+  : '/opt/repos/myproject';
+
+const allowedBoundaries = [home, extraBoundary, '/home/user/projects/myrepo'];
 
 describe('isPathWithinBoundary', () => {
   it('allows a path equal to the boundary', () => {
@@ -31,7 +37,7 @@ describe('isPathWithinBoundary', () => {
     expect(isPathWithinBoundary(traversal, allowedBoundaries)).toBe(false);
   });
 
-  it('rejects a Windows system path', () => {
+  it('rejects a Windows system path on Windows, or any drive-letter path on Linux/Mac', () => {
     expect(isPathWithinBoundary('C:\\Windows\\System32', allowedBoundaries)).toBe(false);
   });
 
@@ -40,16 +46,17 @@ describe('isPathWithinBoundary', () => {
   });
 
   it('accepts the second boundary exactly', () => {
-    expect(isPathWithinBoundary('C:\\repos\\myproject', allowedBoundaries)).toBe(true);
+    expect(isPathWithinBoundary(extraBoundary, allowedBoundaries)).toBe(true);
   });
 
   it('accepts a child of the second boundary', () => {
-    expect(isPathWithinBoundary('C:\\repos\\myproject\\src', allowedBoundaries)).toBe(true);
+    expect(isPathWithinBoundary(join(extraBoundary, 'src'), allowedBoundaries)).toBe(true);
   });
 
   it('does not allow a path that merely starts with the boundary string without a separator', () => {
-    // 'C:\\repos\\myprojectextra' must NOT match boundary 'C:\\repos\\myproject'
-    expect(isPathWithinBoundary('C:\\repos\\myprojectextra', allowedBoundaries)).toBe(false);
+    // e.g. boundary is /opt/repos/myproject, reject /opt/repos/myprojectextra
+    const sibling = extraBoundary + 'extra';
+    expect(isPathWithinBoundary(sibling, allowedBoundaries)).toBe(false);
   });
 
   it('returns false when no boundaries are provided', () => {
