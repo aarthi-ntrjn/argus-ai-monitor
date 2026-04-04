@@ -1,10 +1,20 @@
 {
   "name": "argus",
   "private": true,
-  "workspaces": ["backend", "frontend"],
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
   "scripts": {
     "dev": "npm run dev --workspace=backend",
     "build": "npm run build --workspaces",
-    "test": "npm run test --workspaces"
+    "test": "npm run test --workspaces",
+    "test:e2e": "npm run test:e2e --workspace=frontend",
+    "test:e2e:real": "npm run test:e2e:real --workspace=frontend",
+    "test:e2e:ui": "npm run test:e2e:ui --workspace=frontend",
+    "test:e2e:real:ui": "npm run test:e2e:real:ui --workspace=frontend"
+  },
+  "devDependencies": {
+    "vitest": "^3.1.1"
   }
 }

@@ -49,10 +49,11 @@ Perform each check below. Record findings as `PASS`, `FAIL`, or `N/A` with evide
 
 #### §X Definition of Done
 
-- **Tests passing**: Run the full test suite.
+- **Tests passing**: Run the full test suite in this order. If any step fails, **STOP** at step 4 and fix before continuing.
   - Backend: `cd backend && npm test`
-  - Frontend: `cd frontend && npm run build` (build must succeed)
-  - If tests fail, **STOP** at step 4 and fix them before continuing.
+  - Frontend build: `cd frontend && npm run build` (build must succeed)
+  - E2E mock tests (Tier 1): `npm run test:e2e` from repo root — runs all mock-based Playwright tests against the Vite dev server on port 7411. The dev server must be running (`npm run dev`).
+  - E2E real-server tests (Tier 2): `npm run test:e2e:real` from repo root — requires the real backend running on port 7412 (`npm run dev:real` or equivalent). If the real server is not available, note this as `N/A` and do not block the merge, but report it clearly.
 
 - **README updated**: Check if `README.md` was modified in this branch:
   ```
@@ -116,7 +117,10 @@ Output a pre-merge report:
 
 | Check | Status | Notes |
 |-------|--------|-------|
-| Tests passing | ✅ PASS | All N tests passed |
+| Backend tests | ✅ PASS | All N tests passed |
+| Frontend build | ✅ PASS | Build succeeded |
+| E2E mock tests (Tier 1) | ✅ PASS | N tests passed |
+| E2E real-server tests (Tier 2) | ✅ PASS / N/A | N tests passed / server not available |
 | README updated | ✅ PASS / ❌ FIXED / N/A | ... |
 | Tasks complete | ✅ PASS | All T### tasks marked [X] |
 | Test-first coverage | ✅ PASS | ... |

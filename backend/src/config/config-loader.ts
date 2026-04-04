@@ -15,17 +15,20 @@ const DEFAULTS: ArgusConfig = {
 };
 
 export function loadConfig(): ArgusConfig {
+  let fileConfig: Partial<ArgusConfig> = {};
   if (!existsSync(CONFIG_PATH)) {
     mkdirSync(CONFIG_DIR, { recursive: true });
     writeFileSync(CONFIG_PATH, JSON.stringify(DEFAULTS, null, 2), 'utf-8');
-    return { ...DEFAULTS };
+  } else {
+    try {
+      fileConfig = JSON.parse(readFileSync(CONFIG_PATH, 'utf-8'));
+    } catch {
+      // fall through to defaults
+    }
   }
-  try {
-    const raw = readFileSync(CONFIG_PATH, 'utf-8');
-    return { ...DEFAULTS, ...JSON.parse(raw) };
-  } catch {
-    return { ...DEFAULTS };
-  }
+  const config = { ...DEFAULTS, ...fileConfig };
+  if (process.env.ARGUS_PORT) config.port = parseInt(process.env.ARGUS_PORT, 10);
+  return config;
 }
 
 export function saveConfig(config: ArgusConfig): void {

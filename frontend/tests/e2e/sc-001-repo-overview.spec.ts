@@ -25,8 +25,8 @@ test.describe('SC-001: Repository Overview', () => {
 
   test('shows both repository cards within 5s', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByText('my-project')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('another-repo')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'my-project' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'another-repo' })).toBeVisible({ timeout: 5000 });
   });
 
   test('shows session count badge on repo with sessions', async ({ page }) => {

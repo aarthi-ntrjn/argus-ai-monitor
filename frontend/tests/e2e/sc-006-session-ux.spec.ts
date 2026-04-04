@@ -37,7 +37,7 @@ test.describe('SC-006: Session Detail UX', () => {
   test('US1: clicking a session card opens output pane on the right', async ({ page }) => {
     await mockApis(page);
     await page.goto('/');
-    await expect(page.getByText('my-project')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'my-project' })).toBeVisible({ timeout: 5000 });
 
     // OutputPane should not be visible initially
     await expect(page.getByRole('region', { name: /session output/i })).not.toBeVisible();
@@ -54,7 +54,7 @@ test.describe('SC-006: Session Detail UX', () => {
     await page.goto('/');
     await expect(page.getByText('Working on feature')).toBeVisible({ timeout: 5000 });
     await page.getByText('Working on feature').click();
-    await expect(page.getByText('Hello from Claude')).toBeVisible({ timeout: 3000 });
+    await expect(page.getByRole('region', { name: /session output/i }).getByText('Hello from Claude')).toBeVisible({ timeout: 3000 });
   });
 
   test('US1: closing the output pane returns to single-column layout', async ({ page }) => {
@@ -147,7 +147,7 @@ test.describe('SC-006: Session Detail UX', () => {
     await mockApis(page);
     await page.goto('/');
     await expect(page.getByText('Working on feature')).toBeVisible({ timeout: 5000 });
-    // session-abc-123 has no PID — should show ID: session- prefix
-    await expect(page.getByText(/ID: session-a/)).toBeVisible({ timeout: 3000 });
+    // session-abc-123 has no PID — claudeShortId falls back to id.slice(0,8) = 'session-'
+    await expect(page.getByText(/ID: session-/)).toBeVisible({ timeout: 3000 });
   });
 });
