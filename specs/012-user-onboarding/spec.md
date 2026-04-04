@@ -2,7 +2,7 @@
 
 **Feature Branch**: `012-user-onboarding`  
 **Created**: 2026-04-04  
-**Status**: Draft  
+**Status**: Clarified  
 **Input**: User description: "i want to add helpful onboarding user journey as they navigate the argus application. i think there might be some good open source user journey onboarding typescript modules research and find options"
 
 ## User Scenarios & Testing *(mandatory)*
@@ -59,15 +59,15 @@ A returning user wants to revisit the onboarding tour — perhaps because they f
 
 ### User Story 4 - Onboarding Progress Reset for Testing and Support (Priority: P3)
 
-A developer or support team member wants to reset a user's onboarding state so that the tour triggers again from scratch — for example, to reproduce an issue or demonstrate the feature. A reset action is available via a developer or settings panel.
+A developer or support team member — or any user — wants to reset their onboarding state so that the tour triggers again from scratch. This action is available to all users via the help menu or settings panel, allowing anyone to re-experience the full onboarding tour.
 
 **Why this priority**: Nice-to-have for developer experience and support workflows. Does not affect end users directly.
 
-**Independent Test**: Trigger the onboarding reset action. Reload the Dashboard as though a first-time user — the welcome overlay should appear and the tour should start automatically.
+**Independent Test**: Any user (not just admin/developer) can locate the onboarding reset option in the help menu or settings panel and trigger it. Reload the Dashboard — the welcome overlay should appear and the tour should start automatically.
 
 **Acceptance Scenarios**:
 
-1. **Given** a developer or admin accesses the onboarding reset option, **When** they trigger the reset, **Then** all onboarding completion state is cleared.
+1. **Given** any user accesses the onboarding reset option in the help menu or settings panel, **When** they trigger the reset, **Then** all onboarding completion state is cleared.
 2. **Given** the reset has been applied, **When** the user navigates to the Dashboard, **Then** the first-time onboarding tour launches as if the user is brand new.
 
 ---
@@ -76,7 +76,7 @@ A developer or support team member wants to reset a user's onboarding state so t
 
 - What happens when the user resizes the browser window mid-tour? Tooltips and highlights should reposition to remain anchored to their target elements.
 - What happens if the target element for a tour step is not yet rendered (e.g., loading state)? The tour step should wait or gracefully skip to the next step.
-- What happens if the user navigates away mid-tour (e.g., clicks a sidebar link)? The tour should either pause and offer to resume, or gracefully dismiss.
+- What happens if the user navigates away mid-tour (e.g., clicks a sidebar link)? The tour gracefully dismisses silently. The user can restart via "Restart Tour" at any time.
 - What happens if onboarding state cannot be persisted (e.g., storage unavailable)? The tour should still function within the session, and the user is not blocked from using the app.
 - What happens on very small screens (tablet/mobile)? Tour tooltips must remain readable and not obscure critical UI; scrolling into view should be handled automatically.
 
@@ -91,10 +91,12 @@ A developer or support team member wants to reset a user's onboarding state so t
 - **FR-005**: System MUST display contextual hint badges on key controls of the session detail page on a user's first visit to that page.
 - **FR-006**: Users MUST be able to dismiss individual contextual hints, with that dismissal persisted across sessions.
 - **FR-007**: Users MUST be able to replay the full Dashboard tour on demand via a help or settings area.
-- **FR-008**: System MUST allow onboarding state to be reset, relaunching the tour as if the user is brand new.
+- **FR-008**: System MUST allow any user to reset their own onboarding state via the help menu or settings panel, relaunching the tour as if they are brand new.
 - **FR-009**: Tour tooltips MUST reposition correctly when the browser window is resized during the tour.
 - **FR-010**: The tour MUST handle gracefully the case where a target UI element is not yet rendered (skip or wait).
-- **FR-011**: If the user navigates away mid-tour, the system MUST either offer to resume or gracefully dismiss the tour without blocking navigation.
+- **FR-011**: If the user navigates away from the Dashboard mid-tour, the tour MUST gracefully dismiss silently without blocking navigation; the user may restart via "Restart Tour".
+- **FR-012**: The onboarding tour and all contextual hints MUST comply with WCAG 2.1 AA, including full keyboard navigation, screen-reader compatibility, proper focus management, and ARIA labels on all interactive elements.
+- **FR-013**: The system MUST expose named hook points for key onboarding events (tour started, tour completed, tour skipped, step advanced, hint viewed, hint dismissed) to enable future integration with an analytics system.
 
 ### Key Entities
 
@@ -107,9 +109,9 @@ A developer or support team member wants to reset a user's onboarding state so t
 ### Measurable Outcomes
 
 - **SC-001**: A first-time user can complete the full Dashboard onboarding tour in under 2 minutes.
-- **SC-002**: 80% or more of first-time users who start the tour complete it without skipping.
+- **SC-002**: 80% or more of first-time users who start the tour complete it without skipping. *(Requires future analytics wiring via FR-013 hook points.)*
 - **SC-003**: Users who complete the onboarding tour successfully perform their first core action (monitoring a session) within 5 minutes of completing the tour.
-- **SC-004**: Contextual hints on the session detail page are viewed by at least 70% of first-time session page visitors.
+- **SC-004**: Contextual hints on the session detail page are viewed by at least 70% of first-time session page visitors. *(Requires future analytics wiring via FR-013 hook points.)*
 - **SC-005**: The tour tooltip remains correctly positioned and readable across all supported screen sizes (desktop, tablet).
 - **SC-006**: Onboarding state persists correctly — the tour does not re-launch unexpectedly on subsequent visits for 100% of users who completed or skipped it.
 
@@ -117,8 +119,9 @@ A developer or support team member wants to reset a user's onboarding state so t
 
 - Users are developers or technical operators who are generally comfortable with web UIs; the tour content can use light technical language but must still be clear.
 - The onboarding experience targets desktop and tablet screen sizes; mobile is out of scope for v1.
-- Onboarding state will be stored client-side (e.g., browser local storage or equivalent) per user, without requiring a backend API change for v1.
+- Onboarding state will be stored client-side (browser localStorage) for v1. The storage schema MUST be designed to be forward-compatible with a per-authenticated-user model, enabling a future migration without data loss.
 - The tour covers the Dashboard page and session detail page only; no other pages require onboarding steps in v1.
-- An open-source TypeScript-compatible tour/onboarding library will be evaluated and selected during the planning phase to implement the guided tour and contextual hints (e.g., Shepherd.js, Driver.js, Intro.js, or Reactour). The choice will be based on active maintenance, TypeScript support, accessibility, and integration fit with the existing frontend.
-- The "Restart Tour" entry point will be placed in a help menu or settings panel that already exists or will be added as a minimal UI addition.
+- An open-source TypeScript-compatible tour/onboarding library will be evaluated and selected during the planning phase. The library MUST support full WCAG 2.1 AA accessibility. Candidates include Shepherd.js, Driver.js, Intro.js, and Reactour. The choice will be based on active maintenance, TypeScript support, accessibility, and integration fit with the existing frontend.
+- The "Restart Tour" entry point and onboarding state reset action will both be accessible to all users via the help menu or settings panel; no role-based access control is needed.
+- Analytics event tracking is deferred to a future feature. This feature will expose named hook points (FR-013) to make future wiring straightforward.
 - No new backend infrastructure is required for v1; all persistence is handled client-side.
