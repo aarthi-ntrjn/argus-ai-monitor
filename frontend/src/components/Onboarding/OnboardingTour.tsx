@@ -11,6 +11,72 @@ interface OnboardingTourProps {
   onSkip: (reason: 'user_action' | 'navigation') => void;
 }
 
+const FONT_FAMILY =
+  'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+
+const tourStyles = {
+  options: {
+    primaryColor: '#2563eb',       // blue-600
+    backgroundColor: '#ffffff',
+    textColor: '#111827',          // gray-900
+    overlayColor: 'rgba(0,0,0,0.45)',
+    arrowColor: '#ffffff',
+    zIndex: 10000,
+    fontFamily: FONT_FAMILY,
+    fontSize: 13,
+  },
+  tooltip: {
+    borderRadius: 10,
+    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15), 0 4px 10px -5px rgba(0,0,0,0.1)',
+    padding: '16px 20px',
+    fontFamily: FONT_FAMILY,
+    fontSize: 13,
+    maxWidth: 340,
+  },
+  tooltipTitle: {
+    fontSize: 14,
+    fontWeight: 600,
+    color: '#111827',              // gray-900
+    marginBottom: 6,
+    fontFamily: FONT_FAMILY,
+  },
+  tooltipContent: {
+    fontSize: 13,
+    color: '#374151',              // gray-700
+    lineHeight: 1.55,
+    padding: '4px 0',
+    fontFamily: FONT_FAMILY,
+  },
+  tooltipFooter: {
+    marginTop: 14,
+    gap: 8,
+  },
+  buttonNext: {
+    backgroundColor: '#2563eb',   // blue-600
+    borderRadius: 6,
+    fontSize: 13,
+    fontWeight: 500,
+    padding: '6px 14px',
+    fontFamily: FONT_FAMILY,
+  },
+  buttonBack: {
+    color: '#6b7280',              // gray-500
+    fontSize: 13,
+    fontWeight: 500,
+    fontFamily: FONT_FAMILY,
+  },
+  buttonSkip: {
+    color: '#9ca3af',              // gray-400
+    fontSize: 12,
+    fontFamily: FONT_FAMILY,
+  },
+  buttonClose: {
+    color: '#9ca3af',
+    width: 14,
+    height: 14,
+  },
+};
+
 export function OnboardingTour({ run, steps, onComplete, onSkip }: OnboardingTourProps) {
   const location = useLocation();
   const runRef = useRef(run);
@@ -49,13 +115,12 @@ export function OnboardingTour({ run, steps, onComplete, onSkip }: OnboardingTou
       continuous
       scrollToFirstStep
       onEvent={handleEvent}
+      styles={tourStyles}
       options={{
         buttons: ['back', 'primary', 'skip'],
         overlayClickAction: false,
         blockTargetInteraction: false,
         showProgress: true,
-        primaryColor: '#2563eb', // Tailwind blue-600
-        zIndex: 10000,
       }}
       locale={{
         back: 'Back',
