@@ -157,6 +157,20 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 
 ---
 
+## OPS-001 — TypeScript error in server.ts missed after fastify v4→v5 upgrade
+
+**Date**: 2026-04-04
+**Symptom**: `TS18046: 'error' is of type 'unknown'` in `server.ts` setErrorHandler — reported by user after the upgrade was considered complete.
+**Root cause**: Fastify v5 tightened its typings: `setErrorHandler`'s `error` parameter changed from `FastifyError` to `unknown` in strict mode. Accessing `.statusCode`, `.code`, and `.message` on an `unknown` type is a compile-time error.
+**Why it was missed**: `npm test` (vitest) uses esbuild under the hood, which transpiles TypeScript by **stripping types only** — it never runs the TypeScript compiler and never catches type errors. All 164 tests passed despite the broken types. `tsc --noEmit` was not run as part of the upgrade validation step.
+**How to prevent**:
+- After any major dependency upgrade (especially one with known breaking type changes), always run `tsc --noEmit` in addition to the test suite.
+- The build/test checklist for dependency upgrades should be: `tsc --noEmit` → `npm test` → `npm run build` → `npm audit`. Type-checking must come first so type errors are caught before runtime tests.
+- When upgrading a framework to a new major version, explicitly check its changelog for type-level breaking changes — these are invisible to test runners that use esbuild/babel transpilation.
+**Fix summary**: Imported `FastifyError` from `fastify` and annotated the `setErrorHandler` error parameter explicitly: `(error: FastifyError, request, reply) => ...`.
+
+---
+
 ## T094 — Stale null-PID Claude Code sessions never cleaned up when another Claude process is running
 
 **Date**: 2026-04-03
