@@ -53,11 +53,13 @@ const tourStyles = {
   },
   buttonNext: {
     backgroundColor: '#2563eb',   // blue-600
-    borderRadius: 6,
-    fontSize: 13,
-    fontWeight: 500,
-    padding: '6px 14px',
+    borderRadius: 8,               // rounded-lg
+    fontSize: 14,                  // text-sm
+    fontWeight: 500,               // font-medium
+    padding: '8px 24px',           // py-2 px-6
     fontFamily: FONT_FAMILY,
+    color: '#ffffff',
+    border: 'none',
   },
   buttonBack: {
     color: '#6b7280',              // gray-500
