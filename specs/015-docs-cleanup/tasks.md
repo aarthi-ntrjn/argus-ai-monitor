@@ -6,6 +6,7 @@
 1. Rename `BUG-LEARNINGS.md` → `README-LEARNINGS.md` and update all references.
 2. Rename `MANUAL-TESTS.md` → `README-MANUAL-TESTS.md` and update all references.
 3. Create `docs/` folder and move all `README-*.md` files into it; fix all references.
+4. Restructure `README.md` to be user-focused with clear Monitor and Control sections; move contributor content to `docs/README-CONTRIBUTORS.md`.
 
 ## Format: `[ID] [P?] [Story?] Description`
 
@@ -84,6 +85,29 @@
 
 ---
 
+## Phase 9: User Story 2 — README.md user-focused restructure
+
+> **Depends on**: Phase 8 complete (docs/ folder exists with all README-*.md files).
+
+**Goal**: `README.md` is written for users of Argus with clear **Monitor** and **Control** sections. All developer/contributor-facing content (API reference, Security Model, CI & Supply Chain, tech stack, developer-only settings/onboarding notes) is moved to `docs/README-CONTRIBUTORS.md`. `README.md` ends with a brief link to that file.
+
+**Independent Test**: `README.md` contains `## Monitor` and `## Control` headings and no `## API`, `## Security Model`, `## CI & Supply Chain`, or `## Tech stack` sections; `docs/README-CONTRIBUTORS.md` exists and contains all removed content.
+
+- [ ] T025 [US2] Create `docs/README-CONTRIBUTORS.md` — extract contributor-facing content from `README.md`: API reference table, Security Model section, CI & Supply Chain section (both workflows + pipeline details + failure responses), Tech stack line, "Adding a new setting (developers)" subsection from Dashboard Settings, "Developer reset" code snippet and `data-tour-id` selector note from Onboarding. Preserve all original content exactly in the new file, with an introductory heading `# Argus: Contributor Guide`.
+- [ ] T026 [US2] Rewrite `README.md` to be user-focused in `README.md`: (1) Replace the flat `## What it does` bullet list with two new sections: `## Monitor` (covering session cards, two-pane output view, role-labelled output, model badge, last output preview, auto-detection) and `## Control` (covering quick commands, inline prompt, repository management); each section gets a one-line intro sentence before its subsections. (2) Remove the contributor-facing sections extracted to T025 (API, Security Model, CI & Supply Chain, Tech stack). (3) Trim "Adding a new setting" from Dashboard Settings; trim developer reset snippet and `data-tour-id` note from Onboarding. (4) Add a `## For Contributors` footer section: `See [docs/README-CONTRIBUTORS.md](docs/README-CONTRIBUTORS.md) for API reference, security model, CI pipeline, and development guides.`
+- [ ] T027 [P] [US2] Update `specs/015-docs-cleanup/plan.md` — add `docs/README-CONTRIBUTORS.md` to the project structure listing.
+
+---
+
+## Phase 10: Polish
+
+- [ ] T028 Verify `README.md` contains `## Monitor` and `## Control` headings and does NOT contain `## API`, `## Security Model`, `## CI & Supply Chain`, or `## Tech stack` headings
+- [ ] T029 Verify `docs/README-CONTRIBUTORS.md` exists and contains the API table, Security Model table, and CI & Supply Chain section
+- [ ] T030 Commit: `git add -A && git commit -m "docs(015): restructure README.md for users; move contributor content to README-CONTRIBUTORS.md"`
+- [ ] T031 Push: `git push`
+
+---
+
 ## Dependencies
 
 ```
@@ -97,11 +121,16 @@ T009 ─┴→ T014 → T015 [P] ─┐
               T016 [P] ─┤
               T017 [P] ─┤
               T018 [P] ─┴→ T019 → T020 → T021 → T022 → T023 → T024
+
+T024 → T025 → T026 → T027 [P]
+                    ─┴→ T028 → T029 → T030 → T031
 ```
 
 - T015–T018 are all parallel to each other (each moves a different file).
 - T019 and T020 are independent of each other (different files) and can be done in parallel after T018.
 - The entire Phase 7 block depends on T003 and T009 completing first.
+- T025 must complete before T026 (README-CONTRIBUTORS.md must exist before README.md removes that content).
+- T027 is independent of T026 (different file) and can run in parallel.
 
 ## Implementation Strategy
 
@@ -110,4 +139,6 @@ T009 ─┴→ T014 → T015 [P] ─┐
 3. Complete Phase 6 (polish/verify renames) — T011–T013
 4. Complete Phase 7 (move all to docs/) — T014–T020, commit
 5. Complete Phase 8 (verify + final commit) — T021–T024
+6. Complete Phase 9 (README user restructure + README-CONTRIBUTORS.md) — T025–T027, commit
+7. Complete Phase 10 (verify + final commit) — T028–T031
 
