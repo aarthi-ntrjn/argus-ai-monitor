@@ -43,7 +43,7 @@ const tourStyles = {
   },
   buttonPrimary: {
     backgroundColor: '#2563eb',
-    borderRadius: 8,
+    borderRadius: 4,
     fontSize: 13,
     fontWeight: 500,
     padding: '6px 14px',
