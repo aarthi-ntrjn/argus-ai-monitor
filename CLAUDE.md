@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - After every commit, always run `git push`.
 - After creating a local branch, always publish it to the remote (`git push --set-upstream origin <branch>`).
 - During implementation, commit after completing each task (use the task ID in the commit message).
+- After making any frontend changes, run `npm run build --workspace=frontend` before committing so the served build at port 7411 reflects the changes.
 
 ## Project Purpose
 

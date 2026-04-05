@@ -66,6 +66,15 @@ export interface ControlAction {
   result: string | null;
 }
 
+export interface TodoItem {
+  id: string;
+  userId: string;
+  text: string;
+  done: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Onboarding types
 
 export type DashboardTourStatus = 'not_started' | 'completed' | 'skipped';

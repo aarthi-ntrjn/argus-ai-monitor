@@ -7,6 +7,7 @@ import { useOnboarding } from '../hooks/useOnboarding';
 import { SettingsPanel } from '../components/SettingsPanel';
 import SessionCard from '../components/SessionCard/SessionCard';
 import OutputPane from '../components/OutputPane/OutputPane';
+import TodoPanel from '../components/TodoPanel/TodoPanel';
 import { isInactive } from '../utils/sessionUtils';
 import { OnboardingTour } from '../components/Onboarding';
 import { DASHBOARD_TOUR_STEPS } from '../config/dashboardTourSteps';
@@ -153,7 +154,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-8">
-      <div className={`mx-auto ${selectedSessionId ? 'max-w-7xl' : 'max-w-4xl'}`}>
+      <div className="mx-auto max-w-screen-xl">
         <div className="flex justify-between items-center mb-8">
           <h1 data-tour-id="dashboard-header" className="text-3xl font-semibold text-gray-900">Argus Dashboard</h1>
           <div className="flex items-center gap-2">
@@ -214,23 +215,30 @@ export default function DashboardPage() {
         )}
 
         {reposWithSessions.length === 0 ? (
-          <div className="text-center py-16 text-gray-500">
-            {repos.length === 0 ? (
-              <>
-                <p className="text-xl">No repositories registered.</p>
-                <p className="mt-2">Click "Add Repository" to get started.</p>
-              </>
-            ) : (
-              <>
-                <p className="text-xl">No repositories to show.</p>
-                <p className="mt-2">All repositories are hidden by your current settings.</p>
-              </>
-            )}
+          <div className="flex gap-6 items-start">
+            <div className="flex-1">
+              <div className="text-center py-16 text-gray-500">
+                {repos.length === 0 ? (
+                  <>
+                    <p className="text-xl">No repositories registered.</p>
+                    <p className="mt-2">Click "Add Repository" to get started.</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xl">No repositories to show.</p>
+                    <p className="mt-2">All repositories are hidden by your current settings.</p>
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="w-[400px] shrink-0 sticky top-8">
+              <TodoPanel />
+            </div>
           </div>
         ) : (
-          <div className={`flex gap-6 ${selectedSessionId ? 'items-start' : ''}`}>
+          <div className="flex gap-6 items-start">
             {/* Repo/session list */}
-            <div className={`space-y-6 ${selectedSessionId ? 'flex-1 min-w-0' : 'w-full'}`}>
+            <div className="flex-1 min-w-0 space-y-6">
               {reposWithSessions.map((repo) => (
                 <div key={repo.id} data-tour-id="dashboard-repo-card" className="bg-white rounded-lg shadow p-6">
                   <div className="flex justify-between items-start mb-4">
@@ -285,18 +293,23 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            {/* Output pane */}
-            {selectedSessionId && (() => {
-              const selectedSession = sessions.find(s => s.id === selectedSessionId);
-              return selectedSession ? (
-                <div className="w-[640px] shrink-0 sticky top-8 h-[calc(100vh-8rem)]">
-                  <OutputPane
-                    session={selectedSession}
-                    onClose={() => setSelectedSessionId(null)}
-                  />
-                </div>
-              ) : null;
-            })()}
+            {/* Right column: output pane (60%) stacked above todo (40%) */}
+            <div className={`${selectedSessionId ? 'w-[640px]' : 'w-[400px]'} shrink-0 sticky top-8 flex flex-col gap-4${selectedSessionId ? '' : ' h-auto'}`} style={selectedSessionId ? { height: 'calc(100vh - 8rem)' } : undefined}>
+              {selectedSessionId && (() => {
+                const selectedSession = sessions.find(s => s.id === selectedSessionId);
+                return selectedSession ? (
+                  <div className="flex-[3] min-h-0">
+                    <OutputPane
+                      session={selectedSession}
+                      onClose={() => setSelectedSessionId(null)}
+                    />
+                  </div>
+                ) : null;
+              })()}
+              <div className={selectedSessionId ? 'flex-[2] min-h-0 overflow-y-auto' : 'flex-1'}>
+                <TodoPanel />
+              </div>
+            </div>
           </div>
         )}
       </div>

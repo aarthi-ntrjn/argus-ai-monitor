@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
-import type { Repository, Session, SessionOutput, ControlAction } from '../types';
+import type { Repository, Session, SessionOutput, ControlAction, TodoItem } from '../types';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -85,4 +85,24 @@ export async function interruptSession(id: string): Promise<{ actionId: string; 
 
 export async function sendPrompt(id: string, prompt: string): Promise<ControlAction> {
   return apiFetch<ControlAction>(`/sessions/${id}/send`, { method: 'POST', body: JSON.stringify({ prompt }) });
+}
+
+export async function getTodos(): Promise<TodoItem[]> {
+  return apiFetch<TodoItem[]>('/todos');
+}
+
+export async function createTodo(text: string): Promise<TodoItem> {
+  return apiFetch<TodoItem>('/todos', { method: 'POST', body: JSON.stringify({ text }) });
+}
+
+export async function toggleTodo(id: string, done: boolean): Promise<TodoItem> {
+  return apiFetch<TodoItem>(`/todos/${id}`, { method: 'PATCH', body: JSON.stringify({ done }) });
+}
+
+export async function updateTodoText(id: string, text: string): Promise<TodoItem> {
+  return apiFetch<TodoItem>(`/todos/${id}`, { method: 'PATCH', body: JSON.stringify({ text }) });
+}
+
+export async function deleteTodo(id: string): Promise<void> {
+  await apiFetch<void>(`/todos/${id}`, { method: 'DELETE' });
 }

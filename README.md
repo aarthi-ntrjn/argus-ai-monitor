@@ -8,6 +8,7 @@ Local dashboard that monitors GitHub Copilot CLI and Claude Code sessions across
 - **Two-pane output view** — click any session card to open a live output pane on the right without leaving the dashboard
 - **Role-labelled output** — messages from you and the AI are labelled **YOU** / **AI** so conversations are easy to follow at a glance
 - **Model badge** — the AI model in use (e.g. `claude-opus-4-5`) is shown on each session card and the session detail page
+- **My Reminders sidebar** — a persistent todo list panel on the right of the dashboard; add, check off, and delete reminder items; items survive page refreshes (stored in the local database)
 - **Claude Code output streaming** — Argus reads Claude Code's JSONL conversation files in real-time and streams all content into the output pane, including tool calls
 - **Quick commands** — send **Esc** (interrupt), **Exit**, **Merge** with main, or **Pull latest** directly from the session card
 - **Inline prompt** — type and send prompts to active Claude Code sessions straight from the dashboard card

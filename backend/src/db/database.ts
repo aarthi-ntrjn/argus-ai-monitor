@@ -3,7 +3,7 @@ import { join, dirname, normalize } from 'path';
 import { homedir } from 'os';
 import { mkdirSync } from 'fs';
 import { SCHEMA_SQL } from './schema.js';
-import type { Repository, Session, SessionOutput, ControlAction } from '../models/index.js';
+import type { Repository, Session, SessionOutput, ControlAction, TodoItem } from '../models/index.js';
 
 const DB_PATH = process.env.ARGUS_DB_PATH ?? join(homedir(), '.argus', 'argus.db');
 
@@ -136,4 +136,33 @@ export function updateControlAction(id: string, status: string, completedAt: str
   getDb().prepare(
     'UPDATE control_actions SET status = ?, completed_at = ?, result = ? WHERE id = ?'
   ).run(status, completedAt, result, id);
+}
+
+export function getTodos(userId = 'default'): TodoItem[] {
+  return (getDb().prepare(
+    'SELECT id, user_id as userId, text, done, created_at as createdAt, updated_at as updatedAt FROM todos WHERE user_id = ? ORDER BY created_at ASC'
+  ).all(userId) as Array<Omit<TodoItem, 'done'> & { done: number }>).map(r => ({ ...r, done: r.done === 1 }));
+}
+
+export function insertTodo(todo: TodoItem): void {
+  getDb().prepare(
+    'INSERT INTO todos (id, user_id, text, done, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run(todo.id, todo.userId, todo.text, todo.done ? 1 : 0, todo.createdAt, todo.updatedAt);
+}
+
+export function updateTodo(id: string, patch: { done?: boolean; text?: string }, updatedAt: string): TodoItem | undefined {
+  const sets: string[] = [];
+  const params: unknown[] = [];
+  if (patch.done !== undefined) { sets.push('done = ?'); params.push(patch.done ? 1 : 0); }
+  if (patch.text !== undefined) { sets.push('text = ?'); params.push(patch.text); }
+  if (sets.length === 0) return undefined;
+  sets.push('updated_at = ?');
+  params.push(updatedAt, id);
+  getDb().prepare(`UPDATE todos SET ${sets.join(', ')} WHERE id = ?`).run(...params);
+  return getTodos().find(t => t.id === id);
+}
+
+export function deleteTodo(id: string): boolean {
+  const result = getDb().prepare('DELETE FROM todos WHERE id = ?').run(id);
+  return result.changes > 0;
 }
