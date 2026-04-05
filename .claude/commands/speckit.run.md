@@ -90,14 +90,14 @@ Check if `.specify/extensions.yml` exists. If it does, look for `hooks.before_sp
    - Edge Cases & Failure Handling (negative scenarios, conflicts, rate limiting)
    - Constraints & Tradeoffs (tech constraints, rejected alternatives)
 
-   Only include questions whose answers materially impact architecture, data modeling, task decomposition, security, or UX. Use (Impact × Uncertainty) heuristic. Maximum 5 questions total.
+   Only include questions whose answers materially impact architecture, data modeling, task decomposition, security, or UX. Use (Impact × Uncertainty) heuristic. Ask as many questions as needed — do not cap the count.
 
 3. **Sequential interactive Q&A** (wait for user responses):
    - Present ONE question at a time.
    - For multiple-choice: state your recommendation prominently with reasoning, then render a Markdown options table. Allow the user to reply with a letter, "yes"/"recommended", or a short custom answer (≤5 words).
    - For short-answer: provide a suggested answer with reasoning. User can accept or provide their own.
    - After each answer: record it, update `spec.md` (add `## Clarifications / ### Session YYYY-MM-DD` bullet, apply to relevant section), save immediately.
-   - Stop when: all critical ambiguities resolved, user says "done"/"proceed", or 5 questions asked.
+   - Continue until all meaningful ambiguities are resolved, or the user says "done"/"proceed"/"skip".
    - If no meaningful ambiguities exist, print "No critical ambiguities detected." and continue automatically.
 
 4. Update `spec.md` status to `Clarified`. Commit: `feat(###): clarify spec — <summary of decisions>`.
