@@ -20,6 +20,8 @@ For the user-facing README, see [../README.md](../README.md).
 
 See [README-ARCH.md](README-ARCH.md) for the full architecture diagram and design decisions.
 
+For a detailed comparison of how Claude Code and Copilot CLI sessions differ at the stream, parser, and state level, see [README-STREAM-COMPARISON.md](README-STREAM-COMPARISON.md).
+
 **The short version:** The backend polls every 5 seconds for new sessions. Claude Code sessions are detected by watching `~/.claude/projects/**/*.jsonl` and via hooks injected into `~/.claude/settings.json`. Copilot CLI sessions are detected by reading `~/.copilot/session-state/` workspace files and lock files. All output is stored in SQLite and pushed to the browser over WebSockets. TanStack Query handles REST caching and cache invalidation on WS events.
 
 Key design choices:
