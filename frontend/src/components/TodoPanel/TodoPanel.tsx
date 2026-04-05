@@ -174,7 +174,7 @@ export default function TodoPanel() {
               }
 
               return (
-                <li key={id} className="group flex items-center gap-2 px-4 py-2">
+                <li key={id} className="group flex items-center gap-2 px-4 py-1">
                   <input
                     type="checkbox"
                     checked={done}
