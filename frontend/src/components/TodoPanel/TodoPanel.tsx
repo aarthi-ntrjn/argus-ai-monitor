@@ -135,7 +135,7 @@ export default function TodoPanel() {
         )}
         {!isLoading && !isError && todos.length > 0 && (
           <ul className="divide-y divide-gray-50 py-1">
-            {todos.map((todo, index) => {
+            {[...todos].reverse().map((todo, index) => {
               if (!todoRefs.current[index]) {
                 todoRefs.current[index] = { current: null };
               }
