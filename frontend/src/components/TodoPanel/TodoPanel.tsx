@@ -55,7 +55,7 @@ export default function TodoPanel() {
   const savingIds = useRef<Set<string>>(new Set());
 
   const addRowRef = useRef<HTMLInputElement>(null);
-  const todoRefs = useRef<Array<React.RefObject<HTMLInputElement | null>>>([]);
+  const todoRefs = useRef<Array<React.RefObject<HTMLTextAreaElement | null>>>([]);
   if (todoRefs.current.length !== todos.length) {
     todoRefs.current = todos.map((_, i) => todoRefs.current[i] ?? { current: null });
   }
@@ -97,10 +97,10 @@ export default function TodoPanel() {
     }
   }, [todos, createTodo, updateTodoText, deleteTodo, resetAddRow]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>, id: RowId, index: number) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>, id: RowId, index: number) => {
     const value = e.currentTarget.value;
 
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       const text = value.trim();
 
@@ -206,14 +206,15 @@ export default function TodoPanel() {
                     onChange={() => toggleTodo.mutate({ id: todo.id, done: !done })}
                     className="h-4 w-4 shrink-0 rounded border-gray-300 text-blue-600 cursor-pointer"
                   />
-                  <input
-                    ref={todoRefs.current[index] as React.RefObject<HTMLInputElement>}
-                    type="text"
+                  <textarea
+                    ref={todoRefs.current[index] as React.RefObject<HTMLTextAreaElement>}
                     defaultValue={todo.text}
                     onBlur={e => handleBlur(todo.id, e.target.value)}
                     onKeyDown={e => handleKeyDown(e, todo.id, index + 1)}
                     aria-label={`Edit task: ${todo.text}`}
-                    className={`flex-1 min-w-0 text-sm bg-transparent border-none outline-none focus:ring-0 ${done ? 'line-through text-gray-400' : 'text-gray-700'} ${wrapText ? 'whitespace-pre-wrap' : 'truncate'}`}
+                    rows={1}
+                    className={`flex-1 min-w-0 text-sm bg-transparent border-none outline-none focus:ring-0 resize-none leading-snug ${done ? 'line-through text-gray-400' : 'text-gray-700'} ${wrapText ? 'overflow-hidden' : 'truncate whitespace-nowrap overflow-hidden'}`}
+                    style={wrapText ? { height: 'auto', fieldSizing: 'content' } as React.CSSProperties : { height: '1.25rem' }}
                   />
                   <div className="relative shrink-0">
                     {showTimestamps ? (
