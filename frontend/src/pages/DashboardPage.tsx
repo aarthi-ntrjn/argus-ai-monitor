@@ -294,7 +294,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Right column: output pane (60%) stacked above todo (40%) */}
-            <div className="w-[400px] shrink-0 sticky top-8 flex flex-col gap-4" style={{ height: 'calc(100vh - 8rem)' }}>
+            <div className={`${selectedSessionId ? 'w-[640px]' : 'w-[400px]'} shrink-0 sticky top-8 flex flex-col gap-4`} style={{ height: 'calc(100vh - 8rem)' }}>
               {selectedSessionId && (() => {
                 const selectedSession = sessions.find(s => s.id === selectedSessionId);
                 return selectedSession ? (
