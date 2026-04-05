@@ -118,3 +118,57 @@
 - **Error contract**: All API errors must follow `{ error, message, requestId }` (§XII).
 - **Logging**: Every mutation (create, toggle, delete) must emit a pino structured log.
 - **§VI exception**: No auth required — localhost single-user tool.
+
+---
+
+## Phase 5: UX Redesign — Inline Editable To-Do List
+
+**Spec change context**: User requested a rethink of the panel UX. The original spec assumed a top add-form and an X delete button. This phase replaces that with a keyboard-driven inline-edit model (similar to Notion/Linear). The assumption "Editing a todo item's text after creation is out of scope" is **revoked** by this phase.
+
+**New interaction model**:
+- Header renamed: "My Reminders" → "My To-Do"
+- No top add-form; no X delete button
+- Each row: `checkbox  [editable text input]`
+- **Enter** on any row → save current row (if non-empty) + insert a new empty row directly below it + focus it
+- **Backspace** on an empty text input → delete that item from DB + focus the row above it
+- **Blur** on a text input with modified text → PATCH text to DB (auto-save)
+- **Blur** on an empty draft row (never saved) → discard (no API call)
+- **Empty list state** → display one local draft row (not yet in DB) so the user can start typing immediately
+
+**Backend scope**: The existing `PATCH /api/v1/todos/:id` only accepts `done`. It must be extended to also accept an optional `text` field so text edits can be persisted.
+
+**Dependency**: T034 and T036 before T037; T037 before T038.
+
+### Backend
+
+- [ ] T034 [P] Extend `backend/src/db/database.ts` `updateTodo(id, patch, updatedAt)`: change second param from `done: boolean` to `patch: { done?: boolean; text?: string }` and build the UPDATE query dynamically (only set columns that are present in `patch`); update all callers. Reject (return `undefined`) if `patch` is empty.
+
+- [ ] T035 [P] Add contract tests TC-013 and TC-014 to `backend/tests/contract/todos.test.ts`: **TC-013** — `PATCH /api/v1/todos/:id` with `{ text: "updated text" }` returns 200 with updated `text` and `done` unchanged; **TC-014** — `PATCH /api/v1/todos/:id` with `{ text: "" }` returns 400 `VALIDATION_ERROR`. These tests MUST fail before T036 is implemented.
+
+- [ ] T036 Extend `PATCH /api/v1/todos/:id` handler in `backend/src/api/routes/todos.ts` to accept an optional `text: string` field alongside the existing `done: boolean`. Accept a body containing `done` OR `text` OR both; reject with 400 if `text` is an empty/whitespace string; reject with 400 if neither field is provided; call the updated `updateTodo` with a `patch` object; return updated `TodoItem` on success with pino structured log including both changed fields.
+
+### Frontend
+
+- [ ] T037 [P] Add `updateTodoText(id: string, text: string): Promise<TodoItem>` to `frontend/src/services/api.ts` (PATCH with `{ text }`) and add `useUpdateTodoText` mutation hook to `frontend/src/hooks/useTodos.ts` (invalidates `['todos']` on success via `useQueryClient()`).
+
+- [ ] T038 Redesign `frontend/src/components/TodoPanel/TodoPanel.tsx` for inline-edit UX:
+  1. **Rename** header from "My Reminders" to "My To-Do".
+  2. **Remove** the top add-form (`<form>`) and all its state (`inputText`, `inputError`).
+  3. **Remove** the X delete `<button>` from each row and the `group`/`group-hover` classes.
+  4. **Add** `useUpdateTodoText` to the hook imports.
+  5. **Local state**: maintain `draftIds: string[]` — IDs of rows that are local-only (not yet in DB). On empty list, seed with one draft ID (`crypto.randomUUID()`) so a blank editable row appears.
+  6. **Row rendering**: replace the text `<span>` with `<input type="text" value={localText} onChange={...} onBlur={handleBlur} onKeyDown={handleKey} ref={...} />`. Keep the checkbox (`onChange` → `toggleTodo.mutate`). Apply strikethrough class to the input when `done`.
+  7. **Local text state**: maintain `localTexts: Record<id, string>` (init from todo data). On `onChange` update local only (no API call yet).
+  8. **handleBlur(id)**: if the item is a draft and `localText` is empty → discard (remove from `draftIds`); if the item is a draft and `localText` is non-empty → call `createTodo.mutate(localText)`; if the item is a real todo and `localText !== todo.text` → call `updateTodoText.mutate({ id, text: localText })`; if the item is a real todo and `localText` is empty → call `deleteTodo.mutate(id)`.
+  9. **handleKey(e, id, index)**: on **Enter** — prevent default, save current row (same logic as blur), then insert a new draft ID after the current index in `draftIds` array, then `refs[index+1].current?.focus()` on the next tick; on **Backspace** when `localText === ''` — prevent default, if real todo call `deleteTodo.mutate(id)`, remove from local state, focus `refs[index-1]?.current`.
+  10. **Focus management**: maintain `inputRefs: React.RefObject<HTMLInputElement>[]` keyed by rendered row index (re-created on list change).
+  11. **Empty state**: when `todos.length === 0` and `draftIds.length === 0`, add one empty draft ID to `draftIds` (on first render / after all items deleted).
+
+- [ ] T039 [P] Update `frontend/tests/e2e/todo-panel.spec.ts`: replace tests that click the top "Add" button or the X delete button with new tests for the inline-edit UX — (a) type into the draft row + blur → item saved and appears; (b) type + press Enter → new row created below and focused; (c) edit existing item text + blur → text updated; (d) Backspace on empty row → item deleted; (e) empty-state draft row is present when list is empty. Update route mocks to also intercept `PATCH /api/v1/todos/*` for text updates.
+
+- [ ] T040 [P] Update `frontend/src/components/TodoPanel/TodoPanel.test.tsx` and `frontend/tests/unit/useTodos.test.ts`: remove tests for the old add-form and X button; add tests for (a) `useUpdateTodoText` invalidates `['todos']` query on the provider QueryClient; (b) pressing Enter on a row calls `createTodo.mutate`; (c) pressing Backspace on empty input calls `deleteTodo.mutate`; (d) blur with changed text calls `updateTodoText.mutate`; (e) draft row appears when todo list is empty.
+
+### Phase 5 Checkpoint
+
+All original user stories (add, view, toggle, delete) are preserved. Editing text is now supported. UX is keyboard-driven. Header reads "My To-Do". No add-form. No delete button. All tests pass.
+
