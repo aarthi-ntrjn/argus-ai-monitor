@@ -170,7 +170,7 @@ export default function TodoPanel() {
                     aria-label={`Edit task: ${todo.text}`}
                     className={`flex-1 min-w-0 text-sm bg-transparent border-none outline-none focus:ring-0 ${done ? 'line-through text-gray-400' : 'text-gray-700'}`}
                   />
-                  <span className="shrink-0 text-xs text-gray-300 group-hover:opacity-0 transition-opacity whitespace-nowrap">
+                  <span className="shrink-0 text-xs text-gray-300 whitespace-nowrap">
                     {formatRelativeTime(todo.createdAt)}
                   </span>
                   <button
