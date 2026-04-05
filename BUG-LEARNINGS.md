@@ -5,6 +5,17 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 
 ---
 
+## T109 — Adding a reminder does not appear in the list
+
+**Date**: 2026-04-05
+**Symptom**: After typing a reminder and clicking Add, the list did not update — the new item was invisible until a full page reload.
+**Root cause**: `useTodos.ts` imported `queryClient` directly from `services/api.ts` and called `queryClient.invalidateQueries` on it after each mutation. But `<QueryClientProvider>` in `App.tsx` uses a *different* `QueryClient` instance created locally. React Query hooks (`useQuery`) subscribe to the provider's client, so invalidating the wrong instance had no effect — the todos query was never marked stale and never refetched.
+**Why it was missed**: Unit tests for `TodoPanel` mock the `useTodos` hooks entirely, bypassing the query client wiring. No test exercised the actual hook + `QueryClient` integration path.
+**How to prevent**: Always use `useQueryClient()` from `@tanstack/react-query` inside custom hooks instead of importing a module-level `QueryClient` instance. The module-level export in `api.ts` is for imperative callers (e.g., event handlers) but hooks must use the context hook.
+**Fix summary**: Replaced `import { queryClient } from '../services/api'` with `useQueryClient()` inside each of `useCreateTodo`, `useToggleTodo`, and `useDeleteTodo` in `frontend/src/hooks/useTodos.ts`.
+
+---
+
 ## T073 — Copilot CLI sessions not detected
 
 **Date**: 2026-04-01
