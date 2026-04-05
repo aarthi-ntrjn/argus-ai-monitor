@@ -117,7 +117,7 @@ export default function TodoPanel() {
   }, [todos, createTodo, updateTodoText, deleteTodo, resetAddRow, focusAddRow, focusRow]);
 
   return (
-    <aside className="w-72 shrink-0 flex flex-col bg-white rounded-lg shadow h-fit sticky top-8">
+    <aside className="w-full flex flex-col bg-white rounded-lg shadow h-full">
       <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-gray-700 tracking-wide">To Tackle</h2>
         <div className="flex items-center gap-1">
@@ -142,7 +142,7 @@ export default function TodoPanel() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto max-h-[calc(100vh-12rem)]">
+      <div className="flex-1 overflow-y-auto">
         {/* Add row always visible regardless of loading state */}
         <div
           className="flex items-center gap-2 px-4 py-1 border-b border-gray-50 cursor-text"

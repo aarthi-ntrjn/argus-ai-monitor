@@ -231,14 +231,14 @@ export default function DashboardPage() {
                 )}
               </div>
             </div>
-            <TodoPanel />
+            <div className="w-[400px] shrink-0 sticky top-8">
+              <TodoPanel />
+            </div>
           </div>
         ) : (
           <div className="flex gap-6 items-start">
-            {/* Main content: repo/session list + output pane */}
-            <div className={`flex gap-6 flex-1 min-w-0 ${selectedSessionId ? 'items-start' : ''}`}>
-              {/* Repo/session list */}
-              <div className={`space-y-6 ${selectedSessionId ? 'flex-1 min-w-0' : 'w-full'}`}>
+            {/* Repo/session list */}
+            <div className="flex-1 min-w-0 space-y-6">
               {reposWithSessions.map((repo) => (
                 <div key={repo.id} data-tour-id="dashboard-repo-card" className="bg-white rounded-lg shadow p-6">
                   <div className="flex justify-between items-start mb-4">
@@ -293,22 +293,23 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            {/* Output pane */}
-            {selectedSessionId && (() => {
-              const selectedSession = sessions.find(s => s.id === selectedSessionId);
-              return selectedSession ? (
-                <div className="w-[640px] shrink-0 sticky top-8 h-[calc(100vh-8rem)]">
-                  <OutputPane
-                    session={selectedSession}
-                    onClose={() => setSelectedSessionId(null)}
-                  />
-                </div>
-              ) : null;
-            })()}
+            {/* Right column: output pane (60%) stacked above todo (40%) */}
+            <div className="w-[400px] shrink-0 sticky top-8 flex flex-col gap-4" style={{ height: 'calc(100vh - 8rem)' }}>
+              {selectedSessionId && (() => {
+                const selectedSession = sessions.find(s => s.id === selectedSessionId);
+                return selectedSession ? (
+                  <div className="flex-[3] min-h-0">
+                    <OutputPane
+                      session={selectedSession}
+                      onClose={() => setSelectedSessionId(null)}
+                    />
+                  </div>
+                ) : null;
+              })()}
+              <div className={selectedSessionId ? 'flex-[2] min-h-0 overflow-y-auto' : ''}>
+                <TodoPanel />
+              </div>
             </div>
-
-            {/* Todo sidebar */}
-            <TodoPanel />
           </div>
         )}
       </div>
