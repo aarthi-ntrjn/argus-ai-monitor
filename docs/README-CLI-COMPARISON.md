@@ -1,4 +1,4 @@
-# Stream Comparison: Claude Code vs Copilot CLI
+# CLI Comparison: Claude Code vs Copilot CLI
 
 This document compares the output stream format, parsing logic, and session state model for the two AI session types Argus supports.
 
@@ -7,6 +7,7 @@ For architecture overview, see [README-ARCH.md](README-ARCH.md).
 ## Contents
 
 - [Output Stream Format](#output-stream-format)
+- [Example Messages](#example-messages)
 - [Parsing and Line Classification](#parsing-and-line-classification)
 - [Session State Model](#session-state-model)
 - [Data Availability](#data-availability)
@@ -89,6 +90,128 @@ Each event line maps one-to-one to a single `SessionOutput` row.
 | Model location | `message.model` on assistant entries | `data.model` on `tool.execution_complete` events |
 | Session metadata | Encoded in file path and filename | Separate `workspace.yaml` file |
 | Extra metadata files | None | `workspace.yaml` (summary, timestamps, cwd) |
+
+---
+
+## Example Messages
+
+These are representative JSONL lines as they appear on disk for each session type. Each example shows what Argus reads from the file, followed by the `SessionOutput` it produces.
+
+### Claude Code examples
+
+**User message (plain string content)**
+
+```jsonl
+{"type":"user","uuid":"a1b2c3d4-0001-0000-0000-000000000000","parentUuid":null,"isSidechain":false,"timestamp":"2026-04-06T10:00:00.000Z","sessionId":"e5f6a7b8-cafe-0000-0000-000000000000","cwd":"C:\\source\\argus2","message":{"role":"user","content":"Add a health check endpoint"}}
+```
+
+Produces: `type: message`, `role: user`, `content: "Add a health check endpoint"`
+
+---
+
+**Assistant reply (text block)**
+
+```jsonl
+{"type":"assistant","uuid":"a1b2c3d4-0002-0000-0000-000000000000","parentUuid":"a1b2c3d4-0001-0000-0000-000000000000","isSidechain":false,"timestamp":"2026-04-06T10:00:01.000Z","sessionId":"e5f6a7b8-cafe-0000-0000-000000000000","cwd":"C:\\source\\argus2","message":{"role":"assistant","model":"claude-opus-4-6","id":"msg_01","type":"message","stop_reason":"tool_use","content":[{"type":"text","text":"I'll add that now. Let me read the routes file first."}]}}
+```
+
+Produces: `type: message`, `role: assistant`, `content: "I'll add that now. Let me read the routes file first."`
+
+---
+
+**Assistant invoking a tool**
+
+```jsonl
+{"type":"assistant","uuid":"a1b2c3d4-0003-0000-0000-000000000000","parentUuid":"a1b2c3d4-0002-0000-0000-000000000000","isSidechain":false,"timestamp":"2026-04-06T10:00:02.000Z","sessionId":"e5f6a7b8-cafe-0000-0000-000000000000","cwd":"C:\\source\\argus2","message":{"role":"assistant","model":"claude-opus-4-6","id":"msg_02","type":"message","stop_reason":"tool_use","content":[{"type":"tool_use","id":"toolu_abc123","name":"Read","input":{"file_path":"backend/src/api/routes/health.ts"}}]}}
+```
+
+Produces: `type: tool_use`, `role: null`, `toolName: "Read"`, `content: "{\"file_path\":\"backend/src/api/routes/health.ts\"}"`
+
+---
+
+**Tool result returned to Claude**
+
+```jsonl
+{"type":"user","uuid":"a1b2c3d4-0004-0000-0000-000000000000","parentUuid":"a1b2c3d4-0003-0000-0000-000000000000","isSidechain":false,"timestamp":"2026-04-06T10:00:03.000Z","sessionId":"e5f6a7b8-cafe-0000-0000-000000000000","cwd":"C:\\source\\argus2","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_abc123","content":"export const healthRoute = ..."}]}}
+```
+
+Produces: `type: tool_result`, `role: null`, `toolName: "toolu_abc123"`, `content: "export const healthRoute = ..."`
+
+---
+
+**Mixed reply (text + tool call in one entry — produces two `SessionOutput` rows)**
+
+```jsonl
+{"type":"assistant","uuid":"a1b2c3d4-0005-0000-0000-000000000000","parentUuid":"a1b2c3d4-0004-0000-0000-000000000000","isSidechain":false,"timestamp":"2026-04-06T10:00:04.000Z","sessionId":"e5f6a7b8-cafe-0000-0000-000000000000","cwd":"C:\\source\\argus2","message":{"role":"assistant","model":"claude-opus-4-6","id":"msg_03","type":"message","stop_reason":"tool_use","content":[{"type":"text","text":"Running tests now."},{"type":"tool_use","id":"toolu_def456","name":"Bash","input":{"command":"npm test"}}]}}
+```
+
+Produces two rows:
+1. `type: message`, `role: assistant`, `content: "Running tests now."`
+2. `type: tool_use`, `role: null`, `toolName: "Bash"`, `content: "{\"command\":\"npm test\"}"`
+
+---
+
+**Skipped entry**
+
+```jsonl
+{"type":"file-history-snapshot","messageId":"snap-001","snapshot":{}}
+```
+
+Produces: nothing (discarded by the parser).
+
+---
+
+### Copilot CLI examples
+
+**Session start**
+
+```jsonl
+{"type":"session.start","id":"evt-0001","parentId":null,"timestamp":"2026-04-06T10:00:00.000Z","data":{}}
+```
+
+Produces: `type: status_change`, `role: null`, `content: ""`
+
+---
+
+**User message**
+
+```jsonl
+{"type":"user.message","id":"evt-0002","parentId":null,"timestamp":"2026-04-06T10:00:01.000Z","data":{"content":"Refactor the auth middleware","transformedContent":"Refactor the auth middleware","attachments":[]}}
+```
+
+Produces: `type: message`, `role: user`, `content: "Refactor the auth middleware"`
+
+---
+
+**Assistant reply**
+
+```jsonl
+{"type":"assistant.message","id":"evt-0003","parentId":"evt-0002","timestamp":"2026-04-06T10:00:02.000Z","data":{"messageId":"msg-001","content":"Sure, I'll start by reading the current middleware.","toolRequests":[]}}
+```
+
+Produces: `type: message`, `role: assistant`, `content: "Sure, I'll start by reading the current middleware."`
+
+---
+
+**Tool invocation**
+
+```jsonl
+{"type":"tool.execution_start","id":"evt-0004","parentId":"evt-0003","timestamp":"2026-04-06T10:00:03.000Z","data":{"toolCallId":"tc-0001","toolName":"bash","arguments":{"command":"cat backend/src/middleware/auth.ts"}}}
+```
+
+Produces: `type: tool_use`, `role: null`, `toolName: "bash"`, `content: "cat backend/src/middleware/auth.ts"`
+
+---
+
+**Tool result**
+
+```jsonl
+{"type":"tool.execution_complete","id":"evt-0005","parentId":"evt-0004","timestamp":"2026-04-06T10:00:04.000Z","data":{"toolCallId":"tc-0001","model":"gpt-4o","success":true,"result":{"content":"export function authMiddleware(req, res, next) { ... }","detailedContent":"Full file contents..."}}}
+```
+
+Produces: `type: tool_result`, `role: null`, `toolName: "bash"`, `content: "export function authMiddleware(req, res, next) { ... }"`
+
+The `model` field (`"gpt-4o"`) on `tool.execution_complete` is also used by Argus to populate `session.model` if not already set.
 
 ---
 
