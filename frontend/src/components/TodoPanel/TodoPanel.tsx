@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useTodos, useCreateTodo, useUpdateTodoText, useToggleTodo, useDeleteTodo } from '../../hooks/useTodos';
 
 type RowId = string;
@@ -33,7 +33,19 @@ export default function TodoPanel() {
   // Single persistent add row at the bottom. Changing the ID unmounts/remounts
   // the input (resetting it to empty) without any visible flicker.
   const [addRowId, setAddRowId] = useState(() => newDraftId());
-  const resetAddRow = useCallback(() => setAddRowId(newDraftId()), []);
+  const shouldFocusAdd = useRef(false);
+  const resetAddRow = useCallback(() => {
+    shouldFocusAdd.current = true;
+    setAddRowId(newDraftId());
+  }, []);
+
+  // After remount (key change), focus the new input
+  useEffect(() => {
+    if (shouldFocusAdd.current) {
+      shouldFocusAdd.current = false;
+      addRowRef.current?.focus();
+    }
+  }, [addRowId]);
 
   const [showDone, setShowDone] = useState(true);
   const [showTimestamps, setShowTimestamps] = useState(true);
