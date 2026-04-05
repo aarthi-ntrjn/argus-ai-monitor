@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import TodoPanel from './TodoPanel';
@@ -20,7 +20,7 @@ const mockUseToggleTodo = vi.mocked(useToggleTodo);
 const mockUseDeleteTodo = vi.mocked(useDeleteTodo);
 
 function makeMutation(overrides = {}) {
-  return { mutate: vi.fn(), isPending: false, isError: false, error: null, ...overrides } as ReturnType<typeof useCreateTodo>;
+  return { mutate: vi.fn(), isPending: false, isError: false, error: null, ...overrides } as unknown as ReturnType<typeof useCreateTodo>;
 }
 
 function renderPanel() {
@@ -34,26 +34,26 @@ function renderPanel() {
 
 beforeEach(() => {
   mockUseCreateTodo.mockReturnValue(makeMutation());
-  mockUseToggleTodo.mockReturnValue(makeMutation() as ReturnType<typeof useToggleTodo>);
-  mockUseDeleteTodo.mockReturnValue(makeMutation() as ReturnType<typeof useDeleteTodo>);
+  mockUseToggleTodo.mockReturnValue(makeMutation() as unknown as ReturnType<typeof useToggleTodo>);
+  mockUseDeleteTodo.mockReturnValue(makeMutation() as unknown as ReturnType<typeof useDeleteTodo>);
 });
 
 describe('TodoPanel', () => {
   describe('empty state', () => {
     it('shows empty state message when no todos', () => {
-      mockUseTodos.mockReturnValue({ data: [], isLoading: false, isError: false } as ReturnType<typeof useTodos>);
+      mockUseTodos.mockReturnValue({ data: [], isLoading: false, isError: false } as unknown as ReturnType<typeof useTodos>);
       renderPanel();
       expect(screen.getByText(/no reminders yet/i)).toBeInTheDocument();
     });
 
     it('shows loading state', () => {
-      mockUseTodos.mockReturnValue({ data: undefined, isLoading: true, isError: false } as ReturnType<typeof useTodos>);
+      mockUseTodos.mockReturnValue({ data: undefined, isLoading: true, isError: false } as unknown as ReturnType<typeof useTodos>);
       renderPanel();
       expect(screen.getByText(/loading/i)).toBeInTheDocument();
     });
 
     it('shows error state', () => {
-      mockUseTodos.mockReturnValue({ data: undefined, isLoading: false, isError: true } as ReturnType<typeof useTodos>);
+      mockUseTodos.mockReturnValue({ data: undefined, isLoading: false, isError: true } as unknown as ReturnType<typeof useTodos>);
       renderPanel();
       expect(screen.getByText(/failed to load/i)).toBeInTheDocument();
     });
@@ -61,7 +61,7 @@ describe('TodoPanel', () => {
 
   describe('add form', () => {
     beforeEach(() => {
-      mockUseTodos.mockReturnValue({ data: [], isLoading: false, isError: false } as ReturnType<typeof useTodos>);
+      mockUseTodos.mockReturnValue({ data: [], isLoading: false, isError: false } as unknown as ReturnType<typeof useTodos>);
     });
 
     it('renders the add input and button', () => {
@@ -93,7 +93,7 @@ describe('TodoPanel', () => {
     ];
 
     beforeEach(() => {
-      mockUseTodos.mockReturnValue({ data: todos, isLoading: false, isError: false } as ReturnType<typeof useTodos>);
+      mockUseTodos.mockReturnValue({ data: todos, isLoading: false, isError: false } as unknown as ReturnType<typeof useTodos>);
     });
 
     it('renders all todo items', () => {
@@ -110,7 +110,7 @@ describe('TodoPanel', () => {
 
     it('calls toggleTodo when checkbox clicked', async () => {
       const mutate = vi.fn();
-      mockUseToggleTodo.mockReturnValue(makeMutation({ mutate }) as ReturnType<typeof useToggleTodo>);
+      mockUseToggleTodo.mockReturnValue(makeMutation({ mutate }) as unknown as ReturnType<typeof useToggleTodo>);
       renderPanel();
       const checkbox = screen.getByRole('checkbox', { name: /mark "First task"/i });
       await userEvent.click(checkbox);
@@ -119,7 +119,7 @@ describe('TodoPanel', () => {
 
     it('calls deleteTodo when delete button clicked', async () => {
       const mutate = vi.fn();
-      mockUseDeleteTodo.mockReturnValue(makeMutation({ mutate }) as ReturnType<typeof useDeleteTodo>);
+      mockUseDeleteTodo.mockReturnValue(makeMutation({ mutate }) as unknown as ReturnType<typeof useDeleteTodo>);
       renderPanel();
       const deleteBtn = screen.getByRole('button', { name: /delete "First task"/i });
       await userEvent.click(deleteBtn);
