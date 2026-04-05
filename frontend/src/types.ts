@@ -65,3 +65,40 @@ export interface ControlAction {
   completedAt: string | null;
   result: string | null;
 }
+
+// Onboarding types
+
+export type DashboardTourStatus = 'not_started' | 'completed' | 'skipped';
+
+export interface DashboardTourState {
+  status: DashboardTourStatus;
+  completedAt: string | null;
+  skippedAt: string | null;
+}
+
+export interface SessionHintsState {
+  dismissed: string[];
+}
+
+export interface OnboardingState {
+  schemaVersion: 1;
+  userId: string | null;
+  dashboardTour: DashboardTourState;
+  sessionHints: SessionHintsState;
+}
+
+export interface TourStep {
+  target: string;
+  title: string;
+  content: string;
+  placement: 'top' | 'bottom' | 'left' | 'right' | 'auto' | 'center';
+  disableBeacon?: boolean;
+  targetWaitTimeout?: number;
+}
+
+export interface ContextualHint {
+  id: string;
+  label: string;
+  ariaLabel: string;
+  placement: 'top' | 'bottom' | 'left' | 'right';
+}

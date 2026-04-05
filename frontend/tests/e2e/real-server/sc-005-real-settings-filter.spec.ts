@@ -13,6 +13,16 @@ let repoBId: string;
 
 test.describe('SC-005 (real server): Dashboard Settings — Repos with No Sessions', () => {
 
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('argus:onboarding', JSON.stringify({
+        schemaVersion: 1, userId: null,
+        dashboardTour: { status: 'completed', completedAt: '2024-01-01T00:00:00.000Z', skippedAt: null },
+        sessionHints: { dismissed: [] },
+      }));
+    });
+  });
+
   test.beforeAll(async () => {
     const api = await request.newContext({ baseURL: BASE_URL });
 
