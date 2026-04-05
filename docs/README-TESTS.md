@@ -1,4 +1,4 @@
-# Testing Guide
+﻿# Testing Guide
 
 This document describes every test command available in the Argus monorepo.
 
@@ -10,9 +10,9 @@ This document describes every test command available in the Argus monorepo.
 |---|---|---|
 | `npm test` | All backend tests (unit + integration + contract) | No |
 | `npm run test:e2e` | Mocked E2E suite (browser, no real server) | No |
-| `npm run test:e2e:ui` | Mocked E2E suite — interactive Playwright UI | No |
+| `npm run test:e2e:ui` | Mocked E2E suite: interactive Playwright UI | No |
 | `npm run test:e2e:real` | Real-server E2E suite (live backend, isolated DB) | Auto-started |
-| `npm run test:e2e:real:ui` | Real-server E2E suite — interactive Playwright UI | Auto-started |
+| `npm run test:e2e:real:ui` | Real-server E2E suite: interactive Playwright UI | Auto-started |
 
 ---
 
@@ -26,7 +26,7 @@ npm test
 
 ### Test categories
 
-**Unit** — `backend/tests/unit/`  
+**Unit**: `backend/tests/unit/`  
 Fast, no I/O. Each test module is isolated with mocks.
 
 | File | What it covers |
@@ -36,7 +36,7 @@ Fast, no I/O. Each test module is isolated with mocks.
 | `events-parser.test.ts` | Claude Code `events.jsonl` parser |
 | `claude-code-detector-scan.test.ts` | `scanExistingSessions()` Windows path-matching and re-activation logic |
 
-**Integration** — `backend/tests/integration/`  
+**Integration**: `backend/tests/integration/`  
 Spin up real SQLite (temp DB via `ARGUS_DB_PATH`) and real file fixtures.
 
 | File | What it covers |
@@ -45,12 +45,12 @@ Spin up real SQLite (temp DB via `ARGUS_DB_PATH`) and real file fixtures.
 | `claude-code-detector.test.ts` | Hook POST payload → session record creation |
 | `output-store.test.ts` | Paginated reads, size-limit pruning |
 
-**Contract** — `backend/tests/contract/`  
+**Contract**: `backend/tests/contract/`  
 Start a real Fastify server and make actual HTTP calls.
 
 | File | What it covers |
 |---|---|
-| `repositories.test.ts` | `GET/POST/DELETE /api/v1/repositories` — status codes, shapes, error cases |
+| `repositories.test.ts` | `GET/POST/DELETE /api/v1/repositories`: status codes, shapes, error cases |
 | `sessions.test.ts` | `GET /api/v1/sessions`, `GET /api/v1/sessions/:id`, `POST .../stop` |
 
 #### Additional backend commands
@@ -67,7 +67,7 @@ npm run test:contract --workspace=backend
 
 ## Mocked E2E tests (`npm run test:e2e`)
 
-Playwright tests that intercept every API call with `page.route()`. No backend required — the suite starts `npm run dev` only if a server isn't already on `http://localhost:7411`, and all responses are faked in-browser.
+Playwright tests that intercept every API call with `page.route()`. No backend required: the suite starts `npm run dev` only if a server isn't already on `http://localhost:7411`, and all responses are faked in-browser.
 
 These are fast smoke tests for the frontend UI logic.
 
@@ -87,7 +87,7 @@ npm run test:e2e:ui       # interactive Playwright UI (pick tests, see trace)
 
 ## Real-server E2E tests (`npm run test:e2e:real`)
 
-Playwright tests that run against an actual live backend with an isolated SQLite database. No `page.route()` mocking anywhere — every HTTP call hits the real API.
+Playwright tests that run against an actual live backend with an isolated SQLite database. No `page.route()` mocking anywhere: every HTTP call hits the real API.
 
 ```powershell
 # Prerequisites: build the frontend first (one-time, or after UI changes)
@@ -101,7 +101,7 @@ npm run test:e2e:real:ui       # interactive Playwright UI
 **Config**: `playwright.real.config.ts`  
 **Tests**: `frontend/tests/e2e/real-server/`  
 **Port**: `7412` (separate from the dev server on `7411`)  
-**Database**: temp file in `os.tmpdir()` — created and deleted automatically
+**Database**: temp file in `os.tmpdir()`: created and deleted automatically
 
 ### How isolation works
 
