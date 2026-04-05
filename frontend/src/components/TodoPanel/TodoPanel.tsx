@@ -49,6 +49,7 @@ export default function TodoPanel() {
 
   const [showDone, setShowDone] = useState(true);
   const [showTimestamps, setShowTimestamps] = useState(true);
+  const [wrapText, setWrapText] = useState(false);
 
   // Track IDs submitted via Enter so handleBlur doesn't double-save.
   const savingIds = useRef<Set<string>>(new Set());
@@ -134,6 +135,15 @@ export default function TodoPanel() {
         <h2 className="text-sm font-semibold text-gray-700 tracking-wide">To Tackle</h2>
         <div className="flex items-center gap-1">
           <button
+            onClick={() => setWrapText(v => !v)}
+            title={wrapText ? 'Single line' : 'Wrap text'}
+            className={`p-1 rounded transition-colors ${wrapText ? 'text-blue-400 hover:text-blue-600' : 'text-gray-300 hover:text-gray-500'}`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h10a3 3 0 010 6h-3m3-6l2 2-2 2" />
+            </svg>
+          </button>
+          <button
             onClick={() => setShowTimestamps(v => !v)}
             title={showTimestamps ? 'Hide timestamps' : 'Show timestamps'}
             className={`p-1 rounded transition-colors ${showTimestamps ? 'text-blue-400 hover:text-blue-600' : 'text-gray-300 hover:text-gray-500'}`}
@@ -203,7 +213,7 @@ export default function TodoPanel() {
                     onBlur={e => handleBlur(todo.id, e.target.value)}
                     onKeyDown={e => handleKeyDown(e, todo.id, index + 1)}
                     aria-label={`Edit task: ${todo.text}`}
-                    className={`flex-1 min-w-0 text-sm bg-transparent border-none outline-none focus:ring-0 ${done ? 'line-through text-gray-400' : 'text-gray-700'}`}
+                    className={`flex-1 min-w-0 text-sm bg-transparent border-none outline-none focus:ring-0 ${done ? 'line-through text-gray-400' : 'text-gray-700'} ${wrapText ? 'whitespace-pre-wrap' : 'truncate'}`}
                   />
                   <div className="relative shrink-0">
                     {showTimestamps ? (
