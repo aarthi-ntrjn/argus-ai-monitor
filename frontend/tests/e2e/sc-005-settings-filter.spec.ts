@@ -1,5 +1,15 @@
 import { test, expect } from '@playwright/test';
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('argus:onboarding', JSON.stringify({
+      schemaVersion: 1, userId: null,
+      dashboardTour: { status: 'completed', completedAt: '2024-01-01T00:00:00.000Z', skippedAt: null },
+      sessionHints: { dismissed: [] },
+    }));
+  });
+});
+
 const REPOS = [
   { id: 'repo-1', name: 'active-repo', path: 'C:\\projects\\active-repo', source: 'ui', addedAt: new Date().toISOString(), lastScannedAt: null },
 ];

@@ -7,7 +7,7 @@ name: CI
 
 on:
   push:
-    branches: ["**"]
+    branches: [master]
   pull_request:
     branches: [master]
 
@@ -23,6 +23,11 @@ jobs:
         # Fail fast if any workflow file references a third-party action without
         # a full 40-character commit SHA. Self-referencing (./) actions are exempt.
         run: bash .github/scripts/validate-action-pins.sh
+
+      - name: Validate pinned dependency versions
+        # Fail fast if any package.json contains unpinned version ranges (^, ~, *, latest).
+        # All dependency versions must be exact SemVer to prevent supply chain drift.
+        run: bash .github/scripts/validate-pinned-versions.sh
 
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0

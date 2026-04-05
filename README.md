@@ -89,7 +89,25 @@ Settings are saved automatically in your browser (`localStorage`) and restored o
 3. Add a toggle row in `frontend/src/components/SettingsPanel/SettingsPanel.tsx`
 4. Consume it in any component via `const [settings, updateSetting] = useSettings()`
 
-## Config
+## Onboarding
+
+First-time users are guided through the Dashboard with a 6-step interactive tour powered by [`react-joyride`](https://docs.react-joyride.com/) v3 (MIT licence, WCAG 2.1 AA). The session detail page shows dismissible hint badges (`?`) on key controls.
+
+| Feature | Behaviour |
+|---------|-----------|
+| **Welcome tour** | Auto-launches on first Dashboard load; advance, skip, or close any time |
+| **Restart Tour** | Available in the ⚙ Settings panel — replays tour from step 1 |
+| **Reset Onboarding** | Available in the ⚙ Settings panel — clears stored state so the welcome tour auto-launches again |
+| **Session hints** | Three dismissible `?` badges on the session detail page; hover/focus for tooltip; persisted globally |
+
+**Developer reset** — clear onboarding state in browser DevTools:
+```js
+localStorage.removeItem('argus:onboarding')
+```
+
+Tour targets use stable `data-tour-id` attribute selectors (e.g. `[data-tour-id="dashboard-header"]`), decoupled from CSS class names. See [`specs/012-user-onboarding/quickstart.md`](specs/012-user-onboarding/quickstart.md) for the full developer guide.
+
+
 
 Argus stores config and the session database in `~/.argus/`:
 

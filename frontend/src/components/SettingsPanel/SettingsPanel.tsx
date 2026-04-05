@@ -4,9 +4,11 @@ interface SettingsPanelProps {
   settings: DashboardSettings;
   onToggle: (key: keyof DashboardSettings, value: boolean) => void;
   onClose: () => void;
+  onRestartTour?: () => void;
+  onResetOnboarding?: () => void;
 }
 
-export function SettingsPanel({ settings, onToggle }: SettingsPanelProps) {
+export function SettingsPanel({ settings, onToggle, onRestartTour, onResetOnboarding }: SettingsPanelProps) {
   return (
     <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3">
       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Settings</p>
@@ -40,6 +42,26 @@ export function SettingsPanel({ settings, onToggle }: SettingsPanelProps) {
         />
         <span className="text-sm text-gray-700">Hide inactive sessions (&gt;20 min)</span>
       </label>
+      {(onRestartTour || onResetOnboarding) && (
+        <div className="mt-2 pt-2 border-t border-gray-100 flex flex-col gap-1">
+          {onRestartTour && (
+            <button
+              onClick={onRestartTour}
+              className="w-full text-left text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded px-2 py-1 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              Restart Tour
+            </button>
+          )}
+          {onResetOnboarding && (
+            <button
+              onClick={onResetOnboarding}
+              className="w-full text-left text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded px-2 py-1 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400"
+            >
+              Reset Onboarding
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

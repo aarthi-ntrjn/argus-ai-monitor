@@ -17,7 +17,7 @@ export default function EmptyState({ icon = '📭', title, message, action }: Pr
       {action && (
         <button
           onClick={action.onClick}
-          className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition-colors"
         >
           {action.label}
         </button>

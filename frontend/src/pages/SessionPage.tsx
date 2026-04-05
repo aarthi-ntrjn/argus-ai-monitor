@@ -6,6 +6,9 @@ import SessionDetail from '../components/SessionDetail/SessionDetail';
 import SessionPromptBar from '../components/SessionPromptBar/SessionPromptBar';
 import SessionTypeIcon from '../components/SessionTypeIcon/SessionTypeIcon';
 import { isInactive } from '../utils/sessionUtils';
+import { useOnboarding } from '../hooks/useOnboarding';
+import { OnboardingHints } from '../components/Onboarding';
+import { SESSION_HINTS } from '../config/sessionHints';
 
 function getElapsed(startedAt: string, endedAt: string | null): string {
   const end = endedAt ? new Date(endedAt) : new Date();
@@ -39,6 +42,7 @@ const TYPE_COLORS: Record<string, string> = {
 export default function SessionPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { dismissedHints, dismissHint } = useOnboarding();
 
   const { data: session, isLoading: sessionLoading, error: sessionError } = useQuery({
     queryKey: ['session', id],
@@ -83,7 +87,10 @@ export default function SessionPage() {
 
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="flex flex-wrap gap-3 items-center mb-2">
-            <span className={`inline-flex items-center gap-1 text-sm px-3 py-1 rounded-full font-medium ${TYPE_COLORS[session.type] ?? 'bg-gray-100'}`}>
+            <span
+              data-tour-id="session-status"
+              className={`inline-flex items-center gap-1 text-sm px-3 py-1 rounded-full font-medium ${TYPE_COLORS[session.type] ?? 'bg-gray-100'}`}
+            >
               <SessionTypeIcon type={session.type} size={14} />
               {session.type}
             </span>
@@ -114,13 +121,18 @@ export default function SessionPage() {
             <p className="text-gray-600 text-sm mt-2">{session.summary}</p>
           )}
           <p className="text-xs text-gray-400 mt-1">ID: {session.id}</p>
+          <OnboardingHints
+            hints={SESSION_HINTS}
+            dismissedHints={dismissedHints}
+            onDismiss={dismissHint}
+          />
         </div>
 
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
+        <div data-tour-id="session-prompt-bar" className="bg-white rounded-lg shadow p-4 mb-6">
           <SessionPromptBar session={session} />
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-lg shadow">
+        <div data-tour-id="session-output-stream" className="bg-white border border-gray-200 rounded-lg shadow">
           <div className="p-4 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">Output Stream</h2>
           </div>
