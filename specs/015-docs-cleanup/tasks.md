@@ -2,45 +2,57 @@
 
 **Branch**: `015-docs-cleanup`  
 **Input**: Design documents from `/specs/015-docs-cleanup/`  
-**Note**: This is an engineer-driven cleanup. Add your specific tasks below — follow the format shown.
+**Scope**: Rename `BUG-LEARNINGS.md` → `README-LEARNINGS.md` and update all references.
 
 ## Format: `[ID] [P?] [Story?] Description`
 
 - **[P]**: Can run in parallel (independent files, no deps on incomplete tasks)
-- **[US1]**: Belongs to User Story 1 (review & update accuracy)
-- **[US2]**: Belongs to User Story 2 (organize & structure)
-- Include the exact file path in the description
+- **[US1]**: User Story 1 — Review and update existing docs (P1)
 
 ---
 
 ## Phase 1: Setup
 
-- [x] T001 Confirm branch `015-docs-cleanup` is checked out and up to date
+- [ ] T001 Confirm branch `015-docs-cleanup` is checked out (`git status`)
 
 ---
 
-## Phase 2: Your Cleanup Tasks
+## Phase 2: Foundational
 
-> **Add your tasks here.** Each task should be one discrete change to one doc file.
-> Examples shown below — replace with your own.
-
-<!-- EXAMPLE (remove when adding your own tasks):
-- [ ] T002 [P] [US1] Update README.md — fix outdated setup instructions in "Getting Started" section
-- [ ] T003 [P] [US1] Update README-ARCH.md — replace stale architecture diagram description with current backend/frontend layout
-- [ ] T004 [P] [US2] Consolidate duplicate "Testing" sections in README.md and README-TESTS.md
-- [ ] T005 [US1] Fix broken internal links in CLAUDE.md
--->
+- [ ] T002 Verify `BUG-LEARNINGS.md` exists at repo root `C:\source\github\artynuts\argus2\BUG-LEARNINGS.md`
 
 ---
 
-## Phase 3: Final Review
+## Phase 3: User Story 1 — Rename file and update all references
 
-- [ ] T999 [P] Verify no broken links in any modified file
-- [ ] T1000 Commit all changes and push to `015-docs-cleanup`
+**Goal**: `BUG-LEARNINGS.md` is gone; `README-LEARNINGS.md` exists with identical content; no file in the repo refers to the old name.
+
+**Independent Test**: `git ls-files | grep -i BUG-LEARNINGS` returns nothing; `README-LEARNINGS.md` exists; all references in `.claude/commands/bug.md` and `specs/015-docs-cleanup/plan.md` use the new name.
+
+- [ ] T003 [US1] Rename `BUG-LEARNINGS.md` → `README-LEARNINGS.md` at repo root using `git mv BUG-LEARNINGS.md README-LEARNINGS.md`
+- [ ] T004 [P] [US1] Update `.claude/commands/bug.md` — replace all 4 occurrences of `BUG-LEARNINGS.md` with `README-LEARNINGS.md` (lines 100, 102, 117, 147)
+- [ ] T005 [P] [US1] Update `specs/015-docs-cleanup/plan.md` — replace `BUG-LEARNINGS.md` with `README-LEARNINGS.md` in the project structure listing
+
+---
+
+## Phase 4: Polish
+
+- [ ] T006 Verify no remaining references: run `grep -ri "BUG-LEARNINGS" .` from repo root — expect zero results
+- [ ] T007 Commit all changes: `git add -A && git commit -m "docs(015): rename BUG-LEARNINGS.md to README-LEARNINGS.md and update all references"`
+- [ ] T008 Push branch: `git push`
 
 ---
 
 ## Dependencies
 
-- All Phase 2 tasks can run independently (parallel) unless editing the same file.
-- T999 and T1000 must run after all Phase 2 tasks are complete.
+```
+T001 → T002 → T003 → T004 [P] ─┐
+                      T005 [P] ─┴→ T006 → T007 → T008
+```
+
+T004 and T005 are independent of each other (different files) and can run in parallel after T003.
+
+## Implementation Strategy
+
+MVP = complete all tasks T001–T008 in one pass. No incremental delivery needed — this is a single atomic rename operation.
+
