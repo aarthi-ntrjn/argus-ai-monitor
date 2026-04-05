@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTodos, useCreateTodo, useUpdateTodoText, useToggleTodo, useDeleteTodo } from '../../hooks/useTodos';
 
 // A row in the list is either a real DB item or a local draft (not yet saved).
-type RowId = string; // real todo id or a draft uuid
+type RowId = string;
 
 function newDraftId() {
   return 'draft-' + crypto.randomUUID();
@@ -12,6 +12,15 @@ function isDraft(id: RowId) {
   return id.startsWith('draft-');
 }
 
+function removeDraftState(
+  id: RowId,
+  setDraftIds: React.Dispatch<React.SetStateAction<string[]>>,
+  setDraftPositions: React.Dispatch<React.SetStateAction<Record<string, number>>>,
+) {
+  setDraftIds(prev => prev.filter(d => d !== id));
+  setDraftPositions(prev => { const n = { ...prev }; delete n[id]; return n; });
+}
+
 export default function TodoPanel() {
   const { data: todos = [], isLoading, isError } = useTodos();
   const createTodo = useCreateTodo();
@@ -19,44 +28,23 @@ export default function TodoPanel() {
   const toggleTodo = useToggleTodo();
   const deleteTodo = useDeleteTodo();
 
-  // Local text for every row (real or draft), keyed by rowId.
-  const [localTexts, setLocalTexts] = useState<Record<RowId, string>>({});
-  // Draft-only row IDs (not in DB). Interleaved with real todos by index position.
+  // Only structural state — no per-keystroke state.
   const [draftIds, setDraftIds] = useState<RowId[]>([]);
-
-  // Build the ordered list of row IDs to render:
-  // real todos (in DB order) with drafts inserted after them.
-  // Drafts are appended at the end for simplicity; Enter inserts after the focused row.
-  // We track insertion positions via draftPositions.
   const [draftPositions, setDraftPositions] = useState<Record<RowId, number>>({});
 
-  // Seed a single draft when the list would otherwise be completely empty.
+  // Seed one blank draft row when the list is empty.
   useEffect(() => {
     if (!isLoading && !isError && todos.length === 0 && draftIds.length === 0) {
-      const id = newDraftId();
-      setDraftIds([id]);
-      setLocalTexts(prev => ({ ...prev, [id]: '' }));
+      setDraftIds([newDraftId()]);
       setDraftPositions({});
     }
   }, [isLoading, isError, todos.length, draftIds.length]);
 
-  // Sync localTexts when server data arrives (only for rows not currently being edited).
-  useEffect(() => {
-    setLocalTexts(prev => {
-      const next = { ...prev };
-      for (const todo of todos) {
-        if (!(todo.id in next)) next[todo.id] = todo.text;
-      }
-      return next;
-    });
-  }, [todos]);
-
-  // Build ordered row list: merge real todos with draft insertions.
+  // Build ordered row list: real todos interleaved with draft insertions.
   const orderedRows: Array<{ id: RowId; isDraftRow: boolean }> = [];
   const realTodos = todos;
   let draftsLeft = [...draftIds];
   for (let i = 0; i <= realTodos.length; i++) {
-    // Insert any drafts whose position === i (inserted after index i-1).
     draftsLeft = draftsLeft.filter(draftId => {
       const pos = draftPositions[draftId] ?? realTodos.length;
       if (pos === i) {
@@ -69,16 +57,17 @@ export default function TodoPanel() {
       orderedRows.push({ id: realTodos[i].id, isDraftRow: false });
     }
   }
-  // Any remaining drafts without a specific position go at the end.
   for (const draftId of draftsLeft) {
     orderedRows.push({ id: draftId, isDraftRow: true });
   }
 
-  // Refs for focus management, indexed by orderedRows position.
   const inputRefs = useRef<Array<React.RefObject<HTMLInputElement | null>>>([]);
   if (inputRefs.current.length !== orderedRows.length) {
     inputRefs.current = orderedRows.map((_, i) => inputRefs.current[i] ?? { current: null });
   }
+
+  // Track IDs submitted via Enter so handleBlur doesn't double-save.
+  const savingIds = useRef<Set<string>>(new Set());
 
   const focusRow = useCallback((index: number) => {
     setTimeout(() => {
@@ -86,110 +75,80 @@ export default function TodoPanel() {
     }, 0);
   }, []);
 
-  const handleChange = (id: RowId, value: string) => {
-    setLocalTexts(prev => ({ ...prev, [id]: value }));
-  };
-
-  const handleBlur = useCallback((id: RowId) => {
-    const text = (localTexts[id] ?? '').trim();
+  // value comes directly from e.target.value — no React state involved.
+  const handleBlur = useCallback((id: RowId, value: string) => {
+    if (savingIds.current.has(id)) return;
+    const text = value.trim();
 
     if (isDraft(id)) {
       if (text.length === 0) {
-        // Empty draft on blur — discard only if there's at least one other row.
         if (orderedRows.length > 1) {
-          setDraftIds(prev => prev.filter(d => d !== id));
-          setLocalTexts(prev => { const n = { ...prev }; delete n[id]; return n; });
-          setDraftPositions(prev => { const n = { ...prev }; delete n[id]; return n; });
+          removeDraftState(id, setDraftIds, setDraftPositions);
         }
       } else {
-        // Persist draft to DB.
+        savingIds.current.add(id);
         createTodo.mutate(text, {
           onSuccess: () => {
-            setDraftIds(prev => prev.filter(d => d !== id));
-            setLocalTexts(prev => { const n = { ...prev }; delete n[id]; return n; });
-            setDraftPositions(prev => { const n = { ...prev }; delete n[id]; return n; });
+            savingIds.current.delete(id);
+            removeDraftState(id, setDraftIds, setDraftPositions);
           },
+          onError: () => savingIds.current.delete(id),
         });
       }
       return;
     }
 
-    // Real todo row.
     const todo = todos.find(t => t.id === id);
     if (!todo) return;
-
     if (text.length === 0) {
-      // Empty → delete.
       deleteTodo.mutate(id);
-      setLocalTexts(prev => { const n = { ...prev }; delete n[id]; return n; });
     } else if (text !== todo.text) {
       updateTodoText.mutate({ id, text });
     }
-  }, [localTexts, todos, orderedRows.length, createTodo, updateTodoText, deleteTodo]);
+  }, [todos, orderedRows.length, createTodo, updateTodoText, deleteTodo]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>, id: RowId, index: number) => {
+    const value = e.currentTarget.value;
+
     if (e.key === 'Enter') {
       e.preventDefault();
-      // Save current row (same logic as blur, but don't remove focus).
-      const text = (localTexts[id] ?? '').trim();
+      const text = value.trim();
+      const insertPos = index + 1;
+      const newId = newDraftId();
+      const realCountBefore = orderedRows.slice(0, insertPos).filter(r => !r.isDraftRow).length;
+
       if (isDraft(id)) {
         if (text.length > 0) {
-          // Insert new draft AFTER current position, then save current.
-          const insertPos = index + 1;
-          const newId = newDraftId();
-          // The new draft's position in the real-todos array = number of real rows at or before index.
-          const realCountBefore = orderedRows.slice(0, insertPos).filter(r => !r.isDraftRow).length;
-          setDraftPositions(prev => ({ ...prev, [newId]: realCountBefore }));
-          setDraftIds(prev => [...prev, newId]);
-          setLocalTexts(prev => ({ ...prev, [newId]: '' }));
+          savingIds.current.add(id);
           createTodo.mutate(text, {
             onSuccess: () => {
-              setDraftIds(prev => prev.filter(d => d !== id));
-              setLocalTexts(prev => { const n = { ...prev }; delete n[id]; return n; });
-              setDraftPositions(prev => { const n = { ...prev }; delete n[id]; return n; });
+              savingIds.current.delete(id);
+              removeDraftState(id, setDraftIds, setDraftPositions);
             },
+            onError: () => savingIds.current.delete(id),
           });
-          focusRow(insertPos);
-        }
-        // Empty draft + Enter → just add a new draft below.
-        else {
-          const insertPos = index + 1;
-          const newId = newDraftId();
-          const realCountBefore = orderedRows.slice(0, insertPos).filter(r => !r.isDraftRow).length;
-          setDraftPositions(prev => ({ ...prev, [newId]: realCountBefore }));
-          setDraftIds(prev => [...prev, newId]);
-          setLocalTexts(prev => ({ ...prev, [newId]: '' }));
-          focusRow(insertPos);
         }
       } else {
-        // Real row: insert a new draft after this row.
-        const insertPos = index + 1;
-        const newId = newDraftId();
-        const realCountBefore = orderedRows.slice(0, insertPos).filter(r => !r.isDraftRow).length;
-        setDraftPositions(prev => ({ ...prev, [newId]: realCountBefore }));
-        setDraftIds(prev => [...prev, newId]);
-        setLocalTexts(prev => ({ ...prev, [newId]: '' }));
-        // Save any pending text change on the current real row.
         const todo = todos.find(t => t.id === id);
-        if (todo && text !== todo.text && text.length > 0) {
+        if (todo && text.length > 0 && text !== todo.text) {
           updateTodoText.mutate({ id, text });
         }
-        focusRow(insertPos);
       }
-    } else if (e.key === 'Backspace' && (localTexts[id] ?? '') === '') {
+
+      setDraftPositions(prev => ({ ...prev, [newId]: realCountBefore }));
+      setDraftIds(prev => [...prev, newId]);
+      focusRow(insertPos);
+
+    } else if (e.key === 'Backspace' && value === '') {
       e.preventDefault();
-      const prevIndex = index - 1;
       if (isDraft(id)) {
-        setDraftIds(prev => prev.filter(d => d !== id));
-        setLocalTexts(prev => { const n = { ...prev }; delete n[id]; return n; });
-        setDraftPositions(prev => { const n = { ...prev }; delete n[id]; return n; });
+        removeDraftState(id, setDraftIds, setDraftPositions);
       } else {
         deleteTodo.mutate(id);
-        setLocalTexts(prev => { const n = { ...prev }; delete n[id]; return n; });
       }
-      if (prevIndex >= 0) focusRow(prevIndex);
+      if (index > 0) focusRow(index - 1);
     }
-  }, [localTexts, todos, orderedRows, createTodo, updateTodoText, deleteTodo, focusRow]);
+  }, [todos, orderedRows, createTodo, updateTodoText, deleteTodo, focusRow]);
 
   return (
     <aside className="w-72 shrink-0 flex flex-col bg-white rounded-lg shadow h-fit sticky top-8">
@@ -208,7 +167,6 @@ export default function TodoPanel() {
           <ul className="divide-y divide-gray-50 py-1">
             {orderedRows.map(({ id, isDraftRow }, index) => {
               const todo = isDraftRow ? null : todos.find(t => t.id === id);
-              const text = localTexts[id] ?? (todo?.text ?? '');
               const done = todo?.done ?? false;
 
               if (!inputRefs.current[index]) {
@@ -228,9 +186,8 @@ export default function TodoPanel() {
                   <input
                     ref={inputRefs.current[index] as React.RefObject<HTMLInputElement>}
                     type="text"
-                    value={text}
-                    onChange={e => handleChange(id, e.target.value)}
-                    onBlur={() => handleBlur(id)}
+                    defaultValue={todo?.text ?? ''}
+                    onBlur={e => handleBlur(id, e.target.value)}
                     onKeyDown={e => handleKeyDown(e, id, index)}
                     placeholder="Add a task…"
                     aria-label={isDraftRow ? 'New task' : `Edit task: ${todo?.text ?? ''}`}
@@ -245,3 +202,4 @@ export default function TodoPanel() {
     </aside>
   );
 }
+
