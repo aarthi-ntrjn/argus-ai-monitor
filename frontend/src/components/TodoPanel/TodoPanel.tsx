@@ -55,7 +55,7 @@ export default function TodoPanel() {
   const savingIds = useRef<Set<string>>(new Set());
 
   const addRowRef = useRef<HTMLInputElement>(null);
-  const todoRefs = useRef<Array<React.RefObject<HTMLTextAreaElement | null>>>([]);
+  const todoRefs = useRef<Array<React.MutableRefObject<HTMLTextAreaElement | null>>>([]);
   if (todoRefs.current.length !== todos.length) {
     todoRefs.current = todos.map((_, i) => todoRefs.current[i] ?? { current: null });
   }
@@ -207,14 +207,29 @@ export default function TodoPanel() {
                     className="h-4 w-4 shrink-0 rounded border-gray-300 text-blue-600 cursor-pointer"
                   />
                   <textarea
-                    ref={todoRefs.current[index] as React.RefObject<HTMLTextAreaElement>}
+                    ref={(el) => {
+                      (todoRefs.current[index] as React.MutableRefObject<HTMLTextAreaElement | null>).current = el;
+                      if (el && wrapText) {
+                        el.style.height = 'auto';
+                        el.style.height = el.scrollHeight + 'px';
+                      } else if (el) {
+                        el.style.height = '1.25rem';
+                      }
+                    }}
                     defaultValue={todo.text}
                     onBlur={e => handleBlur(todo.id, e.target.value)}
                     onKeyDown={e => handleKeyDown(e, todo.id, index + 1)}
+                    onInput={e => {
+                      if (wrapText) {
+                        const el = e.currentTarget;
+                        el.style.height = 'auto';
+                        el.style.height = el.scrollHeight + 'px';
+                      }
+                    }}
                     aria-label={`Edit task: ${todo.text}`}
                     rows={1}
-                    className={`flex-1 min-w-0 text-sm bg-transparent border-none outline-none focus:ring-0 resize-none leading-snug ${done ? 'line-through text-gray-400' : 'text-gray-700'} ${wrapText ? 'overflow-hidden' : 'truncate whitespace-nowrap overflow-hidden'}`}
-                    style={wrapText ? { height: 'auto', fieldSizing: 'content' } as React.CSSProperties : { height: '1.25rem' }}
+                    className={`flex-1 min-w-0 text-sm bg-transparent border-none outline-none focus:ring-0 resize-none leading-snug ${done ? 'line-through text-gray-400' : 'text-gray-700'}`}
+                    style={wrapText ? { overflow: 'hidden' } : { height: '1.25rem', overflow: 'hidden', whiteSpace: 'nowrap' }}
                   />
                   <div className="relative shrink-0">
                     {showTimestamps ? (
