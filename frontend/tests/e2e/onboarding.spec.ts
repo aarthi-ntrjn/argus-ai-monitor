@@ -49,7 +49,7 @@ test.describe('US1: First-Time Dashboard Tour', () => {
     await page.reload();
 
     // Welcome step should appear
-    await expect(page.locator('[data-testid="joyride-tooltip"]').or(page.locator('.__floater'))).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.react-joyride__tooltip')).toBeVisible({ timeout: 5000 });
     await expect(page.getByText('Welcome to Argus')).toBeVisible();
 
     // Advance through all 6 steps

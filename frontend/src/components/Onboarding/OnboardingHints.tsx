@@ -37,15 +37,17 @@ function HintBadge({ hint, onDismiss }: HintBadgeProps) {
   }, []);
 
   return (
-    <span className="relative inline-flex items-center ml-1">
+    <span
+      className="relative inline-flex items-center ml-1"
+      data-hint-id={hint.id}
+      onMouseEnter={handleShow}
+      onMouseLeave={() => setVisible(false)}
+    >
       <button
-        data-hint-id={hint.id}
         aria-label={hint.ariaLabel}
         aria-describedby={visible ? tooltipId : undefined}
         aria-expanded={visible}
-        onMouseEnter={handleShow}
         onFocus={handleShow}
-        onMouseLeave={() => setVisible(false)}
         onBlur={() => setVisible(false)}
         onKeyDown={handleKeyDown}
         className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-100 text-blue-600 text-xs font-bold hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 cursor-help"
