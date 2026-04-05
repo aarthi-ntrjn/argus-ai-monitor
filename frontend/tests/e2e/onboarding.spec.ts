@@ -50,7 +50,7 @@ test.describe('US1: First-Time Dashboard Tour', () => {
 
     // Welcome step should appear
     await expect(page.locator('.react-joyride__tooltip')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('Welcome to Argus')).toBeVisible();
+    await expect(page.getByText('Welcome Commander!')).toBeVisible();
 
     // Advance through all 6 steps
     for (let i = 0; i < 5; i++) {
@@ -64,11 +64,11 @@ test.describe('US1: First-Time Dashboard Tour', () => {
     await lastBtn.click();
 
     // Tour should be gone
-    await expect(page.getByText('Welcome to Argus')).not.toBeVisible();
+    await expect(page.getByText('Welcome Commander!')).not.toBeVisible();
 
     // Reload — tour must NOT re-launch
     await page.reload();
-    await expect(page.getByText('Welcome to Argus')).not.toBeVisible({ timeout: 3000 });
+    await expect(page.getByText('Welcome Commander!')).not.toBeVisible({ timeout: 3000 });
 
     // Verify localStorage state
     const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('argus:onboarding') ?? '{}'));
@@ -82,21 +82,21 @@ test.describe('US1: First-Time Dashboard Tour', () => {
     await page.reload();
 
     // Wait for tour
-    await expect(page.getByText('Welcome to Argus')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Welcome Commander!')).toBeVisible({ timeout: 5000 });
 
     // Click skip
     const skipBtn = page.getByRole('button', { name: /skip/i });
     await skipBtn.click();
 
     // Tour should be gone immediately
-    await expect(page.getByText('Welcome to Argus')).not.toBeVisible();
+    await expect(page.getByText('Welcome Commander!')).not.toBeVisible();
 
     // App still fully functional — dashboard renders
     await expect(page.locator('h1')).toContainText('Argus Dashboard');
 
     // Reload — tour does NOT re-launch (status is skipped, not not_started)
     await page.reload();
-    await expect(page.getByText('Welcome to Argus')).not.toBeVisible({ timeout: 3000 });
+    await expect(page.getByText('Welcome Commander!')).not.toBeVisible({ timeout: 3000 });
 
     const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('argus:onboarding') ?? '{}'));
     expect(stored.dashboardTour.status).toBe('skipped');
@@ -160,7 +160,7 @@ test.describe('US3: Restart Tour from Settings', () => {
     await page.reload();
 
     // Tour should NOT auto-launch (already completed)
-    await expect(page.getByText('Welcome to Argus')).not.toBeVisible({ timeout: 2000 });
+    await expect(page.getByText('Welcome Commander!')).not.toBeVisible({ timeout: 2000 });
 
     // Open settings
     await page.getByRole('button', { name: /settings/i }).click();
@@ -170,7 +170,7 @@ test.describe('US3: Restart Tour from Settings', () => {
     await page.getByRole('button', { name: /restart tour/i }).click();
 
     // Tour should replay from step 1
-    await expect(page.getByText('Welcome to Argus')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Welcome Commander!')).toBeVisible({ timeout: 5000 });
   });
 });
 
@@ -190,7 +190,7 @@ test.describe('US4: Reset Onboarding', () => {
 
     // Reload — first-time tour auto-launches
     await page.reload();
-    await expect(page.getByText('Welcome to Argus')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Welcome Commander!')).toBeVisible({ timeout: 5000 });
 
     const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('argus:onboarding') ?? '{}'));
     expect(stored.dashboardTour.status).toBe('not_started');
