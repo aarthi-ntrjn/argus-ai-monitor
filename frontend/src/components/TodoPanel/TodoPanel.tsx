@@ -153,7 +153,7 @@ export default function TodoPanel() {
   return (
     <aside className="w-72 shrink-0 flex flex-col bg-white rounded-lg shadow h-fit sticky top-8">
       <div className="px-4 py-3 border-b border-gray-100">
-        <h2 className="text-sm font-semibold text-gray-700 tracking-wide uppercase">My To-Do</h2>
+        <h2 className="text-sm font-semibold text-gray-700 tracking-wide uppercase">To Tackle</h2>
       </div>
 
       <div className="flex-1 overflow-y-auto max-h-[calc(100vh-12rem)]">
