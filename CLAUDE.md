@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Purpose
 
-Argus is a tool for centrally monitoring and remotely controlling Claude Code and GitHub Copilot sessions. The repository currently contains no application code — only the Speckit SDD (Specification-Driven Development) infrastructure for building it.
+Argus is a tool for centrally monitoring and remotely controlling Claude Code and GitHub Copilot sessions. The repository currently contains no application code, only the Speckit SDD (Specification-Driven Development) infrastructure for building it.
 
 ## Speckit Workflow
 
@@ -47,13 +47,13 @@ specs/[###-feature-name]/
 
 ## Key Conventions
 
-**Branches**: Sequential numbering — `001-feature-name`, `002-feature-name`. Use `create-new-feature.ps1` to create new feature branches.
+**Branches**: Sequential numbering: `001-feature-name`, `002-feature-name`. Use `create-new-feature.ps1` to create new feature branches.
 
 **IDs**: `FR-###` for functional requirements, `SC-###` for success criteria.
 
 **Priorities**: `P1` = MVP critical, `P2` = important, `P3` = nice-to-have.
 
-**Tasks**: `[ID] [P?] [Story] Description` — `[P]` marks tasks that can run in parallel.
+**Tasks**: `[ID] [P?] [Story] Description` where `[P]` marks tasks that can run in parallel.
 
 **Ambiguities**: Mark with `[NEEDS CLARIFICATION: question]` (max 3 per document). Resolve via `/speckit.clarify` before planning.
 
@@ -63,11 +63,15 @@ specs/[###-feature-name]/
 
 All automation is PowerShell (`.ps1`) under `.specify/scripts/powershell/`. VS Code (and Claude's tool execution) auto-approves these scripts.
 
-- `create-new-feature.ps1` — creates a feature branch with spec skeleton (supports `--json`, `--short-name`, `--timestamp`, `--number` flags)
-- `common.ps1` — shared helpers: `Find-SpecifyRoot`, `Get-RepoRoot`
+- `create-new-feature.ps1`: creates a feature branch with spec skeleton (supports `--json`, `--short-name`, `--timestamp`, `--number` flags)
+- `common.ps1`: shared helpers: `Find-SpecifyRoot`, `Get-RepoRoot`
 - `check-prerequisites.ps1`, `setup-plan.ps1`, `update-agent-context.ps1`
 
 Optional lifecycle hooks (`before_specify`, `after_specify`, etc.) can be defined in `.specify/extensions.yml`.
+
+## Writing Style
+
+- Never use em dashes (--) in any app content, README files, or documentation. Use a comma, colon, or rewrite the sentence instead.
 
 ## Configuration
 
