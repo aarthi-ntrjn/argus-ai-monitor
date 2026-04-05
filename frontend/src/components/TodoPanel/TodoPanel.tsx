@@ -11,6 +11,18 @@ function isDraft(id: RowId) {
   return id.startsWith('draft-');
 }
 
+function formatRelativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
 export default function TodoPanel() {
   const { data: todos = [], isLoading, isError } = useTodos();
   const createTodo = useCreateTodo();
@@ -104,7 +116,7 @@ export default function TodoPanel() {
   return (
     <aside className="w-72 shrink-0 flex flex-col bg-white rounded-lg shadow h-fit sticky top-8">
       <div className="px-4 py-3 border-b border-gray-100">
-        <h2 className="text-sm font-semibold text-gray-700 tracking-wide uppercase">To Tackle</h2>
+        <h2 className="text-sm font-semibold text-gray-700 tracking-wide">To Tackle</h2>
       </div>
 
       <div className="flex-1 overflow-y-auto max-h-[calc(100vh-12rem)]">
@@ -158,6 +170,9 @@ export default function TodoPanel() {
                     aria-label={`Edit task: ${todo.text}`}
                     className={`flex-1 min-w-0 text-sm bg-transparent border-none outline-none focus:ring-0 ${done ? 'line-through text-gray-400' : 'text-gray-700'}`}
                   />
+                  <span className="shrink-0 text-xs text-gray-300 group-hover:opacity-0 transition-opacity whitespace-nowrap">
+                    {formatRelativeTime(todo.createdAt)}
+                  </span>
                   <button
                     onClick={() => deleteTodo.mutate(todo.id)}
                     aria-label={`Delete "${todo.text}"`}
