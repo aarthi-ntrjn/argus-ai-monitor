@@ -197,7 +197,7 @@ export default function TodoPanel() {
         <div id="tackle-panel-body" className="flex-1 overflow-y-auto">
         {/* Add row always visible regardless of loading state */}
         <div
-          className="flex items-center gap-2 px-4 py-1 border-b border-gray-50 cursor-text"
+          className="flex items-center gap-2 px-4 py-2 border-b border-gray-50 cursor-text"
           onClick={() => addRowRef.current?.focus()}
         >
           <span aria-hidden="true" className="h-4 w-4 shrink-0 flex items-center justify-center text-blue-600 text-base leading-none select-none">+</span>
@@ -210,7 +210,7 @@ export default function TodoPanel() {
             onKeyDown={e => handleKeyDown(e, addRowId, 0)}
             placeholder="Add a task…"
             aria-label="New task"
-            className="flex-1 min-w-0 text-sm bg-transparent border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 text-gray-700 placeholder-gray-400"
+            className="flex-1 min-w-0 text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 text-gray-700 placeholder-gray-400"
           />
         </div>
 
