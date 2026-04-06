@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { interruptSession, sendPrompt } from '../../services/api';
 import type { Session } from '../../types';
 
@@ -21,6 +21,42 @@ const ALL_COMMANDS: QuickCommand[] = [
   { key: 'merge', label: 'Merge', title: 'Merge current branch with main', confirmMessage: 'Merge current branch with main?' },
   { key: 'pull', label: 'Pull latest', title: 'Pull latest changes from main', confirmMessage: 'Pull latest changes from main?' },
 ];
+
+function ConfirmModal({ message, onCancel, onConfirm }: { message: string; onCancel: () => void; onConfirm: () => void }) {
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => { cancelRef.current?.focus(); }, []);
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') onCancel();
+  }, [onCancel]);
+  return (
+    <div
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="confirm-modal-message"
+      className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
+      onKeyDown={handleKeyDown}
+    >
+      <div className="bg-white rounded-lg p-5 w-full max-w-xs shadow-lg">
+        <p id="confirm-modal-message" className="text-sm text-gray-700 mb-4">{message}</p>
+        <div className="flex justify-end gap-2">
+          <button
+            ref={cancelRef}
+            onClick={onCancel}
+            className="text-sm px-3 py-1.5 text-gray-600 hover:text-gray-800 focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="text-sm px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function SessionPromptBar({ session }: Props) {
   const [prompt, setPrompt] = useState('');
@@ -117,6 +153,7 @@ export default function SessionPromptBar({ session }: Props) {
           value={prompt}
           onChange={e => setPrompt(e.target.value)}
           onKeyDown={handleKeyDown}
+          aria-label="Send a prompt to this session"
           placeholder="Send a prompt…"
           disabled={sending}
           className="flex-1 text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50"
@@ -166,25 +203,11 @@ export default function SessionPromptBar({ session }: Props) {
 
       {/* Confirm modal */}
       {confirmCmd && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-5 w-full max-w-xs shadow-lg">
-            <p className="text-sm text-gray-700 mb-4">{confirmCmd.confirmMessage}</p>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setConfirmCmd(null)}
-                className="text-sm px-3 py-1.5 text-gray-600 hover:text-gray-800"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => runCommand(confirmCmd)}
-                className="text-sm px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmModal
+          message={confirmCmd.confirmMessage ?? ''}
+          onCancel={() => setConfirmCmd(null)}
+          onConfirm={() => runCommand(confirmCmd)}
+        />
       )}
     </div>
   );

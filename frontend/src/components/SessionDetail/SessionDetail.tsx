@@ -20,7 +20,7 @@ const TYPE_LABELS: Record<string, BadgeStyle> = {
 };
 
 const ROLE_LABELS: Record<string, BadgeStyle> = {
-  user:      { label: 'YOU', light: 'bg-gray-100 text-gray-600', dark: 'bg-gray-700 text-gray-400' },
+  user:      { label: 'YOU', light: 'bg-gray-100 text-gray-600', dark: 'bg-gray-700 text-gray-300' },
   assistant: { label: 'AI',  light: 'bg-blue-100 text-blue-700', dark: 'bg-blue-900 text-blue-300' },
 };
 
@@ -48,7 +48,7 @@ export default function SessionDetail({ items, dark = false, className }: Props)
 
   if (items.length === 0) {
     return (
-      <div className={`p-8 text-center ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
+      <div className={`p-8 text-center ${dark ? 'text-gray-400' : 'text-gray-500'}`}>
         No output yet. Waiting for session activity...
       </div>
     );
@@ -69,7 +69,7 @@ export default function SessionDetail({ items, dark = false, className }: Props)
               {item.toolName && (
                 <span className={`text-xs truncate ${dark ? 'text-purple-400' : 'text-purple-600'}`}>[{item.toolName}]</span>
               )}
-              <span className={`text-[10px] whitespace-nowrap ${dark ? 'text-gray-600' : 'text-gray-400'}`}>
+              <span className={`text-[10px] whitespace-nowrap ${dark ? 'text-gray-400' : 'text-gray-600'}`}>
                 {formatTime(item.timestamp)}
               </span>
             </div>

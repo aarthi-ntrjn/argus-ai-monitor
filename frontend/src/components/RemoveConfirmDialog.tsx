@@ -1,3 +1,5 @@
+import { useEffect, useRef, useCallback } from 'react';
+
 interface RemoveConfirmDialogProps {
   repoName: string | undefined;
   removing: boolean;
@@ -8,10 +10,24 @@ interface RemoveConfirmDialogProps {
 }
 
 export function RemoveConfirmDialog({ repoName, removing, skipConfirm, onSkipConfirmChange, onCancel, onConfirm }: RemoveConfirmDialogProps) {
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => { cancelRef.current?.focus(); }, []);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape' && !removing) onCancel();
+  }, [onCancel, removing]);
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="remove-dialog-title"
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onKeyDown={handleKeyDown}
+    >
       <div className="bg-white rounded-lg p-6 w-full max-w-sm">
-        <h2 className="text-lg font-semibold mb-2">Remove Repository</h2>
+        <h2 id="remove-dialog-title" className="text-lg font-semibold mb-2">Remove Repository</h2>
         <p className="text-gray-600 text-sm mb-4">
           Remove <span className="font-semibold">{repoName}</span>?
           This will also delete all associated sessions and output history.
@@ -27,8 +43,19 @@ export function RemoveConfirmDialog({ repoName, removing, skipConfirm, onSkipCon
             Don't ask again
           </label>
           <div className="flex gap-2">
-            <button onClick={onCancel} disabled={removing} className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50">Cancel</button>
-            <button onClick={onConfirm} disabled={removing} className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50">
+            <button
+              ref={cancelRef}
+              onClick={onCancel}
+              disabled={removing}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={removing}
+              className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-red-500"
+            >
               {removing ? 'Removing...' : 'Remove'}
             </button>
           </div>

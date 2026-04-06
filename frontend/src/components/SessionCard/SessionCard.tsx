@@ -62,8 +62,13 @@ export default function SessionCard({ session, selected, onSelect }: Props) {
 
   return (
     <div
-      className={`border rounded-lg p-4 transition-colors cursor-pointer ${selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'} ${isInactive(session) && !selected ? 'opacity-75' : ''}`}
+      role="button"
+      tabIndex={0}
+      aria-pressed={selected}
+      aria-label={`Session ${session.id.slice(0, 8)} — ${session.status}. Press Enter to ${selected ? 'close' : 'view'} output.`}
+      className={`border rounded-lg p-4 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'} ${isInactive(session) && !selected ? 'opacity-75' : ''}`}
       onClick={() => onSelect?.(session.id)}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect?.(session.id); } }}
     >
       {/* Header row */}
       <div className="flex justify-between items-start">
@@ -94,7 +99,7 @@ export default function SessionCard({ session, selected, onSelect }: Props) {
           <Link
             to={`/sessions/${session.id}`}
             onClick={e => e.stopPropagation()}
-            className="text-gray-400 hover:text-blue-500 transition-colors"
+            className="text-gray-500 hover:text-blue-600 transition-colors"
             aria-label="View details"
           >
             <ExternalLink size={14} />

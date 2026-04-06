@@ -120,7 +120,7 @@ export default function SessionPage() {
           {session.summary && (
             <p className="text-gray-600 text-sm mt-2">{session.summary}</p>
           )}
-          <p className="text-xs text-gray-400 mt-1">ID: {session.id}</p>
+          <p className="text-xs text-gray-500 mt-1">ID: {session.id}</p>
           <OnboardingHints
             hints={SESSION_HINTS}
             dismissedHints={dismissedHints}
@@ -137,7 +137,7 @@ export default function SessionPage() {
             <h2 className="text-lg font-semibold text-gray-900">Output Stream</h2>
           </div>
           {outputLoading ? (
-            <div className="p-8 text-center text-gray-400">Loading output...</div>
+            <div className="p-8 text-center text-gray-500">Loading output...</div>
           ) : (
             <div className="rounded-b-lg overflow-hidden bg-gray-900">
               <SessionDetail
