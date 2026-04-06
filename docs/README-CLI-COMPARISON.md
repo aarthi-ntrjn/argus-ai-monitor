@@ -25,7 +25,9 @@ Both session types write output to JSONL files that Argus tails incrementally. T
 
 The repo path is encoded by replacing `:`, `\`, and `/` with `-` (e.g., `C:\source\argus` becomes `C--source-argus`). The JSONL filename (without extension) is the session ID.
 
-**Entry types:**
+---
+
+#### Entry types
 
 | `type` | Description | Argus action |
 |--------|-------------|--------------|
@@ -36,7 +38,9 @@ The repo path is encoded by replacing `:`, `\`, and `/` with `-` (e.g., `C:\sour
 | `permission-mode` | Permission mode declaration at session open | Discarded |
 | `file-history-snapshot` | File-state checkpoint written by Claude Code | Discarded |
 
-**Common fields on every entry:**
+---
+
+#### Common fields (present on every entry)
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -52,7 +56,11 @@ The repo path is encoded by replacing `:`, `\`, and `/` with `-` (e.g., `C:\sour
 | `version` | string | Claude Code version (e.g. `"2.1.92"`) |
 | `gitBranch` | string \| null | Git branch active in `cwd` at the time of the entry |
 
-**`user` entry additional fields:**
+---
+
+#### `user` entry
+
+Additional fields beyond the common set:
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -64,7 +72,34 @@ The repo path is encoded by replacing `:`, `\`, and `/` with `-` (e.g., `C:\sour
 | `sourceToolAssistantUUID` | string \| undefined | UUID of the assistant entry that triggered this tool result |
 | `sourceToolUseID` | string \| undefined | ID of the specific `tool_use` block this result answers |
 
-**`assistant` entry additional fields:**
+**Example — plain prompt:**
+
+```jsonl
+{"type":"user","uuid":"a1b2c3d4-0001-0000-0000-000000000000","parentUuid":null,"isSidechain":false,"promptId":"p-001","isMeta":false,"timestamp":"2026-04-06T10:00:00.000Z","sessionId":"e5f6a7b8-cafe-0000-0000-000000000000","cwd":"C:\\source\\argus2","version":"2.1.92","gitBranch":"main","message":{"role":"user","content":"Add a health check endpoint"}}
+```
+
+Produces: `type: message`, `role: user`, `content: "Add a health check endpoint"`
+
+**Example — tool result returned to Claude:**
+
+```jsonl
+{"type":"user","uuid":"a1b2c3d4-0004-0000-0000-000000000000","parentUuid":"a1b2c3d4-0003-0000-0000-000000000000","isSidechain":false,"promptId":"p-001","isMeta":false,"timestamp":"2026-04-06T10:00:03.000Z","sessionId":"e5f6a7b8-cafe-0000-0000-000000000000","cwd":"C:\\source\\argus2","version":"2.1.92","gitBranch":"main","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_abc123","content":"export const healthRoute = ..."}]},"toolUseResult":{"success":true,"commandName":"Read"},"sourceToolAssistantUUID":"a1b2c3d4-0003-0000-0000-000000000000","sourceToolUseID":"toolu_abc123"}
+```
+
+Produces: `type: tool_result`, `role: null`, `toolName: "toolu_abc123"`, `content: "export const healthRoute = ..."`
+
+**SessionOutput mapping:**
+
+| Scenario | `type` | `role` | `content` | `toolName` |
+|----------|--------|--------|-----------|------------|
+| Plain prompt (`message.content` is a string) | `'message'` | `'user'` | `message.content` string | `null` |
+| Tool result (`message.content[n].type === 'tool_result'`) | `'tool_result'` | `null` | Block's `content` string | Block's `tool_use_id` |
+
+---
+
+#### `assistant` entry
+
+Additional fields beyond the common set:
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -73,20 +108,61 @@ The repo path is encoded by replacing `:`, `\`, and `/` with `-` (e.g., `C:\sour
 | `message.id` | string | Anthropic message ID, e.g. `"msg_01..."` |
 | `message.type` | `"message"` | Always `"message"` |
 | `message.content` | ContentBlock[] | One or more content blocks (see below) |
-| `message.stop_reason` | string \| null | e.g. `"tool_use"`, `"end_turn"`, or null while streaming |
+| `message.stop_reason` | string \| null | `"tool_use"`, `"end_turn"`, or null while streaming |
+| `message.stop_sequence` | string \| null | The stop sequence that ended the turn, or null |
 | `message.usage` | object | Token counts — see Usage object below |
 | `requestId` | string | Anthropic API request ID for tracing |
 
-**Content blocks (`message.content` array):**
+**Example — text reply:**
+
+```jsonl
+{"type":"assistant","uuid":"a1b2c3d4-0002-0000-0000-000000000000","parentUuid":"a1b2c3d4-0001-0000-0000-000000000000","isSidechain":false,"timestamp":"2026-04-06T10:00:01.000Z","sessionId":"e5f6a7b8-cafe-0000-0000-000000000000","cwd":"C:\\source\\argus2","version":"2.1.92","gitBranch":"main","requestId":"req_01abc","message":{"role":"assistant","model":"claude-sonnet-4-6","id":"msg_01","type":"message","stop_reason":"tool_use","stop_sequence":null,"content":[{"type":"text","text":"I'll add that now. Let me read the routes file first."}],"usage":{"input_tokens":120,"output_tokens":18,"cache_read_input_tokens":800,"cache_creation_input_tokens":0,"cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":0},"output_tokens":18,"service_tier":"standard","inference_geo":"not_available"}}}
+```
+
+Produces: `type: message`, `role: assistant`, `content: "I'll add that now. Let me read the routes file first."`
+
+**Example — tool call:**
+
+```jsonl
+{"type":"assistant","uuid":"a1b2c3d4-0003-0000-0000-000000000000","parentUuid":"a1b2c3d4-0002-0000-0000-000000000000","isSidechain":false,"timestamp":"2026-04-06T10:00:02.000Z","sessionId":"e5f6a7b8-cafe-0000-0000-000000000000","cwd":"C:\\source\\argus2","version":"2.1.92","gitBranch":"main","requestId":"req_01abc","message":{"role":"assistant","model":"claude-sonnet-4-6","id":"msg_02","type":"message","stop_reason":"tool_use","stop_sequence":null,"content":[{"type":"tool_use","id":"toolu_abc123","name":"Read","input":{"file_path":"backend/src/api/routes/health.ts"},"caller":{"type":"direct"}}],"usage":{"input_tokens":140,"output_tokens":32,"cache_read_input_tokens":800,"cache_creation_input_tokens":0,"service_tier":"standard","inference_geo":""}}}
+```
+
+Produces: `type: tool_use`, `role: null`, `toolName: "Read"`, `content: "{\"file_path\":\"backend/src/api/routes/health.ts\"}"`
+
+**Example — mixed reply (text + tool call, produces two `SessionOutput` rows):**
+
+```jsonl
+{"type":"assistant","uuid":"a1b2c3d4-0005-0000-0000-000000000000","parentUuid":"a1b2c3d4-0004-0000-0000-000000000000","isSidechain":false,"timestamp":"2026-04-06T10:00:04.000Z","sessionId":"e5f6a7b8-cafe-0000-0000-000000000000","cwd":"C:\\source\\argus2","version":"2.1.92","gitBranch":"main","requestId":"req_01def","message":{"role":"assistant","model":"claude-sonnet-4-6","id":"msg_03","type":"message","stop_reason":"tool_use","stop_sequence":null,"content":[{"type":"text","text":"Running tests now."},{"type":"tool_use","id":"toolu_def456","name":"Bash","input":{"command":"npm test"},"caller":{"type":"direct"}}],"usage":{"input_tokens":200,"output_tokens":45,"cache_read_input_tokens":900,"cache_creation_input_tokens":0,"service_tier":"standard","inference_geo":""}}}
+```
+
+Produces two rows:
+1. `type: message`, `role: assistant`, `content: "Running tests now."`
+2. `type: tool_use`, `role: null`, `toolName: "Bash"`, `content: "{\"command\":\"npm test\"}"`
+
+**SessionOutput mapping:**
+
+| Content block type | `type` | `role` | `content` | `toolName` |
+|-------------------|--------|--------|-----------|------------|
+| `text` | `'message'` | `'assistant'` | `block.text` | `null` |
+| `tool_use` | `'tool_use'` | `null` | `JSON.stringify(block.input)` | `block.name` |
+| `thinking` | Discarded | (none) | (none) | (none) |
+
+One `assistant` entry can produce multiple `SessionOutput` rows (one per non-discarded block). A mixed entry with a `text` block and a `tool_use` block produces two rows.
+
+---
+
+#### Content blocks (`message.content` array)
 
 | `type` | Key fields | Description |
 |--------|-----------|-------------|
 | `text` | `text: string` | Plain text response from the assistant |
 | `thinking` | `thinking: string`, `signature: string` | Extended thinking block (internal reasoning); `signature` is an opaque verification token |
-| `tool_use` | `id: string`, `name: string`, `input: object`, `caller: object` | Tool invocation — `name` is the tool name, `input` is the arguments |
-| `tool_result` | `tool_use_id: string`, `content: string \| object` | Tool result returned to the assistant (appears in `user` entries) |
+| `tool_use` | `id: string`, `name: string`, `input: object`, `caller: { type: string }` | Tool invocation — `name` is the tool name, `input` is the arguments, `caller.type` is always `"direct"` |
+| `tool_result` | `tool_use_id: string`, `content: string \| object` | Tool result returned to the assistant (appears inside `user` entries, not `assistant` entries) |
 
-**Usage object (`message.usage`):**
+---
+
+#### Usage object (`message.usage`)
 
 | Field | Description |
 |-------|-------------|
@@ -99,9 +175,22 @@ The repo path is encoded by replacing `:`, `\`, and `/` with `-` (e.g., `C:\sour
 | `service_tier` | e.g. `"standard"` |
 | `inference_geo` | Region where inference ran, or `"not_available"` |
 
-One JSONL line can produce multiple `SessionOutput` rows when an assistant entry contains both a text block and one or more tool_use blocks.
+---
 
-`file-history-snapshot`, `system`, `attachment`, and `permission-mode` entries are silently discarded by the parser.
+#### Discarded entries
+
+```jsonl
+{"type":"file-history-snapshot","messageId":"snap-001","snapshot":{"messageId":"snap-001","trackedFileBackups":{},"timestamp":"2026-04-06T10:00:00.000Z"},"isSnapshotUpdate":false}
+{"type":"system","subtype":"local_command","content":"<command-name>/foo</command-name>","level":"info","isMeta":false,"uuid":"...","parentUuid":"...","timestamp":"...","sessionId":"...","version":"2.1.92","gitBranch":"main"}
+{"type":"permission-mode","permissionMode":"bypassPermissions","sessionId":"..."}
+{"type":"attachment","attachment":{"type":"deferred_tools_delta","addedNames":["WebFetch"],"addedLines":["WebFetch"],"removedNames":[]},"uuid":"...","parentUuid":"...","timestamp":"..."}
+```
+
+All four types are silently discarded by the parser — they carry no conversation content.
+
+**SessionOutput mapping:** No row is emitted for any of these entry types.
+
+---
 
 ### Copilot CLI
 
@@ -110,111 +199,38 @@ One JSONL line can produce multiple `SessionOutput` rows when an assistant entry
 - `~/.copilot/session-state/{uuid}/workspace.yaml` (session metadata)
 - `~/.copilot/session-state/{uuid}/inuse.{PID}.lock` (process liveness indicator)
 
-**Line schema:**
-
-```json
-{
-  "type": "user.message" | "assistant.message" | "tool.execution_start" | "tool.execution_complete" | "session.start",
-  "timestamp": "2025-01-01T12:00:00.000Z",
-  "data": {
-    "content": "string | ContentBlock[]",
-    "model": "gpt-4o",
-    "toolName": "string",
-    "arguments": "object | string",
-    "result": {
-      "content": "string",
-      "detailedContent": "string"
-    }
-  }
-}
-```
-
-Each event line maps one-to-one to a single `SessionOutput` row.
-
-**Comparison summary:**
-
-| Attribute | Claude Code | Copilot CLI |
-|-----------|------------|------------|
-| Event granularity | One line, multiple outputs | One line, one output |
-| Content location | `message.content` (string or block array) | `data.content`, `data.arguments`, `data.result` |
-| Tool identity | `block.name` (in `tool_use` block) | `data.toolName` |
-| Model location | `message.model` on assistant entries | `data.model` on `tool.execution_complete` events |
-| Session metadata | Encoded in file path and filename | Separate `workspace.yaml` file |
-| Extra metadata files | None | `workspace.yaml` (summary, timestamps, cwd) |
+Each event line maps one-to-one to a single `SessionOutput` row (unlike Claude Code where one line can produce multiple rows).
 
 ---
 
-## Example Messages
+#### Entry types
 
-These are representative JSONL lines as they appear on disk for each session type. Each example shows what Argus reads from the file, followed by the `SessionOutput` it produces.
-
-### Claude Code examples
-
-**User message (plain string content)**
-
-```jsonl
-{"type":"user","uuid":"a1b2c3d4-0001-0000-0000-000000000000","parentUuid":null,"isSidechain":false,"timestamp":"2026-04-06T10:00:00.000Z","sessionId":"e5f6a7b8-cafe-0000-0000-000000000000","cwd":"C:\\source\\argus2","message":{"role":"user","content":"Add a health check endpoint"}}
-```
-
-Produces: `type: message`, `role: user`, `content: "Add a health check endpoint"`
+| `type` | Description | Argus action |
+|--------|-------------|--------------|
+| `session.start` | Session opened | Parsed as `status_change` |
+| `user.message` | User prompt | Parsed as `message / user` |
+| `assistant.message` | AI reply | Parsed as `message / assistant` |
+| `tool.execution_start` | Tool invocation started | Parsed as `tool_use` |
+| `tool.execution_complete` | Tool invocation finished | Parsed as `tool_result` |
+| *(any other type)* | Lifecycle/bookkeeping (e.g. `turn.start`, `interaction.complete`) | Discarded |
 
 ---
 
-**Assistant reply (text block)**
+#### Common fields (present on every entry)
 
-```jsonl
-{"type":"assistant","uuid":"a1b2c3d4-0002-0000-0000-000000000000","parentUuid":"a1b2c3d4-0001-0000-0000-000000000000","isSidechain":false,"timestamp":"2026-04-06T10:00:01.000Z","sessionId":"e5f6a7b8-cafe-0000-0000-000000000000","cwd":"C:\\source\\argus2","message":{"role":"assistant","model":"claude-opus-4-6","id":"msg_01","type":"message","stop_reason":"tool_use","content":[{"type":"text","text":"I'll add that now. Let me read the routes file first."}]}}
-```
-
-Produces: `type: message`, `role: assistant`, `content: "I'll add that now. Let me read the routes file first."`
-
----
-
-**Assistant invoking a tool**
-
-```jsonl
-{"type":"assistant","uuid":"a1b2c3d4-0003-0000-0000-000000000000","parentUuid":"a1b2c3d4-0002-0000-0000-000000000000","isSidechain":false,"timestamp":"2026-04-06T10:00:02.000Z","sessionId":"e5f6a7b8-cafe-0000-0000-000000000000","cwd":"C:\\source\\argus2","message":{"role":"assistant","model":"claude-opus-4-6","id":"msg_02","type":"message","stop_reason":"tool_use","content":[{"type":"tool_use","id":"toolu_abc123","name":"Read","input":{"file_path":"backend/src/api/routes/health.ts"}}]}}
-```
-
-Produces: `type: tool_use`, `role: null`, `toolName: "Read"`, `content: "{\"file_path\":\"backend/src/api/routes/health.ts\"}"`
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | string | Entry type (see table above) |
+| `id` | string | Unique ID for this event (format: `"evt-{uuid}"` or similar) |
+| `parentId` | string \| null | ID of the parent event — forms the event chain |
+| `timestamp` | ISO 8601 string | When the event was written |
+| `data` | object | Event-specific payload — fields vary by type (see below) |
 
 ---
 
-**Tool result returned to Claude**
+#### `session.start` entry
 
-```jsonl
-{"type":"user","uuid":"a1b2c3d4-0004-0000-0000-000000000000","parentUuid":"a1b2c3d4-0003-0000-0000-000000000000","isSidechain":false,"timestamp":"2026-04-06T10:00:03.000Z","sessionId":"e5f6a7b8-cafe-0000-0000-000000000000","cwd":"C:\\source\\argus2","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_abc123","content":"export const healthRoute = ..."}]}}
-```
-
-Produces: `type: tool_result`, `role: null`, `toolName: "toolu_abc123"`, `content: "export const healthRoute = ..."`
-
----
-
-**Mixed reply (text + tool call in one entry — produces two `SessionOutput` rows)**
-
-```jsonl
-{"type":"assistant","uuid":"a1b2c3d4-0005-0000-0000-000000000000","parentUuid":"a1b2c3d4-0004-0000-0000-000000000000","isSidechain":false,"timestamp":"2026-04-06T10:00:04.000Z","sessionId":"e5f6a7b8-cafe-0000-0000-000000000000","cwd":"C:\\source\\argus2","message":{"role":"assistant","model":"claude-opus-4-6","id":"msg_03","type":"message","stop_reason":"tool_use","content":[{"type":"text","text":"Running tests now."},{"type":"tool_use","id":"toolu_def456","name":"Bash","input":{"command":"npm test"}}]}}
-```
-
-Produces two rows:
-1. `type: message`, `role: assistant`, `content: "Running tests now."`
-2. `type: tool_use`, `role: null`, `toolName: "Bash"`, `content: "{\"command\":\"npm test\"}"`
-
----
-
-**Skipped entry**
-
-```jsonl
-{"type":"file-history-snapshot","messageId":"snap-001","snapshot":{}}
-```
-
-Produces: nothing (discarded by the parser).
-
----
-
-### Copilot CLI examples
-
-**Session start**
+`data` is an empty object `{}`.
 
 ```jsonl
 {"type":"session.start","id":"evt-0001","parentId":null,"timestamp":"2026-04-06T10:00:00.000Z","data":{}}
@@ -222,19 +238,44 @@ Produces: nothing (discarded by the parser).
 
 Produces: `type: status_change`, `role: null`, `content: ""`
 
+**SessionOutput mapping:**
+
+| `type` | `role` | `content` | `toolName` |
+|--------|--------|-----------|------------|
+| `'status_change'` | `null` | `''` (empty string) | `null` |
+
 ---
 
-**User message**
+#### `user.message` entry
+
+| `data` field | Type | Description |
+|-------------|------|-------------|
+| `content` | string \| ContentBlock[] | The text the user typed. May be a plain string or a content-block array in newer CLI versions |
+| `transformedContent` | string | The prompt after context expansion by the CLI (often identical to `content`) |
+| `attachments` | array | File or context attachments added to the prompt (usually empty `[]`) |
 
 ```jsonl
-{"type":"user.message","id":"evt-0002","parentId":null,"timestamp":"2026-04-06T10:00:01.000Z","data":{"content":"Refactor the auth middleware","transformedContent":"Refactor the auth middleware","attachments":[]}}
+{"type":"user.message","id":"evt-0002","parentId":"evt-0001","timestamp":"2026-04-06T10:00:01.000Z","data":{"content":"Refactor the auth middleware","transformedContent":"Refactor the auth middleware","attachments":[]}}
 ```
 
 Produces: `type: message`, `role: user`, `content: "Refactor the auth middleware"`
 
+**SessionOutput mapping:**
+
+| `type` | `role` | `content` | `toolName` |
+|--------|--------|-----------|------------|
+| `'message'` | `'user'` | `data.content` if string; text blocks joined with `'\n'` if array | `null` |
+
 ---
 
-**Assistant reply**
+#### `assistant.message` entry
+
+| `data` field | Type | Description |
+|-------------|------|-------------|
+| `messageId` | string | Unique ID for this AI message |
+| `content` | string \| ContentBlock[] | The AI's reply text. May be a plain string or a content-block array. Empty/null when the AI only made tool calls |
+| `toolRequests` | array | Tool calls the AI wants to make (handled via subsequent `tool.execution_start` events) |
+| `model` | string \| undefined | Model ID if present on this event (more commonly on `tool.execution_complete`) |
 
 ```jsonl
 {"type":"assistant.message","id":"evt-0003","parentId":"evt-0002","timestamp":"2026-04-06T10:00:02.000Z","data":{"messageId":"msg-001","content":"Sure, I'll start by reading the current middleware.","toolRequests":[]}}
@@ -242,9 +283,25 @@ Produces: `type: message`, `role: user`, `content: "Refactor the auth middleware
 
 Produces: `type: message`, `role: assistant`, `content: "Sure, I'll start by reading the current middleware."`
 
+> If `data.content` is null, empty, or a content-block array with no text blocks, the entry is suppressed (no `SessionOutput` row emitted). The tool calls will appear separately as `tool.execution_start` rows.
+
+**SessionOutput mapping:**
+
+| Condition | `type` | `role` | `content` | `toolName` |
+|-----------|--------|--------|-----------|------------|
+| `data.content` is a non-empty string | `'message'` | `'assistant'` | `data.content` | `null` |
+| `data.content` is an array with `text` blocks | `'message'` | `'assistant'` | Text blocks joined with `'\n'` | `null` |
+| `data.content` is null, empty, or has no `text` blocks | (suppressed) | (none) | (none) | (none) |
+
 ---
 
-**Tool invocation**
+#### `tool.execution_start` entry
+
+| `data` field | Type | Description |
+|-------------|------|-------------|
+| `toolCallId` | string | Correlates this start event with its matching `tool.execution_complete` |
+| `toolName` | string | Name of the tool being invoked (e.g. `"bash"`, `"read_file"`) |
+| `arguments` | object \| string | Tool input arguments. Argus extracts a single string value if there is only one argument; otherwise JSON-stringifies the whole object |
 
 ```jsonl
 {"type":"tool.execution_start","id":"evt-0004","parentId":"evt-0003","timestamp":"2026-04-06T10:00:03.000Z","data":{"toolCallId":"tc-0001","toolName":"bash","arguments":{"command":"cat backend/src/middleware/auth.ts"}}}
@@ -252,17 +309,65 @@ Produces: `type: message`, `role: assistant`, `content: "Sure, I'll start by rea
 
 Produces: `type: tool_use`, `role: null`, `toolName: "bash"`, `content: "cat backend/src/middleware/auth.ts"`
 
+**SessionOutput mapping:**
+
+| `type` | `role` | `content` | `toolName` |
+|--------|--------|-----------|------------|
+| `'tool_use'` | `null` | Single argument value if one key; `JSON.stringify(data.arguments)` if multiple keys | `data.toolName` |
+
 ---
 
-**Tool result**
+#### `tool.execution_complete` entry
+
+| `data` field | Type | Description |
+|-------------|------|-------------|
+| `toolCallId` | string | Matches the `toolCallId` from the corresponding `tool.execution_start` |
+| `toolName` | string | Name of the tool that completed |
+| `model` | string \| undefined | Model ID — Argus uses this to populate `session.model` if not already set |
+| `success` | boolean | Whether the tool call succeeded |
+| `result.content` | string | Short summary of the tool output (Argus uses this as the display content) |
+| `result.detailedContent` | string \| undefined | Full tool output when it differs from `content` |
 
 ```jsonl
-{"type":"tool.execution_complete","id":"evt-0005","parentId":"evt-0004","timestamp":"2026-04-06T10:00:04.000Z","data":{"toolCallId":"tc-0001","model":"gpt-4o","success":true,"result":{"content":"export function authMiddleware(req, res, next) { ... }","detailedContent":"Full file contents..."}}}
+{"type":"tool.execution_complete","id":"evt-0005","parentId":"evt-0004","timestamp":"2026-04-06T10:00:04.000Z","data":{"toolCallId":"tc-0001","toolName":"bash","model":"gpt-4o","success":true,"result":{"content":"export function authMiddleware(req, res, next) { ... }","detailedContent":"Full file contents..."}}}
 ```
 
 Produces: `type: tool_result`, `role: null`, `toolName: "bash"`, `content: "export function authMiddleware(req, res, next) { ... }"`
 
-The `model` field (`"gpt-4o"`) on `tool.execution_complete` is also used by Argus to populate `session.model` if not already set.
+> `data.model` (`"gpt-4o"`) is also used by Argus to populate `session.model` if not already set.
+
+**SessionOutput mapping:**
+
+| `type` | `role` | `content` | `toolName` |
+|--------|--------|-----------|------------|
+| `'tool_result'` | `null` | `data.result.content` | `data.toolName` |
+
+---
+
+#### Discarded entries (bookkeeping)
+
+Events like `turn.start`, `interaction.complete`, and similar lifecycle signals carry only ID metadata and no human-readable content. They are silently discarded.
+
+```jsonl
+{"type":"turn.start","id":"evt-x","parentId":null,"timestamp":"2026-04-06T10:00:00.000Z","data":{"turnId":"10","interactionId":"f82b5d1a-6bf0-4380-a957-a3ab00cb3715"}}
+```
+
+Produces: nothing (discarded).
+
+**SessionOutput mapping:** No row is emitted.
+
+---
+
+### Comparison summary
+
+| Attribute | Claude Code | Copilot CLI |
+|-----------|------------|------------|
+| Event granularity | One line, multiple outputs possible | One line, one output |
+| Content location | `message.content` (string or block array) | `data.content`, `data.arguments`, `data.result` |
+| Tool identity | `block.name` in `tool_use` content block | `data.toolName` |
+| Model location | `message.model` on `assistant` entries | `data.model` on `tool.execution_complete` |
+| Session metadata | Encoded in file path and filename | Separate `workspace.yaml` file |
+| Extra metadata files | None | `workspace.yaml` (summary, timestamps, cwd) |
 
 ---
 
