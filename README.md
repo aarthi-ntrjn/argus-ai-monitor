@@ -65,7 +65,7 @@ Every session card has a prompt bar. Type a message and press **Enter** (or **Se
 
 ### Repository Management
 
-Click **Add Repository** and pick a folder. Argus will sniff out every git repo inside it and register them all in one go. Already-registered repos are skipped automatically.
+Click **Add Repository**, type or paste a root folder path (e.g. `C:\source` or `/home/user/projects`), then click **Scan &amp; Add**. Argus scans that folder recursively for git repos and registers all new ones in one go. Already-registered repos are skipped automatically.
 
 ## To Tackle
 
