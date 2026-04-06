@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRef, useState, useEffect } from 'react';
-import { getRepositories, getSessions, addRepository, removeRepository, pickFolder, scanFolder, queryClient } from '../services/api';
+import { getRepositories, getSessions, addRepository, removeRepository, scanFolder, queryClient } from '../services/api';
 import type { Repository, Session } from '../types';
 import { useSettings } from '../hooks/useSettings';
 import { useOnboarding } from '../hooks/useOnboarding';
@@ -24,6 +24,8 @@ export default function DashboardPage() {
   const [addError, setAddError] = useState<string | null>(null);
   const [addInfo, setAddInfo] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [showFolderInput, setShowFolderInput] = useState(false);
+  const [folderInputPath, setFolderInputPath] = useState('');
   const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
   const [skipConfirm, setSkipConfirm] = useState(() => localStorage.getItem(SKIP_REMOVE_CONFIRM_KEY) === 'true');
@@ -88,18 +90,26 @@ export default function DashboardPage() {
     return repoSessions.some(s => ACTIVE_STATUSES.has(s.status));
   });
 
-  const handleAddRepo = async () => {
+  const handleAddRepo = () => {
+    setAddError(null);
+    setAddInfo(null);
+    setFolderInputPath('');
+    setShowFolderInput(true);
+  };
+
+  const handleFolderSubmit = async () => {
+    const folderPath = folderInputPath.trim();
+    if (!folderPath) return;
+    setShowFolderInput(false);
     setAddError(null);
     setAddInfo(null);
     setAdding(true);
     try {
-      const folderPath = await pickFolder();
-      if (!folderPath) return;
       const found = await scanFolder(folderPath);
       const registeredPaths = new Set(repos.map(r => r.path));
       const newRepos = found.filter(r => !registeredPaths.has(r.path));
       if (newRepos.length === 0) {
-        showInfo('No new git repositories found in the selected folder.');
+        showInfo('No new git repositories found in the specified folder.');
         return;
       }
       let added = 0;
@@ -313,6 +323,34 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {showFolderInput && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-lg font-semibold mb-1">Add Repositories</h2>
+            <p className="text-gray-500 text-sm mb-4">Enter a root folder path to scan for git repositories.</p>
+            <input
+              autoFocus
+              type="text"
+              value={folderInputPath}
+              onChange={e => setFolderInputPath(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleFolderSubmit(); if (e.key === 'Escape') setShowFolderInput(false); }}
+              placeholder="e.g. C:\source or /home/user/projects"
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setShowFolderInput(false)} className="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+              <button
+                onClick={handleFolderSubmit}
+                disabled={!folderInputPath.trim()}
+                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-40"
+              >
+                Scan &amp; Add
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {removeConfirmId && (        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-sm">
