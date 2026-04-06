@@ -108,6 +108,25 @@
 
 ---
 
+---
+
+## Phase 11: Doc Review
+
+**Goal**: Every document in `docs/` and `README.md` has been read and confirmed accurate, complete, and consistent.
+
+- [ ] T032 Review `README.md` — verify quickstart steps work, all feature sections reflect current UI, links to docs/ are correct
+- [ ] T033 Review `docs/README-CONTRIBUTORS.md` — verify architecture description, dev setup steps, project structure, API reference table, security model, and CI section are all current
+- [ ] T034 Review `docs/README-ARCH.md` — verify the Mermaid diagram and design decisions match the current implementation
+- [ ] T035 Review `docs/README-TESTS.md` — verify all test commands are accurate and both E2E tiers are documented correctly
+- [ ] T036 Review `docs/README-MANUAL-TESTS.md` — verify manual test scenarios reflect current features and UI
+- [ ] T037 Review `docs/README-LEARNINGS.md` — verify all bug learning entries are accurate and no entries reference outdated code paths
+- [ ] T038 Review `docs/README-CLI-COMPARISON.md` — verify stream schemas, example messages, state diagrams, and data availability tables match current implementation
+- [ ] T039 Review `docs/README-GTM.md` — review and update go-to-market decisions and OpenClaw comparison table
+- [ ] T040 Review `docs/README-DEVLOG.md` — verify day-by-day log is complete and retrospective sections are accurate
+- [ ] T041 Commit any corrections found during review
+
+---
+
 ## Dependencies
 
 ```
