@@ -9,8 +9,8 @@
 
 Goal: Add the `useIsMobile` hook. No visual changes yet.
 
-- [ ] T001 [P1] [US1] Write failing tests for `useIsMobile` hook — verify it returns `true` when matchMedia matches `(max-width: 767px)` and `false` otherwise (`frontend/src/hooks/useIsMobile.test.ts`)
-- [ ] T002 [P1] [US1] Implement `useIsMobile` hook using `window.matchMedia('(max-width: 767px)')` with event listener cleanup (`frontend/src/hooks/useIsMobile.ts`)
+- [x] T001 [P1] [US1] Write failing tests for `useIsMobile` hook — verify it returns `true` when matchMedia matches `(max-width: 767px)` and `false` otherwise (`frontend/src/hooks/useIsMobile.test.ts`)
+- [x] T002 [P1] [US1] Implement `useIsMobile` hook using `window.matchMedia('(max-width: 767px)')` with event listener cleanup (`frontend/src/hooks/useIsMobile.ts`)
 
 ---
 
@@ -18,8 +18,8 @@ Goal: Add the `useIsMobile` hook. No visual changes yet.
 
 Goal: Build and test the bottom tab bar component in isolation before wiring it into pages.
 
-- [ ] T003 [P2] [US1] Write failing tests for `MobileNav` — renders "Sessions" and "Tasks" tabs, highlights active tab, calls `onTabChange` on tap (`frontend/src/components/MobileNav/MobileNav.test.tsx`)
-- [ ] T004 [P2] [US1] Implement `MobileNav` component — fixed bottom bar, two tabs with icons, `md:hidden`, accessible labels (`frontend/src/components/MobileNav/MobileNav.tsx`)
+- [x] T003 [P2] [US1] Write failing tests for `MobileNav` — renders "Sessions" and "Tasks" tabs, highlights active tab, calls `onTabChange` on tap (`frontend/src/components/MobileNav/MobileNav.test.tsx`)
+- [x] T004 [P2] [US1] Implement `MobileNav` component — fixed bottom bar, two tabs with icons, `md:hidden`, accessible labels (`frontend/src/components/MobileNav/MobileNav.tsx`)
 
 ---
 
@@ -27,11 +27,11 @@ Goal: Build and test the bottom tab bar component in isolation before wiring it 
 
 Goal: DashboardPage shows single-column sessions on mobile, with MobileNav, and session cards navigate to detail page on mobile.
 
-- [ ] T005 [P3] [US1] Write failing tests for DashboardPage mobile layout — at 390px viewport, sessions tab shows session list, tasks tab shows TodoPanel, no OutputPane rendered, session card click navigates to `/sessions/:id` (`frontend/src/__tests__/DashboardPage.mobile.test.tsx`)
-- [ ] T006 [P3] [US1] Add `activeMobileTab` state and `useIsMobile` to `DashboardPage`; on mobile pass `onSelect={id => navigate('/sessions/' + id)}` to SessionCards and hide the inline OutputPane (`frontend/src/pages/DashboardPage.tsx`)
-- [ ] T007 [P3] [US1] Add `MobileNav` to DashboardPage bottom; add `pb-16 md:pb-0` to main scrollable content area to prevent overlap with fixed tab bar (`frontend/src/pages/DashboardPage.tsx`)
-- [ ] T008 [P] [US1] Add `md:hidden` guard so right-panel (OutputPane + TodoPanel desktop column) is hidden below 768px (`frontend/src/pages/DashboardPage.tsx`)
-- [ ] T009 [P] [US2] Render `<TodoPanel />` in the Tasks tab content area on mobile (below the session list, shown only when `activeMobileTab === 'tasks'`) (`frontend/src/pages/DashboardPage.tsx`)
+- [x] T005 [P3] [US1] Write failing tests for DashboardPage mobile layout — at 390px viewport, sessions tab shows session list, tasks tab shows TodoPanel, no OutputPane rendered, session card click navigates to `/sessions/:id` (`frontend/src/__tests__/DashboardPage.mobile.test.tsx`)
+- [x] T006 [P3] [US1] Add `activeMobileTab` state and `useIsMobile` to `DashboardPage`; on mobile pass `onSelect={id => navigate('/sessions/' + id)}` to SessionCards and hide the inline OutputPane (`frontend/src/pages/DashboardPage.tsx`)
+- [x] T007 [P3] [US1] Add `MobileNav` to DashboardPage bottom; add `pb-16 md:pb-0` to main scrollable content area to prevent overlap with fixed tab bar (`frontend/src/pages/DashboardPage.tsx`)
+- [x] T008 [P] [US1] Add `md:hidden` guard so right-panel (OutputPane + TodoPanel desktop column) is hidden below 768px (`frontend/src/pages/DashboardPage.tsx`)
+- [x] T009 [P] [US2] Render `<TodoPanel />` in the Tasks tab content area on mobile (below the session list, shown only when `activeMobileTab === 'tasks'`) (`frontend/src/pages/DashboardPage.tsx`)
 
 ---
 
