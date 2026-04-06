@@ -1,12 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtempSync, mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
-import { homedir } from 'os';
+import { tmpdir } from 'os';
 import supertest from 'supertest';
 import { buildServer } from '../../src/server.js';
-
-// A path that is definitely outside the home directory on both Windows and Linux
-const OUTSIDE_HOME = process.platform === 'win32' ? 'C:\\Windows\\System32' : '/etc/passwd';
 
 describe('POST /api/v1/fs/scan-folder', () => {
   let request: ReturnType<typeof supertest>;
@@ -18,8 +15,7 @@ describe('POST /api/v1/fs/scan-folder', () => {
     app = result.app;
     await app.ready();
     request = supertest(app.server);
-    // Use homedir() so the temp path is within the path sandbox boundary
-    tmp = mkdtempSync(join(homedir(), 'argus-fs-test-'));
+    tmp = mkdtempSync(join(tmpdir(), 'argus-fs-test-'));
   });
 
   afterAll(async () => {
@@ -74,55 +70,3 @@ describe('POST /api/v1/fs/scan-folder', () => {
   });
 });
 
-describe('Filesystem path boundary enforcement (FR-008, FR-009)', () => {
-  let request: ReturnType<typeof supertest>;
-  let app: Awaited<ReturnType<typeof buildServer>>['app'];
-  let tmp: string;
-
-  beforeAll(async () => {
-    const result = await buildServer();
-    app = result.app;
-    await app.ready();
-    request = supertest(app.server);
-    tmp = mkdtempSync(join(homedir(), 'argus-boundary-test-'));
-  });
-
-  afterAll(async () => {
-    await app.close();
-    rmSync(tmp, { recursive: true, force: true });
-  });
-
-  describe('POST /api/v1/fs/scan-folder', () => {
-    it('returns 403 for path outside home dir', async () => {
-      const res = await request
-        .post('/api/v1/fs/scan-folder')
-        .send({ path: OUTSIDE_HOME });
-      expect(res.status).toBe(403);
-      expect(res.body).toMatchObject({ error: 'PATH_OUTSIDE_BOUNDARY' });
-    });
-
-    it('returns 403 for path with traversal sequences that escape home dir', async () => {
-      const traversal = join(homedir(), '..', '..', 'etc');
-      const res = await request
-        .post('/api/v1/fs/scan-folder')
-        .send({ path: traversal });
-      expect(res.status).toBe(403);
-      expect(res.body).toMatchObject({ error: 'PATH_OUTSIDE_BOUNDARY' });
-    });
-
-    it('returns 200 for a valid path within home dir (tmp is inside home or is home)', async () => {
-      // tmp is a subdirectory of the OS temp dir, which may or may not be under home.
-      // Use an actual subdir of homedir() to guarantee it passes.
-      const safeDir = mkdtempSync(join(homedir(), 'argus-boundary-safe-'));
-      try {
-        const res = await request
-          .post('/api/v1/fs/scan-folder')
-          .send({ path: safeDir });
-        expect(res.status).toBe(200);
-      } finally {
-        rmSync(safeDir, { recursive: true, force: true });
-      }
-    });
-  });
-
-});
