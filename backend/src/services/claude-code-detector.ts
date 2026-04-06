@@ -269,6 +269,20 @@ export class ClaudeCodeDetector {
       if (outputs.length > 0) {
         this.outputStore.insertOutput(sessionId, outputs);
       }
+
+      // Update summary with the most recent user prompt in this batch
+      const lastUserMsg = [...outputs].reverse().find(o => o.role === 'user' && o.type === 'message');
+      if (lastUserMsg?.content) {
+        const existing = getSession(sessionId);
+        if (existing) {
+          const summary = lastUserMsg.content.slice(0, 120);
+          if (existing.summary !== summary) {
+            const updated = { ...existing, summary };
+            upsertSession(updated);
+            broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: updated as unknown as Record<string, unknown> });
+          }
+        }
+      }
     } catch { /* ignore */ }
   }
 
