@@ -245,13 +245,13 @@ test.describe('Todo Panel', () => {
       await mockApis(page, todos);
       await page.goto('/');
 
-      // Timestamps shown by default (look for "just now" or similar)
-      await expect(page.locator('text=/just now|\\dm ago|\\dh ago|\\dd ago/')).toBeVisible();
+      // Timestamps shown by default (look for "now", "2m", "3h", "1d" etc.)
+      await expect(page.locator('text=/\\bnow\\b|\\d+m\\b|\\d+h\\b|\\d+d\\b/')).toBeVisible();
 
       // Click "Hide timestamps"
       await page.getByTitle('Hide timestamps').click();
 
-      await expect(page.locator('text=/just now|\\dm ago|\\dh ago|\\dd ago/')).not.toBeVisible();
+      await expect(page.locator('text=/\\bnow\\b|\\d+m\\b|\\d+h\\b|\\d+d\\b/')).not.toBeVisible();
     });
 
     test('wrap-text toggle changes textarea overflow style', async ({ page }) => {

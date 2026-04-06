@@ -1,6 +1,125 @@
 import { describe, it, expect } from 'vitest';
 import { parseJsonlLine, parseModelFromEvent } from '../../src/services/events-parser.js';
 
+// T008/T009 — 019 US2: mixed content-block array and multi-text-block joining
+describe('EventsParser 019 US2 — content-block array edge cases', () => {
+  it('T008: should skip non-text blocks in a mixed content-block array', () => {
+    const line = JSON.stringify({
+      type: 'assistant.message',
+      id: 'evt-c',
+      parentId: null,
+      timestamp: '2024-01-01T00:00:00.000Z',
+      data: {
+        messageId: 'msg-2',
+        content: [
+          { type: 'text', text: 'Let me check.' },
+          { type: 'tool_use', id: 'tc-1', name: 'bash', input: { command: 'ls' } },
+        ],
+        toolRequests: [],
+      },
+    });
+    const result = parseJsonlLine(line, 'session-1', 1);
+    expect(result?.content).toBe('Let me check.');
+    expect(result?.content).not.toContain('tool_use');
+    expect(result?.content).not.toContain('bash');
+  });
+
+  it('T009: should join multiple text blocks with newline', () => {
+    const line = JSON.stringify({
+      type: 'assistant.message',
+      id: 'evt-d',
+      parentId: null,
+      timestamp: '2024-01-01T00:00:00.000Z',
+      data: {
+        messageId: 'msg-3',
+        content: [
+          { type: 'text', text: 'Part 1.' },
+          { type: 'text', text: 'Part 2.' },
+        ],
+        toolRequests: [],
+      },
+    });
+    const result = parseJsonlLine(line, 'session-1', 2);
+    expect(result?.content).toBe('Part 1.\nPart 2.');
+  });
+});
+
+// T001/T002/T003 — 019 regression tests: blank MSG rows for unknown event types and array content
+describe('EventsParser 019 — blank MSG row fix', () => {
+  it('T001b: should suppress assistant.message with null data.content (tool-call-only turn)', () => {
+    const line = JSON.stringify({
+      type: 'assistant.message',
+      id: 'evt-y',
+      parentId: null,
+      timestamp: '2024-01-01T00:00:00.000Z',
+      data: { messageId: 'msg-x', content: null, toolRequests: [{ toolCallId: 'tc-1', toolName: 'bash' }] },
+    });
+    const result = parseJsonlLine(line, 'session-1', 1);
+    expect(result).toBeNull();
+  });
+
+  it('T001c: should suppress assistant.message with empty string data.content', () => {
+    const line = JSON.stringify({
+      type: 'assistant.message',
+      id: 'evt-z',
+      parentId: null,
+      timestamp: '2024-01-01T00:00:00.000Z',
+      data: { messageId: 'msg-y', content: '', toolRequests: [] },
+    });
+    const result = parseJsonlLine(line, 'session-1', 2);
+    expect(result).toBeNull();
+  });
+
+  it('T001: should suppress unrecognised copilot event types (e.g. turn/interaction bookkeeping)', () => {
+    const line = JSON.stringify({
+      type: 'turn.start',
+      id: 'evt-x',
+      parentId: null,
+      timestamp: '2024-01-01T00:00:00.000Z',
+      data: { turnId: '10', interactionId: 'f82b5d1a-6bf0-4380-a957-a3ab00cb3715' },
+    });
+    const result = parseJsonlLine(line, 'session-1', 1);
+    // Lifecycle/bookkeeping events with no human-readable content must be suppressed
+    expect(result).toBeNull();
+  });
+
+  it('T002: should extract text from assistant.message with data.content as content-block array', () => {
+    const line = JSON.stringify({
+      type: 'assistant.message',
+      id: 'evt-a',
+      parentId: null,
+      timestamp: '2024-01-01T00:00:00.000Z',
+      data: {
+        messageId: 'msg-1',
+        content: [{ type: 'text', text: 'Here is my answer.' }],
+        toolRequests: [],
+      },
+    });
+    const result = parseJsonlLine(line, 'session-1', 2);
+    expect(result).not.toBeNull();
+    expect(result?.role).toBe('assistant');
+    expect(result?.content).toBe('Here is my answer.');
+  });
+
+  it('T003: should extract text from user.message with data.content as content-block array', () => {
+    const line = JSON.stringify({
+      type: 'user.message',
+      id: 'evt-b',
+      parentId: null,
+      timestamp: '2024-01-01T00:00:00.000Z',
+      data: {
+        content: [{ type: 'text', text: 'Fix the bug.' }],
+        transformedContent: '',
+        attachments: [],
+      },
+    });
+    const result = parseJsonlLine(line, 'session-1', 3);
+    expect(result).not.toBeNull();
+    expect(result?.role).toBe('user');
+    expect(result?.content).toBe('Fix the bug.');
+  });
+});
+
 describe('EventsParser', () => {
   it('maps assistant.message to message type', () => {
     const line = JSON.stringify({
@@ -62,14 +181,14 @@ describe('EventsParser', () => {
     expect(result?.role).toBe('user');
   });
 
-  it('maps unknown types to message', () => {
+  it('suppresses unknown event types', () => {
     const line = JSON.stringify({
       type: 'unknown.event',
       timestamp: '2024-01-01T00:00:00.000Z',
       content: 'Unknown content',
     });
     const result = parseJsonlLine(line, 'session-1', 6);
-    expect(result?.type).toBe('message');
+    expect(result).toBeNull();
   });
 
   it('returns null for invalid JSON', () => {
@@ -309,14 +428,14 @@ describe('EventsParser', () => {
     expect(result?.role).toBe('user');
   });
 
-  it('maps unknown types to message', () => {
+  it('suppresses unknown event types', () => {
     const line = JSON.stringify({
       type: 'unknown.event',
       timestamp: '2024-01-01T00:00:00.000Z',
       content: 'Unknown content',
     });
     const result = parseJsonlLine(line, 'session-1', 6);
-    expect(result?.type).toBe('message');
+    expect(result).toBeNull();
   });
 
   it('returns null for invalid JSON', () => {

@@ -66,7 +66,7 @@ One JSONL line can produce multiple `SessionOutput` rows when an assistant entry
   "type": "user.message" | "assistant.message" | "tool.execution_start" | "tool.execution_complete" | "session.start",
   "timestamp": "2025-01-01T12:00:00.000Z",
   "data": {
-    "content": "string",
+    "content": "string | ContentBlock[]",
     "model": "gpt-4o",
     "toolName": "string",
     "arguments": "object | string",
@@ -244,11 +244,14 @@ Both parsers produce `SessionOutput` records with the same fields. The badge sho
 
 | Event type | Parsed as | Badge | Content source |
 |------------|-----------|-------|----------------|
-| `user.message` | `message / user` | YOU | `data.content` |
-| `assistant.message` | `message / assistant` | AI | `data.content` |
+| `user.message` | `message / user` | YOU | `data.content` (string or text content-block array) |
+| `assistant.message` | `message / assistant` | AI | `data.content` (string or text content-block array) |
 | `tool.execution_start` | `tool_use` | TOOL | `data.arguments` (stringified if object) |
 | `tool.execution_complete` | `tool_result` | RESULT | `data.result.content` or `data.result.detailedContent` |
 | `session.start` | `status_change` | STATUS | (no content body) |
+| *(any other type)* | Discarded | (none) | — |
+
+`data.content` may be either a plain string or an array of typed content blocks (`{type: "text", text: "..."}` etc.). When it is an array, only `text`-typed blocks are joined (with `\n`); non-text blocks are skipped. Unrecognised event types (e.g. `turn.start`, interaction bookkeeping) are silently discarded — they carry only ID metadata and no human-readable content.
 
 ### Model extraction
 

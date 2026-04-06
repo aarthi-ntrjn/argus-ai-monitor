@@ -34,6 +34,7 @@ Each card is a live snapshot of a session:
 - **Model** in small monospace text when known (e.g. `claude-opus-4-5`)
 - **PID** when known, or **session ID prefix** (e.g. `ID: abc12345`) for Claude Code sessions without a detected PID
 - **Elapsed time** and a link to the full session detail page
+- **Current prompt**: the most recent question you asked, shown below the badges and updated live as the conversation progresses (both Claude Code and Copilot CLI)
 - **Last output preview**: up to 2 lines of the most recent tool result or message
 
 ### Session Output

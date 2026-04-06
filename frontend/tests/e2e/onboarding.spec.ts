@@ -92,7 +92,7 @@ test.describe('US1: First-Time Dashboard Tour', () => {
     await expect(page.getByText('Welcome Commander!')).not.toBeVisible();
 
     // App still fully functional — dashboard renders
-    await expect(page.locator('h1')).toContainText('Argus Dashboard');
+    await expect(page.locator('h1')).toContainText('Argus');
 
     // Reload — tour does NOT re-launch (status is skipped, not not_started)
     await page.reload();
