@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useTodos, useCreateTodo, useUpdateTodoText, useToggleTodo, useDeleteTodo } from '../../hooks/useTodos';
 
 type RowId = string;
@@ -50,6 +50,11 @@ export default function TodoPanel() {
   const [showDone, setShowDone] = useState(true);
   const [showTimestamps, setShowTimestamps] = useState(true);
   const [wrapText, setWrapText] = useState(false);
+
+  const reversedTodos = useMemo(
+    () => [...todos].reverse().filter(todo => showDone || !todo.done),
+    [todos, showDone]
+  );
 
   // Track IDs submitted via Enter so handleBlur doesn't double-save.
   const savingIds = useRef<Set<string>>(new Set());
@@ -195,9 +200,7 @@ export default function TodoPanel() {
         )}
         {!isLoading && !isError && todos.length > 0 && (
           <ul className="divide-y divide-gray-50 py-1">
-            {(() => {
-              const reversedTodos = [...todos].reverse().filter(todo => showDone || !todo.done);
-              return reversedTodos.map((todo, index) => {
+            {reversedTodos.map((todo, index) => {
                 const done = todo.done;
                 return (
                   <li key={todo.id} className="group flex items-center gap-2 px-4 py-1">
@@ -253,8 +256,7 @@ export default function TodoPanel() {
                     </div>
                   </li>
                 );
-              });
-            })()}
+            })}
           </ul>
         )}
       </div>

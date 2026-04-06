@@ -122,6 +122,8 @@ describe('ClaudeCodeDetector — model extraction from JSONL', () => {
     const changeHandler = changeCallbacks.get(jsonlPath);
     expect(changeHandler, 'chokidar change handler should be registered').toBeDefined();
     changeHandler!();
+    // Wait for the async readNewJsonlLines to complete
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     // After incremental read: model must now be set
     const session = dbModule.getSession(sessionId);
@@ -149,6 +151,8 @@ describe('ClaudeCodeDetector — model extraction from JSONL', () => {
 
     const changeHandler = changeCallbacks.get(jsonlPath);
     changeHandler!();
+    // Wait for the async readNewJsonlLines to complete
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     // Model should NOT be overwritten — first model wins
     expect(dbModule.getSession(sessionId)?.model).toBe('claude-haiku-4-5');

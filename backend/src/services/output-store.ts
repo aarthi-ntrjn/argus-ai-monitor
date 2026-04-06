@@ -13,10 +13,12 @@ export class OutputStore {
   insertOutput(sessionId: string, outputs: SessionOutput[]): void {
     for (const output of outputs) {
       dbInsertOutput(output);
+    }
+    if (outputs.length > 0) {
       broadcast({
-        type: 'session.output',
+        type: 'session.output.batch',
         timestamp: new Date().toISOString(),
-        data: { sessionId, output: output as unknown as Record<string, unknown> },
+        data: { sessionId, outputs: outputs as unknown as Record<string, unknown>[] },
       });
     }
   }
@@ -34,17 +36,23 @@ export class OutputStore {
   pruneIfNeeded(sessionId: string, maxMb: number): void {
     const maxBytes = maxMb * 1024 * 1024;
     const db = getDb();
+    const totalRow = db
+      .prepare('SELECT SUM(length(content)) as total FROM session_output WHERE session_id = ?')
+      .get(sessionId) as { total: number | null };
+    const total = totalRow?.total ?? 0;
+    if (total <= maxBytes) return;
+
     const rows = db
       .prepare('SELECT id, length(content) as size FROM session_output WHERE session_id = ? ORDER BY sequence_number ASC')
       .all(sessionId) as Array<{ id: string; size: number }>;
 
-    let totalSize = rows.reduce((sum, r) => sum + r.size, 0);
+    let remaining = total;
     const toDelete: string[] = [];
 
     for (const row of rows) {
-      if (totalSize <= maxBytes) break;
+      if (remaining <= maxBytes) break;
       toDelete.push(row.id);
-      totalSize -= row.size;
+      remaining -= row.size;
     }
 
     if (toDelete.length > 0) {

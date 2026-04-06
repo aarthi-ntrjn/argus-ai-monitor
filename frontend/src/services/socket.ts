@@ -84,15 +84,39 @@ export function initSocketHandlers(qc: QueryClient): void {
   });
   onEvent('session.output', (data) => {
     const { sessionId, output } = data as { sessionId: string; output: SessionOutput };
+    // Update full output pane cache
     qc.setQueryData<{ items: SessionOutput[]; nextBefore: string | null; total: number }>(
       ['session-output', sessionId],
       (old) => {
         if (!old) return old;
-        return {
-          ...old,
-          items: [...old.items, output],
-          total: old.total + 1,
-        };
+        return { ...old, items: [...old.items, output], total: old.total + 1 };
+      }
+    );
+    // Update SessionCard preview cache (last 10) — keeps per-card polling unnecessary
+    qc.setQueryData<{ items: SessionOutput[]; nextBefore: string | null; total: number }>(
+      ['session-output-last', sessionId],
+      (old) => {
+        if (!old) return old;
+        const items = [...old.items, output].slice(-10);
+        return { ...old, items, total: old.total + 1 };
+      }
+    );
+  });
+  onEvent('session.output.batch', (data) => {
+    const { sessionId, outputs } = data as { sessionId: string; outputs: SessionOutput[] };
+    qc.setQueryData<{ items: SessionOutput[]; nextBefore: string | null; total: number }>(
+      ['session-output', sessionId],
+      (old) => {
+        if (!old) return old;
+        return { ...old, items: [...old.items, ...outputs], total: old.total + outputs.length };
+      }
+    );
+    qc.setQueryData<{ items: SessionOutput[]; nextBefore: string | null; total: number }>(
+      ['session-output-last', sessionId],
+      (old) => {
+        if (!old) return old;
+        const items = [...old.items, ...outputs].slice(-10);
+        return { ...old, items, total: old.total + outputs.length };
       }
     );
   });

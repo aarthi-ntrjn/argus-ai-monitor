@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { getSessions, getRepositories } from '../services/api';
 import type { Session } from '../types';
 import { useSettings } from '../hooks/useSettings';
@@ -62,17 +62,25 @@ export default function DashboardPage() {
   const { data: repos = [], isLoading: reposLoading } = useQuery({
     queryKey: ['repositories'],
     queryFn: getRepositories,
-    refetchInterval: 5000,
   });
 
   const { data: sessions = [], isLoading: sessionsLoading } = useQuery({
     queryKey: ['sessions'],
     queryFn: () => getSessions(),
-    refetchInterval: 5000,
   });
 
-  const reposWithSessions: RepoWithSessions[] = repos.map((repo) => {
-    const repoSessions = sessions.filter((s) => s.repositoryId === repo.id);
+  const sessionsByRepo = useMemo(() => {
+    const map = new Map<string, Session[]>();
+    for (const s of sessions) {
+      const list = map.get(s.repositoryId) ?? [];
+      list.push(s);
+      map.set(s.repositoryId, list);
+    }
+    return map;
+  }, [sessions]);
+
+  const reposWithSessions = useMemo<RepoWithSessions[]>(() => repos.map((repo) => {
+    const repoSessions = sessionsByRepo.get(repo.id) ?? [];
     const visibleSessions = repoSessions.filter(s => {
       if (settings.hideEndedSessions && ENDED_STATUSES.has(s.status)) return false;
       if (settings.hideInactiveSessions && isInactive(s)) return false;
@@ -81,9 +89,8 @@ export default function DashboardPage() {
     return { ...repo, sessions: visibleSessions };
   }).filter((repo) => {
     if (!settings.hideReposWithNoActiveSessions) return true;
-    const repoSessions = sessions.filter(s => s.repositoryId === repo.id);
-    return repoSessions.some(s => ACTIVE_STATUSES.has(s.status));
-  });
+    return (sessionsByRepo.get(repo.id) ?? []).some(s => ACTIVE_STATUSES.has(s.status));
+  }), [repos, sessionsByRepo, settings]);
 
   if (reposLoading || sessionsLoading) {
     return (

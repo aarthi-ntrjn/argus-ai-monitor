@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, openSync, readSync, closeSync, statSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'fs';
+import { open as fsOpen, stat as fsStat } from 'fs/promises';
 import { join, dirname, normalize } from 'path';
 import { homedir } from 'os';
 import psList from 'ps-list';
@@ -143,7 +144,7 @@ export class ClaudeCodeDetector {
         if (!mostRecent) continue;
         if (Date.now() - mostRecent.mtime.getTime() > ACTIVE_JSONL_THRESHOLD_MS) continue;
 
-        this.activateFoundSession(mostRecent.id, repo, claudePid);
+        await this.activateFoundSession(mostRecent.id, repo, claudePid);
       }
     } catch { /* ignore */ }
   }
@@ -181,14 +182,14 @@ export class ClaudeCodeDetector {
     upsertSession(session);
 
     // Start JSONL watcher if not already watching
-    this.watchJsonlFile(session_id, repo.path);
+    await this.watchJsonlFile(session_id, repo.path);
   }
 
-  private activateFoundSession(sessionId: string, repo: Repository, claudePid: number): void {
+  private async activateFoundSession(sessionId: string, repo: Repository, claudePid: number): Promise<void> {
     const now = new Date().toISOString();
     const existingSession = getSession(sessionId);
     if (existingSession?.status === 'active') {
-      this.watchJsonlFile(sessionId, repo.path);
+      await this.watchJsonlFile(sessionId, repo.path);
       return;
     }
     const base: Session = existingSession ?? {
@@ -205,10 +206,10 @@ export class ClaudeCodeDetector {
       model: null,
     };
     upsertSession({ ...base, status: 'active', endedAt: null, lastActivityAt: now, pid: claudePid });
-    this.watchJsonlFile(sessionId, repo.path);
+    await this.watchJsonlFile(sessionId, repo.path);
   }
 
-  private watchJsonlFile(sessionId: string, repoPath: string): void {
+  private async watchJsonlFile(sessionId: string, repoPath: string): Promise<void> {
     if (this.watchers.has(sessionId)) return;
     const jsonlPath = join(
       homedir(), '.claude', 'projects',
@@ -220,23 +221,23 @@ export class ClaudeCodeDetector {
     // Load all existing lines
     this.filePositions.set(sessionId, 0);
     this.sequenceCounters.set(sessionId, 0);
-    this.readNewJsonlLines(sessionId, jsonlPath);
+    await this.readNewJsonlLines(sessionId, jsonlPath);
 
     const watcher = chokidar.watch(jsonlPath, { persistent: false, usePolling: false });
-    watcher.on('change', () => this.readNewJsonlLines(sessionId, jsonlPath));
+    watcher.on('change', () => { this.readNewJsonlLines(sessionId, jsonlPath).catch(() => {}); });
     this.watchers.set(sessionId, watcher);
   }
 
-  private readNewJsonlLines(sessionId: string, filePath: string): void {
+  private async readNewJsonlLines(sessionId: string, filePath: string): Promise<void> {
     try {
-      const currentSize = statSync(filePath).size;
+      const { size: currentSize } = await fsStat(filePath);
       const lastPos = this.filePositions.get(sessionId) ?? 0;
       if (currentSize <= lastPos) return;
 
-      const fd = openSync(filePath, 'r');
+      const fh = await fsOpen(filePath, 'r');
       const buffer = Buffer.alloc(currentSize - lastPos);
-      readSync(fd, buffer, 0, buffer.length, lastPos);
-      closeSync(fd);
+      await fh.read(buffer, 0, buffer.length, lastPos);
+      await fh.close();
       this.filePositions.set(sessionId, currentSize);
 
       const lines = buffer.toString('utf-8').split('\n').filter(l => l.trim());
@@ -270,10 +271,19 @@ export class ClaudeCodeDetector {
     } catch { /* ignore */ }
   }
 
+  closeSessionWatcher(sessionId: string): void {
+    this.watchers.get(sessionId)?.close().catch(() => { /* ignore */ });
+    this.watchers.delete(sessionId);
+    this.filePositions.delete(sessionId);
+    this.sequenceCounters.delete(sessionId);
+  }
+
   stopWatchers(): void {
     for (const watcher of this.watchers.values()) {
       watcher.close().catch(() => { /* ignore */ });
     }
     this.watchers.clear();
+    this.filePositions.clear();
+    this.sequenceCounters.clear();
   }
 }

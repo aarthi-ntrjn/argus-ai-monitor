@@ -15,7 +15,6 @@ export default function OutputPane({ session, onClose }: Props) {
   const { data } = useQuery({
     queryKey: ['session-output', session.id],
     queryFn: () => getSessionOutput(session.id, { limit: 100 }),
-    refetchInterval: 2000,
   });
 
   useEffect(() => {

@@ -1,5 +1,6 @@
 import { EventEmitter } from 'events';
-import { existsSync, statSync } from 'fs';
+import { existsSync } from 'fs';
+import { promises as fsPromises } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 import psList from 'ps-list';
@@ -85,8 +86,8 @@ export class SessionMonitor extends EventEmitter {
               `${session.id}.jsonl`
             );
             try {
-              const mtime = statSync(jsonlPath).mtime.getTime();
-              shouldEnd = Date.now() - mtime > ACTIVE_JSONL_THRESHOLD_MS;
+              const stat = await fsPromises.stat(jsonlPath);
+              shouldEnd = Date.now() - stat.mtime.getTime() > ACTIVE_JSONL_THRESHOLD_MS;
             } catch {
               shouldEnd = true; // file missing
             }
@@ -94,6 +95,7 @@ export class SessionMonitor extends EventEmitter {
         }
         if (shouldEnd) {
           updateSessionStatus(session.id, 'ended', now);
+          this.claudeDetector.closeSessionWatcher(session.id);
           const endedSession: Session = { ...session, status: 'ended', endedAt: now };
           this.emit('session.ended', endedSession);
         }
@@ -114,10 +116,10 @@ export class SessionMonitor extends EventEmitter {
     return this.claudeDetector;
   }
 
-  private refreshRepositoryBranches(): void {
+  private async refreshRepositoryBranches(): Promise<void> {
     try {
       for (const repo of getRepositories()) {
-        const branch = getCurrentBranch(repo.path);
+        const branch = await getCurrentBranch(repo.path);
         if (branch !== repo.branch) {
           updateRepositoryBranch(repo.id, branch);
         }
@@ -128,7 +130,7 @@ export class SessionMonitor extends EventEmitter {
   private async runScan(): Promise<void> {
     try {
       await this.scanner.scan();
-      this.refreshRepositoryBranches();
+      await this.refreshRepositoryBranches();
       await this.reconcileClaudeCodeSessions();
       const sessions = await this.cliDetector.scan();
       const currentScanIds = new Set<string>(sessions.map((s) => s.id));

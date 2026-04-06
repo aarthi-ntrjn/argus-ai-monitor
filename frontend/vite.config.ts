@@ -12,5 +12,12 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          if (id.includes('react-joyride') || id.includes('react-floater')) return 'vendor-tour';
+        },
+      },
+    },
   },
 });

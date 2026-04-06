@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ExternalLink, Moon, Play } from 'lucide-react';
@@ -43,13 +44,11 @@ function claudeShortId(id: string): string {
   return id.match(/[0-9a-f]{8}-[0-9a-f]{4}/)?.[0].slice(0, 8) ?? id.slice(0, 8);
 }
 
-export default function SessionCard({ session, selected, onSelect }: Props) {
-  const isActive = !isInactive(session);
+function SessionCard({ session, selected, onSelect }: Props) {
   const { data: lastOutput } = useQuery({
     queryKey: ['session-output-last', session.id],
     queryFn: () => getSessionOutput(session.id, { limit: 10 }),
-    staleTime: 2000,
-    refetchInterval: isActive ? 3000 : false,
+    staleTime: Infinity,
   });
 
   const items = lastOutput?.items ?? [];
@@ -124,3 +123,5 @@ export default function SessionCard({ session, selected, onSelect }: Props) {
 }
 
 
+
+export default memo(SessionCard);

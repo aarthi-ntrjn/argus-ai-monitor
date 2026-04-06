@@ -14,7 +14,12 @@ export function getDb(): Database.Database {
     mkdirSync(dirname(DB_PATH), { recursive: true });
     db = new Database(DB_PATH);
     db.pragma('journal_mode = WAL');
+    db.pragma('synchronous = NORMAL');
     db.pragma('foreign_keys = ON');
+    db.pragma('cache_size = -64000');
+    db.pragma('temp_store = MEMORY');
+    db.pragma('mmap_size = 268435456');
+    db.pragma('busy_timeout = 5000');
     db.exec(SCHEMA_SQL);
     // Runtime migrations for existing databases (SQLite has no ADD COLUMN IF NOT EXISTS)
     const repoCols = (db.pragma('table_info(repositories)') as Array<{ name: string }>).map(c => c.name);
@@ -69,7 +74,7 @@ export function deleteRepository(id: string): void {
   db.prepare('DELETE FROM repositories WHERE id = ?').run(id);
 }
 
-export interface SessionFilters { repositoryId?: string; status?: string; type?: string; }
+export interface SessionFilters { repositoryId?: string; status?: string; type?: string; limit?: number; }
 
 export function getSessions(filters: SessionFilters = {}): Session[] {
   let sql = 'SELECT id, repository_id as repositoryId, type, pid, status, started_at as startedAt, ended_at as endedAt, last_activity_at as lastActivityAt, summary, expires_at as expiresAt, model FROM sessions WHERE 1=1';
@@ -78,6 +83,7 @@ export function getSessions(filters: SessionFilters = {}): Session[] {
   if (filters.status) { sql += ' AND status = ?'; params.push(filters.status); }
   if (filters.type) { sql += ' AND type = ?'; params.push(filters.type); }
   sql += ' ORDER BY started_at DESC';
+  sql += ' LIMIT ?'; params.push(filters.limit ?? 500);
   return getDb().prepare(sql).all(...params) as Session[];
 }
 
