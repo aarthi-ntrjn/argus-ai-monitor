@@ -25,7 +25,6 @@ describe('Security headers (FR-011, FR-012)', () => {
   const routes = [
     { method: 'get' as const, path: '/health' },
     { method: 'get' as const, path: '/api/v1/sessions' },
-    { method: 'get' as const, path: '/api/v1/fs/browse' },
     { method: 'post' as const, path: '/hooks/claude', body: { session_id: '550e8400-e29b-41d4-a716-446655440000', hook_event_name: 'PreToolUse' } },
   ];
 

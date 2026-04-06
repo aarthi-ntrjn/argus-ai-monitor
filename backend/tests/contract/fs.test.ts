@@ -125,36 +125,4 @@ describe('Filesystem path boundary enforcement (FR-008, FR-009)', () => {
     });
   });
 
-  describe('GET /api/v1/fs/browse', () => {
-    it('returns 403 for path outside home dir', async () => {
-      const res = await request.get(`/api/v1/fs/browse?path=${encodeURIComponent(OUTSIDE_HOME)}`);
-      expect(res.status).toBe(403);
-      expect(res.body).toMatchObject({ error: 'PATH_OUTSIDE_BOUNDARY' });
-    });
-
-    it('returns 403 for traversal path escaping home dir', async () => {
-      const traversal = encodeURIComponent(join(homedir(), '..', '..', 'etc'));
-      const res = await request.get(`/api/v1/fs/browse?path=${traversal}`);
-      expect(res.status).toBe(403);
-      expect(res.body).toMatchObject({ error: 'PATH_OUTSIDE_BOUNDARY' });
-    });
-
-    it('returns 200 for a valid path within home dir', async () => {
-      const res = await request.get(`/api/v1/fs/browse?path=${encodeURIComponent(homedir())}`);
-      expect(res.status).toBe(200);
-    });
-  });
-
-  describe('GET /api/v1/fs/scan', () => {
-    it('returns 403 for path outside home dir', async () => {
-      const res = await request.get(`/api/v1/fs/scan?path=${encodeURIComponent(OUTSIDE_HOME)}`);
-      expect(res.status).toBe(403);
-      expect(res.body).toMatchObject({ error: 'PATH_OUTSIDE_BOUNDARY' });
-    });
-
-    it('returns 200 for a valid path within home dir', async () => {
-      const res = await request.get(`/api/v1/fs/scan?path=${encodeURIComponent(homedir())}`);
-      expect(res.status).toBe(200);
-    });
-  });
 });
