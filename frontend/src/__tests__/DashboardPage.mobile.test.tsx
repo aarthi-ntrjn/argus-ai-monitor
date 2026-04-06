@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import DashboardPage from '../pages/DashboardPage';
@@ -11,6 +11,7 @@ vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: vi.fn() }));
 vi.mock('../services/api', () => ({
   getRepositories: vi.fn().mockResolvedValue([]),
   getSessions: vi.fn().mockResolvedValue([]),
+  getTodos: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock('../hooks/useSettings', () => ({
@@ -63,29 +64,33 @@ describe('DashboardPage — mobile layout', () => {
     mockUseIsMobile.mockReturnValue(true);
   });
 
-  it('renders the MobileNav with Sessions and Tasks tabs on mobile', () => {
+  it('renders the MobileNav with Sessions and Tasks tabs on mobile', async () => {
     renderDashboard();
-    expect(screen.getByRole('navigation', { name: /mobile navigation/i })).toBeInTheDocument();
+    expect(await screen.findByRole('navigation', { name: /mobile navigation/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /sessions/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /tasks/i })).toBeInTheDocument();
   });
 
-  it('shows the sessions list by default on mobile', () => {
+  it('shows the sessions list by default on mobile', async () => {
     renderDashboard();
-    // Sessions tab is active
-    expect(screen.getByRole('button', { name: /sessions/i })).toHaveAttribute('aria-pressed', 'true');
+    // Wait for data to load, then check Sessions tab is active
+    const sessionsBtn = await screen.findByRole('button', { name: /sessions/i });
+    expect(sessionsBtn).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('switches to TodoPanel when Tasks tab is tapped', () => {
+  it('switches to TodoPanel when Tasks tab is tapped', async () => {
     renderDashboard();
-    fireEvent.click(screen.getByRole('button', { name: /tasks/i }));
+    const tasksBtn = await screen.findByRole('button', { name: /tasks/i });
+    fireEvent.click(tasksBtn);
     // TodoPanel heading should be visible
-    expect(screen.getByText('To Tackle')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('To Tackle')).toBeInTheDocument());
   });
 
-  it('does not render MobileNav on desktop', () => {
+  it('does not render MobileNav on desktop', async () => {
     mockUseIsMobile.mockReturnValue(false);
     renderDashboard();
+    // Wait for loading to finish
+    await waitFor(() => expect(screen.queryByText('animate-pulse')).not.toBeInTheDocument());
     expect(screen.queryByRole('navigation', { name: /mobile navigation/i })).not.toBeInTheDocument();
   });
 });

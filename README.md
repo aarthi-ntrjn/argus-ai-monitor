@@ -77,6 +77,16 @@ The **To Tackle** panel lives on the right side of the dashboard. Use it to jot 
 - Toggle timestamps on/off to see when each item was added
 - Items are stored in the local database and survive page refreshes
 
+## Mobile Browser Support
+
+Argus is fully usable on mobile browsers (390px and up). On narrow viewports:
+
+- Sessions and Tasks views are accessible via a **bottom tab bar** (Sessions / Tasks).
+- Tapping a session card opens the full **session detail page** instead of the inline output pane.
+- The layout reflows automatically when the browser is resized across the 768px breakpoint.
+
+Desktop layout (two-column with inline output pane) is unchanged.
+
 ## Dashboard Settings
 
 Click the **gear icon** (top-right) to open Settings.

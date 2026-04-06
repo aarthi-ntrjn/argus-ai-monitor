@@ -46,10 +46,10 @@ Goal: SessionPage renders comfortably on narrow screens.
 
 ## Phase 5 — Polish and cross-cutting
 
-- [ ] T012 [P5] Run full test suite and fix any regressions: `cd frontend && npx vitest run`
-- [ ] T013 [P5] Run frontend build: `npm run build --workspace=frontend`
-- [ ] T014 [P5] Update `README.md` to note mobile browser support under the Features section
-- [ ] T015 [P5] Manual smoke test at 390px and 1280px viewport widths — confirm no horizontal overflow at 390px and no visual change at 1280px
+- [x] T012 [P5] Run full test suite and fix any regressions: `cd frontend && npx vitest run`
+- [x] T013 [P5] Run frontend build: `npm run build --workspace=frontend`
+- [x] T014 [P5] Update `README.md` to note mobile browser support under the Features section
+- [x] T015 [P5] Manual smoke test at 390px and 1280px viewport widths — confirm no horizontal overflow at 390px and no visual change at 1280px
 
 ---
 
