@@ -17,7 +17,7 @@ export function SettingsPanel({ settings, onToggle, onRestartTour, onResetOnboar
           aria-label="Hide ended sessions"
           checked={settings.hideEndedSessions}
           onChange={e => onToggle('hideEndedSessions', e.target.checked)}
-          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          className="rounded border-gray-300 text-blue-600 focus:ring-1 focus:ring-blue-400"
         />
         <span className="text-sm text-gray-700">Hide ended sessions</span>
       </label>
@@ -27,7 +27,7 @@ export function SettingsPanel({ settings, onToggle, onRestartTour, onResetOnboar
           aria-label="Hide repos with no active sessions"
           checked={settings.hideReposWithNoActiveSessions}
           onChange={e => onToggle('hideReposWithNoActiveSessions', e.target.checked)}
-          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          className="rounded border-gray-300 text-blue-600 focus:ring-1 focus:ring-blue-400"
         />
         <span className="text-sm text-gray-700">Hide repos with no active sessions</span>
       </label>
@@ -37,7 +37,7 @@ export function SettingsPanel({ settings, onToggle, onRestartTour, onResetOnboar
           aria-label="Hide inactive sessions"
           checked={settings.hideInactiveSessions}
           onChange={e => onToggle('hideInactiveSessions', e.target.checked)}
-          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          className="rounded border-gray-300 text-blue-600 focus:ring-1 focus:ring-blue-400"
         />
         <span className="text-sm text-gray-700">Hide inactive sessions (&gt;20 min)</span>
       </label>
@@ -46,7 +46,7 @@ export function SettingsPanel({ settings, onToggle, onRestartTour, onResetOnboar
           {onRestartTour && (
             <button
               onClick={onRestartTour}
-              className="w-full text-left text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded px-2 py-1 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full text-left text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-sm px-2 py-1 transition-colors focus:outline-none focus:ring-1 focus:ring-blue-400"
             >
               Restart Tour
             </button>
@@ -54,7 +54,7 @@ export function SettingsPanel({ settings, onToggle, onRestartTour, onResetOnboar
           {onResetOnboarding && (
             <button
               onClick={onResetOnboarding}
-              className="w-full text-left text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded px-2 py-1 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400"
+              className="w-full text-left text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-sm px-2 py-1 transition-colors focus:outline-none focus:ring-1 focus:ring-blue-400"
             >
               Reset Onboarding
             </button>

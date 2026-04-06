@@ -43,11 +43,35 @@ Check if `.specify/extensions.yml` exists. If it does, look for `hooks.before_sp
 
 ---
 
+## Phase 0: RESUME DETECTION (when no description provided)
+
+If `$ARGUMENTS` is empty, do NOT error. Instead, detect the current feature and resume from the correct phase:
+
+1. Run `.specify/scripts/powershell/check-prerequisites.ps1 -Json -IncludeTasks` from repo root. Parse `FEATURE_DIR` and `AVAILABLE_DOCS`.
+2. If `FEATURE_DIR` is empty or the script fails, ERROR: "No feature description provided and no in-progress feature detected on this branch. Usage: `/speckit.run <feature description>`"
+3. Determine resume phase by checking which artifacts exist (read the files, not just their presence):
+   - `tasks.md` exists AND has any incomplete tasks (`- [ ]`): resume at **Phase 6 (IMPLEMENT)**
+   - `tasks.md` exists but all tasks are complete: print "All tasks are already complete." and run completion validation (Phase 6 step 7), then exit.
+   - `plan.md` exists but `tasks.md` does not: resume at **Phase 4 (TASKS)**
+   - `spec.md` exists with status `Clarified` but `plan.md` does not: resume at **Phase 3 (PLAN)**
+   - `spec.md` exists but not yet clarified: resume at **Phase 2 (CLARIFY)**
+   - Nothing found: ERROR as above
+4. Print a resume banner:
+   ```
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ↻ Resuming feature: <FEATURE_DIR basename>
+   → Starting at Phase [N]: [PHASE NAME]
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ```
+5. Skip all earlier phases and jump directly to the detected resume phase.
+
+---
+
 ## Phase 1: SPECIFY
 
 **Goal**: Create the feature branch and write `spec.md`.
 
-1. Parse the feature description from `$ARGUMENTS`. If empty, ERROR: "No feature description provided."
+1. Parse the feature description from `$ARGUMENTS`. If empty, run Phase 0 (RESUME DETECTION) instead of continuing here.
 
 2. Generate a concise short name (2–4 words, action-noun format, e.g. `add-user-auth`) for the feature.
 
@@ -227,6 +251,6 @@ Check if `.specify/extensions.yml` exists. If it does, look for `hooks.before_sp
 - **Never wait between phases** unless a user-input gate is triggered.
 - **Always commit** after each phase with the feature number and a descriptive message.
 - **Always push** after each commit (`git push`).
-- If `$ARGUMENTS` is empty, ERROR immediately: "No feature description provided. Usage: `/speckit.run <feature description>`"
+- If `$ARGUMENTS` is empty, run Phase 0 (RESUME DETECTION) — do NOT error immediately. Only error if no in-progress feature is found on the current branch.
 - If any script or tool fails, halt with a clear error and the exact command that failed.
 - Constitution violations in Phase 5 that cannot be justified MUST block implementation.

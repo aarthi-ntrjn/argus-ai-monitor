@@ -1,15 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRef, useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getSessions, getRepositories } from '../services/api';
 import type { Repository, Session } from '../types';
 import { useSettings } from '../hooks/useSettings';
 import { useOnboarding } from '../hooks/useOnboarding';
 import { useRepositoryManagement } from '../hooks/useRepositoryManagement';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { SettingsPanel } from '../components/SettingsPanel';
 import { RemoveConfirmDialog } from '../components/RemoveConfirmDialog';
 import SessionCard from '../components/SessionCard/SessionCard';
 import OutputPane from '../components/OutputPane/OutputPane';
 import TodoPanel from '../components/TodoPanel/TodoPanel';
+import MobileNav from '../components/MobileNav/MobileNav';
 import { isInactive } from '../utils/sessionUtils';
 import { OnboardingTour } from '../components/Onboarding';
 import { DASHBOARD_TOUR_STEPS } from '../config/dashboardTourSteps';
@@ -21,9 +24,15 @@ interface RepoWithSessions extends Repository {
 const ENDED_STATUSES = new Set(['completed', 'ended']);
 const ACTIVE_STATUSES = new Set(['active', 'idle', 'waiting', 'error']);
 
+type MobileTab = 'sessions' | 'tasks';
+
 export default function DashboardPage() {
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
+
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [activeMobileTab, setActiveMobileTab] = useState<MobileTab>('sessions');
   const settingsRef = useRef<HTMLDivElement>(null);
 
   const [settings, updateSetting] = useSettings();
@@ -92,9 +101,19 @@ export default function DashboardPage() {
     return (sessionsByRepo.get(repo.id) ?? []).some(s => ACTIVE_STATUSES.has(s.status));
   }), [repos, sessionsByRepo, settings]);
 
+  // On mobile tapping a session card navigates to the detail page.
+  // On desktop it toggles the inline OutputPane.
+  const handleSessionSelect = (id: string) => {
+    if (isMobile) {
+      navigate(`/sessions/${id}`);
+    } else {
+      setSelectedSessionId(prev => prev === id ? null : id);
+    }
+  };
+
   if (reposLoading || sessionsLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 p-8">
+      <div className="min-h-screen bg-slate-50 p-4 md:p-8">
         <div className="animate-pulse space-y-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-24 bg-gray-200 rounded-lg" />
@@ -106,7 +125,7 @@ export default function DashboardPage() {
 
   if (reposError || sessionsError) {
     return (
-      <div className="min-h-screen bg-slate-50 p-8 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 p-4 md:p-8 flex items-center justify-center">
         <div className="text-center space-y-2">
           <p className="text-lg font-medium text-gray-800">Cannot connect to Argus server</p>
           <p className="text-sm text-gray-500">Make sure the backend is running, then refresh the page.</p>
@@ -115,11 +134,87 @@ export default function DashboardPage() {
     );
   }
 
+  // Repo cards list — shared between mobile sessions tab and desktop layout
+  const repoList = (
+    <div className="space-y-6">
+      {reposWithSessions.map((repo) => (
+        <div key={repo.id} data-tour-id="dashboard-repo-card" className="bg-white rounded-lg shadow p-4 md:p-6">
+          <div className="mb-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg md:text-xl font-semibold text-gray-900">{repo.name}</h2>
+              <div className="flex items-center gap-2">
+                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded">
+                  {repo.sessions.length} session{repo.sessions.length !== 1 ? 's' : ''}
+                </span>
+                <button
+                  onClick={() => {
+                    if (skipConfirm) {
+                      setRemoveConfirmId(repo.id);
+                      handleRemoveRepoById(repo.id);
+                    } else {
+                      setRemoveConfirmId(repo.id);
+                    }
+                  }}
+                  aria-label={`Remove repository ${repo.name}`}
+                  title="Remove repository"
+                  className="text-gray-500 hover:text-red-500 transition-colors p-2 rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-400"
+                >
+                  <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <p className="text-xs text-gray-500 font-mono truncate max-w-full">{repo.path}</p>
+              {repo.branch && (
+                <span className="inline-flex items-center gap-1 text-xs font-mono text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">⎇ {repo.branch}</span>
+              )}
+            </div>
+          </div>
+          {repo.sessions.length === 0 ? (
+            <p className="text-gray-500 text-sm">
+              {settings.hideEndedSessions ? 'No active sessions' : 'No sessions'}
+            </p>
+          ) : (
+            <div data-tour-id="dashboard-session-card" className="space-y-2">
+              {repo.sessions.map((session) => (
+                <SessionCard
+                  key={session.id}
+                  session={session}
+                  selected={!isMobile && selectedSessionId === session.id}
+                  onSelect={handleSessionSelect}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+
+  const emptyState = (
+    <div className="text-center py-16 text-gray-500">
+      {repos.length === 0 ? (
+        <>
+          <p className="text-xl">No repositories registered.</p>
+          <p className="mt-2">Click "Add Repository" to get started.</p>
+        </>
+      ) : (
+        <>
+          <p className="text-xl">No repositories to show.</p>
+          <p className="mt-2">All repositories are hidden by your current settings.</p>
+        </>
+      )}
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
+    <div className="min-h-screen bg-slate-50 p-4 pb-20 md:p-8 md:pb-8">
       <div className="mx-auto max-w-screen-xl">
-        <div className="flex justify-between items-center mb-8">
-          <h1 data-tour-id="dashboard-header" className="text-3xl font-semibold text-gray-900">Argus Dashboard</h1>
+        {/* Header */}
+        <div className="flex justify-between items-center mb-6 md:mb-8">
+          <h1 data-tour-id="dashboard-header" className="text-2xl md:text-3xl font-semibold text-gray-900">Argus</h1>
           <div className="flex items-center gap-2">
             <div className="relative" ref={settingsRef}>
               <button
@@ -129,7 +224,7 @@ export default function DashboardPage() {
                 aria-expanded={settingsOpen}
                 aria-haspopup="true"
                 title="Settings"
-                className="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400"
               >
                 <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -178,108 +273,58 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {reposWithSessions.length === 0 ? (
-          <div className="flex gap-6 items-start">
-            <div className="flex-1">
-              <div className="text-center py-16 text-gray-500">
-                {repos.length === 0 ? (
-                  <>
-                    <p className="text-xl">No repositories registered.</p>
-                    <p className="mt-2">Click "Add Repository" to get started.</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-xl">No repositories to show.</p>
-                    <p className="mt-2">All repositories are hidden by your current settings.</p>
-                  </>
-                )}
-              </div>
-            </div>
-            <div className="w-[400px] shrink-0 sticky top-8">
+        {/* Mobile layout: single column with bottom tab navigation */}
+        {isMobile ? (
+          <div>
+            {activeMobileTab === 'sessions' ? (
+              reposWithSessions.length === 0 ? emptyState : repoList
+            ) : (
               <TodoPanel />
-            </div>
+            )}
           </div>
         ) : (
-          <div className="flex gap-6 items-start">
-            <div className="flex-1 min-w-0 space-y-6">
-              {reposWithSessions.map((repo) => (
-                <div key={repo.id} data-tour-id="dashboard-repo-card" className="bg-white rounded-lg shadow p-6">
-                  <div className="mb-4">
-                    <div className="flex justify-between items-center">
-                      <h2 className="text-xl font-semibold text-gray-900">{repo.name}</h2>
-                      <div className="flex items-center gap-2">
-                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded">
-                          {repo.sessions.length} session{repo.sessions.length !== 1 ? 's' : ''}
-                        </span>
-                        <button
-                          onClick={() => {
-                            if (skipConfirm) {
-                              setRemoveConfirmId(repo.id);
-                              handleRemoveRepoById(repo.id);
-                            } else {
-                              setRemoveConfirmId(repo.id);
-                            }
-                          }}
-                          aria-label={`Remove repository ${repo.name}`}
-                          title="Remove repository"
-                          className="text-gray-500 hover:text-red-500 transition-colors p-1 rounded focus-visible:ring-2 focus-visible:ring-red-500"
-                        >
-                          <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <p className="text-xs text-gray-500 font-mono">{repo.path}</p>
-                      {repo.branch && (
-                        <span className="inline-flex items-center gap-1 text-xs font-mono text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">⎇ {repo.branch}</span>
-                      )}
-                    </div>
-                  </div>
-                  {repo.sessions.length === 0 ? (
-                    <p className="text-gray-500 text-sm">
-                      {settings.hideEndedSessions ? 'No active sessions' : 'No sessions'}
-                    </p>
-                  ) : (
-                    <div data-tour-id="dashboard-session-card" className="space-y-2">
-                      {repo.sessions.map((session) => (
-                        <SessionCard
-                          key={session.id}
-                          session={session}
-                          selected={selectedSessionId === session.id}
-                          onSelect={id => setSelectedSessionId(prev => prev === id ? null : id)}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className={`${selectedSessionId ? 'w-[640px]' : 'w-[400px]'} shrink-0 sticky top-8 flex flex-col gap-4${selectedSessionId ? '' : ' h-auto'}`} style={selectedSessionId ? { height: 'calc(100vh - 8rem)' } : undefined}>
-              {selectedSessionId && (() => {
-                const selectedSession = sessions.find(s => s.id === selectedSessionId);
-                return selectedSession ? (
-                  <div className="flex-[3] min-h-0">
-                    <OutputPane
-                      session={selectedSession}
-                      onClose={() => setSelectedSessionId(null)}
-                    />
-                  </div>
-                ) : null;
-              })()}
-              <div className={selectedSessionId ? 'flex-[2] min-h-0 overflow-y-auto' : 'flex-1'}>
+          /* Desktop layout: two-column */
+          reposWithSessions.length === 0 ? (
+            <div className="flex gap-6 items-start">
+              <div className="flex-1">{emptyState}</div>
+              <div className="w-[400px] shrink-0 sticky top-8">
                 <TodoPanel />
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex gap-6 items-start">
+              <div className="flex-1 min-w-0">
+                {repoList}
+              </div>
+              <div className={`${selectedSessionId ? 'w-[640px]' : 'w-[400px]'} shrink-0 sticky top-8 flex flex-col gap-4${selectedSessionId ? '' : ' h-auto'}`} style={selectedSessionId ? { height: 'calc(100vh - 8rem)' } : undefined}>
+                {selectedSessionId && (() => {
+                  const selectedSession = sessions.find(s => s.id === selectedSessionId);
+                  return selectedSession ? (
+                    <div className="flex-[3] min-h-0">
+                      <OutputPane
+                        session={selectedSession}
+                        onClose={() => setSelectedSessionId(null)}
+                      />
+                    </div>
+                  ) : null;
+                })()}
+                <div className={selectedSessionId ? 'flex-[2] min-h-0 overflow-y-auto' : 'flex-1'}>
+                  <TodoPanel />
+                </div>
+              </div>
+            </div>
+          )
         )}
       </div>
 
+      {/* Mobile bottom tab bar */}
+      {isMobile && (
+        <MobileNav activeTab={activeMobileTab} onTabChange={setActiveMobileTab} />
+      )}
+
       {showFolderInput && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
             <h2 className="text-lg font-semibold mb-1">Add Repositories</h2>
             <p className="text-gray-500 text-sm mb-4">Enter a root folder path to scan for git repositories.</p>
             <input
@@ -289,7 +334,7 @@ export default function DashboardPage() {
               onChange={e => setFolderInputPath(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleFolderSubmit(repos); }}
               placeholder="e.g. C:\source or /home/user/projects"
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-blue-400"
             />
             <div className="flex justify-end gap-2 mt-4">
               <button onClick={() => setFolderInputPath('')} className="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>

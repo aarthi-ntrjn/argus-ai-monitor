@@ -65,7 +65,7 @@ function SessionCard({ session, selected, onSelect }: Props) {
       tabIndex={0}
       aria-pressed={selected}
       aria-label={`Session ${session.id.slice(0, 8)} — ${session.status}. Press Enter to ${selected ? 'close' : 'view'} output.`}
-      className={`border rounded-lg p-4 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'} ${isInactive(session) && !selected ? 'opacity-75' : ''}`}
+      className={`border rounded-md p-4 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400 ${selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'} ${isInactive(session) && !selected ? 'opacity-75' : ''}`}
       onClick={() => onSelect?.(session.id)}
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect?.(session.id); } }}
     >

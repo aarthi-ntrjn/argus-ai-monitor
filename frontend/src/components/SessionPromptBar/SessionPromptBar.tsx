@@ -42,13 +42,13 @@ function ConfirmModal({ message, onCancel, onConfirm }: { message: string; onCan
           <button
             ref={cancelRef}
             onClick={onCancel}
-            className="text-sm px-3 py-1.5 text-gray-600 hover:text-gray-800 focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+            className="text-sm px-3 py-1.5 text-gray-600 hover:text-gray-800 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400 rounded-sm"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className="text-sm px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="text-sm px-3 py-1.5 bg-blue-600 text-white rounded-sm hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400"
           >
             Confirm
           </button>

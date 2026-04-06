@@ -58,7 +58,7 @@ export default function SessionPage() {
 
   if (sessionLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 p-8">
+      <div className="min-h-screen bg-slate-50 p-4 md:p-8">
         <div className="animate-pulse">
           <div className="h-8 bg-gray-200 rounded w-1/3 mb-4" />
           <div className="h-64 bg-gray-200 rounded" />
@@ -69,7 +69,7 @@ export default function SessionPage() {
 
   if (sessionError || !session) {
     return (
-      <div className="min-h-screen bg-slate-50 p-8">
+      <div className="min-h-screen bg-slate-50 p-4 md:p-8">
         <button onClick={() => navigate('/')} className="text-blue-600 hover:text-blue-800 mb-4 flex items-center gap-1">
           ← Back to Dashboard
         </button>
@@ -79,9 +79,9 @@ export default function SessionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
-      <div className="max-w-4xl mx-auto">
-        <button onClick={() => navigate('/')} className="text-blue-600 hover:text-blue-800 mb-6 flex items-center gap-1">
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8">
+      <div className="max-w-4xl mx-auto w-full">
+        <button onClick={() => navigate('/')} className="text-blue-600 hover:text-blue-800 mb-6 py-2 flex items-center gap-1">
           ← Back to Dashboard
         </button>
 

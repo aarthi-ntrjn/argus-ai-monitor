@@ -14,12 +14,12 @@ function isDraft(id: RowId) {
 function formatRelativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return 'now';
+  if (mins < 60) return `${mins}m`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24) return `${hrs}h`;
   const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
+  if (days < 7) return `${days}d`;
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
@@ -139,7 +139,7 @@ export default function TodoPanel() {
           onClick={() => setCollapsed(v => !v)}
           aria-expanded={!collapsed}
           aria-controls="tackle-panel-body"
-          className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 tracking-wide hover:text-gray-900 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+          className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 tracking-wide hover:text-gray-900 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400 rounded-sm"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -161,7 +161,7 @@ export default function TodoPanel() {
               aria-label={wrapText ? 'Single line' : 'Wrap text'}
               aria-pressed={wrapText}
               title={wrapText ? 'Single line' : 'Wrap text'}
-              className={`p-1 rounded transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 ${wrapText ? 'text-blue-600 hover:text-blue-800' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`p-1 rounded transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400${wrapText ? 'text-blue-600 hover:text-blue-800' : 'text-gray-500 hover:text-gray-700'}`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h10a3 3 0 010 6h-3m3-6l2 2-2 2" />
@@ -172,7 +172,7 @@ export default function TodoPanel() {
               aria-label={showTimestamps ? 'Hide timestamps' : 'Show timestamps'}
               aria-pressed={showTimestamps}
               title={showTimestamps ? 'Hide timestamps' : 'Show timestamps'}
-              className={`p-1 rounded transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 ${showTimestamps ? 'text-blue-600 hover:text-blue-800' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`p-1 rounded transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400${showTimestamps ? 'text-blue-600 hover:text-blue-800' : 'text-gray-500 hover:text-gray-700'}`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -183,7 +183,7 @@ export default function TodoPanel() {
               aria-label={showDone ? 'Hide completed' : 'Show completed'}
               aria-pressed={showDone}
               title={showDone ? 'Hide completed' : 'Show completed'}
-              className={`p-1 rounded transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 ${showDone ? 'text-blue-600 hover:text-blue-800' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`p-1 rounded transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400${showDone ? 'text-blue-600 hover:text-blue-800' : 'text-gray-500 hover:text-gray-700'}`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -197,7 +197,7 @@ export default function TodoPanel() {
         <div id="tackle-panel-body" className="flex-1 overflow-y-auto">
         {/* Add row always visible regardless of loading state */}
         <div
-          className="flex items-center gap-2 px-4 py-1 border-b border-gray-50 cursor-text"
+          className="flex items-center gap-2 px-4 py-2 border-b border-gray-50 cursor-text"
           onClick={() => addRowRef.current?.focus()}
         >
           <span aria-hidden="true" className="h-4 w-4 shrink-0 flex items-center justify-center text-blue-600 text-base leading-none select-none">+</span>
@@ -210,7 +210,7 @@ export default function TodoPanel() {
             onKeyDown={e => handleKeyDown(e, addRowId, 0)}
             placeholder="Add a task…"
             aria-label="New task"
-            className="flex-1 min-w-0 text-sm bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded text-gray-700 placeholder-gray-400"
+            className="flex-1 min-w-0 text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 text-gray-700 placeholder-gray-400"
           />
         </div>
 
@@ -225,14 +225,25 @@ export default function TodoPanel() {
             {reversedTodos.map((todo, index) => {
                 const done = todo.done;
                 return (
-                  <li key={todo.id} className="group flex items-center gap-2 px-4 py-1">
-                    <input
-                      type="checkbox"
-                      checked={done}
+                  <li key={todo.id} className="group flex items-center gap-2 px-4 py-[3px]">
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={done}
                       aria-label={`Mark "${todo.text}" as ${done ? 'incomplete' : 'complete'}`}
-                      onChange={() => toggleTodo.mutate({ id: todo.id, done: !done })}
-                      className="h-4 w-4 shrink-0 rounded border-gray-300 text-blue-600 cursor-pointer"
-                    />
+                      onClick={() => toggleTodo.mutate({ id: todo.id, done: !done })}
+                      className={`h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:border-green-500 ${
+                        done
+                          ? 'bg-white border-green-500 text-green-500'
+                          : 'border-gray-300 bg-white hover:border-green-400'
+                      }`}
+                    >
+                      {done && (
+                        <svg aria-hidden="true" viewBox="0 0 10 10" fill="none" className="h-2.5 w-2.5">
+                          <path d="M1.5 5.5l2.5 2.5 4.5-5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </button>
                     <textarea
                       ref={(el) => {
                         todoRefsMap.current.set(todo.id, el);
@@ -255,12 +266,12 @@ export default function TodoPanel() {
                       }}
                       aria-label={`Edit task: ${todo.text}`}
                       rows={1}
-                      className={`flex-1 min-w-0 text-sm bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded resize-none leading-snug ${done ? 'line-through text-gray-500' : 'text-gray-700'}`}
+                      className={`flex-1 min-w-0 text-sm bg-transparent border-none outline-none focus:ring-1 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-white rounded resize-none leading-snug ${done ? 'line-through text-gray-500' : 'text-gray-700'}`}
                       style={wrapText ? { overflow: 'hidden' } : { height: '1.25rem', overflow: 'hidden', whiteSpace: 'nowrap' }}
                     />
-                    <div className="relative shrink-0">
+                    <div className="relative shrink-0 group/del">
                       {showTimestamps ? (
-                        <span className="block text-xs text-gray-500 whitespace-nowrap group-hover:opacity-0 transition-opacity">
+                        <span className="block text-xs text-gray-500 whitespace-nowrap group-hover:opacity-0 group-focus-within/del:opacity-0 transition-opacity">
                           {formatRelativeTime(todo.createdAt)}
                         </span>
                       ) : (
@@ -269,7 +280,7 @@ export default function TodoPanel() {
                       <button
                         onClick={() => deleteTodo.mutate(todo.id)}
                         aria-label={`Delete "${todo.text}"`}
-                        className="absolute inset-0 flex items-center justify-end opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-500 transition-opacity focus:opacity-100 focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+                        className="absolute right-0 top-1/2 -translate-y-1/2 h-3.5 w-3.5 flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus-within/del:opacity-100 text-gray-500 hover:text-red-500 transition-opacity focus:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400 rounded-sm"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
