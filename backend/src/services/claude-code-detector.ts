@@ -180,6 +180,7 @@ export class ClaudeCodeDetector {
     session.lastActivityAt = now;
 
     upsertSession(session);
+    broadcast({ type: 'session.updated', timestamp: now, data: session as unknown as Record<string, unknown> });
 
     // Start JSONL watcher if not already watching
     await this.watchJsonlFile(session_id, repo.path);
