@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { useRef, useState, useEffect } from 'react';
-import { getRepositories, getSessions, addRepository, removeRepository, scanFolder, queryClient } from '../services/api';
+import { useRef, useState, useEffect, useMemo } from 'react';
+import { getSessions, getRepositories } from '../services/api';
 import type { Repository, Session } from '../types';
 import { useSettings } from '../hooks/useSettings';
 import { useOnboarding } from '../hooks/useOnboarding';
+import { useRepositoryManagement } from '../hooks/useRepositoryManagement';
 import { SettingsPanel } from '../components/SettingsPanel';
+import { RemoveConfirmDialog } from '../components/RemoveConfirmDialog';
 import SessionCard from '../components/SessionCard/SessionCard';
 import OutputPane from '../components/OutputPane/OutputPane';
 import TodoPanel from '../components/TodoPanel/TodoPanel';
@@ -16,19 +18,10 @@ interface RepoWithSessions extends Repository {
   sessions: Session[];
 }
 
-const SKIP_REMOVE_CONFIRM_KEY = 'argus:skipRemoveConfirm';
 const ENDED_STATUSES = new Set(['completed', 'ended']);
 const ACTIVE_STATUSES = new Set(['active', 'idle', 'waiting', 'error']);
 
 export default function DashboardPage() {
-  const [addError, setAddError] = useState<string | null>(null);
-  const [addInfo, setAddInfo] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
-  const [showFolderInput, setShowFolderInput] = useState(false);
-  const [folderInputPath, setFolderInputPath] = useState('');
-  const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null);
-  const [removing, setRemoving] = useState(false);
-  const [skipConfirm, setSkipConfirm] = useState(() => localStorage.getItem(SKIP_REMOVE_CONFIRM_KEY) === 'true');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
@@ -36,6 +29,14 @@ export default function DashboardPage() {
   const [settings, updateSetting] = useSettings();
   const { tourStatus, startTour, skipTour, completeTour, resetOnboarding } = useOnboarding();
   const [tourRun, setTourRun] = useState(false);
+
+  const {
+    addError, addInfo, adding, showFolderInput, folderInputPath,
+    removeConfirmId, removing, skipConfirm,
+    setFolderInputPath, setRemoveConfirmId, setSkipConfirm,
+    handleAddRepo, handleFolderSubmit, handleRemoveRepoById, handleRemoveRepo,
+    clearAddError, clearAddInfo,
+  } = useRepositoryManagement();
 
   // Auto-launch for first-time users
   useEffect(() => {
@@ -45,11 +46,6 @@ export default function DashboardPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const showInfo = (msg: string) => {
-    setAddInfo(msg);
-    setTimeout(() => setAddInfo(null), 5000);
-  };
 
   // Close settings panel on outside click or Escape
   useEffect(() => {
@@ -66,17 +62,25 @@ export default function DashboardPage() {
   const { data: repos = [], isLoading: reposLoading } = useQuery({
     queryKey: ['repositories'],
     queryFn: getRepositories,
-    refetchInterval: 5000,
   });
 
   const { data: sessions = [], isLoading: sessionsLoading } = useQuery({
     queryKey: ['sessions'],
     queryFn: () => getSessions(),
-    refetchInterval: 5000,
   });
 
-  const reposWithSessions: RepoWithSessions[] = repos.map((repo) => {
-    const repoSessions = sessions.filter((s) => s.repositoryId === repo.id);
+  const sessionsByRepo = useMemo(() => {
+    const map = new Map<string, Session[]>();
+    for (const s of sessions) {
+      const list = map.get(s.repositoryId) ?? [];
+      list.push(s);
+      map.set(s.repositoryId, list);
+    }
+    return map;
+  }, [sessions]);
+
+  const reposWithSessions = useMemo<RepoWithSessions[]>(() => repos.map((repo) => {
+    const repoSessions = sessionsByRepo.get(repo.id) ?? [];
     const visibleSessions = repoSessions.filter(s => {
       if (settings.hideEndedSessions && ENDED_STATUSES.has(s.status)) return false;
       if (settings.hideInactiveSessions && isInactive(s)) return false;
@@ -85,70 +89,8 @@ export default function DashboardPage() {
     return { ...repo, sessions: visibleSessions };
   }).filter((repo) => {
     if (!settings.hideReposWithNoActiveSessions) return true;
-    // Use raw sessions (independent of hideEndedSessions filter)
-    const repoSessions = sessions.filter(s => s.repositoryId === repo.id);
-    return repoSessions.some(s => ACTIVE_STATUSES.has(s.status));
-  });
-
-  const handleAddRepo = () => {
-    setAddError(null);
-    setAddInfo(null);
-    setFolderInputPath('');
-    setShowFolderInput(true);
-  };
-
-  const handleFolderSubmit = async () => {
-    const folderPath = folderInputPath.trim();
-    if (!folderPath) return;
-    setShowFolderInput(false);
-    setAddError(null);
-    setAddInfo(null);
-    setAdding(true);
-    try {
-      const found = await scanFolder(folderPath);
-      const registeredPaths = new Set(repos.map(r => r.path));
-      const newRepos = found.filter(r => !registeredPaths.has(r.path));
-      if (newRepos.length === 0) {
-        showInfo('No new git repositories found in the specified folder.');
-        return;
-      }
-      let added = 0;
-      let failed = 0;
-      for (const repo of newRepos) {
-        try {
-          await addRepository(repo.path);
-          added++;
-        } catch {
-          failed++;
-        }
-      }
-      await queryClient.invalidateQueries({ queryKey: ['repositories'] });
-      if (failed === 0) {
-        showInfo(`Added ${added} repositor${added === 1 ? 'y' : 'ies'}.`);
-      } else {
-        setAddError(`Added ${added} of ${newRepos.length} repositories — ${failed} failed.`);
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to add repository';
-      setAddError(msg);
-    } finally {
-      setAdding(false);
-    }
-  };
-
-  const handleRemoveRepoById = async (id: string) => {
-    setRemoving(true);
-    try {
-      await removeRepository(id);
-      await queryClient.invalidateQueries({ queryKey: ['repositories'] });
-      await queryClient.invalidateQueries({ queryKey: ['sessions'] });
-    } finally {
-      setRemoving(false);
-      setRemoveConfirmId(null);
-    }
-  };
-
-  const handleRemoveRepo = () => handleRemoveRepoById(removeConfirmId!);
+    return (sessionsByRepo.get(repo.id) ?? []).some(s => ACTIVE_STATUSES.has(s.status));
+  }), [repos, sessionsByRepo, settings]);
 
   if (reposLoading || sessionsLoading) {
     return (
@@ -173,10 +115,12 @@ export default function DashboardPage() {
                 data-tour-id="dashboard-settings"
                 onClick={() => setSettingsOpen(o => !o)}
                 aria-label="Settings"
+                aria-expanded={settingsOpen}
+                aria-haspopup="true"
                 title="Settings"
-                className="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                className="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
@@ -185,7 +129,6 @@ export default function DashboardPage() {
                 <SettingsPanel
                   settings={settings}
                   onToggle={(key, value) => updateSetting(key, value)}
-                  onClose={() => setSettingsOpen(false)}
                   onRestartTour={() => {
                     setSettingsOpen(false);
                     startTour('manual');
@@ -211,16 +154,16 @@ export default function DashboardPage() {
         </div>
 
         {addInfo && (
-          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-green-700 text-sm flex justify-between">
+          <div role="status" aria-live="polite" className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-green-700 text-sm flex justify-between">
             <span>{addInfo}</span>
-            <button onClick={() => setAddInfo(null)} className="ml-4 font-bold">x</button>
+            <button onClick={clearAddInfo} aria-label="Dismiss notification" className="ml-4 font-bold">×</button>
           </div>
         )}
 
         {addError && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm flex justify-between">
+          <div role="alert" className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm flex justify-between">
             <span>{addError}</span>
-            <button onClick={() => setAddError(null)} className="ml-4 font-bold">x</button>
+            <button onClick={clearAddError} aria-label="Dismiss error" className="ml-4 font-bold">×</button>
           </div>
         )}
 
@@ -247,7 +190,6 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="flex gap-6 items-start">
-            {/* Repo/session list */}
             <div className="flex-1 min-w-0 space-y-6">
               {reposWithSessions.map((repo) => (
                 <div key={repo.id} data-tour-id="dashboard-repo-card" className="bg-white rounded-lg shadow p-6">
@@ -265,7 +207,7 @@ export default function DashboardPage() {
                       <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded">
                         {repo.sessions.length} session{repo.sessions.length !== 1 ? 's' : ''}
                       </span>
-          <button
+                      <button
                         onClick={() => {
                           if (skipConfirm) {
                             setRemoveConfirmId(repo.id);
@@ -274,17 +216,18 @@ export default function DashboardPage() {
                             setRemoveConfirmId(repo.id);
                           }
                         }}
+                        aria-label={`Remove repository ${repo.name}`}
                         title="Remove repository"
-                        className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded"
+                        className="text-gray-500 hover:text-red-500 transition-colors p-1 rounded focus-visible:ring-2 focus-visible:ring-red-500"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                       </button>
                     </div>
                   </div>
                   {repo.sessions.length === 0 ? (
-                    <p className="text-gray-400 text-sm">
+                    <p className="text-gray-500 text-sm">
                       {settings.hideEndedSessions ? 'No active sessions' : 'No sessions'}
                     </p>
                   ) : (
@@ -303,7 +246,6 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            {/* Right column: output pane (60%) stacked above todo (40%) */}
             <div className={`${selectedSessionId ? 'w-[640px]' : 'w-[400px]'} shrink-0 sticky top-8 flex flex-col gap-4${selectedSessionId ? '' : ' h-auto'}`} style={selectedSessionId ? { height: 'calc(100vh - 8rem)' } : undefined}>
               {selectedSessionId && (() => {
                 const selectedSession = sessions.find(s => s.id === selectedSessionId);
@@ -334,14 +276,14 @@ export default function DashboardPage() {
               type="text"
               value={folderInputPath}
               onChange={e => setFolderInputPath(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleFolderSubmit(); if (e.key === 'Escape') setShowFolderInput(false); }}
+              onKeyDown={e => { if (e.key === 'Enter') handleFolderSubmit(repos); }}
               placeholder="e.g. C:\source or /home/user/projects"
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => setShowFolderInput(false)} className="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+              <button onClick={() => setFolderInputPath('')} className="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
               <button
-                onClick={handleFolderSubmit}
+                onClick={() => handleFolderSubmit(repos)}
                 disabled={!folderInputPath.trim()}
                 className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-40"
               >
@@ -352,35 +294,15 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {removeConfirmId && (        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-sm">
-            <h2 className="text-lg font-semibold mb-2">Remove Repository</h2>
-            <p className="text-gray-600 text-sm mb-4">
-              Remove <span className="font-semibold">{reposWithSessions.find(r => r.id === removeConfirmId)?.name}</span>?
-              This will also delete all associated sessions and output history.
-            </p>
-            <div className="flex items-center justify-between mt-4">
-              <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={skipConfirm}
-                  onChange={e => {
-                    setSkipConfirm(e.target.checked);
-                    localStorage.setItem(SKIP_REMOVE_CONFIRM_KEY, String(e.target.checked));
-                  }}
-                  className="rounded"
-                />
-                Don't ask again
-              </label>
-              <div className="flex gap-2">
-                <button onClick={() => setRemoveConfirmId(null)} disabled={removing} className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50">Cancel</button>
-                <button onClick={handleRemoveRepo} disabled={removing} className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50">
-                  {removing ? 'Removing...' : 'Remove'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {removeConfirmId && (
+        <RemoveConfirmDialog
+          repoName={reposWithSessions.find(r => r.id === removeConfirmId)?.name}
+          removing={removing}
+          skipConfirm={skipConfirm}
+          onSkipConfirmChange={setSkipConfirm}
+          onCancel={() => setRemoveConfirmId(null)}
+          onConfirm={handleRemoveRepo}
+        />
       )}
 
       <OnboardingTour

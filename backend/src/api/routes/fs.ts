@@ -1,8 +1,8 @@
 import { FastifyInstance } from 'fastify';
-import { readdirSync, existsSync, lstatSync } from 'fs';
+import { promises as fsPromises, existsSync } from 'fs';
 import { join, normalize, basename } from 'path';
 
-export function findGitRepos(dirPath: string, results: Array<{ path: string; name: string }> = []): Array<{ path: string; name: string }> {
+export async function findGitRepos(dirPath: string, results: Array<{ path: string; name: string }> = []): Promise<Array<{ path: string; name: string }>> {
   // If this dir is itself a git repo, add it and don't recurse into it
   if (existsSync(join(dirPath, '.git'))) {
     results.push({ path: dirPath, name: basename(dirPath) });
@@ -10,7 +10,7 @@ export function findGitRepos(dirPath: string, results: Array<{ path: string; nam
   }
   let entries;
   try {
-    entries = readdirSync(dirPath, { withFileTypes: true });
+    entries = await fsPromises.readdir(dirPath, { withFileTypes: true });
   } catch {
     return results;
   }
@@ -19,12 +19,13 @@ export function findGitRepos(dirPath: string, results: Array<{ path: string; nam
     if (entry.name === 'node_modules' || entry.name === '.git') continue;
     const fullPath = join(dirPath, entry.name);
     try {
-      const stat = lstatSync(fullPath);
+      const stat = await fsPromises.lstat(fullPath);
+      // FR-010: skip symlinks to avoid loops
       if (stat.isSymbolicLink() || !stat.isDirectory()) continue;
     } catch {
       continue;
     }
-    findGitRepos(fullPath, results);
+    await findGitRepos(fullPath, results);
   }
   return results;
 }
@@ -42,7 +43,7 @@ export async function fsRoutes(app: FastifyInstance) {
     }
     app.log.info({ scanPath }, 'Starting recursive git repo scan');
     try {
-      const repos = findGitRepos(scanPath);
+      const repos = await findGitRepos(scanPath);
       app.log.info({ scanPath, count: repos.length }, 'Scan complete');
       return reply.send({ repos });
     } catch (err) {
@@ -50,5 +51,4 @@ export async function fsRoutes(app: FastifyInstance) {
       return reply.status(500).send({ error: 'SCAN_FAILED', message: 'Failed to scan folder.', requestId: request.id, repos: [] });
     }
   });
-
 }

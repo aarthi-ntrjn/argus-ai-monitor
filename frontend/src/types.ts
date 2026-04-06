@@ -19,8 +19,6 @@ export interface Repository {
 export interface Session {
   id: string;
   repositoryId: string;
-  repositoryName?: string;
-  repositoryPath?: string;
   type: SessionType;
   pid: number | null;
   status: SessionStatus;

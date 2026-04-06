@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, openSync, readSync, closeSync, statSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'fs';
+import { open as fsOpen, stat as fsStat } from 'fs/promises';
 import { join, dirname, normalize } from 'path';
 import { homedir } from 'os';
 import psList from 'ps-list';
@@ -7,7 +8,7 @@ import { getSession, upsertSession, getRepositories, getRepositoryByPath } from 
 import { OutputStore } from './output-store.js';
 import { broadcast } from '../api/ws/event-dispatcher.js';
 import { parseClaudeJsonlLine, parseModel } from './claude-code-jsonl-parser.js';
-import type { Session } from '../models/index.js';
+import type { Session, Repository } from '../models/index.js';
 
 const CLAUDE_SETTINGS_PATH = join(homedir(), '.claude', 'settings.json');
 const HOOK_COMMAND = 'curl -sf -X POST http://127.0.0.1:7411/hooks/claude -H "Content-Type: application/json" -d @- 2>/dev/null || true';
@@ -53,12 +54,6 @@ export class ClaudeCodeDetector {
       }
       if (changed) writeFileSync(CLAUDE_SETTINGS_PATH, JSON.stringify(settings, null, 2), 'utf-8');
     } catch { /* ignore if settings file inaccessible */ }
-  }
-
-  removeHooksForRepo(_repoPath: string): void {
-    // Claude hooks are global (not repo-specific) — the single HOOK_COMMAND listens for all repos.
-    // We do not remove them on a per-repo basis to avoid breaking other registered repos.
-    // Hooks are only removed when ALL repos are gone or the user manually clears them.
   }
 
   removeAllHooks(): void {
@@ -149,33 +144,7 @@ export class ClaudeCodeDetector {
         if (!mostRecent) continue;
         if (Date.now() - mostRecent.mtime.getTime() > ACTIVE_JSONL_THRESHOLD_MS) continue;
 
-        const sessionId = mostRecent.id;
-        const now = new Date().toISOString();
-
-        // If already active, just ensure the watcher is running (e.g. after server restart)
-        const existingSession = getSession(sessionId);
-        if (existingSession?.status === 'active') {
-          this.watchJsonlFile(sessionId, repo.path);
-          continue;
-        }
-
-        // Activate the session using its real ID
-        const base: Session = existingSession ?? {
-          id: sessionId,
-          repositoryId: repo.id,
-          type: 'claude-code',
-          pid: claudePid,
-          status: 'active',
-          startedAt: now,
-          endedAt: null,
-          lastActivityAt: now,
-          summary: null,
-          expiresAt: null,
-          model: null,
-        };
-
-        upsertSession({ ...base, status: 'active', endedAt: null, lastActivityAt: now, pid: claudePid });
-        this.watchJsonlFile(sessionId, repo.path);
+        await this.activateFoundSession(mostRecent.id, repo, claudePid);
       }
     } catch { /* ignore */ }
   }
@@ -211,12 +180,37 @@ export class ClaudeCodeDetector {
     session.lastActivityAt = now;
 
     upsertSession(session);
+    broadcast({ type: 'session.updated', timestamp: now, data: session as unknown as Record<string, unknown> });
 
     // Start JSONL watcher if not already watching
-    this.watchJsonlFile(session_id, repo.path);
+    await this.watchJsonlFile(session_id, repo.path);
   }
 
-  private watchJsonlFile(sessionId: string, repoPath: string): void {
+  private async activateFoundSession(sessionId: string, repo: Repository, claudePid: number): Promise<void> {
+    const now = new Date().toISOString();
+    const existingSession = getSession(sessionId);
+    if (existingSession?.status === 'active') {
+      await this.watchJsonlFile(sessionId, repo.path);
+      return;
+    }
+    const base: Session = existingSession ?? {
+      id: sessionId,
+      repositoryId: repo.id,
+      type: 'claude-code',
+      pid: claudePid,
+      status: 'active',
+      startedAt: now,
+      endedAt: null,
+      lastActivityAt: now,
+      summary: null,
+      expiresAt: null,
+      model: null,
+    };
+    upsertSession({ ...base, status: 'active', endedAt: null, lastActivityAt: now, pid: claudePid });
+    await this.watchJsonlFile(sessionId, repo.path);
+  }
+
+  private async watchJsonlFile(sessionId: string, repoPath: string): Promise<void> {
     if (this.watchers.has(sessionId)) return;
     const jsonlPath = join(
       homedir(), '.claude', 'projects',
@@ -228,23 +222,23 @@ export class ClaudeCodeDetector {
     // Load all existing lines
     this.filePositions.set(sessionId, 0);
     this.sequenceCounters.set(sessionId, 0);
-    this.readNewJsonlLines(sessionId, jsonlPath);
+    await this.readNewJsonlLines(sessionId, jsonlPath);
 
     const watcher = chokidar.watch(jsonlPath, { persistent: false, usePolling: false });
-    watcher.on('change', () => this.readNewJsonlLines(sessionId, jsonlPath));
+    watcher.on('change', () => { this.readNewJsonlLines(sessionId, jsonlPath).catch(() => {}); });
     this.watchers.set(sessionId, watcher);
   }
 
-  private readNewJsonlLines(sessionId: string, filePath: string): void {
+  private async readNewJsonlLines(sessionId: string, filePath: string): Promise<void> {
     try {
-      const currentSize = statSync(filePath).size;
+      const { size: currentSize } = await fsStat(filePath);
       const lastPos = this.filePositions.get(sessionId) ?? 0;
       if (currentSize <= lastPos) return;
 
-      const fd = openSync(filePath, 'r');
+      const fh = await fsOpen(filePath, 'r');
       const buffer = Buffer.alloc(currentSize - lastPos);
-      readSync(fd, buffer, 0, buffer.length, lastPos);
-      closeSync(fd);
+      await fh.read(buffer, 0, buffer.length, lastPos);
+      await fh.close();
       this.filePositions.set(sessionId, currentSize);
 
       const lines = buffer.toString('utf-8').split('\n').filter(l => l.trim());
@@ -278,10 +272,19 @@ export class ClaudeCodeDetector {
     } catch { /* ignore */ }
   }
 
+  closeSessionWatcher(sessionId: string): void {
+    this.watchers.get(sessionId)?.close().catch(() => { /* ignore */ });
+    this.watchers.delete(sessionId);
+    this.filePositions.delete(sessionId);
+    this.sequenceCounters.delete(sessionId);
+  }
+
   stopWatchers(): void {
     for (const watcher of this.watchers.values()) {
       watcher.close().catch(() => { /* ignore */ });
     }
     this.watchers.clear();
+    this.filePositions.clear();
+    this.sequenceCounters.clear();
   }
 }

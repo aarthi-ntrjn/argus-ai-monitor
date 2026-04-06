@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useTodos, useCreateTodo, useUpdateTodoText, useToggleTodo, useDeleteTodo } from '../../hooks/useTodos';
 
 type RowId = string;
@@ -50,6 +50,11 @@ export default function TodoPanel() {
   const [showDone, setShowDone] = useState(true);
   const [showTimestamps, setShowTimestamps] = useState(true);
   const [wrapText, setWrapText] = useState(false);
+
+  const reversedTodos = useMemo(
+    () => [...todos].reverse().filter(todo => showDone || !todo.done),
+    [todos, showDone]
+  );
 
   // Track IDs submitted via Enter so handleBlur doesn't double-save.
   const savingIds = useRef<Set<string>>(new Set());
@@ -133,28 +138,34 @@ export default function TodoPanel() {
         <div className="flex items-center gap-1">
           <button
             onClick={() => setWrapText(v => !v)}
+            aria-label={wrapText ? 'Single line' : 'Wrap text'}
+            aria-pressed={wrapText}
             title={wrapText ? 'Single line' : 'Wrap text'}
-            className={`p-1 rounded transition-colors ${wrapText ? 'text-blue-400 hover:text-blue-600' : 'text-gray-300 hover:text-gray-500'}`}
+            className={`p-1 rounded transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 ${wrapText ? 'text-blue-600 hover:text-blue-800' : 'text-gray-500 hover:text-gray-700'}`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h10a3 3 0 010 6h-3m3-6l2 2-2 2" />
             </svg>
           </button>
           <button
             onClick={() => setShowTimestamps(v => !v)}
+            aria-label={showTimestamps ? 'Hide timestamps' : 'Show timestamps'}
+            aria-pressed={showTimestamps}
             title={showTimestamps ? 'Hide timestamps' : 'Show timestamps'}
-            className={`p-1 rounded transition-colors ${showTimestamps ? 'text-blue-400 hover:text-blue-600' : 'text-gray-300 hover:text-gray-500'}`}
+            className={`p-1 rounded transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 ${showTimestamps ? 'text-blue-600 hover:text-blue-800' : 'text-gray-500 hover:text-gray-700'}`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </button>
           <button
             onClick={() => setShowDone(v => !v)}
+            aria-label={showDone ? 'Hide completed' : 'Show completed'}
+            aria-pressed={showDone}
             title={showDone ? 'Hide completed' : 'Show completed'}
-            className={`p-1 rounded transition-colors ${showDone ? 'text-blue-400 hover:text-blue-600' : 'text-gray-300 hover:text-gray-500'}`}
+            className={`p-1 rounded transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 ${showDone ? 'text-blue-600 hover:text-blue-800' : 'text-gray-500 hover:text-gray-700'}`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </button>
@@ -167,7 +178,7 @@ export default function TodoPanel() {
           className="flex items-center gap-2 px-4 py-1 border-b border-gray-50 cursor-text"
           onClick={() => addRowRef.current?.focus()}
         >
-          <span className="h-4 w-4 shrink-0 flex items-center justify-center text-blue-400 text-base leading-none select-none">+</span>
+          <span aria-hidden="true" className="h-4 w-4 shrink-0 flex items-center justify-center text-blue-600 text-base leading-none select-none">+</span>
           <input
             key={addRowId}
             ref={addRowRef}
@@ -177,21 +188,19 @@ export default function TodoPanel() {
             onKeyDown={e => handleKeyDown(e, addRowId, 0)}
             placeholder="Add a task…"
             aria-label="New task"
-            className="flex-1 min-w-0 text-sm bg-transparent border-none outline-none focus:ring-0 text-gray-700 placeholder-gray-400"
+            className="flex-1 min-w-0 text-sm bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded text-gray-700 placeholder-gray-400"
           />
         </div>
 
         {isLoading && (
-          <div className="px-4 py-6 text-center text-sm text-gray-400">Loading…</div>
+          <div className="px-4 py-6 text-center text-sm text-gray-500">Loading…</div>
         )}
         {isError && (
           <div className="px-4 py-6 text-center text-sm text-red-500">Failed to load todos.</div>
         )}
         {!isLoading && !isError && todos.length > 0 && (
           <ul className="divide-y divide-gray-50 py-1">
-            {(() => {
-              const reversedTodos = [...todos].reverse().filter(todo => showDone || !todo.done);
-              return reversedTodos.map((todo, index) => {
+            {reversedTodos.map((todo, index) => {
                 const done = todo.done;
                 return (
                   <li key={todo.id} className="group flex items-center gap-2 px-4 py-1">
@@ -224,12 +233,12 @@ export default function TodoPanel() {
                       }}
                       aria-label={`Edit task: ${todo.text}`}
                       rows={1}
-                      className={`flex-1 min-w-0 text-sm bg-transparent border-none outline-none focus:ring-0 resize-none leading-snug ${done ? 'line-through text-gray-400' : 'text-gray-700'}`}
+                      className={`flex-1 min-w-0 text-sm bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded resize-none leading-snug ${done ? 'line-through text-gray-500' : 'text-gray-700'}`}
                       style={wrapText ? { overflow: 'hidden' } : { height: '1.25rem', overflow: 'hidden', whiteSpace: 'nowrap' }}
                     />
                     <div className="relative shrink-0">
                       {showTimestamps ? (
-                        <span className="block text-xs text-gray-300 whitespace-nowrap group-hover:opacity-0 transition-opacity">
+                        <span className="block text-xs text-gray-500 whitespace-nowrap group-hover:opacity-0 transition-opacity">
                           {formatRelativeTime(todo.createdAt)}
                         </span>
                       ) : (
@@ -238,7 +247,7 @@ export default function TodoPanel() {
                       <button
                         onClick={() => deleteTodo.mutate(todo.id)}
                         aria-label={`Delete "${todo.text}"`}
-                        className="absolute inset-0 flex items-center justify-end opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-opacity"
+                        className="absolute inset-0 flex items-center justify-end opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-500 transition-opacity focus:opacity-100 focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -247,8 +256,7 @@ export default function TodoPanel() {
                     </div>
                   </li>
                 );
-              });
-            })()}
+            })}
           </ul>
         )}
       </div>

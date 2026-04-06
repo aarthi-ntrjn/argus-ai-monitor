@@ -97,9 +97,9 @@ Build must succeed with no errors.
 
 ---
 
-### Step 7 — Update BUG-LEARNINGS.md
+### Step 7 — Update docs/README-LEARNINGS.md
 
-Read `BUG-LEARNINGS.md` at the repo root (create it if it doesn't exist). Append an entry in this format:
+Read `docs/README-LEARNINGS.md` at the repo root (create it if it doesn't exist). Append an entry in this format:
 
 ```markdown
 ## T### — <short description>
@@ -114,7 +114,7 @@ Read `BUG-LEARNINGS.md` at the repo root (create it if it doesn't exist). Append
 
 Commit the learnings file:
 ```
-git add BUG-LEARNINGS.md
+git add docs/README-LEARNINGS.md
 git commit -m "docs(T###): add bug learning entry
 
 Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
@@ -144,5 +144,5 @@ Summarise what was done:
 - **Root cause**: what was actually wrong
 - **Fix**: what was changed (files + brief description)
 - **Regression test**: what test was added and why it catches the root cause
-- **Learning**: the key takeaway added to BUG-LEARNINGS.md
+- **Learning**: the key takeaway added to `docs/README-LEARNINGS.md`
 - **Tests**: pass/fail status

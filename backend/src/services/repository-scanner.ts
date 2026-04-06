@@ -1,15 +1,27 @@
-import { readdirSync, existsSync } from 'fs';
+import { promises as fs, existsSync } from 'fs';
 import { join, basename } from 'path';
 import { randomUUID } from 'crypto';
-import { execSync } from 'child_process';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import { getRepositories, insertRepository, getRepositoryByPath } from '../db/database.js';
 import type { Repository } from '../models/index.js';
 import { broadcast } from '../api/ws/event-dispatcher.js';
 
-export function getCurrentBranch(repoPath: string): string | null {
+const execAsync = promisify(exec);
+
+const branchCache = new Map<string, { value: string | null; timestamp: number }>();
+const BRANCH_CACHE_TTL_MS = 30_000;
+
+export async function getCurrentBranch(repoPath: string): Promise<string | null> {
+  const cached = branchCache.get(repoPath);
+  if (cached && Date.now() - cached.timestamp < BRANCH_CACHE_TTL_MS) {
+    return cached.value;
+  }
   try {
-    const branch = execSync('git branch --show-current', { cwd: repoPath, encoding: 'utf8' }).trim();
-    return branch || null;
+    const { stdout } = await execAsync('git branch --show-current', { cwd: repoPath });
+    const value = stdout.trim() || null;
+    branchCache.set(repoPath, { value, timestamp: Date.now() });
+    return value;
   } catch {
     return null;
   }
@@ -23,7 +35,7 @@ export class RepositoryScanner {
     for (const dir of this.watchDirectories) {
       if (!existsSync(dir)) continue;
       try {
-        const entries = readdirSync(dir, { withFileTypes: true });
+        const entries = await fs.readdir(dir, { withFileTypes: true });
         for (const entry of entries) {
           if (!entry.isDirectory()) continue;
           const fullPath = join(dir, entry.name);
@@ -38,10 +50,6 @@ export class RepositoryScanner {
 
   private hasGit(dirPath: string): boolean {
     return existsSync(join(dirPath, '.git'));
-  }
-
-  async validatePath(repoPath: string): Promise<boolean> {
-    return existsSync(join(repoPath, '.git'));
   }
 
   async registerPath(repoPath: string): Promise<Repository> {
@@ -62,7 +70,7 @@ export class RepositoryScanner {
       source,
       addedAt: new Date().toISOString(),
       lastScannedAt: new Date().toISOString(),
-      branch: getCurrentBranch(repoPath),
+      branch: await getCurrentBranch(repoPath),
     };
     insertRepository(repo);
     broadcast({ type: 'repository.added', timestamp: new Date().toISOString(), data: repo as unknown as Record<string, unknown> });

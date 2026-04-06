@@ -1,4 +1,4 @@
-# Argus — Manual Test Plan
+﻿# Argus: Manual Test Plan
 
 Manual tests to run against a live Argus instance with at least one real local repository and at least one real Claude Code or Copilot CLI session running.
 
@@ -9,7 +9,7 @@ Manual tests to run against a live Argus instance with at least one real local r
 
 ---
 
-## P0 — Must pass before every release
+## P0: Must pass before every release
 
 ### Dashboard loads
 
@@ -40,7 +40,7 @@ Manual tests to run against a live Argus instance with at least one real local r
 
 ---
 
-## P1 — Must pass before merging to main
+## P1: Must pass before merging to main
 
 ### Repository management
 
@@ -104,7 +104,7 @@ Manual tests to run against a live Argus instance with at least one real local r
 
 ---
 
-## P2 — Should pass before release, can be deferred for hotfixes
+## P2: Should pass before release, can be deferred for hotfixes
 
 ### Edge cases
 

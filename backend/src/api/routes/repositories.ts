@@ -38,7 +38,7 @@ const repositoriesRoutes: FastifyPluginAsync = async (app) => {
       source: 'ui' as const,
       addedAt: new Date().toISOString(),
       lastScannedAt: null,
-      branch: getCurrentBranch(repoPath),
+      branch: await getCurrentBranch(repoPath),
     };
     insertRepository(repo);
     broadcast({ type: 'repository.added', timestamp: new Date().toISOString(), data: repo as unknown as Record<string, unknown> });

@@ -1,0 +1,84 @@
+# Feature Specification: Engineering Documentation Cleanup
+
+**Feature Branch**: `015-docs-cleanup`  
+**Created**: 2026-04-05  
+**Status**: Clarified  
+**Input**: User description: "create a feature branch for engineering documentation cleanup where the engineer will provide their own tasks"
+
+## User Scenarios & Testing *(mandatory)*
+
+### User Story 1 - Review and Update Existing Docs (Priority: P1)
+
+As an engineer on this project, I want to review the existing documentation files and update them so they accurately reflect the current state of the codebase, making it easier for contributors to get up to speed.
+
+**Why this priority**: Accurate documentation is the most critical need. Outdated or incorrect docs are treated as bugs per the constitution (§XI).
+
+**Independent Test**: All documentation files reviewed in this pass are accurate, consistent with the codebase, and free of outdated references. Can be verified by reading each doc against the current implementation.
+
+**Acceptance Scenarios**:
+
+1. **Given** existing documentation files contain outdated information, **When** the engineer updates them, **Then** all content reflects the current codebase state and is accurate.
+2. **Given** a new contributor reads the documentation, **When** they follow the setup or usage instructions, **Then** they are able to complete the steps without encountering errors or missing steps.
+
+---
+
+### User Story 2 - Organize and Structure Docs (Priority: P2)
+
+As an engineer, I want to organize documentation so it is logically structured, easy to navigate, and covers the right topics in the right places — with no duplicate or conflicting information across files.
+
+**Why this priority**: Structure and discoverability come after accuracy. Consistent organization reduces maintenance burden.
+
+**Independent Test**: Documentation files have a clear hierarchy, headings are consistent, and there are no duplicate sections across files.
+
+**Acceptance Scenarios**:
+
+1. **Given** documentation is spread across multiple files, **When** the engineer reorganizes it, **Then** each file has a clear, distinct purpose with no overlapping content.
+2. **Given** a contributor navigates the docs, **When** they look for a specific topic, **Then** they can find it in the expected location without searching across multiple files.
+
+---
+
+### Edge Cases
+
+- What happens if a doc file is referenced from elsewhere (README links, other docs) and gets renamed or removed?
+- How should contradictions between docs and code be resolved — update the doc, or note the discrepancy for a separate code change?
+
+## Requirements *(mandatory)*
+
+### Functional Requirements
+
+- **FR-001**: The engineer MUST be able to define their own specific cleanup tasks in `tasks.md` on this branch.
+- **FR-002**: Documentation changes MUST be committed on branch `015-docs-cleanup` and not directly to `master`.
+- **FR-003**: All modified documentation files MUST be accurate and consistent with the current codebase at time of completion.
+- **FR-004**: No documentation change MAY introduce broken links, missing references, or removed sections that are referenced from other files.
+- **FR-005**: `README.md` MUST be updated if any user-facing or architectural description changes (per §XI).
+
+### Key Entities
+
+- **Documentation File**: Any `.md` file in the repo root or `specs/` directory that describes the project, architecture, setup, or processes.
+- **Cleanup Task**: A discrete, engineer-defined action on a documentation file (e.g., update section, fix link, remove outdated content, restructure heading).
+
+## Success Criteria *(mandatory)*
+
+### Measurable Outcomes
+
+- **SC-001**: All documentation files targeted by the engineer's tasks are updated and committed on the feature branch.
+- **SC-002**: No broken internal links or references in any modified documentation file.
+- **SC-003**: `README.md` accurately reflects the current project state after cleanup is complete.
+- **SC-004**: The engineer can add, edit, and commit their own tasks to `tasks.md` on this branch without conflict.
+
+## Assumptions
+
+- The engineer will populate `tasks.md` with their specific cleanup items directly on this branch.
+- This feature contains no code changes — only documentation file edits.
+- Target documentation files will be determined by the engineer task-by-task (not pre-scoped to specific directories).
+- No automated tests are required for documentation changes; correctness is verified by human review.
+- §IV (test-first) and §V (test coverage) constitution principles do not apply to this purely documentation-focused feature.
+- The speckit pipeline will generate a tasks.md scaffold; the engineer will populate the actual tasks themselves.
+
+## Clarifications
+
+### Session 2026-04-05
+
+- **Doc scope**: Engineer will decide file-by-file when writing tasks — not pre-scoped.
+- **Workflow**: Branch + tasks.md scaffold generated by speckit; engineer fills in and executes tasks themselves.
+
