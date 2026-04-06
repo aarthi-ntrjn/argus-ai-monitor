@@ -11,7 +11,7 @@ For product context, see [../README.md](../README.md).
 - [Decision 2: Desktop App or Webpage](#decision-2-desktop-app-or-webpage)
 - [Decision 3: Login Required or Not](#decision-3-login-required-or-not)
 - [Decision 4: Other Choices](#decision-4-other-choices)
-- [Summary Table](#summary-table)
+- [Argus vs OpenClaw Comparison](#summary-table)
 
 ---
 
@@ -194,14 +194,19 @@ Add an explicit opt-in telemetry decision to v1. The OpenClaw ban illustrates wh
 
 ---
 
-## Summary Table
+## Argus vs OpenClaw Comparison
 
-| Decision | Recommended choice | Defer |
-|----------|-------------------|-------|
-| Repository visibility | Public, MIT license | -- |
-| Distribution format | Web app (localhost:7411) | Tray launcher (phase 2) |
-| Authentication | None at launch | Optional sync account (phase 2) |
-| Pricing | Free | Cloud relay / team tier (post-traction) |
-| Primary launch channel | GitHub + Show HN | Product Hunt (second wave) |
-| Package manager | npm global install | Homebrew / winget (after npm proven) |
-| Telemetry | Opt-in crash reporting | Opt-in usage analytics (post-traction) |
+| Decision | Argus recommendation | OpenClaw (what they did) | Same call? |
+|----------|---------------------|--------------------------|------------|
+| Repository visibility | Public, MIT license | Public, MIT license | Yes |
+| Distribution format | Web app now, tray launcher later | CLI daemon; optional macOS menu bar app (beta, shipped after viral growth) | Yes |
+| Authentication | None at launch | None (bring-your-own API keys, framed as a privacy feature) | Yes |
+| Pricing | Free | Fully free (MIT); no tiers, no subscriptions | Yes |
+| Primary launch channel | GitHub + Show HN | GitHub organic + Hacker News front page (no deliberate strategy) | Yes |
+| Package manager | npm global install | npm + curl installer | Yes |
+| Community | Discord (post-traction) | 84,000-member Discord, ClawHub marketplace, in-person ClawCon | Same direction, different scale |
+| Product Hunt | Second wave, not launch | Never launched core product on PH; only third-party ecosystem tools did | Yes |
+| Telemetry | Opt-in crash reporting | None in core product | Different: Argus adds opt-in from day one |
+| Monetization | Cloud relay / team tier (post-traction) | None in core; ecosystem businesses monetize around it | Argus plans a first-party paid tier; OpenClaw relied on the ecosystem |
+| Naming | "Argus" (clear, mythological, available) | "Clawbot" → "Moltbot" → "OpenClaw" (forced rename after Anthropic trademark dispute) | Lesson: clear name ownership before launch matters |
+| Windows support | Full (Node.js backend runs natively) | WSL2 / Docker required on Windows | Argus has a structural advantage here |
