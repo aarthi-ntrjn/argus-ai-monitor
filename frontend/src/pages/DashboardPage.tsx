@@ -59,12 +59,12 @@ export default function DashboardPage() {
     return () => { document.removeEventListener('keydown', handleKey); document.removeEventListener('mousedown', handleClick); };
   }, [settingsOpen]);
 
-  const { data: repos = [], isLoading: reposLoading } = useQuery({
+  const { data: repos = [], isLoading: reposLoading, isError: reposError } = useQuery({
     queryKey: ['repositories'],
     queryFn: getRepositories,
   });
 
-  const { data: sessions = [], isLoading: sessionsLoading } = useQuery({
+  const { data: sessions = [], isLoading: sessionsLoading, isError: sessionsError } = useQuery({
     queryKey: ['sessions'],
     queryFn: () => getSessions(),
   });
@@ -99,6 +99,17 @@ export default function DashboardPage() {
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-24 bg-gray-200 rounded-lg" />
           ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (reposError || sessionsError) {
+    return (
+      <div className="min-h-screen bg-slate-50 p-8 flex items-center justify-center">
+        <div className="text-center space-y-2">
+          <p className="text-lg font-medium text-gray-800">Cannot connect to Argus server</p>
+          <p className="text-sm text-gray-500">Make sure the backend is running, then refresh the page.</p>
         </div>
       </div>
     );

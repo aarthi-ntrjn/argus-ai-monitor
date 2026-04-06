@@ -12,7 +12,7 @@ interface Props {
 export default function OutputPane({ session, onClose }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const { data } = useQuery({
+  const { data, isError } = useQuery({
     queryKey: ['session-output', session.id],
     queryFn: () => getSessionOutput(session.id, { limit: 100 }),
   });
@@ -49,8 +49,14 @@ export default function OutputPane({ session, onClose }: Props) {
         </button>
       </div>
       <div className="flex-1 overflow-y-auto rounded-b-lg">
-        <SessionDetail sessionId={session.id} items={data?.items ?? []} dark className="max-h-none pb-0" />
-        <div ref={bottomRef} />
+        {isError ? (
+          <p className="p-6 text-center text-sm text-red-400">Failed to load output. Is the server running?</p>
+        ) : (
+          <>
+            <SessionDetail sessionId={session.id} items={data?.items ?? []} dark className="max-h-none pb-0" />
+            <div ref={bottomRef} />
+          </>
+        )}
       </div>
     </section>
   );
