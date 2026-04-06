@@ -210,7 +210,7 @@ export default function TodoPanel() {
             onKeyDown={e => handleKeyDown(e, addRowId, 0)}
             placeholder="Add a task…"
             aria-label="New task"
-            className="flex-1 min-w-0 text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 text-gray-700 placeholder-gray-400"
+            className="flex-1 min-w-0 text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 text-gray-700 placeholder-gray-400"
           />
         </div>
 
@@ -266,7 +266,7 @@ export default function TodoPanel() {
                       }}
                       aria-label={`Edit task: ${todo.text}`}
                       rows={1}
-                      className={`flex-1 min-w-0 text-sm bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded resize-none leading-snug ${done ? 'line-through text-gray-500' : 'text-gray-700'}`}
+                      className={`flex-1 min-w-0 text-sm bg-transparent border-none outline-none focus:ring-1 focus:ring-blue-400 rounded resize-none leading-snug ${done ? 'line-through text-gray-500' : 'text-gray-700'}`}
                       style={wrapText ? { overflow: 'hidden' } : { height: '1.25rem', overflow: 'hidden', whiteSpace: 'nowrap' }}
                     />
                     <div className="relative shrink-0">
