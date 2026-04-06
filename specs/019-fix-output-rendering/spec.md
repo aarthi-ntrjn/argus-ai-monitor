@@ -2,7 +2,7 @@
 
 **Feature Branch**: `019-fix-output-rendering`
 **Created**: 2026-04-06
-**Status**: Draft
+**Status**: Clarified
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -54,7 +54,7 @@ If the GitHub Copilot CLI evolves to write `data.content` as an array of typed c
 
 - **FR-001**: The events parser MUST NOT produce rows with `type: message` and `role: null` from unrecognised copilot event types that have no meaningful content.
 - **FR-002**: The events parser MUST handle `data.content` as an array of typed content blocks, joining text blocks into a single string.
-- **FR-003**: The events parser MUST return null (so the output store skips the row) when an event has no extractable content and the event type is not a recognised copilot event type.
+- **FR-003**: The events parser MUST serialize `event.data` as JSON and show it as MSG-badged content when an event type is not a recognised copilot event type (best-effort extract). If `event.data` is absent or empty, content falls back to an empty string.
 - **FR-004**: Existing handling for `user.message` and `assistant.message` with plain string `data.content` MUST NOT regress.
 - **FR-005**: The UI MUST NOT display rows with blank content in the copilot output pane.
 
@@ -71,6 +71,13 @@ If the GitHub Copilot CLI evolves to write `data.content` as an array of typed c
 - **SC-002**: All unit tests for `events-parser.ts` pass, including new tests covering array content blocks and unrecognised event types.
 - **SC-003**: Opening the output pane for a copilot session shows at least one AI-badged row with non-empty content (regression check for the primary happy path).
 - **SC-004**: No existing tests for claude-code output parsing are broken.
+
+## Clarifications
+
+### Session 2026-04-06
+
+- **Unrecognised event types**: Best-effort extract — serialize `event.data` as JSON and display in a MSG-badged row. This keeps all events visible so users can see unexpected output from the Copilot CLI rather than silently dropping it.
+- **Empty string `data.content`**: Fall through to rest-of-payload — the `&& data.content` guard is intentional. If `data.content` is `""`, the parser continues to look for content elsewhere in the event (e.g. other `data` fields). This avoids blank rows when content is technically present but just happened to be an empty string in one field.
 
 ## Assumptions
 
