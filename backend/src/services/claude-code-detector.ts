@@ -7,7 +7,7 @@ import { getSession, upsertSession, getRepositories, getRepositoryByPath } from 
 import { OutputStore } from './output-store.js';
 import { broadcast } from '../api/ws/event-dispatcher.js';
 import { parseClaudeJsonlLine, parseModel } from './claude-code-jsonl-parser.js';
-import type { Session } from '../models/index.js';
+import type { Session, Repository } from '../models/index.js';
 
 const CLAUDE_SETTINGS_PATH = join(homedir(), '.claude', 'settings.json');
 const HOOK_COMMAND = 'curl -sf -X POST http://127.0.0.1:7411/hooks/claude -H "Content-Type: application/json" -d @- 2>/dev/null || true';
@@ -53,12 +53,6 @@ export class ClaudeCodeDetector {
       }
       if (changed) writeFileSync(CLAUDE_SETTINGS_PATH, JSON.stringify(settings, null, 2), 'utf-8');
     } catch { /* ignore if settings file inaccessible */ }
-  }
-
-  removeHooksForRepo(_repoPath: string): void {
-    // Claude hooks are global (not repo-specific) — the single HOOK_COMMAND listens for all repos.
-    // We do not remove them on a per-repo basis to avoid breaking other registered repos.
-    // Hooks are only removed when ALL repos are gone or the user manually clears them.
   }
 
   removeAllHooks(): void {
@@ -149,33 +143,7 @@ export class ClaudeCodeDetector {
         if (!mostRecent) continue;
         if (Date.now() - mostRecent.mtime.getTime() > ACTIVE_JSONL_THRESHOLD_MS) continue;
 
-        const sessionId = mostRecent.id;
-        const now = new Date().toISOString();
-
-        // If already active, just ensure the watcher is running (e.g. after server restart)
-        const existingSession = getSession(sessionId);
-        if (existingSession?.status === 'active') {
-          this.watchJsonlFile(sessionId, repo.path);
-          continue;
-        }
-
-        // Activate the session using its real ID
-        const base: Session = existingSession ?? {
-          id: sessionId,
-          repositoryId: repo.id,
-          type: 'claude-code',
-          pid: claudePid,
-          status: 'active',
-          startedAt: now,
-          endedAt: null,
-          lastActivityAt: now,
-          summary: null,
-          expiresAt: null,
-          model: null,
-        };
-
-        upsertSession({ ...base, status: 'active', endedAt: null, lastActivityAt: now, pid: claudePid });
-        this.watchJsonlFile(sessionId, repo.path);
+        this.activateFoundSession(mostRecent.id, repo, claudePid);
       }
     } catch { /* ignore */ }
   }
@@ -214,6 +182,30 @@ export class ClaudeCodeDetector {
 
     // Start JSONL watcher if not already watching
     this.watchJsonlFile(session_id, repo.path);
+  }
+
+  private activateFoundSession(sessionId: string, repo: Repository, claudePid: number): void {
+    const now = new Date().toISOString();
+    const existingSession = getSession(sessionId);
+    if (existingSession?.status === 'active') {
+      this.watchJsonlFile(sessionId, repo.path);
+      return;
+    }
+    const base: Session = existingSession ?? {
+      id: sessionId,
+      repositoryId: repo.id,
+      type: 'claude-code',
+      pid: claudePid,
+      status: 'active',
+      startedAt: now,
+      endedAt: null,
+      lastActivityAt: now,
+      summary: null,
+      expiresAt: null,
+      model: null,
+    };
+    upsertSession({ ...base, status: 'active', endedAt: null, lastActivityAt: now, pid: claudePid });
+    this.watchJsonlFile(sessionId, repo.path);
   }
 
   private watchJsonlFile(sessionId: string, repoPath: string): void {

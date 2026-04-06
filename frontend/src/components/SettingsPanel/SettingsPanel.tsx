@@ -3,7 +3,6 @@ import type { DashboardSettings } from '../../types';
 interface SettingsPanelProps {
   settings: DashboardSettings;
   onToggle: (key: keyof DashboardSettings, value: boolean) => void;
-  onClose: () => void;
   onRestartTour?: () => void;
   onResetOnboarding?: () => void;
 }

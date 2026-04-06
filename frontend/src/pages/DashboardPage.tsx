@@ -1,32 +1,28 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRef, useState, useEffect } from 'react';
-import { getRepositories, getSessions, addRepository, removeRepository, pickFolder, scanFolder, queryClient } from '../services/api';
-import type { Repository, Session } from '../types';
+import { getSessions, getRepositories } from '../services/api';
+import type { Session } from '../types';
 import { useSettings } from '../hooks/useSettings';
 import { useOnboarding } from '../hooks/useOnboarding';
+import { useRepositoryManagement } from '../hooks/useRepositoryManagement';
 import { SettingsPanel } from '../components/SettingsPanel';
+import { RemoveConfirmDialog } from '../components/RemoveConfirmDialog';
 import SessionCard from '../components/SessionCard/SessionCard';
 import OutputPane from '../components/OutputPane/OutputPane';
 import TodoPanel from '../components/TodoPanel/TodoPanel';
 import { isInactive } from '../utils/sessionUtils';
 import { OnboardingTour } from '../components/Onboarding';
 import { DASHBOARD_TOUR_STEPS } from '../config/dashboardTourSteps';
+import type { Repository } from '../types';
 
 interface RepoWithSessions extends Repository {
   sessions: Session[];
 }
 
-const SKIP_REMOVE_CONFIRM_KEY = 'argus:skipRemoveConfirm';
 const ENDED_STATUSES = new Set(['completed', 'ended']);
 const ACTIVE_STATUSES = new Set(['active', 'idle', 'waiting', 'error']);
 
 export default function DashboardPage() {
-  const [addError, setAddError] = useState<string | null>(null);
-  const [addInfo, setAddInfo] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
-  const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null);
-  const [removing, setRemoving] = useState(false);
-  const [skipConfirm, setSkipConfirm] = useState(() => localStorage.getItem(SKIP_REMOVE_CONFIRM_KEY) === 'true');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
@@ -34,6 +30,13 @@ export default function DashboardPage() {
   const [settings, updateSetting] = useSettings();
   const { tourStatus, startTour, skipTour, completeTour, resetOnboarding } = useOnboarding();
   const [tourRun, setTourRun] = useState(false);
+
+  const {
+    addError, addInfo, adding, removeConfirmId, removing, skipConfirm,
+    setRemoveConfirmId, setSkipConfirm,
+    handleAddRepo, handleRemoveRepoById, handleRemoveRepo,
+    clearAddError, clearAddInfo,
+  } = useRepositoryManagement();
 
   // Auto-launch for first-time users
   useEffect(() => {
@@ -43,11 +46,6 @@ export default function DashboardPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const showInfo = (msg: string) => {
-    setAddInfo(msg);
-    setTimeout(() => setAddInfo(null), 5000);
-  };
 
   // Close settings panel on outside click or Escape
   useEffect(() => {
@@ -83,62 +81,9 @@ export default function DashboardPage() {
     return { ...repo, sessions: visibleSessions };
   }).filter((repo) => {
     if (!settings.hideReposWithNoActiveSessions) return true;
-    // Use raw sessions (independent of hideEndedSessions filter)
     const repoSessions = sessions.filter(s => s.repositoryId === repo.id);
     return repoSessions.some(s => ACTIVE_STATUSES.has(s.status));
   });
-
-  const handleAddRepo = async () => {
-    setAddError(null);
-    setAddInfo(null);
-    setAdding(true);
-    try {
-      const folderPath = await pickFolder();
-      if (!folderPath) return;
-      const found = await scanFolder(folderPath);
-      const registeredPaths = new Set(repos.map(r => r.path));
-      const newRepos = found.filter(r => !registeredPaths.has(r.path));
-      if (newRepos.length === 0) {
-        showInfo('No new git repositories found in the selected folder.');
-        return;
-      }
-      let added = 0;
-      let failed = 0;
-      for (const repo of newRepos) {
-        try {
-          await addRepository(repo.path);
-          added++;
-        } catch {
-          failed++;
-        }
-      }
-      await queryClient.invalidateQueries({ queryKey: ['repositories'] });
-      if (failed === 0) {
-        showInfo(`Added ${added} repositor${added === 1 ? 'y' : 'ies'}.`);
-      } else {
-        setAddError(`Added ${added} of ${newRepos.length} repositories — ${failed} failed.`);
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to add repository';
-      setAddError(msg);
-    } finally {
-      setAdding(false);
-    }
-  };
-
-  const handleRemoveRepoById = async (id: string) => {
-    setRemoving(true);
-    try {
-      await removeRepository(id);
-      await queryClient.invalidateQueries({ queryKey: ['repositories'] });
-      await queryClient.invalidateQueries({ queryKey: ['sessions'] });
-    } finally {
-      setRemoving(false);
-      setRemoveConfirmId(null);
-    }
-  };
-
-  const handleRemoveRepo = () => handleRemoveRepoById(removeConfirmId!);
 
   if (reposLoading || sessionsLoading) {
     return (
@@ -175,7 +120,6 @@ export default function DashboardPage() {
                 <SettingsPanel
                   settings={settings}
                   onToggle={(key, value) => updateSetting(key, value)}
-                  onClose={() => setSettingsOpen(false)}
                   onRestartTour={() => {
                     setSettingsOpen(false);
                     startTour('manual');
@@ -191,7 +135,7 @@ export default function DashboardPage() {
             </div>
             <button
               data-tour-id="dashboard-add-repo"
-              onClick={handleAddRepo}
+              onClick={() => handleAddRepo(repos)}
               disabled={adding}
               className="bg-blue-600 text-white text-xs px-3 py-1.5 rounded hover:bg-blue-700 disabled:opacity-40 transition-colors"
             >
@@ -203,14 +147,14 @@ export default function DashboardPage() {
         {addInfo && (
           <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-green-700 text-sm flex justify-between">
             <span>{addInfo}</span>
-            <button onClick={() => setAddInfo(null)} className="ml-4 font-bold">x</button>
+            <button onClick={clearAddInfo} className="ml-4 font-bold">x</button>
           </div>
         )}
 
         {addError && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm flex justify-between">
             <span>{addError}</span>
-            <button onClick={() => setAddError(null)} className="ml-4 font-bold">x</button>
+            <button onClick={clearAddError} className="ml-4 font-bold">x</button>
           </div>
         )}
 
@@ -237,7 +181,6 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="flex gap-6 items-start">
-            {/* Repo/session list */}
             <div className="flex-1 min-w-0 space-y-6">
               {reposWithSessions.map((repo) => (
                 <div key={repo.id} data-tour-id="dashboard-repo-card" className="bg-white rounded-lg shadow p-6">
@@ -255,7 +198,7 @@ export default function DashboardPage() {
                       <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded">
                         {repo.sessions.length} session{repo.sessions.length !== 1 ? 's' : ''}
                       </span>
-          <button
+                      <button
                         onClick={() => {
                           if (skipConfirm) {
                             setRemoveConfirmId(repo.id);
@@ -293,7 +236,6 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            {/* Right column: output pane (60%) stacked above todo (40%) */}
             <div className={`${selectedSessionId ? 'w-[640px]' : 'w-[400px]'} shrink-0 sticky top-8 flex flex-col gap-4${selectedSessionId ? '' : ' h-auto'}`} style={selectedSessionId ? { height: 'calc(100vh - 8rem)' } : undefined}>
               {selectedSessionId && (() => {
                 const selectedSession = sessions.find(s => s.id === selectedSessionId);
@@ -314,35 +256,15 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {removeConfirmId && (        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-sm">
-            <h2 className="text-lg font-semibold mb-2">Remove Repository</h2>
-            <p className="text-gray-600 text-sm mb-4">
-              Remove <span className="font-semibold">{reposWithSessions.find(r => r.id === removeConfirmId)?.name}</span>?
-              This will also delete all associated sessions and output history.
-            </p>
-            <div className="flex items-center justify-between mt-4">
-              <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={skipConfirm}
-                  onChange={e => {
-                    setSkipConfirm(e.target.checked);
-                    localStorage.setItem(SKIP_REMOVE_CONFIRM_KEY, String(e.target.checked));
-                  }}
-                  className="rounded"
-                />
-                Don't ask again
-              </label>
-              <div className="flex gap-2">
-                <button onClick={() => setRemoveConfirmId(null)} disabled={removing} className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50">Cancel</button>
-                <button onClick={handleRemoveRepo} disabled={removing} className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50">
-                  {removing ? 'Removing...' : 'Remove'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {removeConfirmId && (
+        <RemoveConfirmDialog
+          repoName={reposWithSessions.find(r => r.id === removeConfirmId)?.name}
+          removing={removing}
+          skipConfirm={skipConfirm}
+          onSkipConfirmChange={setSkipConfirm}
+          onCancel={() => setRemoveConfirmId(null)}
+          onConfirm={handleRemoveRepo}
+        />
       )}
 
       <OnboardingTour

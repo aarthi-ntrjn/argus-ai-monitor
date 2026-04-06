@@ -181,7 +181,4 @@ export class CopilotCliDetector {
     return match ? parseInt(match[1], 10) : null;
   }
 
-  getEventsFilePath(sessionDir: string): string {
-    return join(this.sessionStateDir, sessionDir, 'events.jsonl');
-  }
 }

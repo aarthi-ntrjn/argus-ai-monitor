@@ -40,10 +40,6 @@ export class RepositoryScanner {
     return existsSync(join(dirPath, '.git'));
   }
 
-  async validatePath(repoPath: string): Promise<boolean> {
-    return existsSync(join(repoPath, '.git'));
-  }
-
   async registerPath(repoPath: string): Promise<Repository> {
     if (!this.hasGit(repoPath)) {
       throw new Error(`No .git directory found at: ${repoPath}`);

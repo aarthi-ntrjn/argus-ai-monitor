@@ -110,10 +110,6 @@ export class SessionMonitor extends EventEmitter {
     this.claudeDetector.stopWatchers();
   }
 
-  getCopilotCliDetector(): CopilotCliDetector {
-    return this.cliDetector;
-  }
-
   getClaudeCodeDetector(): ClaudeCodeDetector {
     return this.claudeDetector;
   }
