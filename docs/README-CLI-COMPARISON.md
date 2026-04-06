@@ -25,32 +25,83 @@ Both session types write output to JSONL files that Argus tails incrementally. T
 
 The repo path is encoded by replacing `:`, `\`, and `/` with `-` (e.g., `C:\source\argus` becomes `C--source-argus`). The JSONL filename (without extension) is the session ID.
 
-**Line schema:**
+**Entry types:**
 
-```json
-{
-  "type": "user" | "assistant" | "file-history-snapshot",
-  "uuid": "string",
-  "timestamp": "2025-01-01T12:00:00.000Z",
-  "message": {
-    "role": "user" | "assistant",
-    "model": "claude-opus-4-5",
-    "content": "string | ContentBlock[]"
-  }
-}
-```
+| `type` | Description | Argus action |
+|--------|-------------|--------------|
+| `user` | User turn (prompt or tool result) | Parsed into `SessionOutput` rows |
+| `assistant` | Assistant turn (text and/or tool calls) | Parsed into one or more `SessionOutput` rows |
+| `system` | CLI lifecycle events (session start, bridge status, local commands) | Discarded |
+| `attachment` | Deferred tool list deltas | Discarded |
+| `permission-mode` | Permission mode declaration at session open | Discarded |
+| `file-history-snapshot` | File-state checkpoint written by Claude Code | Discarded |
 
-Content is either a plain string or an array of typed blocks:
+**Common fields on every entry:**
 
-```json
-{ "type": "text", "text": "Here is my answer..." }
-{ "type": "tool_use", "id": "toolu_abc", "name": "Read", "input": { "file_path": "/foo.ts" } }
-{ "type": "tool_result", "tool_use_id": "toolu_abc", "content": "...file contents..." }
-```
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | string | Entry type (see table above) |
+| `uuid` | string (UUID) | Unique ID for this entry |
+| `parentUuid` | string \| null | UUID of the parent entry — forms the conversation tree |
+| `timestamp` | ISO 8601 string | When the entry was written |
+| `isSidechain` | boolean | True for background tool invocations not shown to the user |
+| `sessionId` | string (UUID) | Session this entry belongs to |
+| `userType` | string | Always `"external"` in practice |
+| `entrypoint` | string | Always `"cli"` in practice |
+| `cwd` | string | Working directory at the time of the entry |
+| `version` | string | Claude Code version (e.g. `"2.1.92"`) |
+| `gitBranch` | string \| null | Git branch active in `cwd` at the time of the entry |
+
+**`user` entry additional fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `message.role` | `"user"` | Always `"user"` |
+| `message.content` | string \| ContentBlock[] | The user's prompt text, or an array of content blocks when the entry carries tool results |
+| `promptId` | string (UUID) | Groups all entries that belong to one user-initiated prompt round-trip |
+| `isMeta` | boolean | True when this entry is injected by the CLI (e.g. skill expansion text) rather than typed by the user |
+| `toolUseResult` | object \| undefined | Present on tool-result entries: `{ success: boolean, commandName: string }` |
+| `sourceToolAssistantUUID` | string \| undefined | UUID of the assistant entry that triggered this tool result |
+| `sourceToolUseID` | string \| undefined | ID of the specific `tool_use` block this result answers |
+
+**`assistant` entry additional fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `message.role` | `"assistant"` | Always `"assistant"` |
+| `message.model` | string | Model ID, e.g. `"claude-sonnet-4-6"` |
+| `message.id` | string | Anthropic message ID, e.g. `"msg_01..."` |
+| `message.type` | `"message"` | Always `"message"` |
+| `message.content` | ContentBlock[] | One or more content blocks (see below) |
+| `message.stop_reason` | string \| null | e.g. `"tool_use"`, `"end_turn"`, or null while streaming |
+| `message.usage` | object | Token counts — see Usage object below |
+| `requestId` | string | Anthropic API request ID for tracing |
+
+**Content blocks (`message.content` array):**
+
+| `type` | Key fields | Description |
+|--------|-----------|-------------|
+| `text` | `text: string` | Plain text response from the assistant |
+| `thinking` | `thinking: string`, `signature: string` | Extended thinking block (internal reasoning); `signature` is an opaque verification token |
+| `tool_use` | `id: string`, `name: string`, `input: object`, `caller: object` | Tool invocation — `name` is the tool name, `input` is the arguments |
+| `tool_result` | `tool_use_id: string`, `content: string \| object` | Tool result returned to the assistant (appears in `user` entries) |
+
+**Usage object (`message.usage`):**
+
+| Field | Description |
+|-------|-------------|
+| `input_tokens` | Tokens in the prompt sent to the API |
+| `output_tokens` | Tokens generated in the response |
+| `cache_read_input_tokens` | Prompt tokens served from the prompt cache |
+| `cache_creation_input_tokens` | Prompt tokens written into the cache this turn |
+| `cache_creation.ephemeral_1h_input_tokens` | Tokens written into the 1-hour ephemeral cache |
+| `cache_creation.ephemeral_5m_input_tokens` | Tokens written into the 5-minute ephemeral cache |
+| `service_tier` | e.g. `"standard"` |
+| `inference_geo` | Region where inference ran, or `"not_available"` |
 
 One JSONL line can produce multiple `SessionOutput` rows when an assistant entry contains both a text block and one or more tool_use blocks.
 
-`file-history-snapshot` entries are silently discarded.
+`file-history-snapshot`, `system`, `attachment`, and `permission-mode` entries are silently discarded by the parser.
 
 ### Copilot CLI
 
