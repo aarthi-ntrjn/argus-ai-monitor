@@ -225,7 +225,7 @@ export default function TodoPanel() {
             {reversedTodos.map((todo, index) => {
                 const done = todo.done;
                 return (
-                  <li key={todo.id} className="group flex items-center gap-2 px-4 py-0.5">
+                  <li key={todo.id} className="group flex items-center gap-2 px-4 py-[3px]">
                     <button
                       type="button"
                       role="checkbox"
