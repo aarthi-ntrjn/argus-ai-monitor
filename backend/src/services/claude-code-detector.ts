@@ -108,11 +108,15 @@ export class ClaudeCodeDetector {
       return;
     }
 
-    const claudeProcess = processes.find(p =>
+    const claudeProcesses = processes.filter(p =>
       p.name.toLowerCase().includes('claude') || p.cmd?.toLowerCase().includes('claude')
     );
-    if (!claudeProcess) return;
-    const claudePid = claudeProcess.pid;
+    if (claudeProcesses.length === 0) return;
+    // Only assign a PID when there is exactly one Claude process, so the
+    // mapping is unambiguous.  With multiple processes we cannot tell which
+    // one owns which session, so we leave pid as null (the session will
+    // still be shown as active but the kill button will be hidden).
+    const claudePid: number | null = claudeProcesses.length === 1 ? claudeProcesses[0].pid : null;
 
     try {
       const projectDirNames = new Set(
@@ -212,7 +216,7 @@ export class ClaudeCodeDetector {
     await this.watchJsonlFile(session_id, repo.path);
   }
 
-  private async activateFoundSession(sessionId: string, repo: Repository, claudePid: number): Promise<void> {
+  private async activateFoundSession(sessionId: string, repo: Repository, claudePid: number | null): Promise<void> {
     const now = new Date().toISOString();
     const existingSession = getSession(sessionId);
 

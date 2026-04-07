@@ -159,7 +159,7 @@ describe('SessionController', () => {
     await controller.stopSession('test-session');
 
     // Verify spawnSync was called with explicit args array (not exec string)
-    expect(mockSpawnSync).toHaveBeenCalledWith('taskkill', ['/PID', '5555', '/T', '/F']);
+    expect(mockSpawnSync).toHaveBeenCalledWith('taskkill', ['/PID', '5555', '/F']);
     expect(insertControlAction).toHaveBeenCalled();
 
     Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });

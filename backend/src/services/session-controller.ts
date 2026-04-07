@@ -181,7 +181,7 @@ export class SessionController {
   private async killProcess(pid: number): Promise<void> {
     if (process.platform === 'win32') {
       // spawnSync with args array avoids shell string interpolation (FR-002)
-      spawnSync('taskkill', ['/PID', String(pid), '/T', '/F']);
+      spawnSync('taskkill', ['/PID', String(pid), '/F']);
     } else {
       process.kill(pid, 'SIGTERM');
     }
