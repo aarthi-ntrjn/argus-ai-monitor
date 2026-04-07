@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ExternalLink, Moon, Play } from 'lucide-react';
+import { ExternalLink, Moon, Play, Terminal } from 'lucide-react';
 import type { Session } from '../../types';
 import { getSessionOutput } from '../../services/api';
 import { isInactive } from '../../utils/sessionUtils';
@@ -95,10 +95,8 @@ function SessionCard({ session, selected, onSelect }: Props) {
               {session.status === 'active' ? 'running' : session.status}
             </span>
           )}
-          {session.launchMode === 'pty' ? (
+          {session.launchMode === 'pty' && (
             <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded font-medium bg-emerald-100 text-emerald-700" title="Started via argus launch — prompt injection enabled">live</span>
-          ) : (
-            <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded font-medium bg-gray-100 text-gray-500" title="Detected session — start with argus launch to enable prompts">read-only</span>
           )}
           <Link
             to={`/sessions/${session.id}`}
@@ -119,10 +117,33 @@ function SessionCard({ session, selected, onSelect }: Props) {
         <p className="text-xs text-gray-300 bg-gray-900 mt-2 px-2 py-1 rounded line-clamp-2 whitespace-pre-wrap break-words font-mono">{previewContent}</p>
       )}
 
-      {/* Prompt bar (send + ⋮ actions) */}
-      <div onClick={e => e.stopPropagation()}>
-        <SessionPromptBar session={session} />
-      </div>
+      {session.launchMode !== 'pty' ? (
+        /* Read-only: relaunch nudge */
+        <div
+          onClick={e => e.stopPropagation()}
+          className="mt-2 flex items-center gap-2"
+        >
+          <span className="text-[10px] text-gray-400 italic">read-only</span>
+          <button
+            onClick={() => {
+              const cmd = session.type === 'copilot-cli'
+                ? 'npm run launch --workspace=backend -- gh copilot suggest'
+                : 'npm run launch --workspace=backend -- claude';
+              navigator.clipboard.writeText(cmd);
+            }}
+            title="Copy argus launch command to clipboard"
+            className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors"
+          >
+            <Terminal size={10} />
+            Launch with Argus
+          </button>
+        </div>
+      ) : (
+        /* PTY session: full prompt bar */
+        <div onClick={e => e.stopPropagation()}>
+          <SessionPromptBar session={session} />
+        </div>
+      )}
     </div>
   );
 }
