@@ -313,3 +313,88 @@ describe('ClaudeCodeDetector.handleHookPayload — Stop hook', () => {
   });
 });
 
+
+describe('ClaudeCodeDetector — PTY session deduplication (T029)', () => {
+  let dbModule: typeof import('../../src/db/database.js');
+
+  beforeEach(async () => {
+    process.env.ARGUS_DB_PATH = join(tmpdir(), `argus-pty-dedup-test-${randomUUID()}.db`);
+    vi.resetModules();
+    mockPsListResult = [{ pid: 4242, name: 'claude', cmd: 'claude' }];
+    mockMtime = new Date();
+    fakeJsonlFiles = ['test-session-abc123.jsonl'];
+    dbModule = await import('../../src/db/database.js');
+    dbModule.insertRepository({
+      id: 'repo-dedup-test',
+      path: FAKE_REPO_PATH,
+      name: 'dedup-test',
+      source: 'ui',
+      addedAt: new Date().toISOString(),
+      lastScannedAt: null,
+    });
+  });
+
+  afterEach(() => {
+    dbModule.closeDb();
+    vi.resetModules();
+  });
+
+  it('handleHookPayload does NOT create a detected session when an active PTY session exists for the same repo', async () => {
+    const ptySessionId = 'pty-session-uuid-1234';
+    const claudeSessionId = 'claude-internal-session-e4d9';
+    const now = new Date().toISOString();
+
+    dbModule.upsertSession({
+      id: ptySessionId,
+      repositoryId: 'repo-dedup-test',
+      type: 'claude-code',
+      launchMode: 'pty',
+      pid: 8348,
+      status: 'active',
+      startedAt: now,
+      endedAt: null,
+      lastActivityAt: now,
+      summary: null,
+      expiresAt: null,
+      model: null,
+    });
+
+    const { ClaudeCodeDetector } = await import('../../src/services/claude-code-detector.js');
+    await new ClaudeCodeDetector().handleHookPayload({
+      hook_event_name: 'SessionStart',
+      session_id: claudeSessionId,
+      cwd: FAKE_REPO_PATH,
+    });
+
+    expect(dbModule.getSession(claudeSessionId)).toBeUndefined();
+    expect(dbModule.getSession(ptySessionId)?.status).toBe('active');
+  });
+
+  it('scanExistingSessions does NOT create a detected session when an active PTY session exists for the same repo', async () => {
+    const ptySessionId = 'pty-session-uuid-5678';
+    const claudeSessionId = 'claude-scan-session-abcd';
+    const now = new Date().toISOString();
+    fakeJsonlFiles = [`${claudeSessionId}.jsonl`];
+
+    dbModule.upsertSession({
+      id: ptySessionId,
+      repositoryId: 'repo-dedup-test',
+      type: 'claude-code',
+      launchMode: 'pty',
+      pid: 8348,
+      status: 'active',
+      startedAt: now,
+      endedAt: null,
+      lastActivityAt: now,
+      summary: null,
+      expiresAt: null,
+      model: null,
+    });
+
+    const { ClaudeCodeDetector } = await import('../../src/services/claude-code-detector.js');
+    await new ClaudeCodeDetector().scanExistingSessions();
+
+    expect(dbModule.getSession(claudeSessionId)).toBeUndefined();
+    expect(dbModule.getSession(ptySessionId)?.status).toBe('active');
+  });
+});

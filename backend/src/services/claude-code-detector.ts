@@ -4,7 +4,7 @@ import { join, dirname, normalize } from 'path';
 import { homedir } from 'os';
 import psList from 'ps-list';
 import chokidar, { type FSWatcher } from 'chokidar';
-import { getSession, upsertSession, getRepositories, getRepositoryByPath } from '../db/database.js';
+import { getSession, getSessions, upsertSession, getRepositories, getRepositoryByPath } from '../db/database.js';
 import { OutputStore } from './output-store.js';
 import { broadcast } from '../api/ws/event-dispatcher.js';
 import { parseClaudeJsonlLine, parseModel } from './claude-code-jsonl-parser.js';
@@ -149,6 +149,12 @@ export class ClaudeCodeDetector {
     } catch { /* ignore */ }
   }
 
+  // Return an active PTY session for this repository, if one exists.
+  // Used to avoid creating a duplicate detected session when argus launch is running.
+  private activePtySessionForRepo(repositoryId: string): Session | undefined {
+    return getSessions({ repositoryId, status: 'active' }).find(s => s.launchMode === 'pty');
+  }
+
   async handleHookPayload(payload: HookPayload): Promise<void> {
     const { hook_event_name, session_id, cwd } = payload;
     if (!session_id) return;
@@ -159,6 +165,20 @@ export class ClaudeCodeDetector {
 
     const existing = getSession(session_id);
     const now = new Date().toISOString();
+
+    // If this claude session isn't in the DB yet, check whether a PTY session
+    // already exists for the same repo (i.e. the user ran `argus launch`).
+    // If so, route JSONL output to the PTY session instead of creating a duplicate.
+    if (!existing) {
+      const ptySession = this.activePtySessionForRepo(repo.id);
+      if (ptySession) {
+        const updated = { ...ptySession, status: 'active' as const, lastActivityAt: now };
+        upsertSession(updated);
+        broadcast({ type: 'session.updated', timestamp: now, data: updated as unknown as Record<string, unknown> });
+        await this.watchJsonlFile(session_id, repo.path, ptySession.id);
+        return;
+      }
+    }
 
     const session: Session = existing ?? {
       id: session_id,
@@ -174,21 +194,28 @@ export class ClaudeCodeDetector {
       model: null,
     };
 
-    // All hook events keep the session active and update lastActivityAt.
-    // The UI's isInactive() (20-min threshold on lastActivityAt) handles the "resting" display.
     session.status = 'active';
     session.lastActivityAt = now;
 
     upsertSession(session);
     broadcast({ type: 'session.updated', timestamp: now, data: session as unknown as Record<string, unknown> });
 
-    // Start JSONL watcher if not already watching
     await this.watchJsonlFile(session_id, repo.path);
   }
 
   private async activateFoundSession(sessionId: string, repo: Repository, claudePid: number): Promise<void> {
     const now = new Date().toISOString();
     const existingSession = getSession(sessionId);
+
+    if (!existingSession) {
+      // Check if argus launched this session via PTY — route output there instead.
+      const ptySession = this.activePtySessionForRepo(repo.id);
+      if (ptySession) {
+        await this.watchJsonlFile(sessionId, repo.path, ptySession.id);
+        return;
+      }
+    }
+
     if (existingSession?.status === 'active') {
       await this.watchJsonlFile(sessionId, repo.path);
       return;
@@ -210,23 +237,27 @@ export class ClaudeCodeDetector {
     await this.watchJsonlFile(sessionId, repo.path);
   }
 
-  private async watchJsonlFile(sessionId: string, repoPath: string): Promise<void> {
-    if (this.watchers.has(sessionId)) return;
+  // claudeSessionId: Claude's own session ID — used to locate the .jsonl file.
+  // storeAsId: which session ID to store output under (defaults to claudeSessionId).
+  //   Pass the PTY session ID here to route output to the live PTY session instead
+  //   of creating a separate detected session.
+  private async watchJsonlFile(claudeSessionId: string, repoPath: string, storeAsId?: string): Promise<void> {
+    const targetId = storeAsId ?? claudeSessionId;
+    if (this.watchers.has(targetId)) return;
     const jsonlPath = join(
       homedir(), '.claude', 'projects',
       this.claudeProjectDirName(repoPath),
-      `${sessionId}.jsonl`,
+      `${claudeSessionId}.jsonl`,
     );
     if (!existsSync(jsonlPath)) return;
 
-    // Load all existing lines
-    this.filePositions.set(sessionId, 0);
-    this.sequenceCounters.set(sessionId, 0);
-    await this.readNewJsonlLines(sessionId, jsonlPath);
+    this.filePositions.set(targetId, 0);
+    this.sequenceCounters.set(targetId, 0);
+    await this.readNewJsonlLines(targetId, jsonlPath);
 
     const watcher = chokidar.watch(jsonlPath, { persistent: false, usePolling: false });
-    watcher.on('change', () => { this.readNewJsonlLines(sessionId, jsonlPath).catch(() => {}); });
-    this.watchers.set(sessionId, watcher);
+    watcher.on('change', () => { this.readNewJsonlLines(targetId, jsonlPath).catch(() => {}); });
+    this.watchers.set(targetId, watcher);
   }
 
   private async readNewJsonlLines(sessionId: string, filePath: string): Promise<void> {
