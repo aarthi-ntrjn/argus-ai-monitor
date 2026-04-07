@@ -5,7 +5,7 @@ interface Props {
 
 // Claude SVG — simple-icons (CC0 / brand guidelines)
 // Source: https://github.com/simple-icons/simple-icons/blob/develop/icons/claude.svg
-function ClaudeIcon({ size }: { size: number }) {
+export function ClaudeIcon({ size }: { size: number }) {
   return (
     <svg
       role="img"
@@ -23,7 +23,7 @@ function ClaudeIcon({ size }: { size: number }) {
 
 // GitHub Copilot SVG — simple-icons (CC0 / brand guidelines)
 // Source: https://github.com/simple-icons/simple-icons/blob/develop/icons/githubcopilot.svg
-function CopilotIcon({ size }: { size: number }) {
+export function CopilotIcon({ size }: { size: number }) {
   return (
     <svg
       role="img"

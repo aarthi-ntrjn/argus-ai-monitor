@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Terminal, Copy, Bot, GitFork, ChevronDown } from 'lucide-react';
+import { Terminal, Copy, ChevronDown } from 'lucide-react';
+import { ClaudeIcon, CopilotIcon } from '../SessionTypeIcon/SessionTypeIcon';
 import { getAvailableTools, launchInTerminal } from '../../services/api';
 
 interface Props {
@@ -84,7 +85,7 @@ export default function LaunchDropdown({ repoPath }: Props) {
                     onClick={() => handleLaunch('claude')}
                     className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 transition-colors"
                   >
-                    <Bot size={13} className="text-orange-500 shrink-0" />
+                    <span className="text-orange-500 shrink-0"><ClaudeIcon size={13} /></span>
                     Launch Claude
                   </button>
                   <button
@@ -106,7 +107,7 @@ export default function LaunchDropdown({ repoPath }: Props) {
                     onClick={() => handleLaunch('copilot')}
                     className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 transition-colors"
                   >
-                    <GitFork size={13} className="text-purple-600 shrink-0" />
+                    <span className="text-purple-600 shrink-0"><CopilotIcon size={13} /></span>
                     Launch Copilot
                   </button>
                   <button
