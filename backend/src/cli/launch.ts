@@ -13,7 +13,7 @@ const rawArgs = process.argv.slice(2);
 let cwd = process.cwd();
 const toolArgs: string[] = [];
 for (let i = 0; i < rawArgs.length; i++) {
-  if (rawArgs[i] === '--cwd' && rawArgs[i + 1]) {
+  if ((rawArgs[i] === '--cwd' || rawArgs[i] === '-cwd') && rawArgs[i + 1]) {
     cwd = rawArgs[++i];
   } else {
     toolArgs.push(rawArgs[i]);
@@ -32,21 +32,14 @@ if (toolArgs.length === 0) {
 const { sessionType, cmd, cmdArgs } = resolveLaunchCommand(toolArgs);
 const sessionId = randomUUID();
 
-// For Claude Code, inject --session-id to guarantee a fresh session.
-// Without this, bare `claude` may try to auto-continue a stale session
-// and fail with "No conversation found to continue".
-const finalArgs = sessionType === 'claude-code'
-  ? ['--session-id', sessionId, ...cmdArgs]
-  : cmdArgs;
-
 // On Windows, node-pty's ConPTY API requires a real .exe — .cmd/.bat scripts
 // (like claude.cmd, copilot.cmd) must be run through a shell.
 // Spawn powershell.exe and pass the command as a -Command string.
 const isWin = platform() === 'win32';
 const ptyFile = isWin ? 'powershell.exe' : cmd;
 const ptyArgs = isWin
-  ? ['-NoProfile', '-Command', [cmd, ...finalArgs].join(' ')]
-  : finalArgs;
+  ? ['-NoProfile', '-Command', [cmd, ...cmdArgs].join(' ')]
+  : cmdArgs;
 
 // Strip parent Claude Code env vars so the child session starts fresh
 // instead of trying to connect to/continue the parent session.
