@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from 'node-pty';
 import { randomUUID } from 'crypto';
+import { platform } from 'os';
 import { resolveLaunchCommand } from './launch-command-resolver.js';
 import { ArgusLaunchClient } from './argus-launch-client.js';
 
@@ -30,8 +31,16 @@ if (toolArgs.length === 0) {
 const { sessionType, cmd, cmdArgs } = resolveLaunchCommand(toolArgs);
 const sessionId = randomUUID();
 
-// Spawn the tool in a PTY so it sees a real TTY on stdin and stdout
-const pty = spawn(cmd, cmdArgs, {
+// On Windows, node-pty's ConPTY API requires a real .exe — .cmd/.bat scripts
+// (like claude.cmd, copilot.cmd) must be run through a shell.
+// Spawn powershell.exe and pass the command as a -Command string.
+const isWin = platform() === 'win32';
+const ptyFile = isWin ? 'powershell.exe' : cmd;
+const ptyArgs = isWin
+  ? ['-NoProfile', '-Command', [cmd, ...cmdArgs].join(' ')]
+  : cmdArgs;
+
+const pty = spawn(ptyFile, ptyArgs, {
   name: 'xterm-256color',
   cols: process.stdout.columns || 80,
   rows: process.stdout.rows || 24,
