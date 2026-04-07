@@ -5,21 +5,18 @@ import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import path from 'path';
 
-// Resolve argus repo root from this file's location:
-// backend/src/api/routes/tools.ts -> up 4 levels
+// Resolve argus repo root from this file's location.
+// Source:   backend/src/api/routes/  -> 4 levels up = repo root
+// Compiled: backend/dist/api/routes/ -> 4 levels up = repo root
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const ARGUS_ROOT = path.resolve(__dirname, '..', '..', '..', '..', '..');
-
-const TSX = platform() === 'win32'
-  ? path.join(ARGUS_ROOT, 'node_modules', '.bin', 'tsx.cmd')
-  : path.join(ARGUS_ROOT, 'node_modules', '.bin', 'tsx');
-
-const LAUNCH_SCRIPT = path.join(ARGUS_ROOT, 'backend', 'src', 'cli', 'launch.ts');
+const ARGUS_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 
 function buildLaunchCmd(tool: 'claude' | 'copilot'): string {
   const toolArg = tool === 'copilot' ? 'gh copilot suggest' : 'claude';
-  return `"${TSX}" "${LAUNCH_SCRIPT}" ${toolArg}`;
+  // Use npm --prefix to force npm to resolve scripts from the argus root,
+  // regardless of which directory the terminal is opened in.
+  return `npm --prefix "${ARGUS_ROOT}" run launch --workspace=backend -- ${toolArg}`;
 }
 
 function isInstalled(cmd: string): boolean {
