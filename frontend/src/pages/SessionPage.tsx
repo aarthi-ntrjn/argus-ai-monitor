@@ -75,75 +75,81 @@ export default function SessionPage() {
 
   return (
     <div className="h-screen flex flex-col bg-slate-50 overflow-hidden">
-      <div className="flex-1 min-h-0 flex flex-col max-w-4xl mx-auto w-full px-4 md:px-8 py-4 md:py-6">
 
-        <button onClick={() => navigate('/')} className="text-blue-600 hover:text-blue-800 mb-4 py-2 flex items-center gap-1 shrink-0">
-          ← Back to Dashboard
-        </button>
-
-        {/* Session header */}
-        <div className="bg-white rounded-lg shadow p-4 mb-4 shrink-0">
-          <div className="flex flex-wrap gap-3 items-center mb-2">
-            <span
-              data-tour-id="session-status"
-              className={`inline-flex items-center gap-1 text-sm px-3 py-1 rounded-full font-medium ${TYPE_COLORS[session.type] ?? 'bg-gray-100'}`}
-            >
-              <SessionTypeIcon type={session.type} size={14} />
-              {session.type}
-            </span>
-            {session.model && (
-              <span className="text-xs text-gray-500 font-mono">{session.model}</span>
-            )}
-            {isInactive(session) ? (
-              <span className="inline-flex items-center gap-1 text-sm px-3 py-1 rounded-full font-medium bg-amber-100 text-amber-700">
-                <Moon size={12} />resting
+      {/* Always-visible header — shrink-0 sibling of the scrollable area */}
+      <div className="shrink-0 px-4 md:px-8 pt-4 md:pt-6">
+        <div className="max-w-4xl mx-auto w-full">
+          <button onClick={() => navigate('/')} className="text-blue-600 hover:text-blue-800 mb-4 py-2 flex items-center gap-1">
+            ← Back to Dashboard
+          </button>
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex flex-wrap gap-3 items-center mb-2">
+              <span
+                data-tour-id="session-status"
+                className={`inline-flex items-center gap-1 text-sm px-3 py-1 rounded-full font-medium ${TYPE_COLORS[session.type] ?? 'bg-gray-100'}`}
+              >
+                <SessionTypeIcon type={session.type} size={14} />
+                {session.type}
               </span>
-            ) : (
-              <span className={`inline-flex items-center gap-1 text-sm px-3 py-1 rounded-full font-medium ${STATUS_COLORS[session.status] ?? 'bg-gray-100'}`}>
-                {session.status === 'active' && <Play size={12} />}
-                {session.status === 'active' ? 'running' : session.status}
+              {session.model && (
+                <span className="text-xs text-gray-500 font-mono">{session.model}</span>
+              )}
+              {isInactive(session) ? (
+                <span className="inline-flex items-center gap-1 text-sm px-3 py-1 rounded-full font-medium bg-amber-100 text-amber-700">
+                  <Moon size={12} />resting
+                </span>
+              ) : (
+                <span className={`inline-flex items-center gap-1 text-sm px-3 py-1 rounded-full font-medium ${STATUS_COLORS[session.status] ?? 'bg-gray-100'}`}>
+                  {session.status === 'active' && <Play size={12} />}
+                  {session.status === 'active' ? 'running' : session.status}
+                </span>
+              )}
+              {session.pid && (
+                <span className="text-xs text-gray-500 font-mono">PID: {session.pid}</span>
+              )}
+              {!session.pid && session.type === 'claude-code' && (
+                <span className="text-xs text-gray-500 font-mono">ID: {claudeShortId(session.id)}</span>
+              )}
+              <span className="text-xs text-gray-500 font-mono">
+                Duration: {getElapsed(session.startedAt, session.endedAt)}
               </span>
+            </div>
+            {session.summary && (
+              <p className="text-gray-600 text-sm mt-1">{session.summary}</p>
             )}
-            {session.pid && (
-              <span className="text-xs text-gray-500 font-mono">PID: {session.pid}</span>
-            )}
-            {!session.pid && session.type === 'claude-code' && (
-              <span className="text-xs text-gray-500 font-mono">ID: {claudeShortId(session.id)}</span>
-            )}
-            <span className="text-xs text-gray-500 font-mono">
-              Duration: {getElapsed(session.startedAt, session.endedAt)}
-            </span>
-          </div>
-          {session.summary && (
-            <p className="text-gray-600 text-sm mt-1">{session.summary}</p>
-          )}
-          <p className="text-xs text-gray-500 mt-1">ID: {session.id}</p>
-        </div>
-
-        {/* Output stream — fills remaining height */}
-        <div data-tour-id="session-output-stream" className="flex-1 min-h-0 flex flex-col bg-white border border-gray-200 rounded-lg shadow overflow-hidden">
-          <div className="p-4 border-b border-gray-200 shrink-0">
-            <h2 className="text-lg font-semibold text-gray-900">Output Stream</h2>
-          </div>
-          <div className="flex-1 min-h-0 overflow-y-auto bg-gray-900 rounded-b-lg">
-            {outputLoading ? (
-              <div className="p-8 text-center text-gray-400">Loading output...</div>
-            ) : (
-              <SessionDetail
-                sessionId={session.id}
-                items={outputPage?.items ?? []}
-                dark
-              />
-            )}
+            <p className="text-xs text-gray-500 mt-1">ID: {session.id}</p>
           </div>
         </div>
-
-        {/* Prompt bar — pinned below output */}
-        <div data-tour-id="session-prompt-bar" className="bg-white rounded-lg shadow p-4 mt-4 shrink-0">
-          <SessionPromptBar session={session} />
-        </div>
-
       </div>
+
+      {/* Output stream + prompt bar — fills remaining height */}
+      <div className="flex-1 min-h-0 flex flex-col px-4 md:px-8 pb-4 md:pb-6 mt-4">
+        <div className="max-w-4xl mx-auto w-full flex-1 min-h-0 flex flex-col">
+
+          <div data-tour-id="session-output-stream" className="flex-1 min-h-0 flex flex-col bg-white border border-gray-200 rounded-lg shadow overflow-hidden">
+            <div className="p-4 border-b border-gray-200 shrink-0">
+              <h2 className="text-lg font-semibold text-gray-900">Output Stream</h2>
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto bg-gray-900 rounded-b-lg">
+              {outputLoading ? (
+                <div className="p-8 text-center text-gray-400">Loading output...</div>
+              ) : (
+                <SessionDetail
+                  sessionId={session.id}
+                  items={outputPage?.items ?? []}
+                  dark
+                />
+              )}
+            </div>
+          </div>
+
+          <div data-tour-id="session-prompt-bar" className="bg-white rounded-lg shadow p-4 mt-4 shrink-0">
+            <SessionPromptBar session={session} />
+          </div>
+
+        </div>
+      </div>
+
     </div>
   );
 }
