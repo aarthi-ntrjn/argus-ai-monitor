@@ -41,12 +41,21 @@ const ptyArgs = isWin
   ? ['-NoProfile', '-Command', [cmd, ...cmdArgs].join(' ')]
   : cmdArgs;
 
+// Strip parent Claude Code env vars so the child session starts fresh
+// instead of trying to connect to/continue the parent session.
+const cleanEnv = { ...process.env };
+for (const key of Object.keys(cleanEnv)) {
+  if (key.startsWith('CLAUDE_CODE_') || key === 'CLAUDECODE') {
+    delete cleanEnv[key];
+  }
+}
+
 const pty = spawn(ptyFile, ptyArgs, {
   name: 'xterm-256color',
   cols: process.stdout.columns || 80,
   rows: process.stdout.rows || 24,
   cwd,
-  env: { ...process.env } as Record<string, string>,
+  env: cleanEnv as Record<string, string>,
 });
 
 // Proxy PTY output to the user's terminal
