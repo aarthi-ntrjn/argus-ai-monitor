@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PtyRegistry } from '../src/services/pty-registry.js';
 
 // Unit-level tests for the launcher route logic via the PtyRegistry contract.
@@ -16,7 +16,7 @@ vi.mock('../src/api/ws/event-dispatcher.js', () => ({
   broadcast: vi.fn(),
 }));
 
-describe('Launcher WebSocket message handling (PtyRegistry integration)', () => {
+describe('PtyRegistry — pending / claim flow', () => {
   let registry: PtyRegistry;
 
   beforeEach(() => {
@@ -24,11 +24,46 @@ describe('Launcher WebSocket message handling (PtyRegistry integration)', () => 
     vi.clearAllMocks();
   });
 
-  it('register() + sendPrompt() sends message to the registered WebSocket', async () => {
+  it('registerPending + claimForSession promotes to a live connection', async () => {
     const mockWs = { send: vi.fn(), readyState: 1 };
-    registry.register('session-abc', mockWs as any);
+    registry.registerPending('temp-uuid', mockWs as any, '/repo/path', 8348);
 
-    const p = registry.sendPrompt('session-abc', 'action-1', 'run tests');
+    const claimed = registry.claimForSession('claude-session-id', '/repo/path');
+    expect(claimed).toEqual({ pid: 8348 });
+    expect(registry.has('claude-session-id')).toBe(true);
+  });
+
+  it('claimForSession returns null when no pending launcher for that path', () => {
+    const result = registry.claimForSession('any-session', '/no/pending/here');
+    expect(result).toBeNull();
+  });
+
+  it('getClaimedId returns the claude session ID for a given temp UUID', () => {
+    const mockWs = { send: vi.fn(), readyState: 1 };
+    registry.registerPending('temp-1', mockWs as any, '/repo', 1234);
+    registry.claimForSession('claude-abc', '/repo');
+    expect(registry.getClaimedId('temp-1')).toBe('claude-abc');
+  });
+
+  it('getClaimedId returns undefined before claim', () => {
+    const mockWs = { send: vi.fn(), readyState: 1 };
+    registry.registerPending('temp-2', mockWs as any, '/repo2', 999);
+    expect(registry.getClaimedId('temp-2')).toBeUndefined();
+  });
+
+  it('unregisterPending cleans up without claim', () => {
+    const mockWs = { send: vi.fn(), readyState: 1 };
+    registry.registerPending('temp-3', mockWs as any, '/repo3', 111);
+    registry.unregisterPending('/repo3', 'temp-3');
+    expect(registry.claimForSession('any', '/repo3')).toBeNull();
+  });
+
+  it('sendPrompt on claimed session sends to the WebSocket', async () => {
+    const mockWs = { send: vi.fn(), readyState: 1 };
+    registry.registerPending('temp-4', mockWs as any, '/repo4', 5678);
+    registry.claimForSession('claude-xyz', '/repo4');
+
+    const p = registry.sendPrompt('claude-xyz', 'action-1', 'run tests');
     registry.handleAck('action-1', true);
     await p;
 
@@ -38,7 +73,8 @@ describe('Launcher WebSocket message handling (PtyRegistry integration)', () => 
 
   it('prompt_delivered ack resolves the pending promise', async () => {
     const mockWs = { send: vi.fn(), readyState: 1 };
-    registry.register('s1', mockWs as any);
+    registry.registerPending('t', mockWs as any, '/r', 1);
+    registry.claimForSession('s1', '/r');
 
     const p = registry.sendPrompt('s1', 'a1', 'hello');
     registry.handleAck('a1', true);
@@ -47,25 +83,19 @@ describe('Launcher WebSocket message handling (PtyRegistry integration)', () => 
 
   it('prompt_failed ack rejects the pending promise with the error message', async () => {
     const mockWs = { send: vi.fn(), readyState: 1 };
-    registry.register('s1', mockWs as any);
+    registry.registerPending('t2', mockWs as any, '/r2', 2);
+    registry.claimForSession('s2', '/r2');
 
-    const p = registry.sendPrompt('s1', 'a2', 'hello');
+    const p = registry.sendPrompt('s2', 'a2', 'hello');
     registry.handleAck('a2', false, 'PTY closed');
     await expect(p).rejects.toThrow('PTY closed');
   });
 
-  it('unregister() removes the session so subsequent sendPrompt() rejects', async () => {
+  it('unregister removes the claimed session', async () => {
     const mockWs = { send: vi.fn(), readyState: 1 };
-    registry.register('s2', mockWs as any);
-    registry.unregister('s2');
-    await expect(registry.sendPrompt('s2', 'a3', 'hi')).rejects.toThrow(/not connected/i);
-  });
-
-  it('on disconnect (unregister without session_ended) registry cleans up', () => {
-    const mockWs = { send: vi.fn(), readyState: 1 };
-    registry.register('s3', mockWs as any);
-    expect(registry.has('s3')).toBe(true);
+    registry.registerPending('t3', mockWs as any, '/r3', 3);
+    registry.claimForSession('s3', '/r3');
     registry.unregister('s3');
-    expect(registry.has('s3')).toBe(false);
+    await expect(registry.sendPrompt('s3', 'a3', 'hi')).rejects.toThrow(/not connected/i);
   });
 });

@@ -314,20 +314,22 @@ describe('ClaudeCodeDetector.handleHookPayload — Stop hook', () => {
 });
 
 
-describe('ClaudeCodeDetector — PTY session deduplication (T029)', () => {
+describe('ClaudeCodeDetector — PTY claim on first hook (T029 redesign)', () => {
   let dbModule: typeof import('../../src/db/database.js');
+  let ptyRegistryModule: typeof import('../../src/services/pty-registry.js');
 
   beforeEach(async () => {
-    process.env.ARGUS_DB_PATH = join(tmpdir(), `argus-pty-dedup-test-${randomUUID()}.db`);
+    process.env.ARGUS_DB_PATH = join(tmpdir(), `argus-pty-claim-test-${randomUUID()}.db`);
     vi.resetModules();
     mockPsListResult = [{ pid: 4242, name: 'claude', cmd: 'claude' }];
     mockMtime = new Date();
     fakeJsonlFiles = ['test-session-abc123.jsonl'];
     dbModule = await import('../../src/db/database.js');
+    ptyRegistryModule = await import('../../src/services/pty-registry.js');
     dbModule.insertRepository({
-      id: 'repo-dedup-test',
+      id: 'repo-claim-test',
       path: FAKE_REPO_PATH,
-      name: 'dedup-test',
+      name: 'claim-test',
       source: 'ui',
       addedAt: new Date().toISOString(),
       lastScannedAt: null,
@@ -339,25 +341,12 @@ describe('ClaudeCodeDetector — PTY session deduplication (T029)', () => {
     vi.resetModules();
   });
 
-  it('handleHookPayload does NOT create a detected session when an active PTY session exists for the same repo', async () => {
-    const ptySessionId = 'pty-session-uuid-1234';
-    const claudeSessionId = 'claude-internal-session-e4d9';
-    const now = new Date().toISOString();
+  it('handleHookPayload creates a single launchMode=pty session using Claude\'s real session ID when a launcher is pending', async () => {
+    const claudeSessionId = 'claude-real-session-e4d9';
+    const mockWs = { send: vi.fn(), readyState: 1 };
 
-    dbModule.upsertSession({
-      id: ptySessionId,
-      repositoryId: 'repo-dedup-test',
-      type: 'claude-code',
-      launchMode: 'pty',
-      pid: 8348,
-      status: 'active',
-      startedAt: now,
-      endedAt: null,
-      lastActivityAt: now,
-      summary: null,
-      expiresAt: null,
-      model: null,
-    });
+    // Simulate: launcher registered but no DB session yet
+    ptyRegistryModule.ptyRegistry.registerPending('temp-uuid', mockWs as any, FAKE_REPO_PATH, 8348);
 
     const { ClaudeCodeDetector } = await import('../../src/services/claude-code-detector.js');
     await new ClaudeCodeDetector().handleHookPayload({
@@ -366,35 +355,30 @@ describe('ClaudeCodeDetector — PTY session deduplication (T029)', () => {
       cwd: FAKE_REPO_PATH,
     });
 
-    expect(dbModule.getSession(claudeSessionId)).toBeUndefined();
-    expect(dbModule.getSession(ptySessionId)?.status).toBe('active');
+    // Only the claude session exists — no fake powershell/UUID session
+    const session = dbModule.getSession(claudeSessionId);
+    expect(session).toBeDefined();
+    expect(session?.launchMode).toBe('pty');
+    expect(session?.pid).toBe(8348);
+
+    // The PTY registry now routes to the claude session ID
+    expect(ptyRegistryModule.ptyRegistry.has(claudeSessionId)).toBe(true);
+    expect(ptyRegistryModule.ptyRegistry.getClaimedId('temp-uuid')).toBe(claudeSessionId);
   });
 
-  it('scanExistingSessions does NOT create a detected session when an active PTY session exists for the same repo', async () => {
-    const ptySessionId = 'pty-session-uuid-5678';
-    const claudeSessionId = 'claude-scan-session-abcd';
-    const now = new Date().toISOString();
-    fakeJsonlFiles = [`${claudeSessionId}.jsonl`];
-
-    dbModule.upsertSession({
-      id: ptySessionId,
-      repositoryId: 'repo-dedup-test',
-      type: 'claude-code',
-      launchMode: 'pty',
-      pid: 8348,
-      status: 'active',
-      startedAt: now,
-      endedAt: null,
-      lastActivityAt: now,
-      summary: null,
-      expiresAt: null,
-      model: null,
-    });
+  it('handleHookPayload creates a plain detected session when no launcher is pending', async () => {
+    const claudeSessionId = 'claude-detected-session-f1a2';
 
     const { ClaudeCodeDetector } = await import('../../src/services/claude-code-detector.js');
-    await new ClaudeCodeDetector().scanExistingSessions();
+    await new ClaudeCodeDetector().handleHookPayload({
+      hook_event_name: 'SessionStart',
+      session_id: claudeSessionId,
+      cwd: FAKE_REPO_PATH,
+    });
 
-    expect(dbModule.getSession(claudeSessionId)).toBeUndefined();
-    expect(dbModule.getSession(ptySessionId)?.status).toBe('active');
+    const session = dbModule.getSession(claudeSessionId);
+    expect(session).toBeDefined();
+    expect(session?.launchMode).toBeNull();
+    expect(ptyRegistryModule.ptyRegistry.has(claudeSessionId)).toBe(false);
   });
 });

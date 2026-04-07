@@ -1,17 +1,17 @@
-import { randomUUID } from 'crypto';
 import { basename } from 'path';
+import { randomUUID } from 'crypto';
 import type { FastifyPluginAsync } from 'fastify';
 import type { WebSocket } from 'ws';
 import { ptyRegistry } from '../../services/pty-registry.js';
 import {
   getSession,
-  upsertSession,
   updateSessionStatus,
   getRepositoryByPath,
   insertRepository,
 } from '../../db/database.js';
 import { broadcast } from '../ws/event-dispatcher.js';
-import type { Session, SessionType } from '../../models/index.js';
+import type { Repository } from '../../models/index.js';
+import type { SessionType } from '../../models/index.js';
 
 interface RegisterMessage {
   type: 'register';
@@ -44,18 +44,21 @@ type LauncherMessage =
   | PromptFailedMessage
   | SessionEndedMessage;
 
-function ensureRepository(cwd: string): string {
+function ensureRepository(cwd: string): Repository {
   const existing = getRepositoryByPath(cwd);
-  if (existing) return existing.id;
+  if (existing) return existing;
   const id = randomUUID();
   const now = new Date().toISOString();
-  insertRepository({ id, path: cwd, name: basename(cwd), source: 'ui', addedAt: now, lastScannedAt: null, branch: null });
-  return id;
+  const repo = { id, path: cwd, name: basename(cwd), source: 'ui' as const, addedAt: now, lastScannedAt: null, branch: null };
+  insertRepository(repo);
+  return repo;
 }
 
 const launcherRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/launcher', { websocket: true }, (socket: WebSocket) => {
-    let registeredSessionId: string | null = null;
+    // tempId: the UUID launch.ts generated. Not a DB session ID.
+    let tempId: string | null = null;
+    let repoPath: string | null = null;
 
     socket.on('message', (raw: Buffer) => {
       let msg: LauncherMessage;
@@ -68,35 +71,17 @@ const launcherRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       if (msg.type === 'register') {
-        registeredSessionId = msg.sessionId;
-        ptyRegistry.register(msg.sessionId, socket);
+        tempId = msg.sessionId;
+        repoPath = msg.cwd;
 
-        const repositoryId = ensureRepository(msg.cwd);
-        const now = new Date().toISOString();
-        const existing = getSession(msg.sessionId);
-        const session: Session = existing
-          ? { ...existing, launchMode: 'pty', pid: msg.pid, status: 'active', lastActivityAt: now }
-          : {
-              id: msg.sessionId,
-              repositoryId,
-              type: msg.sessionType,
-              launchMode: 'pty',
-              pid: msg.pid,
-              status: 'active',
-              startedAt: now,
-              endedAt: null,
-              lastActivityAt: now,
-              summary: null,
-              expiresAt: null,
-              model: null,
-            };
-        upsertSession(session);
-        broadcast({
-          type: 'session.updated',
-          timestamp: now,
-          data: session as unknown as Record<string, unknown>,
-        });
-        fastify.log.info({ sessionId: msg.sessionId, pid: msg.pid }, 'Launcher registered');
+        // Ensure the repo exists so the detector can find it by path.
+        ensureRepository(msg.cwd);
+
+        // Hold the connection pending — we do NOT create a DB session here.
+        // The session is created in ClaudeCodeDetector.handleHookPayload once
+        // Claude fires its first hook and we learn the real session ID.
+        ptyRegistry.registerPending(msg.sessionId, socket, msg.cwd, msg.pid);
+        fastify.log.info({ tempId: msg.sessionId, pid: msg.pid, cwd: msg.cwd }, 'Launcher pending — waiting for Claude hook');
         return;
       }
 
@@ -111,31 +96,44 @@ const launcherRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       if (msg.type === 'session_ended') {
-        const now = new Date().toISOString();
-        updateSessionStatus(msg.sessionId, 'ended', now);
-        const session = getSession(msg.sessionId);
-        broadcast({
-          type: 'session.ended',
-          timestamp: now,
-          data: (session ?? { id: msg.sessionId }) as unknown as Record<string, unknown>,
-        });
-        fastify.log.info({ sessionId: msg.sessionId, exitCode: msg.exitCode }, 'Launcher session ended');
+        // launch.ts sends its own temp UUID; translate to the claimed claude session ID.
+        const claudeSessionId = tempId ? ptyRegistry.getClaimedId(tempId) : null;
+        if (claudeSessionId) {
+          const now = new Date().toISOString();
+          updateSessionStatus(claudeSessionId, 'ended', now);
+          const session = getSession(claudeSessionId);
+          broadcast({
+            type: 'session.ended',
+            timestamp: now,
+            data: (session ?? { id: claudeSessionId }) as unknown as Record<string, unknown>,
+          });
+          fastify.log.info({ claudeSessionId, exitCode: msg.exitCode }, 'Launcher session ended');
+        }
       }
     });
 
     socket.on('close', () => {
-      if (!registeredSessionId) return;
-      ptyRegistry.unregister(registeredSessionId);
-      const session = getSession(registeredSessionId);
-      if (session && session.status !== 'ended') {
-        const now = new Date().toISOString();
-        updateSessionStatus(registeredSessionId, 'ended', now);
-        broadcast({
-          type: 'session.ended',
-          timestamp: now,
-          data: { id: registeredSessionId } as Record<string, unknown>,
-        });
-        fastify.log.info({ sessionId: registeredSessionId }, 'Launcher disconnected — session marked ended');
+      if (!tempId) return;
+
+      const claudeSessionId = ptyRegistry.getClaimedId(tempId);
+      if (claudeSessionId) {
+        // Session was claimed — mark it ended and clean up.
+        ptyRegistry.unregister(claudeSessionId);
+        const session = getSession(claudeSessionId);
+        if (session && session.status !== 'ended') {
+          const now = new Date().toISOString();
+          updateSessionStatus(claudeSessionId, 'ended', now);
+          broadcast({
+            type: 'session.ended',
+            timestamp: now,
+            data: { id: claudeSessionId } as Record<string, unknown>,
+          });
+          fastify.log.info({ claudeSessionId }, 'Launcher disconnected — session marked ended');
+        }
+      } else if (repoPath) {
+        // Never claimed — claude never started or crashed before first hook.
+        ptyRegistry.unregisterPending(repoPath, tempId);
+        fastify.log.info({ tempId, repoPath }, 'Launcher disconnected before Claude hook — no session created');
       }
     });
   });

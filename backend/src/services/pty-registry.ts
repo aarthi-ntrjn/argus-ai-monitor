@@ -6,17 +6,58 @@ interface PendingPrompt {
   timeout: ReturnType<typeof setTimeout>;
 }
 
+interface PendingLauncher {
+  tempId: string;
+  ws: WebSocket;
+  pid: number;
+}
+
 export class PtyRegistry {
+  // Claimed connections: claudeSessionId -> ws
   private connections = new Map<string, WebSocket>();
+
+  // Pending connections waiting for Claude's session ID: repoPath -> launcher info
+  private pendingByRepoPath = new Map<string, PendingLauncher>();
+
+  // Reverse map so close handlers can look up the claimed session ID by temp UUID
+  private tempToClaimedId = new Map<string, string>();
+
   private pending = new Map<string, PendingPrompt>();
 
-  register(sessionId: string, ws: WebSocket): void {
-    this.connections.set(sessionId, ws);
+  // Called when the launcher WebSocket connects and sends its register message.
+  // We hold the connection here without creating a DB session — the DB session
+  // is created once Claude fires its first hook and we learn the real session ID.
+  registerPending(tempId: string, ws: WebSocket, repoPath: string, pid: number): void {
+    this.pendingByRepoPath.set(repoPath, { tempId, ws, pid });
+  }
+
+  // Called by ClaudeCodeDetector when a hook fires for a session in repoPath.
+  // Promotes the pending connection to a claimed connection keyed by claudeSessionId.
+  // Returns the launcher pid so the detector can store it on the session, or null
+  // if no launcher is waiting for this repo.
+  claimForSession(claudeSessionId: string, repoPath: string): { pid: number } | null {
+    const pending = this.pendingByRepoPath.get(repoPath);
+    if (!pending) return null;
+    this.connections.set(claudeSessionId, pending.ws);
+    this.tempToClaimedId.set(pending.tempId, claudeSessionId);
+    this.pendingByRepoPath.delete(repoPath);
+    return { pid: pending.pid };
+  }
+
+  // Returns the claude session ID that was claimed for this temp launcher UUID,
+  // or undefined if the launcher never had a hook come in.
+  getClaimedId(tempId: string): string | undefined {
+    return this.tempToClaimedId.get(tempId);
+  }
+
+  // Clean up a pending connection that never got claimed (e.g. claude crashed before first hook).
+  unregisterPending(repoPath: string, tempId: string): void {
+    this.pendingByRepoPath.delete(repoPath);
+    this.tempToClaimedId.delete(tempId);
   }
 
   unregister(sessionId: string): void {
     this.connections.delete(sessionId);
-    // Pending promises time out naturally; no need to reject them here
   }
 
   has(sessionId: string): boolean {

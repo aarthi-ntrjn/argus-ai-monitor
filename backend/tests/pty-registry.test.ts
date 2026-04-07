@@ -6,6 +6,14 @@ function makeMockWs() {
   return { send: vi.fn(), readyState: 1 as const };
 }
 
+// Helper: register pending and claim in one step
+function registerAndClaim(registry: PtyRegistry, claudeId: string, repoPath = '/repo', pid = 1234) {
+  const ws = makeMockWs();
+  registry.registerPending('temp-' + claudeId, ws as any, repoPath, pid);
+  registry.claimForSession(claudeId, repoPath);
+  return ws;
+}
+
 describe('PtyRegistry', () => {
   let registry: PtyRegistry;
 
@@ -13,35 +21,51 @@ describe('PtyRegistry', () => {
     registry = new PtyRegistry();
   });
 
-  it('has() returns false before registration', () => {
+  it('has() returns false before any registration', () => {
     expect(registry.has('session-1')).toBe(false);
   });
 
-  it('has() returns true after register()', () => {
-    registry.register('session-1', makeMockWs() as any);
+  it('has() returns true after registerPending + claimForSession', () => {
+    registerAndClaim(registry, 'session-1');
     expect(registry.has('session-1')).toBe(true);
   });
 
   it('has() returns false after unregister()', () => {
-    registry.register('session-1', makeMockWs() as any);
+    registerAndClaim(registry, 'session-1');
     registry.unregister('session-1');
     expect(registry.has('session-1')).toBe(false);
   });
 
-  it('register() overwrites an existing connection', () => {
-    const ws1 = makeMockWs();
-    const ws2 = makeMockWs();
-    registry.register('session-1', ws1 as any);
-    registry.register('session-1', ws2 as any);
-    // Sending a prompt should use ws2, not ws1
-    registry.sendPrompt('session-1', 'action-1', 'hello').catch(() => {});
-    expect(ws2.send).toHaveBeenCalled();
-    expect(ws1.send).not.toHaveBeenCalled();
+  it('claimForSession returns null when no pending launcher exists for that path', () => {
+    expect(registry.claimForSession('any', '/no/pending')).toBeNull();
+  });
+
+  it('claimForSession returns pid when a pending launcher exists', () => {
+    const ws = makeMockWs();
+    registry.registerPending('t', ws as any, '/repo', 9999);
+    expect(registry.claimForSession('s', '/repo')).toEqual({ pid: 9999 });
+  });
+
+  it('getClaimedId returns the claude session ID after claim', () => {
+    registerAndClaim(registry, 'claude-abc', '/r', 42);
+    expect(registry.getClaimedId('temp-claude-abc')).toBe('claude-abc');
+  });
+
+  it('getClaimedId returns undefined before claim', () => {
+    const ws = makeMockWs();
+    registry.registerPending('temp-x', ws as any, '/r2', 1);
+    expect(registry.getClaimedId('temp-x')).toBeUndefined();
+  });
+
+  it('unregisterPending cleans up so subsequent claim returns null', () => {
+    const ws = makeMockWs();
+    registry.registerPending('t', ws as any, '/r3', 5);
+    registry.unregisterPending('/r3', 't');
+    expect(registry.claimForSession('any', '/r3')).toBeNull();
   });
 
   it('sendPrompt() sends correct JSON message on the WebSocket', async () => {
-    const ws = makeMockWs();
-    registry.register('session-1', ws as any);
+    const ws = registerAndClaim(registry, 'session-1', '/rp', 1);
 
     const promise = registry.sendPrompt('session-1', 'action-abc', 'do something');
     registry.handleAck('action-abc', true);
@@ -53,18 +77,14 @@ describe('PtyRegistry', () => {
   });
 
   it('sendPrompt() resolves when handleAck(success=true) is called', async () => {
-    const ws = makeMockWs();
-    registry.register('session-1', ws as any);
-
+    registerAndClaim(registry, 'session-1', '/rp2', 2);
     const promise = registry.sendPrompt('session-1', 'action-ok', 'hi');
     registry.handleAck('action-ok', true);
     await expect(promise).resolves.toBeUndefined();
   });
 
   it('sendPrompt() rejects when handleAck(success=false) is called', async () => {
-    const ws = makeMockWs();
-    registry.register('session-1', ws as any);
-
+    registerAndClaim(registry, 'session-1', '/rp3', 3);
     const promise = registry.sendPrompt('session-1', 'action-fail', 'hi');
     registry.handleAck('action-fail', false, 'PTY write error');
     await expect(promise).rejects.toThrow('PTY write error');
@@ -82,8 +102,7 @@ describe('PtyRegistry', () => {
 
   it('sendPrompt() rejects after timeout when no ack arrives', async () => {
     vi.useFakeTimers();
-    const ws = makeMockWs();
-    registry.register('session-1', ws as any);
+    registerAndClaim(registry, 'session-1', '/rp4', 4);
 
     const promise = registry.sendPrompt('session-1', 'action-timeout', 'hi', 100);
     vi.advanceTimersByTime(200);
