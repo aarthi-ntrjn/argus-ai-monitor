@@ -8,9 +8,6 @@ interface Props {
   repoPath: string;
 }
 
-const CLAUDE_CMD = 'npm run launch --workspace=backend -- claude';
-const COPILOT_CMD = 'npm run launch --workspace=backend -- gh copilot suggest';
-
 export default function LaunchDropdown({ repoPath }: Props) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState<'claude' | 'copilot' | null>(null);
@@ -41,7 +38,8 @@ export default function LaunchDropdown({ repoPath }: Props) {
   }, [open]);
 
   const handleCopy = (tool: 'claude' | 'copilot') => {
-    navigator.clipboard.writeText(tool === 'claude' ? CLAUDE_CMD : COPILOT_CMD);
+    const cmd = tool === 'claude' ? tools?.claudeCmd : tools?.copilotCmd;
+    if (cmd) navigator.clipboard.writeText(cmd);
     setCopied(tool);
     setTimeout(() => setCopied(null), 1500);
     setOpen(false);

@@ -102,8 +102,15 @@ export async function deleteTodo(id: string): Promise<void> {
   await apiFetch<void>(`/todos/${id}`, { method: 'DELETE' });
 }
 
-export async function getAvailableTools(): Promise<{ claude: boolean; copilot: boolean }> {
-  return apiFetch<{ claude: boolean; copilot: boolean }>('/tools');
+export interface AvailableTools {
+  claude: boolean;
+  copilot: boolean;
+  claudeCmd?: string;
+  copilotCmd?: string;
+}
+
+export async function getAvailableTools(): Promise<AvailableTools> {
+  return apiFetch<AvailableTools>('/tools');
 }
 
 export async function launchInTerminal(tool: 'claude' | 'copilot', repoPath?: string): Promise<void> {
