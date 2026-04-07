@@ -1,4 +1,5 @@
 export type SessionType = 'copilot-cli' | 'claude-code';
+export type SessionLaunchMode = 'pty' | 'detected';
 export type SessionStatus = 'active' | 'idle' | 'waiting' | 'error' | 'completed' | 'ended';
 export type ControlActionType = 'stop' | 'send_prompt' | 'interrupt';
 export type ControlActionStatus = 'pending' | 'sent' | 'completed' | 'failed' | 'not_supported';
@@ -20,6 +21,7 @@ export interface Session {
   id: string;
   repositoryId: string;
   type: SessionType;
+  launchMode: SessionLaunchMode | null;
   pid: number | null;
   status: SessionStatus;
   startedAt: string;

@@ -6,6 +6,13 @@ vi.mock('../../src/db/database.js', () => ({
   updateControlAction: vi.fn(),
 }));
 
+vi.mock('../../src/services/pty-registry.js', () => ({
+  ptyRegistry: {
+    has: vi.fn(),
+    sendPrompt: vi.fn(),
+  },
+}));
+
 vi.mock('../../src/api/ws/event-dispatcher.js', () => ({
   broadcast: vi.fn(),
 }));
@@ -50,8 +57,10 @@ describe('SessionController', () => {
 
     const controller = new SessionController();
     const action = await controller.sendPrompt('test-session', 'Hello!');
-    expect(action.status).toBe('not_supported');
+    // copilot-cli sessions without PTY launchMode now return failed with actionable message
+    expect(action.status).toBe('failed');
     expect(action.type).toBe('send_prompt');
+    expect(action.result).toMatch(/argus launch/i);
   });
 
   it('throws PID_NOT_SET when session has no pid on stopSession', async () => {
@@ -186,5 +195,86 @@ describe('SessionController', () => {
     expect(mockSpawnSync).toHaveBeenCalledWith('taskkill', ['/PID', '6666']);
 
     Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+  });
+});
+
+describe('SessionController — sendPrompt PTY routing', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function makeSession(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'pty-session',
+      repositoryId: 'repo-1',
+      type: 'claude-code',
+      launchMode: 'pty',
+      pid: 1234,
+      status: 'active',
+      startedAt: new Date().toISOString(),
+      endedAt: null,
+      lastActivityAt: new Date().toISOString(),
+      summary: null,
+      expiresAt: null,
+      model: null,
+      ...overrides,
+    };
+  }
+
+  it('returns failed action immediately for detected sessions', async () => {
+    const { getSession, insertControlAction } = await import('../../src/db/database.js');
+    const { SessionController } = await import('../../src/services/session-controller.js');
+    (getSession as ReturnType<typeof vi.fn>).mockReturnValue(makeSession({ launchMode: 'detected' }));
+    (insertControlAction as ReturnType<typeof vi.fn>).mockImplementation(() => {});
+
+    const controller = new SessionController();
+    const action = await controller.sendPrompt('pty-session', 'hello');
+
+    expect(action.status).toBe('failed');
+    expect(action.result).toMatch(/argus launch/i);
+  });
+
+  it('returns failed action when launchMode is null (legacy detected session)', async () => {
+    const { getSession, insertControlAction } = await import('../../src/db/database.js');
+    const { SessionController } = await import('../../src/services/session-controller.js');
+    (getSession as ReturnType<typeof vi.fn>).mockReturnValue(makeSession({ launchMode: null }));
+    (insertControlAction as ReturnType<typeof vi.fn>).mockImplementation(() => {});
+
+    const controller = new SessionController();
+    const action = await controller.sendPrompt('pty-session', 'hello');
+
+    expect(action.status).toBe('failed');
+    expect(action.result).toMatch(/argus launch/i);
+  });
+
+  it('returns failed action immediately when PTY session has no connected launcher', async () => {
+    const { getSession, insertControlAction } = await import('../../src/db/database.js');
+    const { ptyRegistry } = await import('../../src/services/pty-registry.js');
+    const { SessionController } = await import('../../src/services/session-controller.js');
+    (getSession as ReturnType<typeof vi.fn>).mockReturnValue(makeSession());
+    (insertControlAction as ReturnType<typeof vi.fn>).mockImplementation(() => {});
+    (ptyRegistry.has as ReturnType<typeof vi.fn>).mockReturnValue(false);
+
+    const controller = new SessionController();
+    const action = await controller.sendPrompt('pty-session', 'hello');
+
+    expect(action.status).toBe('failed');
+    expect(action.result).toMatch(/not connected/i);
+  });
+
+  it('returns pending action and fires delivery when PTY launcher is connected', async () => {
+    const { getSession, insertControlAction } = await import('../../src/db/database.js');
+    const { ptyRegistry } = await import('../../src/services/pty-registry.js');
+    const { SessionController } = await import('../../src/services/session-controller.js');
+    (getSession as ReturnType<typeof vi.fn>).mockReturnValue(makeSession());
+    (insertControlAction as ReturnType<typeof vi.fn>).mockImplementation(() => {});
+    (ptyRegistry.has as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    (ptyRegistry.sendPrompt as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+
+    const controller = new SessionController();
+    const action = await controller.sendPrompt('pty-session', 'do something');
+
+    expect(action.status).toBe('pending');
+    expect(ptyRegistry.sendPrompt).toHaveBeenCalledWith('pty-session', action.id, 'do something');
   });
 });

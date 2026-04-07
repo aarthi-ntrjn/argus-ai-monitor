@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { getSession, insertControlAction, updateControlAction } from '../db/database.js';
 import { broadcast } from '../api/ws/event-dispatcher.js';
 import { validatePidOwnership } from './pid-validator.js';
+import { ptyRegistry } from './pty-registry.js';
 import type { ControlAction } from '../models/index.js';
 
 export class SessionController {
@@ -59,16 +60,33 @@ export class SessionController {
       throw Object.assign(new Error('Session already ended'), { code: 'CONFLICT' });
     }
 
-    if (session.type === 'copilot-cli') {
+    // Only PTY-launched sessions have a delivery channel
+    if (session.launchMode !== 'pty') {
       const action: ControlAction = {
         id: randomUUID(),
         sessionId,
         type: 'send_prompt',
         payload: { prompt },
-        status: 'not_supported',
+        status: 'failed',
         createdAt: new Date().toISOString(),
         completedAt: new Date().toISOString(),
-        result: 'Prompt injection not supported for Copilot CLI in v1',
+        result: 'Prompt delivery requires starting this session via argus launch',
+      };
+      insertControlAction(action);
+      this.broadcastAction(action);
+      return action;
+    }
+
+    if (!ptyRegistry.has(sessionId)) {
+      const action: ControlAction = {
+        id: randomUUID(),
+        sessionId,
+        type: 'send_prompt',
+        payload: { prompt },
+        status: 'failed',
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        result: 'Session launcher is not connected to Argus',
       };
       insertControlAction(action);
       this.broadcastAction(action);
@@ -80,13 +98,27 @@ export class SessionController {
       sessionId,
       type: 'send_prompt',
       payload: { prompt },
-      status: 'sent',
+      status: 'pending',
       createdAt: new Date().toISOString(),
       completedAt: null,
       result: null,
     };
     insertControlAction(action);
     this.broadcastAction(action);
+
+    // Deliver asynchronously; HTTP response returns immediately with pending action
+    ptyRegistry.sendPrompt(sessionId, action.id, prompt)
+      .then(() => {
+        const now = new Date().toISOString();
+        updateControlAction(action.id, 'completed', now, null);
+        this.broadcastAction({ ...action, status: 'completed', completedAt: now });
+      })
+      .catch((err: Error) => {
+        const now = new Date().toISOString();
+        updateControlAction(action.id, 'failed', now, err.message);
+        this.broadcastAction({ ...action, status: 'failed', completedAt: now, result: err.message });
+      });
+
     return action;
   }
 

@@ -28,6 +28,7 @@ export function getDb(): Database.Database {
     if (!sessionCols.includes('model')) db.exec('ALTER TABLE sessions ADD COLUMN model TEXT');
     const outputCols = (db.pragma('table_info(session_output)') as Array<{ name: string }>).map(c => c.name);
     if (!outputCols.includes('role')) db.exec('ALTER TABLE session_output ADD COLUMN role TEXT');
+    if (!sessionCols.includes('launch_mode')) db.exec("ALTER TABLE sessions ADD COLUMN launch_mode TEXT CHECK(launch_mode IN ('pty','detected'))");
   }
   return db;
 }
@@ -77,7 +78,7 @@ export function deleteRepository(id: string): void {
 export interface SessionFilters { repositoryId?: string; status?: string; type?: string; limit?: number; }
 
 export function getSessions(filters: SessionFilters = {}): Session[] {
-  let sql = 'SELECT id, repository_id as repositoryId, type, pid, status, started_at as startedAt, ended_at as endedAt, last_activity_at as lastActivityAt, summary, expires_at as expiresAt, model FROM sessions WHERE 1=1';
+  let sql = 'SELECT id, repository_id as repositoryId, type, launch_mode as launchMode, pid, status, started_at as startedAt, ended_at as endedAt, last_activity_at as lastActivityAt, summary, expires_at as expiresAt, model FROM sessions WHERE 1=1';
   const params: unknown[] = [];
   if (filters.repositoryId) { sql += ' AND repository_id = ?'; params.push(filters.repositoryId); }
   if (filters.status) { sql += ' AND status = ?'; params.push(filters.status); }
@@ -89,7 +90,7 @@ export function getSessions(filters: SessionFilters = {}): Session[] {
 
 export function getSession(id: string): Session | undefined {
   return getDb().prepare(
-    'SELECT id, repository_id as repositoryId, type, pid, status, started_at as startedAt, ended_at as endedAt, last_activity_at as lastActivityAt, summary, expires_at as expiresAt, model FROM sessions WHERE id = ?'
+    'SELECT id, repository_id as repositoryId, type, launch_mode as launchMode, pid, status, started_at as startedAt, ended_at as endedAt, last_activity_at as lastActivityAt, summary, expires_at as expiresAt, model FROM sessions WHERE id = ?'
   ).get(id) as Session | undefined;
 }
 
@@ -101,14 +102,16 @@ export function updateSessionStatus(id: string, status: string, endedAt: string 
 
 export function upsertSession(session: Session): void {
   getDb().prepare(`
-    INSERT INTO sessions (id, repository_id, type, pid, status, started_at, ended_at, last_activity_at, summary, expires_at, model)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO sessions (id, repository_id, type, launch_mode, pid, status, started_at, ended_at, last_activity_at, summary, expires_at, model)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
+      launch_mode = COALESCE(excluded.launch_mode, launch_mode),
       pid = excluded.pid, status = excluded.status, ended_at = excluded.ended_at,
       last_activity_at = excluded.last_activity_at, summary = excluded.summary,
       expires_at = excluded.expires_at, model = COALESCE(excluded.model, model)
-  `).run(session.id, session.repositoryId, session.type, session.pid, session.status,
-    session.startedAt, session.endedAt, session.lastActivityAt, session.summary, session.expiresAt, session.model ?? null);
+  `).run(session.id, session.repositoryId, session.type, session.launchMode ?? null, session.pid,
+    session.status, session.startedAt, session.endedAt, session.lastActivityAt,
+    session.summary, session.expiresAt, session.model ?? null);
 }
 
 export function getOutputForSession(sessionId: string, limit = 100, before?: string): SessionOutput[] {
