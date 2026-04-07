@@ -83,15 +83,6 @@ const sessionsRoutes: FastifyPluginAsync = async (app) => {
         const session = getSession(req.params.id);
         if (!session) return reply.status(404).send({ error: 'NOT_FOUND', message: `Session ${req.params.id} not found` });
 
-        if (session.type === 'copilot-cli') {
-          const action = await sessionController.sendPrompt(req.params.id, prompt);
-          return reply.status(501).send({
-            error: 'NOT_SUPPORTED',
-            message: 'Prompt injection not supported for Copilot CLI in v1',
-            actionId: action.id,
-          });
-        }
-
         const action = await sessionController.sendPrompt(req.params.id, prompt);
         return reply.status(202).send({ actionId: action.id, status: action.status });
       } catch (err: unknown) {
