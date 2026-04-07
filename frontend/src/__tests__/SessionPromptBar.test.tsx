@@ -187,25 +187,29 @@ describe('SessionPromptBar — read-only mode', () => {
     mockSendPrompt.mockResolvedValue({} as any);
   });
 
-  it('disables the input when session is not PTY-launched', () => {
+  it('hides the input when session is not PTY-launched', () => {
     render(<SessionPromptBar session={READ_ONLY_SESSION} />);
-    expect(screen.getByPlaceholderText('Send a prompt…')).toBeDisabled();
+    expect(screen.queryByPlaceholderText('Send a prompt…')).not.toBeInTheDocument();
   });
 
-  it('disables the enter button when session is not PTY-launched', () => {
+  it('hides the enter button when session is not PTY-launched', () => {
     render(<SessionPromptBar session={READ_ONLY_SESSION} />);
-    expect(screen.getByRole('button', { name: '↵' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: '↵' })).not.toBeInTheDocument();
   });
 
-  it('shows a tooltip explaining how to enable prompts', () => {
+  it('hides the actions menu when session is not PTY-launched', () => {
+    render(<SessionPromptBar session={READ_ONLY_SESSION} />);
+    expect(screen.queryByRole('button', { name: /session actions menu/i })).not.toBeInTheDocument();
+  });
+
+  it('shows a read-only message with a tooltip explaining how to enable prompts', () => {
     render(<SessionPromptBar session={READ_ONLY_SESSION} />);
     expect(screen.getByTitle(/argus launch/i)).toBeInTheDocument();
+    expect(screen.getByText(/read-only/i)).toBeInTheDocument();
   });
 
-  it('does not call sendPrompt when Enter is pressed in read-only mode', async () => {
+  it('does not call sendPrompt in read-only mode', async () => {
     render(<SessionPromptBar session={READ_ONLY_SESSION} />);
-    const input = screen.getByPlaceholderText('Send a prompt…');
-    await userEvent.type(input, 'hello{Enter}');
     expect(mockSendPrompt).not.toHaveBeenCalled();
   });
 });
