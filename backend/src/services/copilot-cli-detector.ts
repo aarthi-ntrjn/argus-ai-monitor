@@ -78,6 +78,7 @@ export class CopilotCliDetector {
       id: sessionId,
       repositoryId: repo.id,
       type: 'copilot-cli',
+      launchMode: null,
       pid: pid,
       status,
       startedAt: toIso(workspace.created_at),

@@ -165,7 +165,7 @@ export class ClaudeCodeDetector {
     // is waiting for it. If so, claim the PTY connection and create the session as
     // launchMode='pty' — no separate powershell session, just the real claude session.
     if (!existing) {
-      const claimed = ptyRegistry.claimForSession(session_id, normalizedCwd);
+      const claimed = normalizedCwd ? ptyRegistry.claimForSession(session_id, normalizedCwd) : null;
       if (claimed) {
         const session: Session = {
           id: session_id,
@@ -248,6 +248,7 @@ export class ClaudeCodeDetector {
       id: sessionId,
       repositoryId: repo.id,
       type: 'claude-code',
+      launchMode: null,
       pid: claudePid,
       status: 'active',
       startedAt: now,
