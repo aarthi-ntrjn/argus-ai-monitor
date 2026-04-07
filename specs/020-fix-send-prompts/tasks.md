@@ -63,3 +63,7 @@
 - [x] T025 [P4] Update `README.md` with `argus launch` usage
 - [x] T026 [P] [P4] Full backend test suite: 206 tests passed
 - [x] T027 [P] [P4] Full frontend test suite and build: 139 tests passed, build successful
+
+### Addendum: Bug — space key toggles card selection instead of typing
+
+- [ ] T028 Spacebar in prompt input bubbles up to SessionCard role=button handler: `SessionCard.tsx` line 123 wraps `<SessionPromptBar>` with `onClick={e => e.stopPropagation()}` but not `onKeyDown`. The card's own `onKeyDown` (line 70) intercepts Space and Enter to toggle selection. Fix: add `onKeyDown={e => e.stopPropagation()}` to the prompt bar wrapper div so keyboard events from the input cannot bubble to the card.
