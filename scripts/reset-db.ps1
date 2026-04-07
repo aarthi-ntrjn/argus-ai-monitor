@@ -34,9 +34,10 @@ $found | ForEach-Object {
     Write-Host "Backed up $_ -> $backupPath"
 }
 
+Add-Type -AssemblyName Microsoft.VisualBasic
 $found | ForEach-Object {
-    Remove-Item $_ -Force
-    Write-Host "Deleted $_"
+    [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($_, 'OnlyErrorDialogs', 'SendToRecycleBin')
+    Write-Host "Sent to Recycle Bin: $_"
 }
 
 Write-Host "`nBackup saved to $backupDir"
