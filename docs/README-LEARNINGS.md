@@ -1,7 +1,18 @@
 # Bug Learnings
 
-Retrospective entries for every bug fixed via the `/bug` skill.
+Retrospective entries for every bug fixed via the `/bug` skill, plus design retrospectives for architectural decisions that turned out to be more complex than necessary.
 Each entry explains what went wrong, why it was missed, and how to prevent it.
+
+---
+
+## Feature 020 — PTY prompt delivery was over-engineered
+
+**Date**: 2026-04-07
+**Context**: Feature 020 added prompt delivery to Claude Code and Copilot CLI sessions. The requirement was: user types a prompt in the Argus dashboard, it reaches the running AI tool process.
+**What was built**: A full PTY launcher (`argus launch`) — a separate CLI process the user runs instead of `claude` or `gh copilot`. It spawns the tool in a PTY via node-pty, holds the PTY master, connects back to the Argus backend over a `/launcher` WebSocket, and writes prompts to PTY stdin on demand. Significant surface area: PtyRegistry, ArgusLaunchClient, launcher WebSocket route, DB migration, launchMode field, frontend badge changes, 7 new test files.
+**The simpler solution that was missed**: The backend could call `start powershell -NoExit -Command "argus launch claude"` (Windows) or the Mac equivalent to open a new OS terminal window running the launcher. The terminal window is the PTY host — the user sees the full interactive Claude Code UI in their own terminal emulator. The launcher connects back via the existing `/launcher` WebSocket exactly as today. No change to the launch flow, no new complexity, just a `POST /api/v1/sessions/launch` endpoint that spawns a terminal window process. The frontend shows a "Launch" button; the rest is identical. Even simpler: a "Copy launch command" button that writes the command to the clipboard — zero backend work, works everywhere.
+**Why it was missed**: The clarification phase focused on the delivery mechanism (how does text reach the process stdin) rather than the session startup flow (how does the session start). The PTY infrastructure question was solved correctly; the spawn-a-terminal-window shortcut was never considered because the framing was "Argus must own the PTY" rather than "Argus must initiate the session."
+**How to prevent**: When a feature requires controlling an interactive subprocess, ask first: can the OS terminal emulator do the heavy lifting? Spawning a visible terminal window with a command is almost always simpler than building a headless PTY proxy. Only build the proxy if you need to render the terminal output yourself (e.g., in-browser xterm.js). If the user just needs to see the output in their own terminal, open their terminal.
 
 ---
 
