@@ -142,8 +142,10 @@ export class ClaudeCodeDetector {
 
         const mostRecent = jsonlEntries[0];
         if (!mostRecent) continue;
-        if (Date.now() - mostRecent.mtime.getTime() > ACTIVE_JSONL_THRESHOLD_MS) continue;
 
+        // Don't filter by mtime here — if a Claude process is running, the session may
+        // be alive but quiet. reconcileClaudeCodeSessions() will end it within 5 s if
+        // the JSONL is actually stale and the PID is dead.
         await this.activateFoundSession(mostRecent.id, repo, claudePid);
       }
     } catch { /* ignore */ }

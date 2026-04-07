@@ -96,8 +96,9 @@ describe('ClaudeCodeDetector.scanExistingSessions', () => {
     expect(session?.status).toBe('active');
   });
 
-  it('does NOT re-activate an ended session when JSONL file is older than 30 minutes', async () => {
-    // Set mtime to 31 minutes ago
+  it('re-activates an ended session even when JSONL file is older than 30 minutes, if Claude is running', async () => {
+    // mtime is stale but Claude is running — startup scan activates it;
+    // reconcileClaudeCodeSessions (running every 5 s) will end it if the PID is dead.
     mockMtime = new Date(Date.now() - 31 * 60 * 1000);
     const now = new Date().toISOString();
     const sessionId = 'hook-session-stale-mtime';
@@ -120,7 +121,7 @@ describe('ClaudeCodeDetector.scanExistingSessions', () => {
     await new ClaudeCodeDetector().scanExistingSessions();
 
     const session = dbModule.getSession(sessionId);
-    expect(session?.status).toBe('ended');
+    expect(session?.status).toBe('active');
   });
 
   it('does NOT re-activate when no JSONL files exist in the project dir', async () => {
