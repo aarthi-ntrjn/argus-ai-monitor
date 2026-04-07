@@ -19,7 +19,7 @@ const metricsRoutes: FastifyPluginAsync = async (app) => {
   }, async (_req, reply) => {
     const db = getDb();
     const activeRow = db.prepare(
-      "SELECT COUNT(*) as count FROM sessions WHERE status IN ('active','idle','waiting')"
+      "SELECT COUNT(*) as count FROM sessions WHERE status IN ('active','waiting')"
     ).get() as { count: number };
     const endedRow = db.prepare(
       "SELECT COUNT(*) as count FROM sessions WHERE status IN ('ended','completed')"

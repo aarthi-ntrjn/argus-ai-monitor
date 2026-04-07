@@ -424,7 +424,9 @@ The two session types share the same status enum but follow different lifecycle 
 
 ### Statuses
 
-`active` | `idle` | `waiting` | `error` | `completed` | `ended`
+`active` | `waiting` | `error` | `completed` | `ended`
+
+Note: the `idle` value exists in the type for historical reasons but is no longer set by the backend. "Resting" is a frontend-only display state shown when `lastActivityAt` exceeds the 20-minute inactivity threshold, regardless of session type.
 
 ### Claude Code lifecycle
 
@@ -436,20 +438,20 @@ Detection is a hybrid push/pull model. Claude Code injects curl-based hooks into
      v  hook: SessionStart
   active  <---------+
      |               |
-     v  hook: Stop   | hook: SessionStart / PreToolUse / PostToolUse
-   idle  ------------+
+     |               | hook: SessionStart / PreToolUse / PostToolUse / Stop
+     |               | (all hooks refresh lastActivityAt and stay active)
+     |               +-------------------------------------------+
      |
-     v  PID dead OR JSONL mtime > 30 min (reconciliation check, every 5 s)
-   ended
+     |  [frontend only] lastActivityAt > 20 min: badge shows "resting"
+     |
+     v  JSONL mtime > 60 min AND PID dead, OR JSONL file missing
+   ended              (reconciliation check every 5 s)
 ```
 
 State rules:
-- All hook events set status to `active` and refresh `lastActivityAt`.
-- `Stop` hook (end of an AI turn, not process exit) transitions to `idle`.
-- The background reconciler checks every 5 seconds: if the session has a PID, it checks liveness; if no PID, it checks JSONL file freshness.
-- If no Claude process is running system-wide, all hook-created (null-PID) sessions are ended together.
-
-On startup, JSONL files modified within the last 30 minutes are re-activated.
+- All hook events (including `Stop`) set status to `active` and refresh `lastActivityAt`.
+- The background reconciler checks JSONL mtime every 5 seconds. If the file is older than the configured threshold (default 60 min) and the PID is dead, the session is ended.
+- If the JSONL file is missing, the session is ended regardless of PID.
 
 ### Copilot CLI lifecycle
 
@@ -461,12 +463,14 @@ Detection is pull-only. Argus polls `~/.copilot/session-state/` every 5 seconds.
      v  inuse.{PID}.lock appears + PID in running processes
   active
      |
+     |  [frontend only] lastActivityAt > 20 min: badge shows "resting"
+     |
      v  lock file absent OR PID not running
    ended
 ```
 
 State rules:
-- There is no `idle` state for Copilot CLI sessions. A session is either active (lock present, PID alive) or ended.
+- Session is active when lock file is present and PID is alive; ended otherwise.
 - Lock file removal is the primary signal for process exit. PID liveness is the secondary check.
 - Session directories are not cleaned up by Argus; they are managed by the Copilot CLI process.
 
@@ -475,12 +479,11 @@ State rules:
 | Aspect | Claude Code | Copilot CLI |
 |--------|------------|------------|
 | Detection method | Push (hooks) + pull (scan) | Pull only (directory scan) |
-| Idle state | Yes (after Stop hook) | No |
-| Active/idle cycling | Yes, per AI turn | Not applicable |
+| Backend statuses | `active`, `ended` | `active`, `ended` |
+| Resting display | Frontend: `lastActivityAt` > 20 min | Frontend: `lastActivityAt` > 20 min |
 | Liveness signal | PID check + JSONL mtime | Lock file + PID check |
-| Stale threshold | JSONL mtime > 30 min | Lock file absent |
+| Stale threshold | JSONL mtime > 60 min (configurable) | Lock file absent |
 | Hook injection | Yes (`~/.claude/settings.json`) | No |
-| Startup re-activation | JSONL mtime < 30 min | Lock present + PID alive |
 
 ---
 

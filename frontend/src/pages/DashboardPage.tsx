@@ -22,7 +22,7 @@ interface RepoWithSessions extends Repository {
 }
 
 const ENDED_STATUSES = new Set(['completed', 'ended']);
-const ACTIVE_STATUSES = new Set(['active', 'idle', 'waiting', 'error']);
+const ACTIVE_STATUSES = new Set(['active', 'waiting', 'error']);
 
 type MobileTab = 'sessions' | 'tasks';
 

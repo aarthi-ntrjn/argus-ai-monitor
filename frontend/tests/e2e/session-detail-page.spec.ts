@@ -75,10 +75,10 @@ test.describe('Session Detail Page', () => {
     await expect(page.getByText('running')).toBeVisible({ timeout: 5000 });
   });
 
-  test('shows "idle" status badge', async ({ page }) => {
-    await mockSession(page, { status: 'idle' });
+  test('shows "resting" badge for sessions with no activity for 20+ minutes', async ({ page }) => {
+    await mockSession(page, { lastActivityAt: new Date(Date.now() - 25 * 60 * 1000).toISOString() });
     await page.goto(`/sessions/${SESSION_ID}`);
-    await expect(page.getByText('idle')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('resting')).toBeVisible({ timeout: 5000 });
   });
 
   test('shows "waiting" status badge', async ({ page }) => {

@@ -164,11 +164,11 @@ test.describe('SC-003: Session Card — Status Badges', () => {
     await expect(page.getByText('ended')).toBeVisible({ timeout: 5000 });
   });
 
-  test('idle session shows "idle" status badge', async ({ page }) => {
-    const s = { ...SESSION_CLAUDE, status: 'idle' };
+  test('inactive session shows "resting" badge after 20+ minutes of no activity', async ({ page }) => {
+    const s = { ...SESSION_CLAUDE, lastActivityAt: new Date(Date.now() - 25 * 60 * 1000).toISOString() };
     await mockApis(page, [s]);
     await page.goto('/');
-    await expect(page.getByText('idle')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('resting')).toBeVisible({ timeout: 5000 });
   });
 
   test('waiting session shows "waiting" status badge', async ({ page }) => {

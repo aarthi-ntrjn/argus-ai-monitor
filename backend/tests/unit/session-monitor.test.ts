@@ -290,10 +290,11 @@ describe('SessionMonitor.refreshRepositoryBranches', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Tests T005–T014: reconcileClaudeCodeSessions idle vs ended logic
+// Tests T005–T014: reconcileClaudeCodeSessions active/ended logic
+// Resting display is frontend-only via isInactive(); backend uses active/ended only.
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('SessionMonitor.reconcileClaudeCodeSessions — idle vs ended logic', () => {
+describe('SessionMonitor.reconcileClaudeCodeSessions — active/ended logic', () => {
   let closeDb: () => void;
   let upsertSession: (s: unknown) => void;
   let getSessions: (f: unknown) => unknown[];

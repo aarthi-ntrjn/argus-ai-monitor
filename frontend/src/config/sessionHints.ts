@@ -3,7 +3,7 @@ import type { ContextualHint } from '../types';
 export const SESSION_HINTS: ContextualHint[] = [
   {
     id: 'session-status',
-    label: 'This badge shows the current session status — active, idle, waiting, or ended. Status updates automatically in real time.',
+    label: 'This badge shows the current session status — running, resting, waiting, or ended. Status updates automatically in real time.',
     ariaLabel: 'Help: session status indicator',
     placement: 'bottom',
   },

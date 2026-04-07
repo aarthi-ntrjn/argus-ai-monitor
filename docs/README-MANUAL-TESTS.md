@@ -126,7 +126,7 @@ Manual tests to run against a live Argus instance with at least one real local r
 | P2-09 | Start a new session on a registered repo while dashboard is open | New session card appears within 5 seconds without manual refresh |
 | P2-10 | Stop a session externally (kill the process) | Session status updates to "ended" within ~5 seconds |
 | P2-11 | On the session detail page, generate new output in the session | Output stream updates in real time without refresh |
-| P2-12 | Session transitions from "active" to "idle" while dashboard is open | Status badge updates to "idle" without page refresh |
+| P2-12 | Leave a claude-code or copilot-cli session with no activity for 21+ minutes while dashboard is open | Badge changes to "resting" (amber moon icon) without page refresh |
 
 ### Settings persistence
 
