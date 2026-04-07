@@ -22,9 +22,22 @@ if ($confirm -ne 'y') {
     exit 0
 }
 
+# Backup before deleting
+$timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+$backupDir = Join-Path $dbDir "backups"
+if (-not (Test-Path $backupDir)) { New-Item -ItemType Directory -Path $backupDir | Out-Null }
+
+$found | ForEach-Object {
+    $name = Split-Path $_ -Leaf
+    $backupPath = Join-Path $backupDir "$timestamp-$name"
+    Copy-Item $_ $backupPath
+    Write-Host "Backed up $_ -> $backupPath"
+}
+
 $found | ForEach-Object {
     Remove-Item $_ -Force
     Write-Host "Deleted $_"
 }
 
-Write-Host "`nDatabase reset complete. Restart Argus to create a fresh database."
+Write-Host "`nBackup saved to $backupDir"
+Write-Host "Database reset complete. Restart Argus to create a fresh database."
