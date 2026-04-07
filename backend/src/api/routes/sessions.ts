@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { getSessions, getSession } from '../../db/database.js';
+import { getSessions, getSession, updateSessionStatus } from '../../db/database.js';
 import { OutputStore } from '../../services/output-store.js';
 import { SessionController } from '../../services/session-controller.js';
 
@@ -72,6 +72,24 @@ const sessionsRoutes: FastifyPluginAsync = async (app) => {
     }
   );
 
+
+  // Dismiss a session: mark it as ended without killing the process.
+  // Used for read-only sessions or sessions whose process is already gone.
+  app.delete<{ Params: { id: string } }>(
+    '/api/v1/sessions/:id',
+    async (req, reply) => {
+      const session = getSession(req.params.id);
+      if (!session) return reply.status(404).send({ error: 'NOT_FOUND', message: `Session ${req.params.id} not found` });
+      if (session.status === 'ended' || session.status === 'completed') {
+        return reply.status(409).send({ error: 'CONFLICT', message: 'Session already ended' });
+      }
+      const now = new Date().toISOString();
+      updateSessionStatus(req.params.id, 'ended', now);
+      const { broadcast: broadcastEvent } = await import('../ws/event-dispatcher.js');
+      broadcastEvent({ type: 'session.ended', timestamp: now, data: { ...session, status: 'ended', endedAt: now } as unknown as Record<string, unknown> });
+      return reply.send({ status: 'ended' });
+    }
+  );
 
   app.post<{ Params: { id: string }; Body: { prompt?: string } }>(
     '/api/v1/sessions/:id/send',

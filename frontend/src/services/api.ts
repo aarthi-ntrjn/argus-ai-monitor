@@ -78,6 +78,10 @@ export async function interruptSession(id: string): Promise<{ actionId: string; 
   return apiFetch<{ actionId: string; status: string }>(`/sessions/${id}/interrupt`, { method: 'POST' });
 }
 
+export async function dismissSession(id: string): Promise<{ status: string }> {
+  return apiFetch<{ status: string }>(`/sessions/${id}`, { method: 'DELETE' });
+}
+
 export async function sendPrompt(id: string, prompt: string): Promise<ControlAction> {
   return apiFetch<ControlAction>(`/sessions/${id}/send`, { method: 'POST', body: JSON.stringify({ prompt }) });
 }
