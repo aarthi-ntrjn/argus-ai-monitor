@@ -223,3 +223,12 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 **Why it was missed**: The `onClick` stop-propagation was added when the prompt bar was introduced, but the equivalent `onKeyDown` guard was not — it was not obvious that `role="button"` + Space would fire a handler that sat above a focused `<input>`.
 **How to prevent**: Whenever interactive content (inputs, buttons) is nested inside a `role="button"` element, always stop both `onClick` AND `onKeyDown` propagation on the inner container. Treat click and keyboard as a pair.
 **Fix summary**: Added `onKeyDown={e => e.stopPropagation()}` alongside the existing `onClick` on the prompt bar wrapper div in `SessionCard.tsx`.
+
+## T029 — PTY launch creates duplicate read-only detected session
+
+**Date**: 2026-04-07
+**Symptom**: After launching a claude session via `argus launch`, sending a prompt caused a second read-only session to appear. All output showed in the detected session; the live PTY session showed nothing.
+**Root cause**: `ClaudeCodeDetector.handleHookPayload` and `activateFoundSession` identify sessions by Claude's internal session ID (e.g. `e4d9a893` from the JSONL filename). The PTY session registered by `argus launch` has a different UUID. When the hook fires, `getSession(claudeSessionId)` returns null, and the detector creates a brand-new detected session (launchMode=null) instead of recognising the existing PTY session.
+**Why it was missed**: The PTY launcher and the JSONL detector were designed as independent subsystems. No deduplication logic existed at the join point where both could fire for the same real claude session.
+**How to prevent**: Whenever a new session is about to be created, query for an existing active PTY session for the same repository. If one exists, route to it rather than creating a duplicate. The general rule: "one repo, one active claude session" — enforce this invariant at creation time.
+**Fix summary**: Added `activePtySessionForRepo()` helper to `ClaudeCodeDetector`; both `handleHookPayload` and `activateFoundSession` now check for an active PTY session before creating a new detected session. `watchJsonlFile` accepts an optional `storeAsId` so JSONL output can be attributed to the PTY session ID.
