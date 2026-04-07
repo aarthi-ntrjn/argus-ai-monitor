@@ -2,30 +2,31 @@
   <defs>
     <!-- Clip everything to the vertical eye outline -->
     <clipPath id="eye-clip">
-      <path d="M40 6 C82 6 82 114 40 114 C-2 114 -2 6 40 6"/>
+      <!-- 4-segment bezier: tangents angle inward at top/bottom for sharp points -->
+      <path d="M40 6 C60 20,78 38,78 60 S60 100,40 114 C20 100,2 82,2 60 S20 20,40 6 Z"/>
     </clipPath>
   </defs>
 
   <!-- Eye white background -->
-  <path d="M40 6 C82 6 82 114 40 114 C-2 114 -2 6 40 6" fill="#f8fafc"/>
+  <path d="M40 6 C60 20,78 38,78 60 S60 100,40 114 C20 100,2 82,2 60 S20 20,40 6 Z" fill="#f8fafc"/>
 
-  <!-- Eyeball — clipped so only the portion inside the eye is visible -->
+  <!-- Eyeball — clipped so only ~3/4 is visible inside the eye -->
   <g clip-path="url(#eye-clip)">
     <!-- Sclera -->
-    <circle cx="60" cy="60" r="30" fill="#e2e8f0"/>
+    <circle cx="64" cy="60" r="30" fill="#e2e8f0"/>
     <!-- Iris ring (outer) -->
-    <circle cx="60" cy="60" r="22" fill="#1d4ed8"/>
+    <circle cx="64" cy="60" r="22" fill="#1d4ed8"/>
     <!-- Iris ring (inner detail) -->
-    <circle cx="60" cy="60" r="18" fill="#1e40af"/>
+    <circle cx="64" cy="60" r="18" fill="#1e40af"/>
     <!-- Pupil -->
-    <circle cx="60" cy="60" r="12" fill="#0f172a"/>
+    <circle cx="64" cy="60" r="12" fill="#0f172a"/>
     <!-- Primary highlight -->
-    <circle cx="52" cy="52" r="6" fill="white" opacity="0.85"/>
+    <circle cx="56" cy="52" r="6" fill="white" opacity="0.85"/>
     <!-- Secondary highlight -->
-    <circle cx="65" cy="68" r="3" fill="white" opacity="0.35"/>
+    <circle cx="69" cy="68" r="3" fill="white" opacity="0.35"/>
   </g>
 
   <!-- Eye outline drawn on top -->
-  <path d="M40 6 C82 6 82 114 40 114 C-2 114 -2 6 40 6"
+  <path d="M40 6 C60 20,78 38,78 60 S60 100,40 114 C20 100,2 82,2 60 S20 20,40 6 Z"
         fill="none" stroke="#0f172a" stroke-width="5" stroke-linejoin="round"/>
 </svg>
