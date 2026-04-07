@@ -2,7 +2,7 @@
 
 **Feature Branch**: `020-fix-session-refresh-timeout`
 **Created**: 2026-04-07
-**Status**: Draft
+**Status**: Clarified
 **Input**: User description: "investigate why Claude session does not show up when I refresh and there has been no activity for 30mins"
 
 ## Background
@@ -83,7 +83,7 @@ A developer using Argus wants to tune how long a session can be quiet before it 
 - **FR-006**: The inactivity threshold used to classify a session as `idle` MUST be configurable via application settings.
 - **FR-007**: The default inactivity threshold MUST be increased from 30 minutes to 60 minutes.
 - **FR-008**: When an idle session receives new JSONL activity, the backend MUST restore it to `active` status.
-- **FR-009**: The backend MUST verify process liveness (via PID check) before marking any session as `ended` during reconciliation.
+- **FR-009**: During reconciliation, when JSONL mtime exceeds the inactivity threshold, the backend MUST use a PID liveness check to disambiguate: if the process has exited, mark `ended`; if the process is still running, mark `idle`. The JSONL mtime check remains the primary trigger; PID is the tiebreaker only when mtime is stale.
 
 ### Key Entities
 
@@ -100,6 +100,12 @@ A developer using Argus wants to tune how long a session can be quiet before it 
 - **SC-003**: Users can adjust the inactivity threshold through settings without restarting the application.
 - **SC-004**: When an idle session receives new activity, it returns to active status within 10 seconds.
 - **SC-005**: The change produces zero regressions in detection of genuinely ended sessions (sessions that were correctly marked `ended` before the fix continue to be detected correctly).
+
+## Clarifications
+
+### Session 2026-04-07
+
+- **PID liveness strategy (FR-009)**: Use JSONL mtime as the primary trigger (unchanged). When mtime is stale beyond the threshold, perform a PID check as a tiebreaker: PID dead → `ended`; PID alive → `idle`. This avoids over-engineering PID reuse concerns (rare in practice) while keeping the reliable file-based detection working.
 
 ## Assumptions
 
