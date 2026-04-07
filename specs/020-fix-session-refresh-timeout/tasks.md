@@ -84,7 +84,7 @@
 
 ---
 
-## Phase 5: Frontend — Idle Indicator & sessionUtils Fix
+## Phase 5: Frontend — Idle Indicator, sessionUtils Fix & Settings UI
 
 **Goal**: `idle` sessions are never hidden by `hideEndedSessions` or the time-based `isInactive` filter; an "Idle" badge is shown.
 
@@ -98,8 +98,9 @@
 
 - [ ] T025 [P] Update `isInactive` in `frontend/src/utils/sessionUtils.ts`: add `|| session.status === 'idle'` to the early-return guard (alongside `completed` and `ended`)
 - [ ] T026 Locate the session status badge component (search for where `resting` or status badges are rendered in `frontend/src/`); add an "Idle" badge rendered when `session.status === 'idle'`
+- [ ] T026b [P] Locate the frontend settings panel (search for where `hideEndedSessions` is rendered in `frontend/src/`); add a numeric input field for `idleSessionThresholdMinutes` that reads from `GET /api/v1/settings` and saves via `PATCH /api/v1/settings` (FR-006, SC-003)
 
-**Checkpoint**: T024 passes. Idle sessions are visible and badged correctly.
+**Checkpoint**: T024 passes. Idle sessions are visible and badged correctly. Threshold is configurable via the settings panel without API access.
 
 ---
 
