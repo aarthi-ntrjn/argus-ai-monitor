@@ -1,28 +1,30 @@
-<svg viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="0 0 160 200" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <clipPath id="diamond-clip">
-      <polygon points="90,8 172,90 90,172 8,90"/>
+      <polygon points="80,5 155,95 80,195 5,95"/>
     </clipPath>
   </defs>
 
-  <!-- Light blue diamond (sclera) -->
-  <polygon points="90,8 172,90 90,172 8,90" fill="#88C5EA"/>
+  <!-- Light blue diamond (sclera background) -->
+  <polygon points="80,5 155,95 80,195 5,95" fill="#7EC5E8"/>
 
-  <!-- Dark blue eyeball clipped to diamond shape -->
+  <!-- Large dark blue eyeball, clipped to diamond -->
+  <!-- Circle center nudged right so right side is clipped; left arc stays visible -->
   <g clip-path="url(#diamond-clip)">
-    <circle cx="100" cy="90" r="74" fill="#1A5DBF"/>
-    <!-- Iris (slightly darker inner ring) -->
-    <circle cx="100" cy="90" r="54" fill="#1248A0"/>
-    <!-- Green iris highlight -->
-    <circle cx="91"  cy="97" r="8"  fill="#2E9E52"/>
+    <circle cx="95" cy="98" r="70" fill="#1B52B5"/>
   </g>
 
-  <!-- Eyeball circle outline, clipped to diamond -->
+  <!-- Circle arc outline, clipped to diamond -->
   <g clip-path="url(#diamond-clip)">
-    <circle cx="100" cy="90" r="74" fill="none" stroke="#0a0a1a" stroke-width="5"/>
+    <circle cx="95" cy="98" r="70" fill="none" stroke="#111111" stroke-width="4"/>
   </g>
 
-  <!-- Diamond outline -->
-  <polygon points="90,8 172,90 90,172 8,90"
-           fill="none" stroke="#0a0a1a" stroke-width="5" stroke-linejoin="miter"/>
+  <!-- Green iris oval near centre -->
+  <g clip-path="url(#diamond-clip)">
+    <ellipse cx="87" cy="104" rx="8" ry="6" fill="#2DA84E"/>
+  </g>
+
+  <!-- Diamond outline on top -->
+  <polygon points="80,5 155,95 80,195 5,95"
+           fill="none" stroke="#111111" stroke-width="5" stroke-linejoin="miter"/>
 </svg>

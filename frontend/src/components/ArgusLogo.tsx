@@ -5,16 +5,16 @@ interface ArgusLogoProps {
 }
 
 /**
- * Argus diamond eye logo — matches the reference design:
- * a light-blue diamond with a dark-blue eyeball clipped inside,
- * slightly off-centre to the right, with a small green iris detail.
+ * Argus diamond eye logo — tall diamond with a large dark-blue eyeball clipped inside.
+ * Left arc of the circle is visible against the light-blue sclera background.
+ * Small green iris oval sits near the centre.
  */
 export default function ArgusLogo({ size = 32, className = '' }: ArgusLogoProps) {
   return (
     <svg
-      width={size}
+      width={Math.round(size * 0.8)}
       height={size}
-      viewBox="0 0 180 180"
+      viewBox="0 0 160 200"
       xmlns="http://www.w3.org/2000/svg"
       aria-label="Argus logo"
       role="img"
@@ -22,30 +22,33 @@ export default function ArgusLogo({ size = 32, className = '' }: ArgusLogoProps)
     >
       <defs>
         <clipPath id="argus-diamond-clip">
-          <polygon points="90,8 172,90 90,172 8,90" />
+          <polygon points="80,5 155,95 80,195 5,95" />
         </clipPath>
       </defs>
 
-      {/* Light blue diamond (sclera) */}
-      <polygon points="90,8 172,90 90,172 8,90" fill="#88C5EA" />
+      {/* Light blue diamond */}
+      <polygon points="80,5 155,95 80,195 5,95" fill="#7EC5E8" />
 
-      {/* Dark blue eyeball clipped to diamond */}
+      {/* Large dark blue eyeball, clipped to diamond */}
       <g clipPath="url(#argus-diamond-clip)">
-        <circle cx="100" cy="90" r="74" fill="#1A5DBF" />
-        <circle cx="100" cy="90" r="54" fill="#1248A0" />
-        <circle cx="91"  cy="97" r="8"  fill="#2E9E52" />
+        <circle cx="95" cy="98" r="70" fill="#1B52B5" />
       </g>
 
-      {/* Eyeball circle outline */}
+      {/* Circle arc outline */}
       <g clipPath="url(#argus-diamond-clip)">
-        <circle cx="100" cy="90" r="74" fill="none" stroke="#0a0a1a" strokeWidth={5} />
+        <circle cx="95" cy="98" r="70" fill="none" stroke="#111111" strokeWidth={4} />
+      </g>
+
+      {/* Green iris oval */}
+      <g clipPath="url(#argus-diamond-clip)">
+        <ellipse cx="87" cy="104" rx="8" ry="6" fill="#2DA84E" />
       </g>
 
       {/* Diamond outline */}
       <polygon
-        points="90,8 172,90 90,172 8,90"
+        points="80,5 155,95 80,195 5,95"
         fill="none"
-        stroke="#0a0a1a"
+        stroke="#111111"
         strokeWidth={5}
         strokeLinejoin="miter"
       />
