@@ -155,7 +155,7 @@ export default function DashboardPage() {
             <div className="flex justify-between items-center">
               <h2 className="text-lg md:text-xl font-semibold text-gray-900">{repo.name}</h2>
               <div className="flex items-center gap-2">
-                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded">
+                <span className="bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded font-medium">
                   {repo.sessions.length} session{repo.sessions.length !== 1 ? 's' : ''}
                 </span>
                 <LaunchDropdown repoPath={repo.path} />
