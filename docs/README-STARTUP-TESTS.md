@@ -50,3 +50,4 @@ See [README-ONBOARDING-TESTS.md](README-ONBOARDING-TESTS.md).
 | S3-04 | Enter an invalid or non-existent path | An error message is shown; no repo card is added |
 | S3-05 | Enter a folder path that contains multiple git repositories | Argus scans the folder and adds all discovered repos; an info message reads "Added N repositories" |
 | S3-06 | Enter the same folder path again | Info message reads "No new git repositories found in the specified folder." |
+| S3-07 | Enter a folder path that contains no git repositories | Info message reads "No new git repositories found in the specified folder." |
