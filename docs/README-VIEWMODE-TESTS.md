@@ -49,3 +49,9 @@ See [README-OUTPUTSTREAM-TESTS.md](README-OUTPUTSTREAM-TESTS.md).
 ## V5: Mobile layout
 
 See [README-MOBILE-TESTS.md](README-MOBILE-TESTS.md).
+
+---
+
+## V6: Session lifecycle (start, end, idle, server up/down)
+
+See [README-LIFECYCLE-TESTS.md](README-LIFECYCLE-TESTS.md).
