@@ -17,7 +17,7 @@ import TodoPanel from '../components/TodoPanel/TodoPanel';
 import MobileNav from '../components/MobileNav/MobileNav';
 import { isInactive } from '../utils/sessionUtils';
 import { OnboardingTour } from '../components/Onboarding';
-import { DASHBOARD_TOUR_STEPS } from '../config/dashboardTourSteps';
+import { buildDashboardTourSteps } from '../config/dashboardTourSteps';
 
 interface RepoWithSessions extends Repository {
   sessions: Session[];
@@ -369,7 +369,7 @@ export default function DashboardPage() {
 
       <OnboardingTour
         run={tourRun}
-        steps={DASHBOARD_TOUR_STEPS}
+        steps={buildDashboardTourSteps(repos.length > 0)}
         onComplete={() => { completeTour(); setTourRun(false); }}
         onSkip={(reason) => { skipTour(reason); setTourRun(false); }}
       />

@@ -43,7 +43,7 @@ vi.mock('../components/Onboarding', () => ({
   OnboardingTour: () => null,
 }));
 
-vi.mock('../config/dashboardTourSteps', () => ({ DASHBOARD_TOUR_STEPS: [] }));
+vi.mock('../config/dashboardTourSteps', () => ({ buildDashboardTourSteps: () => [] }));
 
 import { useIsMobile } from '../hooks/useIsMobile';
 const mockUseIsMobile = vi.mocked(useIsMobile);
