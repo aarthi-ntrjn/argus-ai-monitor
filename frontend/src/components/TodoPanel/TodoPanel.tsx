@@ -133,7 +133,7 @@ export default function TodoPanel() {
   }, [todos, createTodo, updateTodoText, deleteTodo, resetAddRow, focusAddRow, focusRow]);
 
   return (
-    <aside data-tour-id="dashboard-todo" className="w-full flex flex-col bg-white rounded-lg shadow max-h-[calc(100vh-10rem)]">
+    <aside data-tour-id="dashboard-todo" className="w-full h-full flex flex-col bg-white rounded-lg shadow max-h-[calc(100vh-10rem)]">
       <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
         <button
           onClick={() => setCollapsed(v => !v)}

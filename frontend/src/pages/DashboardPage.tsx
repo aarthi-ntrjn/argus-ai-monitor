@@ -320,7 +320,7 @@ export default function DashboardPage() {
                     </div>
                   ) : null;
                 })()}
-                <div className={selectedSessionId ? 'flex-[2] min-h-0' : 'flex-1'}>
+                <div className={selectedSessionId ? 'flex-[2] min-h-0 overflow-hidden' : 'flex-1'}>
                   <TodoPanel />
                 </div>
               </div>
