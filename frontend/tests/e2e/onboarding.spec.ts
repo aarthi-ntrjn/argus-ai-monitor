@@ -62,8 +62,8 @@ test.describe('US1: First-Time Dashboard Tour', () => {
     await expect(page.locator('.react-joyride__tooltip')).toBeVisible({ timeout: 5000 });
     await expect(page.getByText('Welcome!')).toBeVisible();
 
-    // Advance through all 8 steps
-    for (let i = 0; i < 7; i++) {
+    // Advance through all 7 steps
+    for (let i = 0; i < 6; i++) {
       const nextBtn = page.getByRole('button', { name: /next/i });
       await expect(nextBtn).toBeVisible();
       await nextBtn.click();

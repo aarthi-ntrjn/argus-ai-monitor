@@ -39,14 +39,7 @@ export const DASHBOARD_TOUR_STEPS: TourStep[] = [
     disableBeacon: true,
     targetWaitTimeout: 5000,
   },
-  {
-    target: '[data-tour-id="dashboard-settings"]',
-    title: '⚙️ Customize Your View',
-    content: "Hide ended or inactive sessions, and replay this tour anytime. You're in control.",
-    placement: 'bottom',
-    disableBeacon: true,
-  },
-  {
+{
     target: '[data-tour-id="dashboard-todo"]',
     title: '📝 To Do or Not To Do',
     content: "Track your wild ideas here.",
