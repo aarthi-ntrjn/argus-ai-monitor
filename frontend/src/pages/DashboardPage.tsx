@@ -308,7 +308,7 @@ export default function DashboardPage() {
               <div className="flex-1 min-w-0">
                 {repoList}
               </div>
-              <div className={`${selectedSessionId ? 'w-[640px]' : 'w-[400px]'} shrink-0 sticky top-8 flex flex-col gap-4${selectedSessionId ? '' : ' h-auto'}`} style={selectedSessionId ? { height: 'calc(100vh - 8rem)' } : undefined}>
+              <div className={`${selectedSessionId ? 'w-[640px]' : 'w-[400px]'} shrink-0 sticky top-8 flex flex-col gap-4${selectedSessionId ? '' : ' h-auto'}`} style={selectedSessionId ? { height: 'calc(100vh - 10rem)' } : undefined}>
                 {selectedSessionId && (() => {
                   const selectedSession = sessions.find(s => s.id === selectedSessionId);
                   return selectedSession ? (
