@@ -34,7 +34,7 @@ export const DASHBOARD_TOUR_STEPS: TourStep[] = [
   {
     target: '[data-tour-id="dashboard-launch"]',
     title: '🚀 Launch with Argus',
-    content: "Start a new Claude Code or Copilot CLI session directly from Argus. Sessions launched here run in command mode: you can send prompts, interrupt, and control them remotely.",
+    content: "You can control your AI sessions when launched from Argus.",
     placement: 'bottom',
     disableBeacon: true,
     targetWaitTimeout: 5000,
