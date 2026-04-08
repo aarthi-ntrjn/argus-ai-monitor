@@ -64,15 +64,7 @@ See [README-TODO-TESTS.md](README-TODO-TESTS.md).
 
 ## V5: Mobile layout
 
-**Prerequisites:** Resize browser to a narrow viewport (<768px) or use mobile device emulation.
-
-| # | Steps | Expected |
-|---|-------|----------|
-| V5-01 | Open the dashboard on a mobile viewport | A bottom tab bar with "Sessions" and "Tasks" tabs is visible; the sidebar is hidden |
-| V5-02 | The "Sessions" tab is active by default | Repository and session cards are stacked in a single column |
-| V5-03 | Tap the **Tasks** tab | The todo panel is shown full-width instead of the session list |
-| V5-04 | Tap the **Sessions** tab | The session list returns |
-| V5-05 | Tap a session card | Navigates to the session detail page (no inline output pane on mobile) |
+See [README-MOBILE-TESTS.md](README-MOBILE-TESTS.md).
 
 ---
 
