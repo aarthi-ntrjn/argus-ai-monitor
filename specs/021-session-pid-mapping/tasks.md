@@ -38,10 +38,10 @@
 
 **Independent Test**: With registry providing PIDs, the detector no longer calls `psList` for PID matching. Sessions created by hooks get `pid=null` initially, then the registry scan assigns the PID on the next cycle.
 
-- [ ] T014 Write unit tests in `backend/tests/unit/claude-code-detector-scan.test.ts`: hook creates session with pid=null, scanExistingSessions no longer assigns PID via psList heuristic
-- [ ] T015 Remove single-process PID assumption from `scanExistingSessions()` in `backend/src/services/claude-code-detector.ts` (remove the `claudeProcesses.length === 1` logic)
-- [ ] T016 Remove psList-based PID assignment from `handleHookPayload()` in `backend/src/services/claude-code-detector.ts` (new read-only sessions start with pid=null)
-- [ ] T017 Keep the `psList` import only for `reconcileStaleSessions()` PID liveness checks
+- [x] T014 Write unit tests in `backend/tests/unit/claude-code-detector-scan.test.ts`: hook creates session with pid=null, scanExistingSessions no longer assigns PID via psList heuristic
+- [x] T015 Remove single-process PID assumption from `scanExistingSessions()` in `backend/src/services/claude-code-detector.ts` (remove the `claudeProcesses.length === 1` logic)
+- [x] T016 Remove psList-based PID assignment from `handleHookPayload()` in `backend/src/services/claude-code-detector.ts` (new read-only sessions start with pid=null)
+- [x] T017 Keep the `psList` import only for `reconcileStaleSessions()` PID liveness checks
 
 ## Phase 5: Copilot CLI hardening (US2)
 

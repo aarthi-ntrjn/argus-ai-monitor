@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSy
 import { open as fsOpen, stat as fsStat } from 'fs/promises';
 import { join, dirname, normalize } from 'path';
 import { homedir } from 'os';
-import psList from 'ps-list';
+
 import chokidar, { type FSWatcher } from 'chokidar';
 import { getSession, upsertSession, getRepositories, getRepositoryByPath } from '../db/database.js';
 import { ptyRegistry } from './pty-registry.js';
@@ -101,23 +101,6 @@ export class ClaudeCodeDetector {
     const projectsDir = join(homedir(), '.claude', 'projects');
     if (!existsSync(projectsDir)) return;
 
-    let processes: Awaited<ReturnType<typeof psList>>;
-    try {
-      processes = await psList();
-    } catch {
-      return;
-    }
-
-    const claudeProcesses = processes.filter(p =>
-      p.name.toLowerCase().includes('claude') || p.cmd?.toLowerCase().includes('claude')
-    );
-    if (claudeProcesses.length === 0) return;
-    // Only assign a PID when there is exactly one Claude process, so the
-    // mapping is unambiguous.  With multiple processes we cannot tell which
-    // one owns which session, so we leave pid as null (the session will
-    // still be shown as active but the kill button will be hidden).
-    const claudePid: number | null = claudeProcesses.length === 1 ? claudeProcesses[0].pid : null;
-
     try {
       const projectDirNames = new Set(
         readdirSync(projectsDir, { withFileTypes: true })
@@ -131,7 +114,6 @@ export class ClaudeCodeDetector {
 
         const projectDir = join(projectsDir, this.claudeProjectDirName(repo.path));
 
-        // Find the most recently modified JSONL file — its basename IS the real session ID
         let jsonlEntries: Array<{ id: string; path: string; mtime: Date }>;
         try {
           jsonlEntries = readdirSync(projectDir)
@@ -147,10 +129,10 @@ export class ClaudeCodeDetector {
 
         if (jsonlEntries.length === 0) continue;
 
-        // Activate the 2 most recent JSONL sessions per repo. The reconciler
-        // will end stale ones based on PID/JSONL freshness.
+        // Activate the 2 most recent JSONL sessions per repo.
+        // PID assignment is handled by the session registry scanner, not here.
         for (const entry of jsonlEntries.slice(0, 2)) {
-          await this.activateFoundSession(entry.id, repo, claudePid);
+          await this.activateFoundSession(entry.id, repo, null);
         }
       }
     } catch { /* ignore */ }
