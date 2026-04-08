@@ -75,6 +75,7 @@ export function updateRepositoryBranch(id: string, branch: string | null): void 
 
 export function deleteRepository(id: string): void {
   const db = getDb();
+  db.prepare('DELETE FROM control_actions WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
   db.prepare('DELETE FROM session_output WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
   db.prepare('DELETE FROM sessions WHERE repository_id = ?').run(id);
   db.prepare('DELETE FROM repositories WHERE id = ?').run(id);
