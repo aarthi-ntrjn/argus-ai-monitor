@@ -17,7 +17,7 @@ Manual tests for the dashboard view mode: session cards, session detail page, se
 | V0-03 | Check an active session card | Status badge is green ("running"); elapsed time is ticking; last output preview is visible in a dark monospace block |
 | V0-04 | Check an ended session card | Status badge is grey ("ended"); no kill button or prompt bar is visible |
 | V0-05 | Check a live (PTY) session card | A green "live" badge is visible; a prompt input bar is shown below the output preview |
-| V0-06 | Check a detected (non-PTY) session card | A grey "read-only" badge is visible; the prompt bar shows "read-only" text instead of an input |
+| V0-06 | Check a detected (non-PTY) session card | A grey "read-only" badge is visible with tooltip "Start this session with argus launch to enable prompt injection"; there is no prompt input bar |
 | V0-07 | Check an inactive session (idle > threshold) | An amber "resting" badge with a moon icon is shown instead of the normal status badge |
 
 ---
