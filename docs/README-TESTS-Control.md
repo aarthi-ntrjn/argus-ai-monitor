@@ -19,12 +19,13 @@ Manual tests for the `argus launch` command and PTY session lifecycle. Run these
 | L0-03 | On the live session card, click the prompt input without typing anything | The send button is disabled (greyed out) |
 | L0-05 | On the new session card, type **"what is the day today?"** in the prompt input and press Enter | The prompt appears in the Claude terminal; Claude responds; the response is visible in both the terminal and the session card output stream; the input clears |
 | L0-06 | On the same session card, type **"what is the day today?"** and click the send button instead of pressing Enter | Same result: prompt delivered, response appears, input clears |
-| L0-07 | Click **View details** on the session card to open the session detail page; type **"what is the day today?"** and send | Prompt is delivered via PTY; response appears in the output stream; input clears |
-| L0-08 | Click **Launch with Argus** again and click **Launch Claude** | A second terminal opens; a second session card appears on the dashboard alongside the first |
-| L0-09 | On the second session card, type **"what is the day today?"** in the prompt input and press Enter | The prompt appears in the second Claude terminal; Claude responds; the response is visible in both the terminal and the second session card output stream; the first session card is unaffected |
-| L0-10 | On the second session card, type `/exit` in the prompt input and press Enter | The Claude CLI exits; the second session card disappears from the dashboard (or transitions to "ended") within a few seconds; the first session card is unaffected |
-| L0-11 | In the first Claude terminal, type `/exit` and press Enter | The Claude CLI exits; the first session card disappears from the dashboard (or transitions to "ended") within a few seconds |
-| L0-12 | Repeat steps L0-01 through L0-11 using **Launch Copilot** instead of Launch Claude | All the same behaviours apply: session cards show "copilot-cli" (purple) type badge; prompts are delivered to the Copilot CLI terminal; sessions end cleanly |
+| L0-07 | In the Claude terminal, type a question directly (not from the dashboard) | The question and Claude's response appear in the session card's output stream on the dashboard within a few seconds |
+| L0-08 | Click **View details** on the session card to open the session detail page; type **"what is the day today?"** and send | Prompt is delivered via PTY; response appears in the output stream; input clears |
+| L0-09 | Click **Launch with Argus** again and click **Launch Claude** | A second terminal opens; a second session card appears on the dashboard alongside the first |
+| L0-10 | On the second session card, type **"what is the day today?"** in the prompt input and press Enter | The prompt appears in the second Claude terminal; Claude responds; the response is visible in both the terminal and the second session card output stream; the first session card is unaffected |
+| L0-11 | On the second session card, type `/exit` in the prompt input and press Enter | The Claude CLI exits; the second session card disappears from the dashboard (or transitions to "ended") within a few seconds; the first session card is unaffected |
+| L0-12 | In the first Claude terminal, type `/exit` and press Enter | The Claude CLI exits; the first session card disappears from the dashboard (or transitions to "ended") within a few seconds |
+| L0-13 | Repeat steps L0-01 through L0-12 using **Launch Copilot** instead of Launch Claude | All the same behaviours apply: session cards show "copilot-cli" (purple) type badge; prompts are delivered to the Copilot CLI terminal; sessions end cleanly |
 
 ---
 
