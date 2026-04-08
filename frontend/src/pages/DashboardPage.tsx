@@ -162,6 +162,7 @@ export default function DashboardPage() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
+                    e.preventDefault();
                     if (skipConfirm) {
                       handleRemoveRepoById(repo.id);
                     } else {
