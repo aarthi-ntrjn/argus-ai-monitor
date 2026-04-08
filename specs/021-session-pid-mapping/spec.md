@@ -5,116 +5,146 @@
 **Status**: Draft
 **Input**: User description: "The detection of Claude Code sessions is super buggy. There is no mapping between Claude Code JSONL files and process ID. Argus should do this mapping and maintain it internally, for both Claude Code and Copilot CLI."
 
+## Discovery
+
+Claude Code maintains a session registry at `~/.claude/sessions/` containing one JSON file per active session, named `{PID}.json`:
+
+```json
+{
+  "pid": 54428,
+  "sessionId": "8ac5d40b-7f18-4e51-903d-1524bd288c33",
+  "cwd": "C:\\source\\github\\artynuts\\argus2",
+  "startedAt": 1775683858728,
+  "kind": "interactive",
+  "entrypoint": "cli"
+}
+```
+
+This provides a **deterministic, Claude-maintained PID-to-session mapping** that eliminates the need for guessing, timestamp correlation, or process list heuristics. The `sessionId` matches the JSONL filename in `~/.claude/projects/`. Files are created when Claude starts and removed when it exits.
+
+Copilot CLI already has an equivalent mechanism via `inuse.{PID}.lock` files in `~/.copilot/session-state/{sessionId}/`.
+
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Reliable Claude Code session-to-PID mapping (Priority: P1)
+### User Story 1 - Claude Code PID resolution via session registry (Priority: P1)
 
-As a developer running one or more Claude Code sessions, I want Argus to correctly identify which operating system process owns each Claude Code session, so that Argus can reliably detect when a session starts, ends, or goes idle, and can terminate sessions via the dashboard.
+As a developer running one or more Claude Code sessions, I want Argus to read `~/.claude/sessions/*.json` to deterministically map each session to its PID, so that Argus can reliably detect session start, end, and liveness without guessing.
 
-**Why this priority**: This is the root cause of most session detection bugs. Without a reliable PID mapping, Argus cannot tell sessions apart, cannot detect session end, and cannot offer "Stop Session" functionality. Every other session lifecycle feature depends on this mapping being correct.
+**Why this priority**: This replaces the broken heuristic-based PID resolution (single-process assumption, psList matching) with a deterministic source of truth maintained by Claude Code itself. Every session lifecycle feature depends on correct PID mapping.
 
-**Independent Test**: Start two Claude Code sessions in two different registered repos. Both sessions appear on the dashboard, each with its own PID displayed. Stop one session (type `/exit`). That session transitions to "ended" within 10 seconds while the other remains "running".
+**Independent Test**: Start two Claude Code sessions in two different repos. Both sessions appear on the dashboard, each with its own correct PID displayed. Stop one session (type `/exit`). That session transitions to "ended" within 10 seconds while the other remains "running".
 
 **Acceptance Scenarios**:
 
-1. **Given** Argus is running and one Claude Code session is active, **When** the session's first hook fires, **Then** Argus resolves the session's PID by correlating the hook's `cwd` and `session_id` with the process list (matching processes whose command line references Claude) and stores it on the session record.
-2. **Given** two Claude Code sessions are active in different repos, **When** each session fires a hook, **Then** Argus assigns the correct PID to each session independently (no ambiguity).
-3. **Given** a Claude Code session has an assigned PID, **When** that PID exits, **Then** the session is marked "ended" within one reconciliation cycle (5 seconds).
-4. **Given** a Claude Code session was detected via JSONL scan (no hook fired yet), **When** exactly one Claude process is found for that repo's encoded project directory, **Then** Argus assigns that process's PID to the session.
+1. **Given** Argus is running, **When** a new `{PID}.json` file appears in `~/.claude/sessions/`, **Then** Argus reads it, matches the `sessionId` to an existing session (or creates one), and stores the PID on the session record.
+2. **Given** two Claude Code sessions are active in different repos, **When** Argus scans `~/.claude/sessions/`, **Then** each session gets the correct PID from its own JSON file (no ambiguity, even in the same repo).
+3. **Given** a Claude Code session has an assigned PID, **When** the `{PID}.json` file is removed (Claude exited), **Then** the session is marked "ended" within one scan cycle (5 seconds).
+4. **Given** Argus starts after Claude is already running, **When** `~/.claude/sessions/` already contains JSON files, **Then** Argus reads them and creates/updates sessions with the correct PIDs.
 
 ---
 
 ### User Story 2 - Copilot CLI PID mapping robustness (Priority: P2)
 
-As a developer running Copilot CLI sessions, I want Argus to maintain PID mappings for Copilot CLI sessions using the existing lock file mechanism but with improved fallback behavior when the lock file is missing or stale.
+As a developer running Copilot CLI sessions, I want Argus to maintain PID mappings for Copilot CLI sessions using the existing lock file mechanism with improved end-of-session detection.
 
-**Why this priority**: Copilot CLI already has a working PID mechanism via `inuse.{PID}.lock` files. This story hardens that path so it handles edge cases like lock files disappearing mid-session or stale lock files from crashed processes.
+**Why this priority**: Copilot CLI already has a working PID mechanism via `inuse.{PID}.lock` files. This story ensures consistent behavior: lock file present + PID running = active; lock file missing or PID dead = ended.
 
 **Independent Test**: Start a Copilot CLI session. Verify the PID is shown on the dashboard. Kill the Copilot process externally. Verify the session transitions to "ended" within 10 seconds.
 
 **Acceptance Scenarios**:
 
 1. **Given** a Copilot CLI session directory with `inuse.{PID}.lock`, **When** Argus scans, **Then** the PID from the lock filename is stored on the session.
-2. **Given** a Copilot CLI session whose lock file disappears while the session is active, **When** the next scan runs, **Then** Argus marks the session ended (lock file is the source of truth for Copilot CLI liveness).
+2. **Given** a Copilot CLI session whose lock file disappears while the session is active, **When** the next scan runs, **Then** Argus marks the session ended.
 3. **Given** a stale lock file referencing a PID that is no longer running, **When** Argus scans, **Then** the session is marked "ended".
 
 ---
 
-### User Story 3 - Internal PID mapping table with audit trail (Priority: P2)
+### User Story 3 - PID-based session lifecycle (Priority: P1)
 
-As a developer or Argus maintainer, I want Argus to maintain an internal `session_pids` table that records every PID assignment for a session (with timestamps and source), so that PID resolution is traceable and debuggable.
+As a developer, I want session end detection to be driven primarily by PID liveness (is the process still running?), not JSONL file freshness, so that sessions end promptly when the process exits instead of waiting for a 60-minute timeout.
 
-**Why this priority**: The current code assigns PIDs in multiple places with no audit trail. When PID assignment fails, there is no way to debug what happened. A dedicated mapping table makes the system observable and supports multiple PID reassignment scenarios (e.g., process restart, PID resolved later).
+**Why this priority**: The current JSONL-freshness-based approach has a 60-minute delay before detecting ended sessions with null PIDs. With deterministic PID mapping, every session should have a PID, making PID liveness the primary and fast signal.
 
-**Independent Test**: Start a Claude Code session. Query `GET /api/v1/sessions/:id` and verify the response includes the PID and the source of the PID assignment (e.g., "hook_cwd_match", "pty_registry", "lockfile"). Check the `session_pids` table in the database and verify a row exists with the assignment timestamp.
+**Independent Test**: Start a Claude Code session. Verify PID is assigned. Kill the process externally (Task Manager / `kill`). Session transitions to "ended" within 10 seconds on the dashboard.
 
 **Acceptance Scenarios**:
 
-1. **Given** a session is created, **When** a PID is assigned via any mechanism, **Then** a row is inserted into `session_pids` with: `session_id`, `pid`, `assigned_at` (ISO timestamp), `source` (enum: "pty_registry", "hook_cwd_match", "scan_single_process", "lockfile", "process_tree_walk"), and `is_current` (boolean).
-2. **Given** a session's PID is reassigned (e.g., launcher resolves real PID from shell wrapper), **When** the new PID is stored, **Then** the old mapping row has `is_current=false` and a new row is inserted with `is_current=true`.
-3. **Given** a session with PID mapping history, **When** querying the API, **Then** the response includes the current PID and the source of the mapping.
+1. **Given** a session with an assigned PID, **When** that PID is no longer in the process list, **Then** the session is marked "ended" within one reconciliation cycle (5 seconds).
+2. **Given** a session with `pid=null` (registry file not yet available), **When** the session is younger than 60 seconds, **Then** it is not ended (grace period for the registry file to appear).
+3. **Given** a session with `pid=null` older than 60 seconds, **When** the JSONL file is stale (older than configurable threshold), **Then** the session is marked "ended" as a fallback.
 
 ---
 
-### User Story 4 - Process-tree-based PID resolution on Windows (Priority: P3)
+### User Story 4 - Unified PID source tracking (Priority: P3)
 
-As a Windows user, I want Argus to walk the process tree to find the real Claude Code process when the immediate process is a shell wrapper (e.g., `powershell.exe` spawning `claude.exe`), so that PID-based liveness checks and kill commands target the correct process.
+As an Argus maintainer, I want each session to record where its PID came from (session registry, PTY registry, lock file), so that PID resolution is debuggable.
 
-**Why this priority**: On Windows, `node-pty` spawns `powershell.exe`, not `claude.exe` directly. The launcher already has process tree walking logic. This story centralizes that logic for use by both the launcher and the detector.
+**Why this priority**: Nice-to-have observability. When PID assignment fails, knowing the source helps debug.
 
-**Independent Test**: On Windows, launch Claude via Argus. Verify the session card shows the `claude.exe` PID (not the `powershell.exe` PID). Open Task Manager to confirm the PID matches the actual Claude process.
+**Independent Test**: Query `GET /api/v1/sessions/:id` and verify the response includes a `pidSource` field (e.g., "session_registry", "pty_registry", "lockfile").
 
 **Acceptance Scenarios**:
 
-1. **Given** a session launched via PTY on Windows, **When** the initial PID is a shell wrapper, **Then** Argus walks the process tree (max depth 5) to find the innermost non-`conhost.exe` child and updates the session PID.
-2. **Given** a detected Claude Code session on Windows, **When** a Claude process is found by name (`claude.exe` or `node.exe` with `claude` in the command line), **Then** that PID is assigned to the session regardless of whether it matches the original wrapper PID.
+1. **Given** a session's PID was resolved from `~/.claude/sessions/{PID}.json`, **When** querying the session API, **Then** `pidSource` is "session_registry".
+2. **Given** a session launched via Argus (PTY), **When** querying the session API, **Then** `pidSource` is "pty_registry".
+3. **Given** a Copilot CLI session, **When** querying the session API, **Then** `pidSource` is "lockfile".
 
 ---
 
 ### Edge Cases
 
-- What happens when two Claude Code sessions run in the same repo? Each has a distinct session ID and JSONL file. Argus MUST scan all recent JSONL files per repo and attempt PID assignment for each. If the PIDs cannot be distinguished (same process name, same repo), both sessions get `pid=null` and rely on JSONL freshness.
-- What happens when a Claude process crashes without firing the Stop hook? The PID will no longer appear in the process list; `reconcileStaleSessions()` MUST detect this and mark the session ended.
-- What happens when Argus starts after Claude is already running? `scanExistingSessions()` MUST find JSONL files and attempt PID resolution via the process list.
-- What happens when the process list query (`psList`) fails or times out? PID assignment MUST be best-effort; session creation should proceed with `pid=null` and retry on the next poll cycle.
+- What happens when two Claude Code sessions run in the same repo? Each has a distinct `{PID}.json` file with a distinct `sessionId`. Argus reads both and maps correctly with no ambiguity.
+- What happens when a Claude process crashes without cleaning up its `{PID}.json`? The PID will no longer appear in the process list. `reconcileStaleSessions()` detects this and marks the session ended. The stale JSON file is ignored on subsequent scans (PID not running).
+- What happens when Argus starts after Claude is already running? `~/.claude/sessions/` already contains JSON files. Argus reads them on the first scan cycle.
+- What happens when `~/.claude/sessions/` does not exist? Argus falls back to the existing hook-based and JSONL-scan-based detection (graceful degradation for older Claude Code versions).
+- What happens when hooks are not injected? Sessions are still discovered via the session registry scan and JSONL scan. Hooks provide faster detection but are not required.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: System MUST resolve the PID for each Claude Code session by matching the hook payload's `cwd` against running Claude processes (via `psList` with command-line inspection).
-- **FR-002**: System MUST store PID assignments in a `session_pids` table with columns: `id`, `session_id`, `pid`, `assigned_at`, `source`, `is_current`.
-- **FR-003**: System MUST handle multiple concurrent Claude Code sessions by resolving PIDs independently per session (not relying on a single-process assumption).
-- **FR-004**: System MUST fall back to JSONL file freshness checks when PID resolution fails (e.g., `psList` error, no matching process found).
-- **FR-005**: System MUST mark a session as "ended" within one reconciliation cycle (5 seconds) when its assigned PID is no longer in the process list.
-- **FR-006**: System MUST continue to use the `inuse.{PID}.lock` mechanism for Copilot CLI sessions, with the session marked ended when the lock file is missing or the PID is not running.
-- **FR-007**: System MUST expose the current PID and its assignment source in the `GET /api/v1/sessions/:id` API response.
-- **FR-008**: System MUST re-attempt PID resolution on every poll cycle for sessions that have `pid=null`, until either a PID is found or the session is ended.
-- **FR-009**: On Windows, system MUST walk the process tree to resolve shell wrappers (e.g., `powershell.exe`) to the real tool process (e.g., `claude.exe`).
-- **FR-010**: System MUST NOT create duplicate session records when the same JSONL file is scanned multiple times across poll cycles.
+- **FR-001**: System MUST scan `~/.claude/sessions/*.json` on every poll cycle (5 seconds) to discover Claude Code session-to-PID mappings.
+- **FR-002**: For each JSON file found, system MUST match the `sessionId` field to an existing session record, or create a new session if one does not exist for a registered repository matching the `cwd`.
+- **FR-003**: System MUST store the PID from the JSON file on the session record and set `pidSource` to "session_registry".
+- **FR-004**: System MUST detect session end when a previously seen `{PID}.json` file disappears from the directory, and mark the corresponding session as "ended".
+- **FR-005**: System MUST also detect session end via PID liveness: if the session's PID is no longer in the process list, mark it "ended" within one reconciliation cycle (5 seconds).
+- **FR-006**: System MUST continue to use the `inuse.{PID}.lock` mechanism for Copilot CLI sessions, with `pidSource` set to "lockfile".
+- **FR-007**: For PTY-launched sessions, system MUST use the PTY registry PID (deterministic) and set `pidSource` to "pty_registry". The session registry file confirms the mapping but does not override the PTY PID.
+- **FR-008**: System MUST fall back to JSONL file freshness checks for sessions where no PID could be resolved (e.g., `~/.claude/sessions/` does not exist).
+- **FR-009**: System MUST add a `pid_source` column to the `sessions` table (TEXT, nullable) to persist the PID assignment source.
+- **FR-010**: System MUST NOT create duplicate session records when the same session is discovered via multiple mechanisms (session registry, hooks, JSONL scan).
+- **FR-011**: System MUST expose `pidSource` in the `GET /api/v1/sessions` and `GET /api/v1/sessions/:id` API responses.
+- **FR-012**: System MUST handle the `~/.claude/sessions/` directory not existing gracefully (older Claude Code versions or first run before any session starts).
 
 ### Key Entities
 
-- **Session**: Existing entity, gains reliable `pid` field and `pidSource` metadata.
-- **SessionPidMapping**: New entity tracking every PID assignment for a session, including source and timestamp.
-- **ProcessInfo**: Transient in-memory structure representing a running process from `psList` (pid, name, cmd, ppid).
+- **Session**: Existing entity, gains reliable `pid` field and new `pidSource` column ("session_registry", "pty_registry", "lockfile", null).
+- **ClaudeSessionRegistryEntry**: Transient structure from `{PID}.json`: `{ pid, sessionId, cwd, startedAt, kind, entrypoint }`.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: When two Claude Code sessions run simultaneously in different repos, both sessions have non-null PIDs on the dashboard within 10 seconds of their first hook.
-- **SC-002**: When a Claude Code process exits, the corresponding session transitions to "ended" within 10 seconds (two reconciliation cycles).
-- **SC-003**: The `session_pids` table contains at least one row per session that was assigned a PID, with correct `source` and `assigned_at` values.
-- **SC-004**: On Windows, PTY-launched sessions show the real tool PID (not the shell wrapper PID) within 15 seconds of launch.
-- **SC-005**: Copilot CLI sessions continue to detect PID from lock files and transition to "ended" within 10 seconds of process exit.
-- **SC-006**: Sessions with `pid=null` are retried for PID resolution on each 5-second poll cycle.
+- **SC-001**: When two Claude Code sessions run simultaneously (same or different repos), both sessions have non-null PIDs on the dashboard within 10 seconds.
+- **SC-002**: When a Claude Code process exits, the corresponding session transitions to "ended" within 10 seconds.
+- **SC-003**: The `pidSource` field is correctly set for all sessions: "session_registry" for detected Claude sessions, "pty_registry" for PTY-launched sessions, "lockfile" for Copilot CLI sessions.
+- **SC-004**: Copilot CLI sessions continue to detect PID from lock files and transition to "ended" within 10 seconds of process exit.
+- **SC-005**: When `~/.claude/sessions/` does not exist, Argus falls back to JSONL-based detection without errors.
+- **SC-006**: No duplicate sessions are created when the same session is discovered via session registry, hooks, and JSONL scan simultaneously.
+
+## Clarifications
+
+### Session 2026-04-09
+
+- **PID source of truth**: `~/.claude/sessions/{PID}.json` is the primary PID source for Claude Code. No timestamp correlation or process list heuristics needed.
+- **PTY override**: For "Launch with Argus" sessions, the PTY registry provides the PID deterministically. The session registry file confirms but does not override.
+- **Hooks-off resilience**: If hooks are disabled, sessions are still discovered via the session registry scan and JSONL scan. Hooks provide faster initial detection but are not required.
+- **Audit table**: Not needed (dropped US3 from original spec). The `pidSource` column on the session record provides sufficient observability. Full audit trail can be added later if needed.
 
 ## Assumptions
 
-- `psList` npm package returns process name, PID, parent PID, and command line on all supported platforms (Windows, macOS, Linux).
-- On Windows, `psList` may not return `cwd` per process, so matching relies on command-line string inspection or process tree walking.
-- Claude Code sessions always have a corresponding JSONL file at `~/.claude/projects/{encodedPath}/{sessionId}.jsonl`.
-- Copilot CLI sessions always have a session directory at `~/.copilot/session-state/{sessionId}/`.
+- Claude Code versions used with Argus maintain the `~/.claude/sessions/` directory with `{PID}.json` files.
+- The JSON files are created when Claude starts and removed when Claude exits cleanly. Crash scenarios leave stale files (handled by PID liveness check).
+- Copilot CLI continues to use `inuse.{PID}.lock` files in session state directories.
 - The Argus server polls every 5 seconds (existing behavior, not changed by this feature).
-- The `session_pids` table is append-only for audit purposes; old rows are never deleted, only marked `is_current=false`.
+- `psList` is still used for PID liveness checks (is this PID running?) but no longer for PID discovery/matching.
