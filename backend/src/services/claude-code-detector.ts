@@ -145,13 +145,13 @@ export class ClaudeCodeDetector {
           continue;
         }
 
-        const mostRecent = jsonlEntries[0];
-        if (!mostRecent) continue;
+        if (jsonlEntries.length === 0) continue;
 
-        // Don't filter by mtime here — if a Claude process is running, the session may
-        // be alive but quiet. reconcileClaudeCodeSessions() will end it within 5 s if
-        // the JSONL is actually stale and the PID is dead.
-        await this.activateFoundSession(mostRecent.id, repo, claudePid);
+        // Activate all JSONL sessions, not just the most recent. The reconciler
+        // will end stale ones based on PID/JSONL freshness.
+        for (const entry of jsonlEntries) {
+          await this.activateFoundSession(entry.id, repo, claudePid);
+        }
       }
     } catch { /* ignore */ }
   }
