@@ -268,6 +268,9 @@ export class ClaudeCodeDetector {
       await this.watchJsonlFile(sessionId, repo.path);
       return;
     }
+    // Close any stale watcher from before the session was deleted, so
+    // watchJsonlFile re-reads the full JSONL from the beginning.
+    this.closeSessionWatcher(sessionId);
     const base: Session = existingSession ?? {
       id: sessionId,
       repositoryId: repo.id,
