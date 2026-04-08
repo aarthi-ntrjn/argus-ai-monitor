@@ -68,14 +68,14 @@ export default function SessionDetail({ items, dark = false, className }: Props)
 
   if (items.length === 0) {
     return (
-      <div className={`p-8 text-center ${dark ? 'text-gray-400' : 'text-gray-500'}`}>
+      <div className={`p-8 text-center min-h-full ${dark ? 'bg-gray-900 text-gray-400' : 'text-gray-500'}`}>
         No output yet. Waiting for session activity...
       </div>
     );
   }
 
   return (
-    <div className={`overflow-y-auto p-4 space-y-1 font-mono text-xs ${dark ? 'bg-gray-900' : ''} ${className ?? ''}`}>
+    <div className={`overflow-y-auto p-4 space-y-1 font-mono text-xs min-h-full ${dark ? 'bg-gray-900' : ''} ${className ?? ''}`}>
       {items.map((item) => {
         const typeInfo = getBadge(item);
         const badgeColor = dark ? typeInfo.dark : typeInfo.light;

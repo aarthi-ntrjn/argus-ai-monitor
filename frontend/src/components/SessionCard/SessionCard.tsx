@@ -211,24 +211,14 @@ function SessionCard({ session, selected, onSelect }: Props) {
       </div>
 
       {/* Summary / topic */}
-      {session.launchMode === 'pty' ? (
-        <p className={`text-sm mt-2 truncate ${session.summary ? 'text-gray-600' : 'text-gray-400 italic'}`}>
-          {session.summary || 'Nothing sent yet'}
-        </p>
-      ) : (
-        session.summary && <p className="text-sm text-gray-600 mt-2 truncate">{session.summary}</p>
-      )}
+      <p className={`text-sm mt-2 truncate ${session.summary ? 'text-gray-600' : 'text-gray-400 italic'}`}>
+        {session.summary || 'Nothing sent yet'}
+      </p>
 
       {/* Last output preview — fixed 2-line height */}
-      {session.launchMode === 'pty' ? (
-        <p className={`text-xs bg-gray-900 mt-2 px-2 py-1 rounded line-clamp-2 whitespace-pre-wrap break-words font-mono min-h-[2.5rem] ${previewContent ? 'text-gray-300' : 'text-gray-500 italic'}`}>
-          {previewContent || 'Waiting for output...'}
-        </p>
-      ) : (
-        previewContent && (
-          <p className="text-xs text-gray-300 bg-gray-900 mt-2 px-2 py-1 rounded line-clamp-2 whitespace-pre-wrap break-words font-mono min-h-[2.5rem]">{previewContent}</p>
-        )
-      )}
+      <p className={`text-xs bg-gray-900 mt-2 px-2 py-1 rounded line-clamp-2 whitespace-pre-wrap break-words font-mono min-h-[2.5rem] ${previewContent ? 'text-gray-300' : 'text-gray-500 italic'}`}>
+        {previewContent || 'Waiting for output...'}
+      </p>
 
       {session.launchMode === 'pty' && (
         <div onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
