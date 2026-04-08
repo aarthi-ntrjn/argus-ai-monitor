@@ -55,6 +55,7 @@ export class SessionMonitor extends EventEmitter {
       const runningPids = new Set(processes.map((p) => p.pid));
       const now = new Date().toISOString();
       for (const session of sessions) {
+        if (session.launchMode === 'pty') continue; // managed by launcher WebSocket
         if (session.pid != null && !runningPids.has(session.pid)) {
           updateSessionStatus(session.id, 'ended', now);
         }
@@ -96,6 +97,11 @@ export class SessionMonitor extends EventEmitter {
         } catch {
           // file missing — treat as ended regardless of PID
         }
+
+        // PTY (live) sessions are managed by the launcher WebSocket, not JSONL.
+        // Skip JSONL-based reconciliation for them — the launcher close handler
+        // will mark them ended when the PTY disconnects.
+        if (session.launchMode === 'pty') continue;
 
         if (jsonlAgeMs === null) {
           // JSONL file missing: session is over
