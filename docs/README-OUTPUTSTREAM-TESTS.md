@@ -31,3 +31,45 @@ Manual tests for the inline output pane and real-time updates. Run these against
 | P-06 | From another terminal, trigger activity on an active session | The session card's last output preview and status update automatically |
 | P-07 | End a session externally (e.g. type `/exit` in a Claude terminal) | The session card transitions to "ended" status within a few seconds without refreshing |
 | P-08 | Open browser DevTools > Network > WS tab | A WebSocket connection to `/ws` is active; events like `session.updated` appear in the message log |
+
+---
+
+## P2: Claude Code output stream content
+
+**Prerequisites:** At least one active or recent Claude Code session with varied output (messages, tool calls, thinking blocks).
+
+| # | Steps | Expected |
+|---|-------|----------|
+| P-09 | Open the output pane for a Claude Code session that includes an assistant text response | An "AI" badge (blue) appears next to the message content |
+| P-10 | Locate a Claude Code entry where the assistant used a tool (e.g. Read, Edit) | Two separate output rows appear: one "AI" (blue) for the text and one "TOOL" (purple) showing the tool name |
+| P-11 | Locate a tool result entry in a Claude Code session | A "RESULT" (green) badge appears with the tool output content |
+| P-12 | Locate a user message in a Claude Code session | A "YOU" (gray) badge appears next to the user's input |
+| P-13 | Locate a status change entry (e.g. session start) | A "STATUS" (yellow) badge appears |
+| P-14 | Verify that tool names display correctly for Claude Code tools (e.g. Read, Edit, Bash) | The tool name appears in the TOOL row's content or label |
+
+---
+
+## P3: Copilot CLI output stream content
+
+**Prerequisites:** At least one active or recent Copilot CLI session with varied output (messages, tool executions).
+
+| # | Steps | Expected |
+|---|-------|----------|
+| P-15 | Open the output pane for a Copilot CLI session that includes an assistant message | An "AI" badge (blue) appears next to the message content |
+| P-16 | Locate a tool execution start entry in a Copilot CLI session | A "TOOL" (purple) badge appears with the tool name from the event |
+| P-17 | Locate a tool execution complete entry in a Copilot CLI session | A "RESULT" (green) badge appears with the tool result content |
+| P-18 | Locate a user message in a Copilot CLI session | A "YOU" (gray) badge appears next to the user's input |
+| P-19 | Locate a session start event in a Copilot CLI session | A "STATUS" (yellow) badge appears |
+| P-20 | Compare the same badge type (e.g. TOOL) across a Claude Code and a Copilot CLI session | Both render with the same badge color and layout, despite originating from different JSONL formats |
+
+---
+
+## P4: Error handling per session type
+
+**Prerequisites:** Sessions that have encountered errors or parsing failures.
+
+| # | Steps | Expected |
+|---|-------|----------|
+| P-21 | Open a Claude Code session where an error occurred (e.g. tool failure) | An "ERR" (red) badge appears with the error content |
+| P-22 | Open a Copilot CLI session where an error occurred | An "ERR" (red) badge appears with the error content |
+| P-23 | Open a session whose JSONL file contains a malformed line | The valid entries still render; the malformed line is skipped without crashing the pane |
