@@ -21,20 +21,37 @@ let mockMtime = new Date(); // recent by default
 // JSONL files to return when readdirSync is called on the project dir
 let fakeJsonlFiles: string[] = ['test-session-abc123.jsonl'];
 
+// Fake session registry: maps session IDs to registry JSON content.
+// scanExistingSessions now cross-references ~/.claude/sessions/ to filter dead sessions.
+let fakeRegistryEntries: Record<string, { pid: number; sessionId: string; cwd: string }> = {};
+
 // Mock fs: readdirSync returns project-dir entries when called with withFileTypes,
-// and JSONL filenames when called on the individual project dir
+// JSONL filenames for project dirs, and registry JSON files for the sessions dir
 vi.mock('fs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('fs')>();
   return {
     ...actual,
     existsSync: vi.fn(() => true),
-    readdirSync: vi.fn((_p: unknown, opts?: unknown) => {
+    readdirSync: vi.fn((p: unknown, opts?: unknown) => {
+      const pathStr = String(p);
       if (opts && typeof opts === 'object' && 'withFileTypes' in opts) {
-        // Called on projectsDir — return the project directory listing
         return [{ name: FAKE_DIR_NAME, isDirectory: () => true }];
       }
-      // Called on an individual project dir — return JSONL filenames
+      // Session registry directory
+      if (pathStr.includes('sessions')) {
+        return Object.values(fakeRegistryEntries).map(e => `${e.pid}.json`);
+      }
       return fakeJsonlFiles;
+    }),
+    readFileSync: vi.fn((p: unknown, _enc?: unknown) => {
+      const pathStr = String(p);
+      // Session registry JSON files
+      if (pathStr.includes('sessions') && pathStr.endsWith('.json')) {
+        const pid = parseInt(pathStr.replace(/^.*[/\\](\d+)\.json$/, '$1'), 10);
+        const entry = Object.values(fakeRegistryEntries).find(e => e.pid === pid);
+        if (entry) return JSON.stringify({ ...entry, startedAt: Date.now(), kind: 'interactive', entrypoint: 'cli' });
+      }
+      return actual.readFileSync(p as string, _enc as string);
     }),
     statSync: vi.fn(() => ({ mtime: mockMtime, size: 0 })),
   };
@@ -51,6 +68,7 @@ describe('ClaudeCodeDetector.scanExistingSessions', () => {
     mockPsListResult = [{ pid: 4242, name: 'claude', cmd: 'claude' }];
     mockMtime = new Date();
     fakeJsonlFiles = ['test-session-abc123.jsonl'];
+    fakeRegistryEntries = { 'test-session-abc123': { pid: 4242, sessionId: 'test-session-abc123', cwd: FAKE_REPO_PATH } };
 
     dbModule = await import('../../src/db/database.js');
 
@@ -75,11 +93,14 @@ describe('ClaudeCodeDetector.scanExistingSessions', () => {
     const now = new Date().toISOString();
     const sessionId = 'hook-session-was-ended';
     fakeJsonlFiles = [`${sessionId}.jsonl`];
+    fakeRegistryEntries = { [sessionId]: { pid: 4242, sessionId, cwd: FAKE_REPO_PATH } };
     dbModule.upsertSession({
       id: sessionId,
       repositoryId: 'repo-scan-test',
       type: 'claude-code',
+      launchMode: null,
       pid: null,
+      pidSource: null,
       status: 'ended',
       startedAt: now,
       endedAt: now,
@@ -103,11 +124,14 @@ describe('ClaudeCodeDetector.scanExistingSessions', () => {
     const now = new Date().toISOString();
     const sessionId = 'hook-session-stale-mtime';
     fakeJsonlFiles = [`${sessionId}.jsonl`];
+    fakeRegistryEntries = { [sessionId]: { pid: 4242, sessionId, cwd: FAKE_REPO_PATH } };
     dbModule.upsertSession({
       id: sessionId,
       repositoryId: 'repo-scan-test',
       type: 'claude-code',
+      launchMode: null,
       pid: null,
+      pidSource: null,
       status: 'ended',
       startedAt: now,
       endedAt: now,
@@ -151,6 +175,7 @@ describe('ClaudeCodeDetector.scanExistingSessions', () => {
 
   it('creates a new session with the JSONL filename as ID when Claude is running and no prior session exists', async () => {
     fakeJsonlFiles = ['brand-new-session-xyz.jsonl'];
+    fakeRegistryEntries = { 'brand-new-session-xyz': { pid: 4242, sessionId: 'brand-new-session-xyz', cwd: FAKE_REPO_PATH } };
 
     const { ClaudeCodeDetector } = await import('../../src/services/claude-code-detector.js');
     await new ClaudeCodeDetector().scanExistingSessions();
@@ -165,6 +190,7 @@ describe('ClaudeCodeDetector.scanExistingSessions', () => {
     const now = new Date().toISOString();
     const sessionId = 'hook-session-no-claude';
     fakeJsonlFiles = [`${sessionId}.jsonl`];
+    fakeRegistryEntries = { [sessionId]: { pid: 9999, sessionId, cwd: FAKE_REPO_PATH } };
     dbModule.upsertSession({
       id: sessionId,
       repositoryId: 'repo-scan-test',
@@ -196,6 +222,7 @@ describe('ClaudeCodeDetector.scanExistingSessions', () => {
   it('T089: activates with real JSONL-derived session ID, not old DB ID or fake startup ID', async () => {
     const realSessionId = 'real-new-claude-session-abc123';
     fakeJsonlFiles = [`${realSessionId}.jsonl`];
+    fakeRegistryEntries = { [realSessionId]: { pid: 4242, sessionId: realSessionId, cwd: FAKE_REPO_PATH } };
 
     // Insert an OLD ended session with a different ID (simulates previous run)
     const now = new Date().toISOString();

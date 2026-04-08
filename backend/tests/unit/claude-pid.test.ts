@@ -16,17 +16,31 @@ const FAKE_REPO_PATH = 'C:\\pidtestproject';
 const FAKE_DIR_NAME = FAKE_REPO_PATH.replace(/[:\\/]/g, '-');
 
 let fakeJsonlFiles: string[] = ['default-session.jsonl'];
+let fakeRegistryEntries: Record<string, { pid: number; sessionId: string; cwd: string }> = {};
 
 vi.mock('fs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('fs')>();
   return {
     ...actual,
     existsSync: vi.fn(() => true),
-    readdirSync: vi.fn((_p: unknown, opts?: unknown) => {
+    readdirSync: vi.fn((p: unknown, opts?: unknown) => {
+      const pathStr = String(p);
       if (opts && typeof opts === 'object' && 'withFileTypes' in opts) {
         return [{ name: FAKE_DIR_NAME, isDirectory: () => true }];
       }
+      if (pathStr.includes('sessions')) {
+        return Object.values(fakeRegistryEntries).map(e => `${e.pid}.json`);
+      }
       return fakeJsonlFiles;
+    }),
+    readFileSync: vi.fn((p: unknown, _enc?: unknown) => {
+      const pathStr = String(p);
+      if (pathStr.includes('sessions') && pathStr.endsWith('.json')) {
+        const pid = parseInt(pathStr.replace(/^.*[/\\](\d+)\.json$/, '$1'), 10);
+        const entry = Object.values(fakeRegistryEntries).find(e => e.pid === pid);
+        if (entry) return JSON.stringify({ ...entry, startedAt: Date.now(), kind: 'interactive', entrypoint: 'cli' });
+      }
+      return actual.readFileSync(p as string, _enc as string);
     }),
     statSync: vi.fn(() => ({ mtime: new Date(), size: 0 })),
   };
@@ -40,6 +54,7 @@ describe('ClaudeCodeDetector - PID via session registry (not psList)', () => {
     vi.resetModules();
 
     fakeJsonlFiles = ['default-session.jsonl'];
+    fakeRegistryEntries = { 'default-session': { pid: 1234, sessionId: 'default-session', cwd: FAKE_REPO_PATH } };
 
     dbModule = await import('../../src/db/database.js');
     dbModule.insertRepository({
@@ -60,6 +75,7 @@ describe('ClaudeCodeDetector - PID via session registry (not psList)', () => {
 
   it('scanExistingSessions creates session with pid=null (registry handles PID)', async () => {
     fakeJsonlFiles = ['new-pid-session.jsonl'];
+    fakeRegistryEntries = { 'new-pid-session': { pid: 5555, sessionId: 'new-pid-session', cwd: FAKE_REPO_PATH } };
 
     const { ClaudeCodeDetector } = await import('../../src/services/claude-code-detector.js');
     await new ClaudeCodeDetector().scanExistingSessions();
@@ -74,6 +90,7 @@ describe('ClaudeCodeDetector - PID via session registry (not psList)', () => {
     const now = new Date().toISOString();
     const sessionId = 'pid-reactivate-session';
     fakeJsonlFiles = [`${sessionId}.jsonl`];
+    fakeRegistryEntries = { [sessionId]: { pid: 7777, sessionId, cwd: FAKE_REPO_PATH } };
     dbModule.upsertSession({
       id: sessionId,
       repositoryId: 'repo-pid-test',
@@ -102,6 +119,7 @@ describe('ClaudeCodeDetector - PID via session registry (not psList)', () => {
     const now = new Date().toISOString();
     const sessionId = 'pty-pid-session';
     fakeJsonlFiles = [`${sessionId}.jsonl`];
+    fakeRegistryEntries = { [sessionId]: { pid: 42, sessionId, cwd: FAKE_REPO_PATH } };
     dbModule.upsertSession({
       id: sessionId,
       repositoryId: 'repo-pid-test',

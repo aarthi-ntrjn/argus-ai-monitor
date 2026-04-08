@@ -6,6 +6,7 @@ import { homedir } from 'os';
 import chokidar, { type FSWatcher } from 'chokidar';
 import { getSession, upsertSession, getRepositories, getRepositoryByPath } from '../db/database.js';
 import { ptyRegistry } from './pty-registry.js';
+import { ClaudeSessionRegistry } from './claude-session-registry.js';
 import { OutputStore } from './output-store.js';
 import { broadcast } from '../api/ws/event-dispatcher.js';
 import { parseClaudeJsonlLine, parseModel } from './claude-code-jsonl-parser.js';
@@ -101,6 +102,14 @@ export class ClaudeCodeDetector {
     const projectsDir = join(homedir(), '.claude', 'projects');
     if (!existsSync(projectsDir)) return;
 
+    // Read the session registry to know which sessions are actually alive.
+    // Only JSONL sessions with a matching registry entry (or already active
+    // in the DB) should be activated. Sessions without a registry entry
+    // have already exited.
+    const registry = new ClaudeSessionRegistry();
+    const registryEntries = registry.scanEntries();
+    const liveSessionIds = new Set(registryEntries.map(e => e.sessionId));
+
     try {
       const projectDirNames = new Set(
         readdirSync(projectsDir, { withFileTypes: true })
@@ -129,10 +138,18 @@ export class ClaudeCodeDetector {
 
         if (jsonlEntries.length === 0) continue;
 
-        // Activate the 2 most recent JSONL sessions per repo.
-        // PID assignment is handled by the session registry scanner, not here.
-        for (const entry of jsonlEntries.slice(0, 2)) {
-          await this.activateFoundSession(entry.id, repo, null);
+        for (const entry of jsonlEntries.slice(0, 5)) {
+          // Only activate sessions that have a live registry entry (process running)
+          // or are already active in the DB (e.g., PTY-launched sessions)
+          const existing = getSession(entry.id);
+          if (existing?.status === 'active') {
+            // Already active, just ensure watcher is running
+            await this.activateFoundSession(entry.id, repo, null);
+          } else if (liveSessionIds.has(entry.id)) {
+            // Registry says this session is alive
+            await this.activateFoundSession(entry.id, repo, null);
+          }
+          // else: no registry entry = process has exited, skip
         }
       }
     } catch { /* ignore */ }
