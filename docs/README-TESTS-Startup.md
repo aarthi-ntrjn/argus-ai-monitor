@@ -34,4 +34,4 @@ Manual tests for server startup and the empty dashboard. Run these against a liv
 
 ## S2: Onboarding tour
 
-See [README-ONBOARDING-TESTS.md](README-ONBOARDING-TESTS.md).
+See [README-TESTS-Onboarding.md](README-TESTS-Onboarding.md).

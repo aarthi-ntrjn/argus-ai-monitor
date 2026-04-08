@@ -24,37 +24,37 @@ Manual tests for the dashboard view mode: session cards, session detail page, se
 
 ## V1: Session detail page
 
-See [README-SESSIONDETAIL-TESTS.md](README-SESSIONDETAIL-TESTS.md).
+See [README-TESTS-SessionDetail.md](README-TESTS-SessionDetail.md).
 
 ---
 
 ## V2: Settings panel
 
-See [README-SETTINGS-TESTS.md](README-SETTINGS-TESTS.md).
+See [README-TESTS-Settings.md](README-TESTS-Settings.md).
 
 ---
 
 ## V3: Todo panel
 
-See [README-TODO-TESTS.md](README-TODO-TESTS.md).
+See [README-TESTS-Todo.md](README-TESTS-Todo.md).
 
 ---
 
 ## V4: Output stream and real-time updates
 
-See [README-OUTPUTSTREAM-TESTS.md](README-OUTPUTSTREAM-TESTS.md).
+See [README-TESTS-OutputStream.md](README-TESTS-OutputStream.md).
 
 ---
 
 ## V5: Mobile layout
 
-See [README-MOBILE-TESTS.md](README-MOBILE-TESTS.md).
+See [README-TESTS-Mobile.md](README-TESTS-Mobile.md).
 
 ---
 
 ## V6: Session lifecycle (start, end, idle, server up/down)
 
-See [README-LIFECYCLE-TESTS.md](README-LIFECYCLE-TESTS.md).
+See [README-TESTS-Lifecycle.md](README-TESTS-Lifecycle.md).
 
 ---
 
