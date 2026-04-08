@@ -26,7 +26,7 @@ export const DASHBOARD_TOUR_STEPS: TourStep[] = [
   {
     target: '[data-tour-id="dashboard-session-card"]',
     title: '🤖 AI Sessions',
-    content: "Green \"live\" sessions accept prompts and commands. Grey \"read-only\" ones are auto-detected and can only be monitored.",
+    content: "Monitor your AI sessions here. Sessions launched outside of Argus are read-only.",
     placement: 'right',
     disableBeacon: true,
     targetWaitTimeout: 5000,
