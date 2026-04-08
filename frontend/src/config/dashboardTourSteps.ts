@@ -4,7 +4,7 @@ export const DASHBOARD_TOUR_STEPS: TourStep[] = [
   {
     target: '[data-tour-id="dashboard-header"]',
     title: '👋 Welcome!',
-    content: "You're running a team of Claude Code and GitHub Copilot CLI sessions. Argus helps you keep track of them all. Let's go!",
+    content: "Argus helps you manage and control your team of CLI sessions. Let's go!",
     placement: 'bottom',
     disableBeacon: true,
   },
