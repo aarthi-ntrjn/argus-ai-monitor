@@ -46,21 +46,21 @@ test.describe('Onboarding (real server): SC-001 & SC-006', () => {
     // Fresh browser context = no localStorage = first-time experience
     await page.goto('/');
     await expect(page.locator('.react-joyride__tooltip')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('Welcome Commander!')).toBeVisible();
+    await expect(page.getByText('Welcome!')).toBeVisible();
   });
 
   // ── SC-001 + SC-006: Skip tour persists state ────────────────────────────────
 
   test('skipping tour persists skipped status and suppresses re-launch on real reload', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByText('Welcome Commander!')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Welcome!')).toBeVisible({ timeout: 5000 });
 
     await page.locator('[data-action="skip"]').click();
-    await expect(page.getByText('Welcome Commander!')).not.toBeVisible();
+    await expect(page.getByText('Welcome!')).not.toBeVisible();
 
     // SC-006: Real page.reload() must not re-launch the tour
     await page.reload();
-    await expect(page.getByText('Welcome Commander!')).not.toBeVisible({ timeout: 3000 });
+    await expect(page.getByText('Welcome!')).not.toBeVisible({ timeout: 3000 });
 
     const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('argus:onboarding') ?? '{}'));
     expect(stored.dashboardTour.status).toBe('skipped');
@@ -78,10 +78,10 @@ test.describe('Onboarding (real server): SC-001 & SC-006', () => {
     });
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'test-repo-alpha' })).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('Welcome Commander!')).not.toBeVisible({ timeout: 2000 });
+    await expect(page.getByText('Welcome!')).not.toBeVisible({ timeout: 2000 });
 
     await page.reload();
-    await expect(page.getByText('Welcome Commander!')).not.toBeVisible({ timeout: 2000 });
+    await expect(page.getByText('Welcome!')).not.toBeVisible({ timeout: 2000 });
   });
 
   // ── US3: Restart tour from settings ─────────────────────────────────────────
@@ -92,13 +92,13 @@ test.describe('Onboarding (real server): SC-001 & SC-006', () => {
     await page.evaluate((s) => localStorage.setItem('argus:onboarding', s), COMPLETED_STATE);
     await page.reload();
 
-    await expect(page.getByText('Welcome Commander!')).not.toBeVisible({ timeout: 2000 });
+    await expect(page.getByText('Welcome!')).not.toBeVisible({ timeout: 2000 });
 
     await page.getByRole('button', { name: /settings/i }).click();
     await expect(page.getByRole('button', { name: /restart tour/i })).toBeVisible({ timeout: 3000 });
     await page.getByRole('button', { name: /restart tour/i }).click();
 
-    await expect(page.getByText('Welcome Commander!')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Welcome!')).toBeVisible({ timeout: 5000 });
   });
 
   // ── US4: Reset onboarding ────────────────────────────────────────────────────
@@ -109,7 +109,7 @@ test.describe('Onboarding (real server): SC-001 & SC-006', () => {
     await page.evaluate((s) => localStorage.setItem('argus:onboarding', s), COMPLETED_STATE);
     await page.reload();
 
-    await expect(page.getByText('Welcome Commander!')).not.toBeVisible({ timeout: 2000 });
+    await expect(page.getByText('Welcome!')).not.toBeVisible({ timeout: 2000 });
 
     await page.getByRole('button', { name: /settings/i }).click();
     await expect(page.getByRole('button', { name: /reset onboarding/i })).toBeVisible({ timeout: 3000 });
@@ -117,7 +117,7 @@ test.describe('Onboarding (real server): SC-001 & SC-006', () => {
 
     // Real reload must auto-launch the tour again
     await page.reload();
-    await expect(page.getByText('Welcome Commander!')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Welcome!')).toBeVisible({ timeout: 5000 });
 
     const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('argus:onboarding') ?? '{}'));
     expect(stored.dashboardTour.status).toBe('not_started');

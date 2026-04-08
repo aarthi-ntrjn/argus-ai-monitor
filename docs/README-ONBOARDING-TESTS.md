@@ -14,11 +14,11 @@ Manual tests for the onboarding tour and first-visit experience. Run these again
 
 | # | Steps | Expected |
 |---|-------|----------|
-| O-01 | Open the dashboard for the first time (or after resetting onboarding) | The onboarding tour starts automatically; step 1 highlights the header with a "Welcome Commander!" message |
+| O-01 | Open the dashboard for the first time (or after resetting onboarding) | The onboarding tour starts automatically; step 1 highlights the header with a "Welcome!" message |
 | O-02 | Click **Next** | Step 2 highlights the "Add Repository" button with an explanation of folder scanning |
 | O-03 | Click **Next** | Step 3 highlights a repository card, explaining that each card shows a repo and its live sessions |
-| O-04 | Click **Next** | Step 4 highlights the "Launch with Argus" button, explaining that sessions launched here run in command mode with full prompt and control capabilities |
-| O-05 | Click **Next** | Step 5 highlights the session cards area, explaining the difference between command mode (green "live" badge, can send prompts) and view mode (grey "read-only" badge, monitor only) |
+| O-04 | Click **Next** | Step 4 highlights the session cards area, explaining that sessions launched outside Argus are read-only |
+| O-05 | Click **Next** | Step 5 highlights the "Launch with Argus" button, explaining you can control AI sessions when launched from Argus |
 | O-06 | Click **Next** | Step 6 highlights the settings gear, explaining filtering options |
 | O-07 | On the final step (step 7), click **Done** | The tour closes with a "You're all set!" message; the dashboard is fully interactive |
 | O-08 | Refresh the page | The tour does not restart (completion is persisted in localStorage) |
@@ -34,11 +34,11 @@ Manual tests for the onboarding tour and first-visit experience. Run these again
 
 | # | Steps | Expected |
 |---|-------|----------|
-| O1-01 | Advance to the "Launch with Argus" step (step 4) | The tooltip points to the "Launch with Argus" button on a repo card |
-| O1-02 | Read the tooltip content | It mentions that sessions launched here run in "command mode" with prompt and control capabilities |
-| O1-03 | Advance to the "AI Sessions" step (step 5) | The tooltip points to the session cards area |
-| O1-04 | Read the tooltip content | It explains two modes: green "live" badge for command mode sessions (can send prompts and control) and grey "read-only" badge for view mode sessions (monitor output only) |
-| O1-05 | Look at the session cards behind the overlay | A live session shows a green "live" badge with a prompt bar; a detected session shows a grey "read-only" badge with no prompt bar |
+| O1-01 | Advance to the "AI Sessions" step (step 4) | The tooltip points to the session cards area |
+| O1-02 | Read the tooltip content | It explains that sessions launched outside Argus are read-only |
+| O1-03 | Look at the session cards behind the overlay | A live session shows a green "live" badge with a prompt bar; a detected session shows a grey "read-only" badge with no prompt bar |
+| O1-04 | Advance to the "Launch with Argus" step (step 5) | The tooltip points to the "Launch with Argus" button on a repo card |
+| O1-05 | Read the tooltip content | It mentions that you can control AI sessions when launched from Argus |
 
 ---
 
