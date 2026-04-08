@@ -47,10 +47,10 @@ beforeEach(() => {
 
 describe('TodoPanel', () => {
   describe('header', () => {
-    it('shows "To Tackle" as the panel title', () => {
+    it('shows "To Do or Not To Do" as the panel title', () => {
       mockUseTodos.mockReturnValue({ data: [], isLoading: false, isError: false } as unknown as ReturnType<typeof useTodos>);
       renderPanel();
-      expect(screen.getByText(/to tackle/i)).toBeInTheDocument();
+      expect(screen.getByText(/to do or not to do/i)).toBeInTheDocument();
     });
 
     it('shows timestamps toggle button', () => {

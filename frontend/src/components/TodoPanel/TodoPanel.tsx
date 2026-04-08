@@ -149,7 +149,7 @@ export default function TodoPanel() {
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
-          To Tackle
+          To Do or Not To Do
           {collapsed && todos.length > 0 && (
             <span className="ml-1 text-xs font-normal text-gray-400">({todos.length})</span>
           )}

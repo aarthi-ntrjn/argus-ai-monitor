@@ -1,6 +1,6 @@
 # Argus: Todo Panel Manual Tests
 
-Manual tests for the "To Tackle" todo panel. Run these against a live Argus instance.
+Manual tests for the "To Do or Not To Do" todo panel. Run these against a live Argus instance.
 
 **Prerequisites:**
 1. `npm run dev` running (backend on `http://localhost:7411`)
@@ -11,7 +11,7 @@ Manual tests for the "To Tackle" todo panel. Run these against a live Argus inst
 
 | # | Steps | Expected |
 |---|-------|----------|
-| T-01 | In the "To Tackle" panel, type "Buy groceries" and press Enter | The task appears in the list with an unchecked checkbox |
+| T-01 | In the "To Do or Not To Do" panel, type "Buy groceries" and press Enter | The task appears in the list with an unchecked checkbox |
 | T-02 | Type "Walk the dog" and press Enter | A second task appears below the first; both are unchecked |
 | T-03 | Type "Read a book" and press Enter | A third task appears; all three tasks are visible and unchecked |
 | T-04 | Refresh the page | All three tasks persist and remain unchecked |

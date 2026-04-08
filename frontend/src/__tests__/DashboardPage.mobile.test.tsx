@@ -83,7 +83,7 @@ describe('DashboardPage — mobile layout', () => {
     const tasksBtn = await screen.findByRole('button', { name: /tasks/i });
     fireEvent.click(tasksBtn);
     // TodoPanel heading should be visible
-    await waitFor(() => expect(screen.getByText('To Tackle')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('To Do or Not To Do')).toBeInTheDocument());
   });
 
   it('does not render MobileNav on desktop', async () => {

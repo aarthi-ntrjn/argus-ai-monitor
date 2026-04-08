@@ -28,7 +28,7 @@ Manual tests for verifying the Argus web dashboard loads correctly and displays 
 | S1-02 | Check the browser tab | The tab title reads "Argus"; the favicon matches the Argus logo |
 | S1-03 | Look at the main content area | An empty state message reads "No repositories registered" with a prompt to click "Add Repository" |
 | S1-04 | Check the header bar | A gear icon (settings) button and a blue "Add Repository" button are visible |
-| S1-05 | Check the right sidebar (desktop only) | The "To Tackle" todo panel is visible with an empty task list and an input to add tasks |
+| S1-05 | Check the right sidebar (desktop only) | The "To Do or Not To Do" todo panel is visible with an empty task list and an input to add tasks |
 
 ---
 
