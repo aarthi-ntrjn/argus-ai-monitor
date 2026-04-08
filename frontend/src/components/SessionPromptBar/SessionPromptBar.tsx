@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { sendPrompt } from '../../services/api';
+import { sendPrompt, interruptSession } from '../../services/api';
 import type { Session } from '../../types';
 
 interface Props {
@@ -29,10 +29,24 @@ export default function SessionPromptBar({ session }: Props) {
     }
   };
 
+  const handleInterrupt = async () => {
+    setError(null);
+    try {
+      await interruptSession(session.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to interrupt');
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      handleInterrupt();
     }
   };
 
