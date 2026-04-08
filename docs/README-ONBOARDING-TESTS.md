@@ -28,17 +28,18 @@ Manual tests for the onboarding tour and first-visit experience. Run these again
 
 ---
 
-## O1: Tour content accuracy
+## O1: Tour content accuracy (during first visit)
 
-**Prerequisites:** At least one repository with a live (PTY) session and a detected (read-only) session visible on the dashboard.
+**Prerequisites:** Clear localStorage or click "Reset Onboarding" in settings. At least one repository with a live (PTY) session and a detected (read-only) session visible on the dashboard.
 
 | # | Steps | Expected |
 |---|-------|----------|
-| O1-01 | Advance to the "AI Sessions" step (step 4) | The tooltip points to the session cards area |
-| O1-02 | Read the tooltip content | It explains that sessions launched outside Argus are read-only |
-| O1-03 | Look at the session cards behind the overlay | A live session shows a green "live" badge with a prompt bar; a detected session shows a grey "read-only" badge with no prompt bar |
-| O1-04 | Advance to the "Launch with Argus" step (step 5) | The tooltip points to the "Launch with Argus" button on a repo card |
-| O1-05 | Read the tooltip content | It mentions that you can control AI sessions when launched from Argus |
+| O1-01 | Open the dashboard to trigger the first-visit tour | Tour starts at step 1 |
+| O1-02 | Advance to the "AI Sessions" step (step 4) | The tooltip points to the session cards area |
+| O1-03 | Read the tooltip content | It explains that sessions launched outside Argus are read-only |
+| O1-04 | Look at the session cards behind the overlay | A live session shows a green "live" badge with a prompt bar; a detected session shows a grey "read-only" badge with no prompt bar |
+| O1-05 | Advance to the "Launch with Argus" step (step 5) | The tooltip points to the "Launch with Argus" button on a repo card |
+| O1-06 | Read the tooltip content | It mentions that you can control AI sessions when launched from Argus |
 
 ---
 
