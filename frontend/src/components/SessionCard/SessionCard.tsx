@@ -184,9 +184,9 @@ function SessionCard({ session, selected, onSelect }: Props) {
             </span>
           )}
           {session.launchMode === 'pty' ? (
-            <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded font-medium bg-emerald-100 text-emerald-700" title="Started via argus launch — prompt injection enabled">live</span>
+            <span className="inline-flex items-center text-xs px-2 py-0.5 rounded font-medium bg-emerald-100 text-emerald-700" title="Started via argus launch — prompt injection enabled">live</span>
           ) : (
-            <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded font-medium bg-gray-100 text-gray-500" title="Detected session — start with argus launch to enable prompts">read-only</span>
+            <span className="inline-flex items-center text-xs px-2 py-0.5 rounded font-medium bg-gray-100 text-gray-500" title="Detected session — start with argus launch to enable prompts">read-only</span>
           )}
           {isAlive && (
             <button
