@@ -83,6 +83,17 @@ export class SessionMonitor extends EventEmitter {
           continue;
         }
 
+        // Sessions with a PID: check if the process is still running
+        if (session.pid != null) {
+          if (!runningPids.has(session.pid)) {
+            updateSessionStatus(session.id, 'ended', now);
+            this.claudeDetector.closeSessionWatcher(session.id);
+            this.emit('session.ended', { ...session, status: 'ended', endedAt: now });
+          }
+          continue;
+        }
+
+        // Null-PID sessions: use JSONL file freshness as the liveness signal
         const jsonlPath = join(
           homedir(), '.claude', 'projects',
           ClaudeCodeDetector.projectDirName(repo.path),
@@ -94,23 +105,13 @@ export class SessionMonitor extends EventEmitter {
           const stat = await fsPromises.stat(jsonlPath);
           jsonlAgeMs = Date.now() - stat.mtime.getTime();
         } catch {
-          // file missing — treat as ended regardless of PID
+          // file missing
         }
 
-        if (jsonlAgeMs === null) {
-          // JSONL file missing: session is over
+        if (jsonlAgeMs === null || jsonlAgeMs > thresholdMs) {
           updateSessionStatus(session.id, 'ended', now);
           this.claudeDetector.closeSessionWatcher(session.id);
           this.emit('session.ended', { ...session, status: 'ended', endedAt: now });
-        } else if (jsonlAgeMs > thresholdMs) {
-          // JSONL is stale — check PID to decide if session is still alive
-          const pidAlive = session.pid != null && runningPids.has(session.pid);
-          if (!pidAlive) {
-            updateSessionStatus(session.id, 'ended', now);
-            this.claudeDetector.closeSessionWatcher(session.id);
-            this.emit('session.ended', { ...session, status: 'ended', endedAt: now });
-          }
-          // else: PID alive, JSONL stale → stay active (frontend will show "resting")
         }
         // else: JSONL is fresh → stay active, no change
       }
