@@ -20,7 +20,7 @@ let repoId: string;
 const COMPLETED_STATE = JSON.stringify({
   schemaVersion: 1,
   userId: null,
-  dashboardTour: { status: 'completed', completedAt: '2024-01-01T00:00:00.000Z', skippedAt: null },
+  dashboardTour: { status: 'completed', completedAt: '2024-01-01T00:00:00.000Z', skippedAt: null, seenRepoSteps: true },
   sessionHints: { dismissed: [] },
 });
 
@@ -112,8 +112,8 @@ test.describe('Onboarding (real server): SC-001 & SC-006', () => {
     await expect(page.getByText('Welcome!')).not.toBeVisible({ timeout: 2000 });
 
     await page.getByRole('button', { name: /settings/i }).click();
-    await expect(page.getByRole('button', { name: /reset onboarding/i })).toBeVisible({ timeout: 3000 });
-    await page.getByRole('button', { name: /reset onboarding/i }).click();
+    await expect(page.getByRole('button', { name: /restart tour/i })).toBeVisible({ timeout: 3000 });
+    await page.getByRole('button', { name: /restart tour/i }).click();
 
     // Real reload must auto-launch the tour again
     await page.reload();

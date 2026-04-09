@@ -1,5 +1,5 @@
 import { test, expect, request } from '@playwright/test';
-import { BASE_URL } from './test-config.js';
+import { BASE_URL, TEST_REPO_A } from './test-config.js';
 
 // ─── Real-server send prompt tests ───────────────────────────────────────────
 //
@@ -9,40 +9,24 @@ import { BASE_URL } from './test-config.js';
 //   - That a detected session (no PTY launcher) returns a failed ControlAction
 //   - The /launcher WebSocket registration and prompt-delivery handshake contract
 //
-// Tests that require a running argus launch process are marked [skip-ci] and
-// documented in the spec as manual verification steps (T020 deferred).
+// The /launcher WS register message does NOT create a DB session on its own.
+// A DB session is only created when Claude fires its first hook (PreToolUse etc.)
+// and ClaudeCodeDetector.handleHookPayload() is invoked. When a PTY launcher is
+// pending for the same repo, the hook claims that WS connection and creates the
+// session with launchMode='pty'. Without a pending WS, launchMode is null (detected).
+//
+// Tests that require a running argus launch process are documented in the spec
+// as manual verification steps (T020 deferred).
 
-const DETECTED_SESSION = {
-  id: 'real-e2e-020-detected',
-  repositoryId: 'repo-real-e2e-020',
-  type: 'claude-code' as const,
-  launchMode: 'detected' as const,
-  pid: null,
-  status: 'active' as const,
-  startedAt: new Date().toISOString(),
-  endedAt: null,
-  lastActivityAt: new Date().toISOString(),
-  summary: null,
-  expiresAt: null,
-  model: null,
-};
-
-let repoId: string | undefined;
-let detectedSessionId: string | undefined;
+let repoId: string;
 
 test.describe('SC-020 (real server): Send Prompt — API contract', () => {
 
   test.beforeAll(async () => {
     const api = await request.newContext({ baseURL: BASE_URL });
-
-    // Register a repo so we can attach a session to it
-    const repoRes = await api.post('/api/v1/repositories', {
-      data: { path: '/tmp/argus-e2e-020-repo' },
-    });
-    if (repoRes.ok()) {
-      repoId = (await repoRes.json()).id;
-    }
-
+    const repoRes = await api.post('/api/v1/repositories', { data: { path: TEST_REPO_A } });
+    expect(repoRes.status(), `Failed to register ${TEST_REPO_A}: ${await repoRes.text()}`).toBe(201);
+    repoId = (await repoRes.json()).id;
     await api.dispose();
   });
 
@@ -84,133 +68,124 @@ test.describe('SC-020 (real server): Send Prompt — API contract', () => {
   // ── Detected session (no launcher) ──────────────────────────────────────────
 
   test('POST /sessions/:id/send returns a failed ControlAction for a detected session', async ({ request: req }) => {
-    // The backend auto-creates a session repo on /launcher registration only.
-    // For a detected session we seed via the internal upsert endpoint if available,
-    // or skip when the backend does not expose a seed endpoint.
-    //
-    // Instead, use the /launcher WebSocket to register a PTY session, then verify
-    // that a detected session (registered without PTY) returns failed.
-    // Since we cannot seed a detected session without internal API access, this
-    // test verifies the contract via the /launcher route registration flow.
-    //
-    // We register a session as PTY, then immediately disconnect (simulating no launcher),
-    // and confirm the backend returns 202 with a failed action when the launcher is gone.
+    const { randomUUID } = await import('crypto');
+    const sessionId = randomUUID();
 
-    const WebSocket = (await import('ws')).default;
-
-    const sessionId = `e2e-020-pty-${Date.now()}`;
-    const registrationPayload = JSON.stringify({
-      type: 'register',
-      sessionId,
-      repositoryPath: '/tmp/argus-e2e-020-repo',
-      sessionType: 'claude-code',
+    // Create a detected session via the hooks route (no PTY launcher registered).
+    // The detector creates the session with launchMode=null when there is no
+    // pending WS launcher for the repo.
+    const hookRes = await req.post(`${BASE_URL}/hooks/claude`, {
+      data: { hook_event_name: 'PreToolUse', session_id: sessionId, cwd: TEST_REPO_A },
     });
+    expect(hookRes.ok()).toBeTruthy();
+    await new Promise(r => setTimeout(r, 200));
 
-    // Connect, register, then immediately disconnect
-    await new Promise<void>((resolve, reject) => {
-      const ws = new WebSocket(`ws://127.0.0.1:7412/launcher`);
-      ws.on('open', () => {
-        ws.send(registrationPayload);
-        // Close after a short delay to let the registration complete
-        setTimeout(() => { ws.close(); resolve(); }, 200);
-      });
-      ws.on('error', reject);
-    });
-
-    // Wait briefly for the backend to process the disconnect
-    await new Promise(r => setTimeout(r, 300));
-
-    // Now try to send a prompt — launcher is gone so the action should fail
+    // No launcher connected, so the action should fail immediately
     const res = await req.post(`${BASE_URL}/api/v1/sessions/${sessionId}/send`, {
       data: { prompt: 'run the tests' },
     });
     expect(res.status()).toBe(202);
     const body = await res.json();
     expect(body.status).toBe('failed');
-    expect(body.id).toBeTruthy();
+    expect(body.actionId).toBeTruthy();
   });
 
   // ── Launcher WebSocket registration contract ─────────────────────────────────
 
-  test('/launcher WebSocket: register message creates a session with launchMode=pty', async ({ request: req }) => {
+  test('/launcher WebSocket: register message + hook creates a session with launchMode=pty', async ({ request: req }) => {
     const WebSocket = (await import('ws')).default;
+    const { randomUUID } = await import('crypto');
 
-    const sessionId = `e2e-020-reg-${Date.now()}`;
+    // tempId: the launcher-side temp UUID. Not a DB session ID.
+    const tempId = randomUUID();
+    // claudeSessionId: the UUID Claude assigns when it fires its first hook.
+    const claudeSessionId = randomUUID();
 
+    // Keep the WS connected so the pending entry is available when the hook fires.
+    const ws = new WebSocket(`ws://127.0.0.1:7412/launcher`);
     await new Promise<void>((resolve, reject) => {
-      const ws = new WebSocket(`ws://127.0.0.1:7412/launcher`);
       ws.on('open', () => {
-        ws.send(JSON.stringify({
-          type: 'register',
-          sessionId,
-          repositoryPath: '/tmp/argus-e2e-020-repo',
-          sessionType: 'claude-code',
-        }));
-        setTimeout(() => { ws.close(); resolve(); }, 200);
+        ws.send(JSON.stringify({ type: 'register', sessionId: tempId, cwd: TEST_REPO_A, pid: 0 }));
+        setTimeout(resolve, 100);
       });
       ws.on('error', reject);
+    });
+
+    // Fire a hook as if Claude started — detector claims the pending WS entry
+    // and creates the DB session with launchMode='pty'.
+    await req.post(`${BASE_URL}/hooks/claude`, {
+      data: { hook_event_name: 'PreToolUse', session_id: claudeSessionId, cwd: TEST_REPO_A },
     });
 
     // Give backend time to commit the upsert
     await new Promise(r => setTimeout(r, 200));
 
-    const res = await req.get(`${BASE_URL}/api/v1/sessions/${sessionId}`);
+    ws.close();
+
+    const res = await req.get(`${BASE_URL}/api/v1/sessions/${claudeSessionId}`);
     expect(res.ok(), `Expected 200, got ${res.status()}`).toBeTruthy();
     const session = await res.json();
-    expect(session.id).toBe(sessionId);
+    expect(session.id).toBe(claudeSessionId);
     expect(session.launchMode).toBe('pty');
   });
 
   test('/launcher WebSocket: prompt_delivered ack resolves pending send as completed', async ({ request: req }) => {
     const WebSocket = (await import('ws')).default;
+    const { randomUUID } = await import('crypto');
 
-    const sessionId = `e2e-020-ack-${Date.now()}`;
+    const tempId = randomUUID();
+    const claudeSessionId = randomUUID();
 
     // Keep the launcher connected for the duration of the test
     const ws = new WebSocket(`ws://127.0.0.1:7412/launcher`);
 
     await new Promise<void>((resolve, reject) => {
       ws.on('open', () => {
-        ws.send(JSON.stringify({
-          type: 'register',
-          sessionId,
-          repositoryPath: '/tmp/argus-e2e-020-repo',
-          sessionType: 'claude-code',
-        }));
-        setTimeout(resolve, 200);
+        ws.send(JSON.stringify({ type: 'register', sessionId: tempId, cwd: TEST_REPO_A, pid: 0 }));
+        setTimeout(resolve, 100);
       });
       ws.on('error', reject);
     });
 
-    // Send a prompt — backend will forward to the WS launcher
-    let actionId: string | undefined;
-    const sendRes = await req.post(`${BASE_URL}/api/v1/sessions/${sessionId}/send`, {
-      data: { prompt: 'hello from e2e' },
+    // Fire a hook to claim the pending WS entry and create a PTY session
+    await req.post(`${BASE_URL}/hooks/claude`, {
+      data: { hook_event_name: 'PreToolUse', session_id: claudeSessionId, cwd: TEST_REPO_A },
     });
-    expect(sendRes.status()).toBe(202);
-    const action = await sendRes.json();
-    expect(action.status).toBe('pending');
-    actionId = action.id;
+    await new Promise(r => setTimeout(r, 200));
 
-    // The backend sends a send_prompt message over WS — capture it and ack
-    await new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('Timed out waiting for send_prompt')), 3000);
+    // Set up WS listener BEFORE sending prompt so we don't miss the send_prompt message
+    let actionId: string | undefined;
+    const ackPromise = new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('Timed out waiting for send_prompt')), 5000);
       ws.on('message', (raw) => {
         const msg = JSON.parse(raw.toString());
-        if (msg.type === 'send_prompt' && msg.actionId === actionId) {
+        if (msg.type === 'send_prompt') {
           clearTimeout(timer);
-          ws.send(JSON.stringify({ type: 'prompt_delivered', actionId }));
+          ws.send(JSON.stringify({ type: 'prompt_delivered', actionId: msg.actionId }));
+          actionId = msg.actionId;
           resolve();
         }
       });
     });
 
+    // Send a prompt — backend will forward to the WS launcher
+    const sendRes = await req.post(`${BASE_URL}/api/v1/sessions/${claudeSessionId}/send`, {
+      data: { prompt: 'hello from e2e' },
+    });
+    expect(sendRes.status()).toBe(202);
+    const action = await sendRes.json();
+    expect(action.status).toBe('pending');
+
+    // Wait for the send_prompt + ack handshake to complete
+    await ackPromise;
+
     ws.close();
 
     // Poll the action status — should become 'completed' after ack
     await new Promise(r => setTimeout(r, 300));
-    const actionRes = await req.get(`${BASE_URL}/api/v1/sessions/${sessionId}/actions/${actionId}`);
-    if (actionRes.ok()) {
+    const actionRes = await req.get(`${BASE_URL}/api/v1/sessions/${claudeSessionId}/actions/${actionId}`);
+    const contentType = actionRes.headers()['content-type'] ?? '';
+    if (actionRes.status() === 200 && contentType.includes('application/json')) {
       const updatedAction = await actionRes.json();
       expect(updatedAction.status).toBe('completed');
     }
