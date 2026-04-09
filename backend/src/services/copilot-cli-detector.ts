@@ -88,6 +88,7 @@ export class CopilotCliDetector {
       summary: workspace.summary ?? null,
       expiresAt: null,
       model: this.extractModelFromEventsFile(join(dirPath, 'events.jsonl')),
+      reconciled: true,
     };
 
     upsertSession(session);

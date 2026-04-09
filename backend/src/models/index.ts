@@ -41,6 +41,7 @@ export interface Session {
   summary: string | null;
   expiresAt: string | null;
   model: string | null;
+  reconciled: boolean;
 }
 
 export interface SessionOutput {

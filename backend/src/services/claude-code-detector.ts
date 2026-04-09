@@ -186,6 +186,7 @@ export class ClaudeCodeDetector {
           summary: null,
           expiresAt: null,
           model: null,
+          reconciled: true,
         };
         upsertSession(session);
         broadcast({ type: 'session.created', timestamp: now, data: session as unknown as Record<string, unknown> });
@@ -208,6 +209,7 @@ export class ClaudeCodeDetector {
       summary: null,
       expiresAt: null,
       model: null,
+      reconciled: true,
     };
 
     session.status = 'active';
@@ -245,6 +247,7 @@ export class ClaudeCodeDetector {
           summary: null,
           expiresAt: null,
           model: null,
+          reconciled: true,
         };
         upsertSession(session);
         await this.watchJsonlFile(sessionId, repo.path);
@@ -273,6 +276,7 @@ export class ClaudeCodeDetector {
       summary: null,
       expiresAt: null,
       model: null,
+      reconciled: true,
     };
     upsertSession({ ...base, status: 'active', endedAt: null, lastActivityAt: now, pid: claudePid });
     await this.watchJsonlFile(sessionId, repo.path);

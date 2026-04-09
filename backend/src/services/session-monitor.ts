@@ -50,6 +50,20 @@ export class SessionMonitor extends EventEmitter {
     this.scanInterval = setInterval(() => this.runScan(), 5000);
   }
 
+  /**
+   * Three-way reconciliation of active DB sessions on startup.
+   *
+   * Data sources:
+   *   1. DB sessions with status active/idle
+   *   2. Claude session registry (~/.claude/sessions/*.json) as the primary source of truth for PIDs
+   *   3. Running OS processes (psList) as the liveness check
+   *
+   * Reconciliation matrix:
+   *   Registry entry exists + PID running     → keep active, reconciled
+   *   Registry entry exists + PID NOT running → mark ended, unreconciled (WARNING)
+   *   No registry entry + PID running in OS   → mark active, unreconciled (ERROR)
+   *   No registry entry + PID NOT running     → mark ended, reconciled
+   */
   private async reconcileStaleSessions(): Promise<void> {
     try {
       const sessions = [
@@ -57,15 +71,46 @@ export class SessionMonitor extends EventEmitter {
         ...getSessions({ status: 'idle' }),
       ];
       if (sessions.length === 0) return;
+
+      // Source 2: Session registry (primary source of truth for PIDs)
+      const registryEntries = this.sessionRegistry.scanEntries();
+      const registryBySessionId = new Map(registryEntries.map(e => [e.sessionId, e]));
+
+      // Source 3: Running OS processes
       const processes = await psList();
       const runningPids = new Set(processes.map((p) => p.pid));
+
       const now = new Date().toISOString();
+
       for (const session of sessions) {
-        if (session.pid != null && !runningPids.has(session.pid)) {
-          updateSessionStatus(session.id, 'ended', now);
+        const registryEntry = registryBySessionId.get(session.id);
+
+        if (registryEntry) {
+          // Registry has an entry for this session
+          if (runningPids.has(registryEntry.pid)) {
+            // Registry PID is alive: session is genuinely active, reconciled
+            updateSessionStatus(session.id, 'active', null, true);
+          } else {
+            // Registry says this PID should be running, but OS says it's dead
+            console.warn(
+              `[reconcile] WARNING: Session ${session.id} has registry entry with PID ${registryEntry.pid}, but process is not running. Marking ended (unreconciled).`
+            );
+            updateSessionStatus(session.id, 'ended', now, false);
+          }
+        } else if (session.pid != null && runningPids.has(session.pid)) {
+          // No registry entry, but the DB PID is still a live OS process
+          console.error(
+            `[reconcile] ERROR: Session ${session.id} has no registry entry, but PID ${session.pid} is still running. Marking active (unreconciled).`
+          );
+          updateSessionStatus(session.id, 'active', null, false);
+        } else {
+          // No registry entry and no live process: cleanly ended
+          updateSessionStatus(session.id, 'ended', now, true);
         }
       }
-    } catch { /* ignore — stale reconciliation is best-effort */ }
+    } catch (err) {
+      console.error('[reconcile] Failed to reconcile stale sessions:', err);
+    }
   }
 
   private async reconcileClaudeCodeSessions(): Promise<void> {
@@ -191,6 +236,7 @@ export class SessionMonitor extends EventEmitter {
           summary: null,
           expiresAt: null,
           model: null,
+          reconciled: true,
         };
         upsertSession(session);
         broadcast({ type: 'session.created', timestamp: now, data: session as unknown as Record<string, unknown> });
