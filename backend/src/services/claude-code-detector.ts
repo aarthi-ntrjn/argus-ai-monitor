@@ -4,7 +4,7 @@ import { join, dirname, normalize } from 'path';
 import { homedir } from 'os';
 
 import chokidar, { type FSWatcher } from 'chokidar';
-import { getSession, upsertSession, getRepositories, getRepositoryByPath } from '../db/database.js';
+import { getSession, upsertSession, updateSessionStatus, getRepositories, getRepositoryByPath } from '../db/database.js';
 import { ptyRegistry } from './pty-registry.js';
 import { ClaudeSessionRegistry } from './claude-session-registry.js';
 import { OutputStore } from './output-store.js';
@@ -14,7 +14,7 @@ import type { Session, Repository } from '../models/index.js';
 
 const CLAUDE_SETTINGS_PATH = join(homedir(), '.claude', 'settings.json');
 const HOOK_COMMAND = 'curl -sf -X POST http://127.0.0.1:7411/hooks/claude -H "Content-Type: application/json" -d @- 2>/dev/null || true';
-const HOOK_EVENTS = ['SessionStart', 'PreToolUse', 'PostToolUse', 'Stop'];
+const HOOK_EVENTS = ['SessionStart', 'PreToolUse', 'PostToolUse', 'Stop', 'SessionEnd'];
 
 interface ClaudeSettings {
   hooks?: Record<string, Array<{ matcher: string; hooks: Array<{ type: string; command: string }> }>>;
@@ -165,6 +165,17 @@ export class ClaudeCodeDetector {
 
     const existing = getSession(session_id);
     const now = new Date().toISOString();
+
+    // SessionEnd means the session is ending. Mark it ended immediately
+    // instead of waiting for the next 5s poll cycle.
+    if (hook_event_name === 'SessionEnd') {
+      if (existing) {
+        updateSessionStatus(session_id, 'ended', now);
+        this.closeSessionWatcher(session_id);
+        broadcast({ type: 'session.ended', timestamp: now, data: { ...existing, status: 'ended', endedAt: now } as unknown as Record<string, unknown> });
+      }
+      return;
+    }
 
     // If this is the first hook for this claude session, check whether argus launch
     // is waiting for it. If so, claim the PTY connection and create the session as
