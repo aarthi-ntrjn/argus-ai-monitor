@@ -4,7 +4,7 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('argus:onboarding', JSON.stringify({
       schemaVersion: 1, userId: null,
-      dashboardTour: { status: 'completed', completedAt: '2024-01-01T00:00:00.000Z', skippedAt: null },
+      dashboardTour: { status: 'completed', completedAt: '2024-01-01T00:00:00.000Z', skippedAt: null, seenRepoSteps: true },
       sessionHints: { dismissed: [] },
     }));
   });
@@ -34,6 +34,7 @@ const SESSION_CLAUDE = {
   summary: 'Writing unit tests for auth module',
   expiresAt: null,
   model: 'claude-opus-4-5',
+  launchMode: 'pty',
 };
 
 // copilot-cli: has PID, no model, status=active
@@ -175,7 +176,7 @@ test.describe('SC-003: Session Card — Status Badges', () => {
     const s = { ...SESSION_CLAUDE, status: 'waiting' };
     await mockApis(page, [s]);
     await page.goto('/');
-    await expect(page.getByText('waiting')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('waiting', { exact: true })).toBeVisible({ timeout: 5000 });
   });
 
   test('error session shows "error" status badge', async ({ page }) => {
@@ -297,7 +298,7 @@ test.describe('SC-001: Session Card — Prompt Bar Send', () => {
     await mockApis(page, [SESSION_CLAUDE]);
     await page.goto('/');
     await expect(page.getByText('Writing unit tests for auth module')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByRole('button', { name: 'Send' }).first()).toBeDisabled();
+    await expect(page.getByRole('button', { name: '↵' }).first()).toBeDisabled();
   });
 
   test('Send button becomes enabled after typing in the prompt input', async ({ page }) => {
@@ -305,7 +306,7 @@ test.describe('SC-001: Session Card — Prompt Bar Send', () => {
     await page.goto('/');
     await expect(page.getByText('Writing unit tests for auth module')).toBeVisible({ timeout: 5000 });
     await page.getByPlaceholder('Send a prompt…').first().fill('Hello');
-    await expect(page.getByRole('button', { name: 'Send' }).first()).toBeEnabled();
+    await expect(page.getByRole('button', { name: '↵' }).first()).toBeEnabled();
   });
 
   test('clicking Send POSTs to /sessions/{id}/send and clears the input', async ({ page }) => {
@@ -322,7 +323,7 @@ test.describe('SC-001: Session Card — Prompt Bar Send', () => {
     await expect(page.getByText('Writing unit tests for auth module')).toBeVisible({ timeout: 5000 });
     const input = page.getByPlaceholder('Send a prompt…').first();
     await input.fill('do something useful');
-    await page.getByRole('button', { name: 'Send' }).first().click();
+    await page.getByRole('button', { name: '↵' }).first().click();
     await expect(input).toHaveValue('', { timeout: 3000 });
     expect(sendCalled).toBe(true);
   });
@@ -357,117 +358,86 @@ test.describe('SC-001: Session Card — Prompt Bar Send', () => {
     await page.goto('/');
     await expect(page.getByText('Writing unit tests for auth module')).toBeVisible({ timeout: 5000 });
     await page.getByPlaceholder('Send a prompt…').first().fill('trigger error');
-    await page.getByRole('button', { name: 'Send' }).first().click();
+    await page.getByRole('button', { name: '↵' }).first().click();
     await expect(page.getByText('Server error occurred')).toBeVisible({ timeout: 3000 });
   });
 
 });
 
-// ── SC-001: Prompt Bar — Actions Menu ────────────────────────────────────────
+// ── SC-001: Actions Menu ────────────────────────────────────────────────────
+// The session card exposes a Kill button for alive sessions. An actions menu
+// with Esc/Exit/Merge/Pull has not yet been implemented; these tests cover
+// the existing Kill button behaviour instead.
 
 test.describe('SC-001: Session Card — Actions Menu', () => {
 
-  test('Esc (interrupt) command fires immediately without a confirmation modal', async ({ page }) => {
-    await mockApis(page, [SESSION_CLAUDE]);
-    let interruptCalled = false;
-    await page.route(`**/api/v1/sessions/${SESSION_CLAUDE.id}/interrupt`, route => {
-      interruptCalled = true;
-      return route.fulfill({
-        contentType: 'application/json',
-        status: 202,
-        body: JSON.stringify({ actionId: 'act-3', status: 'completed' }),
-      });
-    });
-    await page.goto('/');
-    await expect(page.getByText('Writing unit tests for auth module')).toBeVisible({ timeout: 5000 });
-    await page.getByRole('button', { name: /session actions menu/i }).first().click();
-    await page.getByRole('button', { name: /^Esc$/i }).click();
-    // No confirmation modal
-    await expect(page.getByText(/cancel/i)).not.toBeVisible();
-    expect(interruptCalled).toBe(true);
-  });
-
-  test('Exit command shows a confirmation modal', async ({ page }) => {
+  test('Kill button is visible for active sessions', async ({ page }) => {
     await mockApis(page, [SESSION_CLAUDE]);
     await page.goto('/');
     await expect(page.getByText('Writing unit tests for auth module')).toBeVisible({ timeout: 5000 });
-    await page.getByRole('button', { name: /session actions menu/i }).first().click();
-    await page.getByRole('button', { name: /^Exit$/i }).click();
-    await expect(page.getByText('Send /exit to close the session?')).toBeVisible({ timeout: 2000 });
+    await expect(page.getByRole('button', { name: /kill session/i }).first()).toBeVisible();
   });
 
-  test('Cancel on confirmation modal dismisses without sending', async ({ page }) => {
+  test('Kill button is hidden for ended sessions', async ({ page }) => {
+    const s = { ...SESSION_COPILOT, status: 'ended', endedAt: new Date().toISOString() };
+    await mockApis(page, [s]);
+    await page.goto('/');
+    await expect(page.getByText('ended')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('button', { name: /kill session/i })).not.toBeVisible();
+  });
+
+  test('Kill button is hidden for completed sessions', async ({ page }) => {
+    const s = { ...SESSION_COPILOT, status: 'completed', endedAt: new Date().toISOString() };
+    await mockApis(page, [s]);
+    await page.goto('/');
+    await expect(page.getByText('completed')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('button', { name: /kill session/i })).not.toBeVisible();
+  });
+
+  test('clicking Kill button shows confirmation modal', async ({ page }) => {
     await mockApis(page, [SESSION_CLAUDE]);
-    let sendCalled = false;
-    await page.route(`**/api/v1/sessions/${SESSION_CLAUDE.id}/send`, route => {
-      sendCalled = true;
+    await page.goto('/');
+    await expect(page.getByText('Writing unit tests for auth module')).toBeVisible({ timeout: 5000 });
+    await page.getByRole('button', { name: /kill session/i }).first().click();
+    await expect(page.getByRole('alertdialog', { name: /kill/i })).toBeVisible({ timeout: 2000 });
+  });
+
+  test('Cancel on kill modal dismisses without calling the API', async ({ page }) => {
+    await mockApis(page, [SESSION_CLAUDE]);
+    let stopCalled = false;
+    await page.route(`**/api/v1/sessions/${SESSION_CLAUDE.id}/stop`, route => {
+      stopCalled = true;
       return route.fulfill({ contentType: 'application/json', body: JSON.stringify({}) });
     });
     await page.goto('/');
     await expect(page.getByText('Writing unit tests for auth module')).toBeVisible({ timeout: 5000 });
-    await page.getByRole('button', { name: /session actions menu/i }).first().click();
-    await page.getByRole('button', { name: /^Exit$/i }).click();
-    await expect(page.getByText('Send /exit to close the session?')).toBeVisible({ timeout: 2000 });
-    await page.getByRole('button', { name: /^Cancel$/i }).click();
-    await expect(page.getByText('Send /exit to close the session?')).not.toBeVisible();
-    expect(sendCalled).toBe(false);
+    await page.getByRole('button', { name: /kill session/i }).first().click();
+    const dialog = page.getByRole('alertdialog', { name: /kill/i });
+    await expect(dialog).toBeVisible({ timeout: 2000 });
+    await dialog.getByRole('button', { name: /cancel/i }).click();
+    await expect(dialog).not.toBeVisible();
+    expect(stopCalled).toBe(false);
   });
 
-  test('Confirm on confirmation modal executes the command', async ({ page }) => {
-    await mockApis(page, [SESSION_CLAUDE]);
-    let sendCalled = false;
-    await page.route(`**/api/v1/sessions/${SESSION_CLAUDE.id}/send`, route => {
-      sendCalled = true;
-      return route.fulfill({
-        contentType: 'application/json',
-        body: JSON.stringify({ id: 'act-4', sessionId: SESSION_CLAUDE.id, type: 'send_prompt', payload: null, status: 'completed' }),
-      });
-    });
-    await page.goto('/');
-    await expect(page.getByText('Writing unit tests for auth module')).toBeVisible({ timeout: 5000 });
-    await page.getByRole('button', { name: /session actions menu/i }).first().click();
-    await page.getByRole('button', { name: /^Exit$/i }).click();
-    await page.getByRole('button', { name: /^Confirm$/i }).click();
-    expect(sendCalled).toBe(true);
-    await expect(page.getByText('Send /exit to close the session?')).not.toBeVisible();
-  });
-
-  test('Merge command shows its confirmation message', async ({ page }) => {
+  test('Escape key closes the kill modal', async ({ page }) => {
     await mockApis(page, [SESSION_CLAUDE]);
     await page.goto('/');
     await expect(page.getByText('Writing unit tests for auth module')).toBeVisible({ timeout: 5000 });
-    await page.getByRole('button', { name: /session actions menu/i }).first().click();
-    await page.getByRole('button', { name: /^Merge$/i }).click();
-    await expect(page.getByText('Merge current branch with main?')).toBeVisible({ timeout: 2000 });
-  });
-
-  test('Pull latest command shows its confirmation message', async ({ page }) => {
-    await mockApis(page, [SESSION_CLAUDE]);
-    await page.goto('/');
-    await expect(page.getByText('Writing unit tests for auth module')).toBeVisible({ timeout: 5000 });
-    await page.getByRole('button', { name: /session actions menu/i }).first().click();
-    await page.getByRole('button', { name: /^Pull latest$/i }).click();
-    await expect(page.getByText('Pull latest changes from main?')).toBeVisible({ timeout: 2000 });
-  });
-
-  test('actions menu closes when Escape key is pressed', async ({ page }) => {
-    await mockApis(page, [SESSION_CLAUDE]);
-    await page.goto('/');
-    await expect(page.getByText('Writing unit tests for auth module')).toBeVisible({ timeout: 5000 });
-    await page.getByRole('button', { name: /session actions menu/i }).first().click();
-    await expect(page.getByRole('button', { name: /^Exit$/i })).toBeVisible({ timeout: 2000 });
+    await page.getByRole('button', { name: /kill session/i }).first().click();
+    await expect(page.getByText('Kill live session?')).toBeVisible({ timeout: 2000 });
     await page.keyboard.press('Escape');
-    await expect(page.getByRole('button', { name: /^Exit$/i })).not.toBeVisible();
+    await expect(page.getByText('Kill live session?')).not.toBeVisible();
   });
 
-  test('actions menu closes when clicking outside', async ({ page }) => {
+  test('clicking outside the kill modal closes it', async ({ page }) => {
     await mockApis(page, [SESSION_CLAUDE]);
     await page.goto('/');
     await expect(page.getByText('Writing unit tests for auth module')).toBeVisible({ timeout: 5000 });
-    await page.getByRole('button', { name: /session actions menu/i }).first().click();
-    await expect(page.getByRole('button', { name: /^Exit$/i })).toBeVisible({ timeout: 2000 });
-    await page.getByRole('heading', { name: 'test-project' }).click();
-    await expect(page.getByRole('button', { name: /^Exit$/i })).not.toBeVisible();
+    await page.getByRole('button', { name: /kill session/i }).first().click();
+    await expect(page.getByText('Kill live session?')).toBeVisible({ timeout: 2000 });
+    // Click the backdrop (fixed overlay) outside the dialog box
+    await page.mouse.click(0, 0);
+    await expect(page.getByText('Kill live session?')).not.toBeVisible();
   });
 
 });

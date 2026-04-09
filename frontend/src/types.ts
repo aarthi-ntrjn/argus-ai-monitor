@@ -1,6 +1,7 @@
 export type SessionType = 'copilot-cli' | 'claude-code';
 export type SessionLaunchMode = 'pty' | 'detected';
 export type SessionStatus = 'active' | 'idle' | 'waiting' | 'error' | 'completed' | 'ended';
+export type PidSource = 'session_registry' | 'pty_registry' | 'lockfile';
 export type ControlActionType = 'stop' | 'send_prompt' | 'interrupt';
 export type ControlActionStatus = 'pending' | 'sent' | 'completed' | 'failed' | 'not_supported';
 export type RepositorySource = 'config' | 'ui';
@@ -23,6 +24,7 @@ export interface Session {
   type: SessionType;
   launchMode: SessionLaunchMode | null;
   pid: number | null;
+  pidSource: PidSource | null;
   status: SessionStatus;
   startedAt: string;
   endedAt: string | null;
@@ -49,7 +51,6 @@ export interface ArgusConfig {
   sessionRetentionHours: number;
   outputRetentionMbPerSession: number;
   autoRegisterRepos: boolean;
-  idleSessionThresholdMinutes: number;
 }
 
 export interface DashboardSettings {

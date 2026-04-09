@@ -20,6 +20,7 @@ export interface RepositoryManagement {
   handleFolderSubmit: (repos: Repository[]) => Promise<void>;
   handleRemoveRepoById: (id: string) => Promise<void>;
   handleRemoveRepo: () => Promise<void>;
+  cancelFolderInput: () => void;
   clearAddError: () => void;
   clearAddInfo: () => void;
 }
@@ -118,6 +119,7 @@ export function useRepositoryManagement(): RepositoryManagement {
     handleFolderSubmit,
     handleRemoveRepoById,
     handleRemoveRepo: () => handleRemoveRepoById(removeConfirmId!),
+    cancelFolderInput: () => { setShowFolderInput(false); setFolderInputPath(''); },
     clearAddError: () => setAddError(null),
     clearAddInfo: () => setAddInfo(null),
   };

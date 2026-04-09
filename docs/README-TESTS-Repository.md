@@ -20,6 +20,8 @@ Manual tests for adding and removing repositories. Run these against a live Argu
 | R-05 | Enter the same folder path again | Info message reads "No new git repositories found in the specified folder." |
 | R-06 | Enter a folder path that contains no git repositories | Info message reads "No new git repositories found in the specified folder." |
 | R-07 | Enter an invalid or non-existent path | An error message is shown; no repo card is added |
+| R-08 | Open the add repository dialog, then click **Cancel** | The dialog closes without adding any repository |
+| R-09 | Open the add repository dialog, then press **Escape** | The dialog closes without adding any repository |
 
 ---
 

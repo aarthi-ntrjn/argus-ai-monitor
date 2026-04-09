@@ -80,6 +80,7 @@ export class CopilotCliDetector {
       type: 'copilot-cli',
       launchMode: null,
       pid: pid,
+      pidSource: pid != null ? 'lockfile' : null,
       status,
       startedAt: toIso(workspace.created_at),
       endedAt: status === 'ended' ? toIso(workspace.updated_at) : null,
@@ -87,6 +88,7 @@ export class CopilotCliDetector {
       summary: workspace.summary ?? null,
       expiresAt: null,
       model: this.extractModelFromEventsFile(join(dirPath, 'events.jsonl')),
+      reconciled: true,
     };
 
     upsertSession(session);
@@ -174,6 +176,39 @@ export class CopilotCliDetector {
         }
       }
     } catch { /* ignore */ }
+  }
+
+  /**
+   * Scan all copilot session directories and return a map of session ID → PID
+   * from inuse.<PID>.lock files. This is the copilot equivalent of
+   * ClaudeSessionRegistry.scanEntries().
+   */
+  scanLockEntries(): Map<string, number> {
+    const result = new Map<string, number>();
+    if (!existsSync(this.sessionStateDir)) return result;
+
+    try {
+      const entries = readdirSync(this.sessionStateDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const dirPath = join(this.sessionStateDir, entry.name);
+        const workspaceFile = join(dirPath, 'workspace.yaml');
+        if (!existsSync(workspaceFile)) continue;
+
+        try {
+          const workspace = yamlLoad(readFileSync(workspaceFile, 'utf-8')) as WorkspaceYaml;
+          if (!workspace.id) continue;
+
+          const lockFile = this.findLockFile(dirPath);
+          const pid = lockFile ? this.extractPid(lockFile) : null;
+          if (pid != null) {
+            result.set(workspace.id, pid);
+          }
+        } catch { /* skip malformed */ }
+      }
+    } catch { /* ignore */ }
+
+    return result;
   }
 
   stopWatchers(): void {

@@ -29,6 +29,14 @@ export function getDb(): Database.Database {
     const outputCols = (db.pragma('table_info(session_output)') as Array<{ name: string }>).map(c => c.name);
     if (!outputCols.includes('role')) db.exec('ALTER TABLE session_output ADD COLUMN role TEXT');
     if (!sessionCols.includes('launch_mode')) db.exec("ALTER TABLE sessions ADD COLUMN launch_mode TEXT CHECK(launch_mode IN ('pty','detected'))");
+    if (!sessionCols.includes('pid_source')) {
+      db.exec('ALTER TABLE sessions ADD COLUMN pid_source TEXT');
+      db.exec("UPDATE sessions SET pid_source = 'pty_registry' WHERE launch_mode = 'pty' AND pid IS NOT NULL");
+      db.exec("UPDATE sessions SET pid_source = 'lockfile' WHERE type = 'copilot-cli' AND pid IS NOT NULL AND launch_mode IS NULL");
+    }
+    if (!sessionCols.includes('reconciled')) {
+      db.exec('ALTER TABLE sessions ADD COLUMN reconciled INTEGER NOT NULL DEFAULT 1');
+    }
   }
   return db;
 }
@@ -70,6 +78,7 @@ export function updateRepositoryBranch(id: string, branch: string | null): void 
 
 export function deleteRepository(id: string): void {
   const db = getDb();
+  db.prepare('DELETE FROM control_actions WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
   db.prepare('DELETE FROM session_output WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
   db.prepare('DELETE FROM sessions WHERE repository_id = ?').run(id);
   db.prepare('DELETE FROM repositories WHERE id = ?').run(id);
@@ -78,40 +87,53 @@ export function deleteRepository(id: string): void {
 export interface SessionFilters { repositoryId?: string; status?: string; type?: string; limit?: number; }
 
 export function getSessions(filters: SessionFilters = {}): Session[] {
-  let sql = 'SELECT id, repository_id as repositoryId, type, launch_mode as launchMode, pid, status, started_at as startedAt, ended_at as endedAt, last_activity_at as lastActivityAt, summary, expires_at as expiresAt, model FROM sessions WHERE 1=1';
+  let sql = 'SELECT id, repository_id as repositoryId, type, launch_mode as launchMode, pid, pid_source as pidSource, status, started_at as startedAt, ended_at as endedAt, last_activity_at as lastActivityAt, summary, expires_at as expiresAt, model, reconciled FROM sessions WHERE 1=1';
   const params: unknown[] = [];
   if (filters.repositoryId) { sql += ' AND repository_id = ?'; params.push(filters.repositoryId); }
   if (filters.status) { sql += ' AND status = ?'; params.push(filters.status); }
   if (filters.type) { sql += ' AND type = ?'; params.push(filters.type); }
   sql += ' ORDER BY started_at DESC';
   sql += ' LIMIT ?'; params.push(filters.limit ?? 500);
-  return getDb().prepare(sql).all(...params) as Session[];
+  return (getDb().prepare(sql).all(...params) as Array<Omit<Session, 'reconciled'> & { reconciled: number }>).map(
+    r => ({ ...r, reconciled: r.reconciled === 1 })
+  );
 }
 
 export function getSession(id: string): Session | undefined {
-  return getDb().prepare(
-    'SELECT id, repository_id as repositoryId, type, launch_mode as launchMode, pid, status, started_at as startedAt, ended_at as endedAt, last_activity_at as lastActivityAt, summary, expires_at as expiresAt, model FROM sessions WHERE id = ?'
-  ).get(id) as Session | undefined;
+  const row = getDb().prepare(
+    'SELECT id, repository_id as repositoryId, type, launch_mode as launchMode, pid, pid_source as pidSource, status, started_at as startedAt, ended_at as endedAt, last_activity_at as lastActivityAt, summary, expires_at as expiresAt, model, reconciled FROM sessions WHERE id = ?'
+  ).get(id) as (Omit<Session, 'reconciled'> & { reconciled: number }) | undefined;
+  if (!row) return undefined;
+  return { ...row, reconciled: row.reconciled === 1 };
 }
 
-export function updateSessionStatus(id: string, status: string, endedAt: string | null): void {
-  getDb().prepare(
-    'UPDATE sessions SET status = ?, ended_at = ?, last_activity_at = ? WHERE id = ?'
-  ).run(status, endedAt, new Date().toISOString(), id);
+export function updateSessionStatus(id: string, status: string, endedAt: string | null, reconciled?: boolean): void {
+  if (reconciled !== undefined) {
+    getDb().prepare(
+      'UPDATE sessions SET status = ?, ended_at = ?, last_activity_at = ?, reconciled = ? WHERE id = ?'
+    ).run(status, endedAt, new Date().toISOString(), reconciled ? 1 : 0, id);
+  } else {
+    getDb().prepare(
+      'UPDATE sessions SET status = ?, ended_at = ?, last_activity_at = ? WHERE id = ?'
+    ).run(status, endedAt, new Date().toISOString(), id);
+  }
 }
 
 export function upsertSession(session: Session): void {
   getDb().prepare(`
-    INSERT INTO sessions (id, repository_id, type, launch_mode, pid, status, started_at, ended_at, last_activity_at, summary, expires_at, model)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO sessions (id, repository_id, type, launch_mode, pid, pid_source, status, started_at, ended_at, last_activity_at, summary, expires_at, model, reconciled)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       launch_mode = COALESCE(excluded.launch_mode, launch_mode),
-      pid = excluded.pid, status = excluded.status, ended_at = excluded.ended_at,
+      pid = excluded.pid, pid_source = COALESCE(excluded.pid_source, pid_source),
+      status = excluded.status, ended_at = excluded.ended_at,
       last_activity_at = excluded.last_activity_at, summary = excluded.summary,
-      expires_at = excluded.expires_at, model = COALESCE(excluded.model, model)
+      expires_at = excluded.expires_at, model = COALESCE(excluded.model, model),
+      reconciled = excluded.reconciled
   `).run(session.id, session.repositoryId, session.type, session.launchMode ?? null, session.pid,
-    session.status, session.startedAt, session.endedAt, session.lastActivityAt,
-    session.summary, session.expiresAt, session.model ?? null);
+    session.pidSource ?? null, session.status, session.startedAt, session.endedAt,
+    session.lastActivityAt, session.summary, session.expiresAt, session.model ?? null,
+    session.reconciled ? 1 : 0);
 }
 
 export function getOutputForSession(sessionId: string, limit = 100, before?: string): SessionOutput[] {

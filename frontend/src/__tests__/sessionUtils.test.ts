@@ -9,6 +9,7 @@ function session(overrides: Partial<Session> = {}): Session {
     type: 'claude-code',
     launchMode: null,
     pid: null,
+    pidSource: null,
     status: 'active',
     startedAt: new Date().toISOString(),
     endedAt: null,

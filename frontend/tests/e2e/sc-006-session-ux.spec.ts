@@ -4,7 +4,7 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('argus:onboarding', JSON.stringify({
       schemaVersion: 1, userId: null,
-      dashboardTour: { status: 'completed', completedAt: '2024-01-01T00:00:00.000Z', skippedAt: null },
+      dashboardTour: { status: 'completed', completedAt: '2024-01-01T00:00:00.000Z', skippedAt: null, seenRepoSteps: true },
       sessionHints: { dismissed: [] },
     }));
   });
@@ -15,8 +15,8 @@ const REPOS = [
 ];
 
 const SESSIONS = [
-  { id: 'session-abc-123', repositoryId: 'repo-1', type: 'claude-code', pid: null, status: 'active', startedAt: new Date().toISOString(), endedAt: null, lastActivityAt: new Date().toISOString(), summary: 'Working on feature', expiresAt: null },
-  { id: 'session-def-456', repositoryId: 'repo-1', type: 'copilot-cli', pid: 9999, status: 'active', startedAt: new Date().toISOString(), endedAt: null, lastActivityAt: new Date().toISOString(), summary: 'Another session', expiresAt: null },
+  { id: 'session-abc-123', repositoryId: 'repo-1', type: 'claude-code', launchMode: 'pty', pid: null, status: 'active', startedAt: new Date().toISOString(), endedAt: null, lastActivityAt: new Date().toISOString(), summary: 'Working on feature', expiresAt: null },
+  { id: 'session-def-456', repositoryId: 'repo-1', type: 'copilot-cli', launchMode: 'pty', pid: 9999, status: 'active', startedAt: new Date().toISOString(), endedAt: null, lastActivityAt: new Date().toISOString(), summary: 'Another session', expiresAt: null },
 ];
 
 const OUTPUT = [
@@ -87,34 +87,28 @@ test.describe('SC-006: Session Detail UX', () => {
     await expect(page.getByRole('region', { name: /session output/i })).not.toBeVisible();
   });
 
-  // ─── US2: Quick Command Buttons ─────────────────────────────────────────────
+  // ─── US2: Kill Session Button ────────────────────────────────────────────────
 
-  test('US2: session card shows the actions menu button', async ({ page }) => {
+  test('US2: session card shows the kill session button', async ({ page }) => {
     await mockApis(page);
     await page.goto('/');
     await expect(page.getByText('Working on feature')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByRole('button', { name: /session actions menu/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /kill session/i }).first()).toBeVisible();
   });
 
-  test('US2: opening the actions menu shows Esc, Exit, Merge, Pull latest', async ({ page }) => {
+  test('US2: clicking the kill session button opens a confirmation modal', async ({ page }) => {
     await mockApis(page);
     await page.goto('/');
     await expect(page.getByText('Working on feature')).toBeVisible({ timeout: 5000 });
-    await page.getByRole('button', { name: /session actions menu/i }).first().click();
-    await expect(page.getByRole('button', { name: /^Esc$/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Exit$/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Merge$/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Pull latest$/i })).toBeVisible();
+    await page.getByRole('button', { name: /kill session/i }).first().click();
+    await expect(page.getByRole('alertdialog', { name: /kill/i })).toBeVisible({ timeout: 2000 });
   });
 
-  test('US2: copilot-cli card also shows the actions menu with Merge and Pull', async ({ page }) => {
+  test('US2: copilot-cli card also shows the kill session button', async ({ page }) => {
     await mockApis(page);
     await page.goto('/');
     await expect(page.getByText('Another session')).toBeVisible({ timeout: 5000 });
-    // Open the menu on the copilot-cli card (second actions menu button)
-    await page.getByRole('button', { name: /session actions menu/i }).nth(1).click();
-    await expect(page.getByRole('button', { name: /^Merge$/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Pull latest$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /kill session/i }).nth(1)).toBeVisible();
   });
 
   // ─── US3: Inline Prompt Input ───────────────────────────────────────────────

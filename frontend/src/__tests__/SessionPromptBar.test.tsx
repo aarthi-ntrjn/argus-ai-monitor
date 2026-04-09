@@ -18,6 +18,7 @@ const SESSION: Session = {
   type: 'claude-code',
   launchMode: 'pty',
   pid: null,
+  pidSource: null,
   status: 'active',
   startedAt: new Date().toISOString(),
   endedAt: null,

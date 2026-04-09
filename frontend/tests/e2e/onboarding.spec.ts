@@ -43,7 +43,7 @@ async function seedOnboardingCompleted(page: import('@playwright/test').Page) {
   await page.evaluate(() => {
     localStorage.setItem('argus:onboarding', JSON.stringify({
       schemaVersion: 1, userId: null,
-      dashboardTour: { status: 'completed', completedAt: new Date().toISOString(), skippedAt: null },
+      dashboardTour: { status: 'completed', completedAt: new Date().toISOString(), skippedAt: null, seenRepoSteps: true },
       sessionHints: { dismissed: [] },
     }));
   });

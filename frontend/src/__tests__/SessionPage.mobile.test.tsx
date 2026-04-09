@@ -15,6 +15,7 @@ vi.mock('../services/api', () => ({
     summary: 'Test session',
     model: null,
     pid: null,
+    pidSource: null,
   }),
   getSessionOutput: vi.fn().mockResolvedValue({ items: [] }),
 }));

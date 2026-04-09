@@ -2,10 +2,11 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSy
 import { open as fsOpen, stat as fsStat } from 'fs/promises';
 import { join, dirname, normalize } from 'path';
 import { homedir } from 'os';
-import psList from 'ps-list';
+
 import chokidar, { type FSWatcher } from 'chokidar';
-import { getSession, upsertSession, getRepositories, getRepositoryByPath } from '../db/database.js';
+import { getSession, upsertSession, updateSessionStatus, getRepositories, getRepositoryByPath } from '../db/database.js';
 import { ptyRegistry } from './pty-registry.js';
+import { ClaudeSessionRegistry } from './claude-session-registry.js';
 import { OutputStore } from './output-store.js';
 import { broadcast } from '../api/ws/event-dispatcher.js';
 import { parseClaudeJsonlLine, parseModel } from './claude-code-jsonl-parser.js';
@@ -13,7 +14,7 @@ import type { Session, Repository } from '../models/index.js';
 
 const CLAUDE_SETTINGS_PATH = join(homedir(), '.claude', 'settings.json');
 const HOOK_COMMAND = 'curl -sf -X POST http://127.0.0.1:7411/hooks/claude -H "Content-Type: application/json" -d @- 2>/dev/null || true';
-const HOOK_EVENTS = ['SessionStart', 'PreToolUse', 'PostToolUse', 'Stop'];
+const HOOK_EVENTS = ['SessionStart', 'PreToolUse', 'PostToolUse', 'Stop', 'SessionEnd'];
 
 interface ClaudeSettings {
   hooks?: Record<string, Array<{ matcher: string; hooks: Array<{ type: string; command: string }> }>>;
@@ -29,8 +30,6 @@ interface HookPayload {
   tool_result?: unknown;
   [key: string]: unknown;
 }
-
-export const ACTIVE_JSONL_THRESHOLD_MS = 30 * 60 * 1000;
 
 export class ClaudeCodeDetector {
   private outputStore = new OutputStore();
@@ -101,22 +100,13 @@ export class ClaudeCodeDetector {
     const projectsDir = join(homedir(), '.claude', 'projects');
     if (!existsSync(projectsDir)) return;
 
-    let processes: Awaited<ReturnType<typeof psList>>;
-    try {
-      processes = await psList();
-    } catch {
-      return;
-    }
-
-    const claudeProcesses = processes.filter(p =>
-      p.name.toLowerCase().includes('claude') || p.cmd?.toLowerCase().includes('claude')
-    );
-    if (claudeProcesses.length === 0) return;
-    // Only assign a PID when there is exactly one Claude process, so the
-    // mapping is unambiguous.  With multiple processes we cannot tell which
-    // one owns which session, so we leave pid as null (the session will
-    // still be shown as active but the kill button will be hidden).
-    const claudePid: number | null = claudeProcesses.length === 1 ? claudeProcesses[0].pid : null;
+    // Read the session registry to know which sessions are actually alive.
+    // Only JSONL sessions with a matching registry entry (or already active
+    // in the DB) should be activated. Sessions without a registry entry
+    // have already exited.
+    const registry = new ClaudeSessionRegistry();
+    const registryEntries = registry.scanEntries();
+    const liveSessionIds = new Set(registryEntries.map(e => e.sessionId));
 
     try {
       const projectDirNames = new Set(
@@ -131,7 +121,6 @@ export class ClaudeCodeDetector {
 
         const projectDir = join(projectsDir, this.claudeProjectDirName(repo.path));
 
-        // Find the most recently modified JSONL file — its basename IS the real session ID
         let jsonlEntries: Array<{ id: string; path: string; mtime: Date }>;
         try {
           jsonlEntries = readdirSync(projectDir)
@@ -147,10 +136,18 @@ export class ClaudeCodeDetector {
 
         if (jsonlEntries.length === 0) continue;
 
-        // Activate the 2 most recent JSONL sessions per repo. The reconciler
-        // will end stale ones based on PID/JSONL freshness.
-        for (const entry of jsonlEntries.slice(0, 2)) {
-          await this.activateFoundSession(entry.id, repo, claudePid);
+        for (const entry of jsonlEntries.slice(0, 5)) {
+          // Only activate sessions that have a live registry entry (process running)
+          // or are already active in the DB (e.g., PTY-launched sessions)
+          const existing = getSession(entry.id);
+          if (existing?.status === 'active') {
+            // Already active, just ensure watcher is running
+            await this.activateFoundSession(entry.id, repo, null);
+          } else if (liveSessionIds.has(entry.id)) {
+            // Registry says this session is alive
+            await this.activateFoundSession(entry.id, repo, null);
+          }
+          // else: no registry entry = process has exited, skip
         }
       }
     } catch { /* ignore */ }
@@ -167,6 +164,17 @@ export class ClaudeCodeDetector {
     const existing = getSession(session_id);
     const now = new Date().toISOString();
 
+    // SessionEnd means the session is ending. Mark it ended immediately
+    // instead of waiting for the next 5s poll cycle.
+    if (hook_event_name === 'SessionEnd') {
+      if (existing) {
+        updateSessionStatus(session_id, 'ended', now);
+        this.closeSessionWatcher(session_id);
+        broadcast({ type: 'session.ended', timestamp: now, data: { ...existing, status: 'ended', endedAt: now } as unknown as Record<string, unknown> });
+      }
+      return;
+    }
+
     // If this is the first hook for this claude session, check whether argus launch
     // is waiting for it. If so, claim the PTY connection and create the session as
     // launchMode='pty' — no separate powershell session, just the real claude session.
@@ -179,6 +187,7 @@ export class ClaudeCodeDetector {
           type: 'claude-code',
           launchMode: 'pty',
           pid: claimed.pid,
+          pidSource: 'pty_registry',
           status: 'active',
           startedAt: now,
           endedAt: null,
@@ -186,6 +195,7 @@ export class ClaudeCodeDetector {
           summary: null,
           expiresAt: null,
           model: null,
+          reconciled: true,
         };
         upsertSession(session);
         broadcast({ type: 'session.created', timestamp: now, data: session as unknown as Record<string, unknown> });
@@ -200,6 +210,7 @@ export class ClaudeCodeDetector {
       type: 'claude-code',
       launchMode: null,
       pid: null,
+      pidSource: null,
       status: 'active',
       startedAt: now,
       endedAt: null,
@@ -207,21 +218,8 @@ export class ClaudeCodeDetector {
       summary: null,
       expiresAt: null,
       model: null,
+      reconciled: true,
     };
-
-    // For new read-only sessions, try to resolve the Claude PID so that
-    // reconcileStaleSessions can detect when the process exits.
-    if (!existing && session.pid === null) {
-      try {
-        const processes = await psList();
-        const claudeProcs = processes.filter(p =>
-          p.name.toLowerCase().includes('claude') || p.cmd?.toLowerCase().includes('claude')
-        );
-        if (claudeProcs.length === 1) {
-          session.pid = claudeProcs[0].pid;
-        }
-      } catch { /* best-effort */ }
-    }
 
     session.status = 'active';
     session.lastActivityAt = now;
@@ -250,6 +248,7 @@ export class ClaudeCodeDetector {
           type: 'claude-code',
           launchMode: 'pty',
           pid: claimed.pid,
+          pidSource: 'pty_registry',
           status: 'active',
           startedAt: now,
           endedAt: null,
@@ -257,6 +256,7 @@ export class ClaudeCodeDetector {
           summary: null,
           expiresAt: null,
           model: null,
+          reconciled: true,
         };
         upsertSession(session);
         await this.watchJsonlFile(sessionId, repo.path);
@@ -277,6 +277,7 @@ export class ClaudeCodeDetector {
       type: 'claude-code',
       launchMode: null,
       pid: claudePid,
+      pidSource: null,
       status: 'active',
       startedAt: now,
       endedAt: null,
@@ -284,6 +285,7 @@ export class ClaudeCodeDetector {
       summary: null,
       expiresAt: null,
       model: null,
+      reconciled: true,
     };
     upsertSession({ ...base, status: 'active', endedAt: null, lastActivityAt: now, pid: claudePid });
     await this.watchJsonlFile(sessionId, repo.path);

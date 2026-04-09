@@ -325,19 +325,19 @@ test.describe('Session Detail Page', () => {
   // ─── Prompt bar on detail page ───────────────────────────────────────────────
 
   test('prompt bar is visible on the detail page', async ({ page }) => {
-    await mockSession(page);
+    await mockSession(page, { launchMode: 'pty' });
     await page.goto(`/sessions/${SESSION_ID}`);
     await expect(page.getByPlaceholder('Send a prompt…')).toBeVisible({ timeout: 5000 });
   });
 
   test('prompt bar Send button is disabled when input is empty', async ({ page }) => {
-    await mockSession(page);
+    await mockSession(page, { launchMode: 'pty' });
     await page.goto(`/sessions/${SESSION_ID}`);
-    await expect(page.getByRole('button', { name: 'Send' })).toBeDisabled({ timeout: 5000 });
+    await expect(page.getByRole('button', { name: '↵' })).toBeDisabled({ timeout: 5000 });
   });
 
   test('prompt bar sends prompt on the detail page and clears input', async ({ page }) => {
-    await mockSession(page);
+    await mockSession(page, { launchMode: 'pty' });
     let sendCalled = false;
     await page.route(`**/api/v1/sessions/${SESSION_ID}/send`, route => {
       sendCalled = true;
@@ -349,7 +349,7 @@ test.describe('Session Detail Page', () => {
     await page.goto(`/sessions/${SESSION_ID}`);
     const input = page.getByPlaceholder('Send a prompt…');
     await input.fill('detail page prompt');
-    await page.getByRole('button', { name: 'Send' }).click();
+    await page.getByRole('button', { name: '↵' }).click();
     await expect(input).toHaveValue('', { timeout: 3000 });
     expect(sendCalled).toBe(true);
   });

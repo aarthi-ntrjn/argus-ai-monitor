@@ -45,7 +45,12 @@ Output lines carry type badges so you always know what's what: **YOU** (your inp
 
 ### Session Detection
 
-Argus sniffs out sessions already running when it starts. For Claude Code, sessions are tracked by monitoring their JSONL file. If a JSONL file has not been updated for longer than the idle threshold (default: 60 minutes), Argus checks the session's process ID. If the process is still running, the session stays **active** and the frontend shows a **resting** badge. If the process has exited, the session is marked **ended**. New sessions are picked up every 5 seconds. The OS PID is captured for Claude Code sessions when possible. Copilot CLI sessions follow the same pattern: the PID is checked on every scan cycle and the frontend shows **resting** when there has been no output for 20 minutes.
+Argus detects sessions using two sources:
+
+- **Claude Code**: Reads `~/.claude/sessions/{PID}.json` files that Claude maintains. Each file maps a process ID to a session ID and working directory. This gives Argus a deterministic PID-to-session mapping that works with any number of concurrent sessions, even in the same repo. Sessions launched via `argus launch` get their PID from the PTY registry instead.
+- **Copilot CLI**: Reads `inuse.{PID}.lock` files in `~/.copilot/session-state/{sessionId}/`.
+
+In both cases, Argus checks every 5 seconds whether the session's PID is still running. If the process has exited, the session is marked **ended**. If a session has no PID yet (e.g., the registry file hasn't appeared), Argus falls back to JSONL file freshness with a configurable idle threshold (default: 60 minutes). The frontend shows a **resting** badge when there has been no output for 20 minutes but the process is still running.
 
 ## Control
 

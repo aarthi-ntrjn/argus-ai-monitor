@@ -5,42 +5,37 @@ import { test, expect } from '@playwright/test';
 const SESSION_ID = 'test-session-stop';
 
 const SESSION_ACTIVE = {
-  id: SESSION_ID, repositoryId: 'repo-1', type: 'claude-code', pid: null,
+  id: SESSION_ID, repositoryId: 'repo-1', type: 'claude-code',
+  launchMode: 'pty', pid: 1234, pidSource: 'pty_registry',
   status: 'active', startedAt: new Date().toISOString(),
-  endedAt: null, lastActivityAt: new Date().toISOString(), summary: null, expiresAt: null,
+  endedAt: null, lastActivityAt: new Date().toISOString(),
+  summary: null, expiresAt: null, model: 'claude-opus-4-6',
 };
 
 const SESSION_ENDED = { ...SESSION_ACTIVE, status: 'ended', endedAt: new Date().toISOString() };
 
-// Note: ControlPanel is not wired into the UI. The only stop/interrupt
-// mechanism exposed in the current UI is the SessionPromptBar ⋮ menu → Esc.
+const EMPTY_OUTPUT = { items: [], nextBefore: null, total: 0 };
+
+// The session detail page uses SessionPromptBar for interrupt control.
+// PTY sessions show an input field; pressing Escape in it calls POST /interrupt.
 
 test.describe('SC-004: Stop Session', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.route(`**/api/v1/sessions/${SESSION_ID}/output**`, route =>
-      route.fulfill({ contentType: 'application/json', body: JSON.stringify({ items: [], nextBefore: null, total: 0 }) })
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify(EMPTY_OUTPUT) })
     );
   });
 
-  test('actions menu button is visible for active session', async ({ page }) => {
+  test('prompt bar is visible for active PTY session', async ({ page }) => {
     await page.route(`**/api/v1/sessions/${SESSION_ID}`, route =>
       route.fulfill({ contentType: 'application/json', body: JSON.stringify(SESSION_ACTIVE) })
     );
     await page.goto(`/sessions/${SESSION_ID}`);
-    await expect(page.getByRole('button', { name: /session actions menu/i })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('textbox', { name: /send a prompt/i })).toBeVisible({ timeout: 5000 });
   });
 
-  test('actions menu shows Esc (interrupt) option', async ({ page }) => {
-    await page.route(`**/api/v1/sessions/${SESSION_ID}`, route =>
-      route.fulfill({ contentType: 'application/json', body: JSON.stringify(SESSION_ACTIVE) })
-    );
-    await page.goto(`/sessions/${SESSION_ID}`);
-    await page.getByRole('button', { name: /session actions menu/i }).click();
-    await expect(page.getByRole('button', { name: /^Esc$/i })).toBeVisible({ timeout: 3000 });
-  });
-
-  test('clicking Esc calls interrupt API and menu closes', async ({ page }) => {
+  test('pressing Escape in prompt bar calls interrupt API', async ({ page }) => {
     let interrupted = false;
     await page.route(`**/api/v1/sessions/${SESSION_ID}`, route =>
       route.fulfill({ contentType: 'application/json', body: JSON.stringify(SESSION_ACTIVE) })
@@ -51,11 +46,20 @@ test.describe('SC-004: Stop Session', () => {
     });
 
     await page.goto(`/sessions/${SESSION_ID}`);
-    await page.getByRole('button', { name: /session actions menu/i }).click();
-    await page.getByRole('button', { name: /^Esc$/i }).click();
+    const input = page.getByRole('textbox', { name: /send a prompt/i });
+    await input.click();
+    await input.press('Escape');
 
-    await expect(page.getByRole('button', { name: /^Esc$/i })).not.toBeVisible({ timeout: 3000 });
-    expect(interrupted).toBe(true);
+    await expect.poll(() => interrupted, { timeout: 3000 }).toBe(true);
+  });
+
+  test('prompt bar shows read-only message for detected sessions', async ({ page }) => {
+    const detected = { ...SESSION_ACTIVE, launchMode: 'detected', pid: null, pidSource: null };
+    await page.route(`**/api/v1/sessions/${SESSION_ID}`, route =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify(detected) })
+    );
+    await page.goto(`/sessions/${SESSION_ID}`);
+    await expect(page.getByText(/read-only/i)).toBeVisible({ timeout: 5000 });
   });
 
   test('status badge shows ended state on session page', async ({ page }) => {

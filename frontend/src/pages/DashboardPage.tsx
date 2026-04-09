@@ -47,7 +47,7 @@ export default function DashboardPage() {
     removeConfirmId, removing, skipConfirm,
     setFolderInputPath, setRemoveConfirmId, setSkipConfirm,
     handleAddRepo, handleFolderSubmit, handleRemoveRepoById, handleRemoveRepo,
-    clearAddError, clearAddInfo,
+    cancelFolderInput, clearAddError, clearAddInfo,
   } = useRepositoryManagement();
 
   // Auto-launch for first-time users
@@ -160,9 +160,10 @@ export default function DashboardPage() {
                 </span>
                 <LaunchDropdown repoPath={repo.path} />
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
                     if (skipConfirm) {
-                      setRemoveConfirmId(repo.id);
                       handleRemoveRepoById(repo.id);
                     } else {
                       setRemoveConfirmId(repo.id);
@@ -344,12 +345,12 @@ export default function DashboardPage() {
               type="text"
               value={folderInputPath}
               onChange={e => setFolderInputPath(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleFolderSubmit(repos); }}
+              onKeyDown={e => { if (e.key === 'Enter') handleFolderSubmit(repos); if (e.key === 'Escape') cancelFolderInput(); }}
               placeholder="e.g. C:\source or /home/user/projects"
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-blue-400"
             />
             <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => setFolderInputPath('')} className="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+              <button onClick={cancelFolderInput} className="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
               <button
                 onClick={() => handleFolderSubmit(repos)}
                 disabled={!folderInputPath.trim()}

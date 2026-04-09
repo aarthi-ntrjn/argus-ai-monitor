@@ -4,7 +4,7 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('argus:onboarding', JSON.stringify({
       schemaVersion: 1, userId: null,
-      dashboardTour: { status: 'completed', completedAt: '2024-01-01T00:00:00.000Z', skippedAt: null },
+      dashboardTour: { status: 'completed', completedAt: '2024-01-01T00:00:00.000Z', skippedAt: null, seenRepoSteps: true },
       sessionHints: { dismissed: [] },
     }));
   });
@@ -15,9 +15,9 @@ const REPOS = [
 ];
 
 const SESSIONS = [
-  { id: 's-active', repositoryId: 'repo-1', type: 'copilot-cli', pid: 1, status: 'active', startedAt: new Date().toISOString(), endedAt: null, lastActivityAt: new Date().toISOString(), summary: 'Active session', expiresAt: null },
-  { id: 's-completed', repositoryId: 'repo-1', type: 'claude-code', pid: null, status: 'completed', startedAt: new Date().toISOString(), endedAt: new Date().toISOString(), lastActivityAt: new Date().toISOString(), summary: 'Completed session', expiresAt: null },
-  { id: 's-ended', repositoryId: 'repo-1', type: 'copilot-cli', pid: null, status: 'ended', startedAt: new Date().toISOString(), endedAt: new Date().toISOString(), lastActivityAt: new Date().toISOString(), summary: 'Ended session', expiresAt: null },
+  { id: 's-active', repositoryId: 'repo-1', type: 'copilot-cli', launchMode: 'detected', pid: 1, pidSource: 'lockfile', status: 'active', startedAt: new Date().toISOString(), endedAt: null, lastActivityAt: new Date().toISOString(), summary: 'Active session', expiresAt: null, model: null },
+  { id: 's-completed', repositoryId: 'repo-1', type: 'claude-code', launchMode: 'detected', pid: null, pidSource: null, status: 'completed', startedAt: new Date().toISOString(), endedAt: new Date().toISOString(), lastActivityAt: new Date().toISOString(), summary: 'Completed session', expiresAt: null, model: null },
+  { id: 's-ended', repositoryId: 'repo-1', type: 'copilot-cli', launchMode: 'detected', pid: null, pidSource: null, status: 'ended', startedAt: new Date().toISOString(), endedAt: new Date().toISOString(), lastActivityAt: new Date().toISOString(), summary: 'Ended session', expiresAt: null, model: null },
 ];
 
 function mockApis(page: import('@playwright/test').Page) {
@@ -123,8 +123,8 @@ const TWO_REPOS = [
 ];
 
 const TWO_REPOS_SESSIONS = [
-  { id: 'sa-1', repositoryId: 'repo-active', type: 'copilot-cli', pid: 1, status: 'active', startedAt: new Date().toISOString(), endedAt: null, lastActivityAt: new Date().toISOString(), summary: 'Running session', expiresAt: null },
-  { id: 'si-1', repositoryId: 'repo-idle', type: 'claude-code', pid: null, status: 'completed', startedAt: new Date().toISOString(), endedAt: new Date().toISOString(), lastActivityAt: new Date().toISOString(), summary: 'Old session', expiresAt: null },
+  { id: 'sa-1', repositoryId: 'repo-active', type: 'copilot-cli', launchMode: 'detected', pid: 1, pidSource: 'lockfile', status: 'active', startedAt: new Date().toISOString(), endedAt: null, lastActivityAt: new Date().toISOString(), summary: 'Running session', expiresAt: null, model: null },
+  { id: 'si-1', repositoryId: 'repo-idle', type: 'claude-code', launchMode: 'detected', pid: null, pidSource: null, status: 'completed', startedAt: new Date().toISOString(), endedAt: new Date().toISOString(), lastActivityAt: new Date().toISOString(), summary: 'Old session', expiresAt: null, model: null },
 ];
 
 function mockTwoRepoApis(page: import('@playwright/test').Page, sessions = TWO_REPOS_SESSIONS) {
