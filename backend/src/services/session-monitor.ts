@@ -55,10 +55,12 @@ export class SessionMonitor extends EventEmitter {
    *
    * Data sources:
    *   1. DB sessions with status active/idle
-   *   2. Claude session registry (~/.claude/sessions/*.json) as the primary source of truth for PIDs
+   *   2. Process registry (source of truth for PIDs, differs by session type):
+   *      - claude-code: ~/.claude/sessions/*.json (ClaudeSessionRegistry)
+   *      - copilot-cli: inuse.<PID>.lock files in ~/.copilot/session-state/<dir>/
    *   3. Running OS processes (psList) as the liveness check
    *
-   * Reconciliation matrix:
+   * Reconciliation matrix (applied per session using its type-specific registry):
    *   Registry entry exists + PID running     → keep active, reconciled
    *   Registry entry exists + PID NOT running → mark ended, unreconciled (WARNING)
    *   No registry entry + PID running in OS   → mark active, unreconciled (ERROR)
@@ -72,9 +74,12 @@ export class SessionMonitor extends EventEmitter {
       ];
       if (sessions.length === 0) return;
 
-      // Source 2: Session registry (primary source of truth for PIDs)
-      const registryEntries = this.sessionRegistry.scanEntries();
-      const registryBySessionId = new Map(registryEntries.map(e => [e.sessionId, e]));
+      // Source 2a: Claude session registry (session ID → registry entry with PID)
+      const claudeRegistryEntries = this.sessionRegistry.scanEntries();
+      const claudeRegistryBySessionId = new Map(claudeRegistryEntries.map(e => [e.sessionId, e.pid]));
+
+      // Source 2b: Copilot lock file registry (session ID → PID)
+      const copilotLockEntries = this.cliDetector.scanLockEntries();
 
       // Source 3: Running OS processes
       const processes = await psList();
@@ -83,24 +88,31 @@ export class SessionMonitor extends EventEmitter {
       const now = new Date().toISOString();
 
       for (const session of sessions) {
-        const registryEntry = registryBySessionId.get(session.id);
+        // Look up the registry PID using the correct registry for this session type
+        const registryPid = session.type === 'claude-code'
+          ? claudeRegistryBySessionId.get(session.id) ?? null
+          : copilotLockEntries.get(session.id) ?? null;
 
-        if (registryEntry) {
+        const registryLabel = session.type === 'claude-code'
+          ? 'Claude session registry'
+          : 'Copilot lock file';
+
+        if (registryPid != null) {
           // Registry has an entry for this session
-          if (runningPids.has(registryEntry.pid)) {
+          if (runningPids.has(registryPid)) {
             // Registry PID is alive: session is genuinely active, reconciled
             updateSessionStatus(session.id, 'active', null, true);
           } else {
             // Registry says this PID should be running, but OS says it's dead
             console.warn(
-              `[reconcile] WARNING: Session ${session.id} has registry entry with PID ${registryEntry.pid}, but process is not running. Marking ended (unreconciled).`
+              `[reconcile] WARNING: ${session.type} session ${session.id} has ${registryLabel} entry with PID ${registryPid}, but process is not running. Marking ended (unreconciled).`
             );
             updateSessionStatus(session.id, 'ended', now, false);
           }
         } else if (session.pid != null && runningPids.has(session.pid)) {
           // No registry entry, but the DB PID is still a live OS process
           console.error(
-            `[reconcile] ERROR: Session ${session.id} has no registry entry, but PID ${session.pid} is still running. Marking active (unreconciled).`
+            `[reconcile] ERROR: ${session.type} session ${session.id} has no ${registryLabel} entry, but PID ${session.pid} is still running. Marking active (unreconciled).`
           );
           updateSessionStatus(session.id, 'active', null, false);
         } else {
