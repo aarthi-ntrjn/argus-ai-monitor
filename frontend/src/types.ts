@@ -51,7 +51,6 @@ export interface ArgusConfig {
   sessionRetentionHours: number;
   outputRetentionMbPerSession: number;
   autoRegisterRepos: boolean;
-  idleSessionThresholdMinutes: number;
 }
 
 export interface DashboardSettings {

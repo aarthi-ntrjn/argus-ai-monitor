@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { mkdirSync, writeFileSync, utimesSync } from 'fs';
+import { mkdirSync } from 'fs';
 import { randomUUID } from 'crypto';
 
 // Mutable so individual tests can control which processes are "running"
@@ -33,7 +33,6 @@ vi.mock('../../src/config/config-loader.js', () => ({
     sessionRetentionHours: 24,
     outputRetentionMbPerSession: 10,
     autoRegisterRepos: false,
-    idleSessionThresholdMinutes: 60,
   }),
 }));
 
@@ -48,12 +47,12 @@ vi.mock('../../src/services/repository-scanner.js', () => ({
 vi.mock('../../src/services/copilot-cli-detector.js', () => ({
   CopilotCliDetector: vi.fn().mockImplementation(() => ({
     scan: vi.fn(async () => []),
+    scanLockEntries: vi.fn(() => new Map()),
     stopWatchers: vi.fn(),
   })),
 }));
 
 vi.mock('../../src/services/claude-code-detector.js', () => ({
-  ACTIVE_JSONL_THRESHOLD_MS: 30 * 60 * 1000,
   ClaudeCodeDetector: Object.assign(
     vi.fn().mockImplementation(() => ({
       injectHooks: vi.fn(),
@@ -100,38 +99,6 @@ describe('SessionMonitor.reconcileStaleSessions', () => {
   afterEach(() => {
     closeDb();
     vi.resetModules();
-  });
-
-  // T094: null-PID session older than 60s grace period with no JSONL file is ended
-  it('should mark null-PID Claude Code session as ended when JSONL file is missing (even when Claude is running)', async () => {
-    const twoMinAgo = new Date(Date.now() - 120_000).toISOString();
-    mockPsListResult = [
-      { pid: 9999, name: 'some-process', cmd: 'some-process' },
-      { pid: 4242, name: 'claude', cmd: 'claude' },
-    ];
-    upsertSession({
-      id: 'claude-hook-session-1',
-      repositoryId: 'repo-1',
-      type: 'claude-code',
-      launchMode: null,
-      pid: null,
-      pidSource: null,
-      status: 'active',
-      startedAt: twoMinAgo,
-      endedAt: null,
-      lastActivityAt: twoMinAgo,
-      summary: null,
-      expiresAt: null,
-      model: null,
-    });
-
-    const monitor = new SessionMonitor();
-    await monitor.start();
-    monitor.stop();
-
-    const sessions = getSessions({}) as Array<{ id: string; status: string }>;
-    const session = sessions.find(s => s.id === 'claude-hook-session-1');
-    expect(session?.status).toBe('ended');
   });
 
   it('should mark an active session with a dead PID as ended on startup', async () => {
@@ -184,38 +151,6 @@ describe('SessionMonitor.reconcileStaleSessions', () => {
     const session = allSessions.find(s => s.id === 'claude-active-dead-pid');
     expect(session?.status).toBe('ended');
   });
-
-  // T094 regression: stale null-PID session older than grace period with no JSONL should be ended
-  it('T094: should mark null-PID Claude Code session as ended when JSONL file is missing, even if Claude is running', async () => {
-    const twoMinAgo = new Date(Date.now() - 120_000).toISOString();
-    mockPsListResult = [
-      { pid: 9999, name: 'some-process', cmd: 'some-process' },
-      { pid: 4242, name: 'claude', cmd: 'claude' },
-    ];
-    upsertSession({
-      id: 'stale-null-pid-session',
-      repositoryId: 'repo-1',
-      type: 'claude-code',
-      launchMode: null,
-      pid: null,
-      pidSource: null,
-      status: 'active',
-      startedAt: twoMinAgo,
-      endedAt: null,
-      lastActivityAt: twoMinAgo,
-      summary: null,
-      expiresAt: null,
-      model: null,
-    });
-
-    const monitor = new SessionMonitor();
-    await monitor.start();
-    monitor.stop();
-
-    const allSessions = getSessions({}) as Array<{ id: string; status: string }>;
-    const session = allSessions.find(s => s.id === 'stale-null-pid-session');
-    expect(session?.status).toBe('ended');
-  });
 });
 
 describe('SessionMonitor.refreshRepositoryBranches', () => {
@@ -235,7 +170,7 @@ describe('SessionMonitor.refreshRepositoryBranches', () => {
     insertRepository = db.insertRepository as (r: unknown) => void;
     getRepositories = db.getRepositories as () => unknown[];
     const mod = await import('../../src/services/session-monitor.js');
-    SessionMonitor = mod.SessionMonitor as unknown as new () => { start(): Promise<void>; stop(): void };
+    SessionMonitor = mod.SessionMonitor as unknown as typeof SessionMonitor;
   });
 
   afterEach(() => {
@@ -290,11 +225,6 @@ describe('SessionMonitor.refreshRepositoryBranches', () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Tests T005–T014: reconcileClaudeCodeSessions active/ended logic
-// Resting display is frontend-only via isInactive(); backend uses active/ended only.
-// ─────────────────────────────────────────────────────────────────────────────
-
 describe('SessionMonitor.reconcileClaudeCodeSessions — active/ended logic', () => {
   let closeDb: () => void;
   let upsertSession: (s: unknown) => void;
@@ -305,23 +235,6 @@ describe('SessionMonitor.reconcileClaudeCodeSessions — active/ended logic', ()
     stop(): void;
     on(event: string, cb: (s: unknown) => void): void;
   };
-
-  function projectDir(): string {
-    // Mirrors the mock: projectDirName('/stub/repo') = '-stub-repo'
-    return join(mockHomedir, '.claude', 'projects', '-stub-repo');
-  }
-
-  function jsonlPath(sessionId: string): string {
-    return join(projectDir(), `${sessionId}.jsonl`);
-  }
-
-  function createJsonlWithAge(sessionId: string, ageMinutes: number): void {
-    mkdirSync(projectDir(), { recursive: true });
-    const filePath = jsonlPath(sessionId);
-    writeFileSync(filePath, '{}');
-    const mtime = new Date(Date.now() - ageMinutes * 60 * 1000);
-    utimesSync(filePath, mtime, mtime);
-  }
 
   const baseSession = (id: string, status: string, pid: number | null, ageMs = 0) => ({
     id,
@@ -364,10 +277,9 @@ describe('SessionMonitor.reconcileClaudeCodeSessions — active/ended logic', ()
     vi.resetModules();
   });
 
-  // T005: stale JSONL + alive PID → stays active (frontend shows "resting")
-  it('T005: should stay active when JSONL is stale and PID is alive', async () => {
+  // T005: alive PID → stays active
+  it('T005: should stay active when PID is alive', async () => {
     const id = `t005-${randomUUID()}`;
-    createJsonlWithAge(id, 65); // 65 min old, threshold = 60 min
     mockPsListResult = [{ pid: 9999, name: 'other' }, { pid: 12345, name: 'node', cmd: 'claude' }];
     upsertSession(baseSession(id, 'active', 12345));
 
@@ -379,12 +291,10 @@ describe('SessionMonitor.reconcileClaudeCodeSessions — active/ended logic', ()
     expect(result?.status).toBe('active');
   });
 
-  // T006: stale JSONL + dead PID → ended
-  it('T006: should classify as ended when JSONL is stale and PID is dead', async () => {
+  // T006: dead PID → ended
+  it('T006: should classify as ended when PID is dead', async () => {
     const id = `t006-${randomUUID()}`;
-    createJsonlWithAge(id, 65);
     // PID 22222 not in mockPsListResult
-
     upsertSession(baseSession(id, 'active', 22222));
 
     const monitor = new SessionMonitor();
@@ -395,24 +305,9 @@ describe('SessionMonitor.reconcileClaudeCodeSessions — active/ended logic', ()
     expect(result?.status).toBe('ended');
   });
 
-  // T007: stale JSONL + null PID + older than grace period → ended
-  it('T007: should classify as ended when JSONL is stale and PID is null', async () => {
-    const id = `t007-${randomUUID()}`;
-    createJsonlWithAge(id, 65);
-    upsertSession(baseSession(id, 'active', null, 120_000));
-
-    const monitor = new SessionMonitor();
-    await monitor.start();
-    monitor.stop();
-
-    const result = (getSessions({}) as Array<{ id: string; status: string }>).find(s => s.id === id);
-    expect(result?.status).toBe('ended');
-  });
-
-  // T008: fresh JSONL + alive PID → active (no change)
-  it('T008: should leave active session unchanged when JSONL is fresh and PID is alive', async () => {
+  // T008: fresh PID alive → active (no change)
+  it('T008: should leave active session unchanged when PID is alive', async () => {
     const id = `t008-${randomUUID()}`;
-    createJsonlWithAge(id, 5); // 5 min old, well within 60-min threshold
     mockPsListResult = [{ pid: 9999, name: 'other' }, { pid: 33333, name: 'node' }];
     upsertSession(baseSession(id, 'active', 33333));
 
@@ -424,10 +319,9 @@ describe('SessionMonitor.reconcileClaudeCodeSessions — active/ended logic', ()
     expect(result?.status).toBe('active');
   });
 
-  // T009: PID alive → session stays active (PID liveness is the primary signal now)
-  it('T009: should keep session active when PID is alive, even if JSONL file is missing', async () => {
+  // T009: PID alive → session stays active
+  it('T009: should keep session active when PID is alive', async () => {
     const id = `t009-${randomUUID()}`;
-    // No JSONL file created
     mockPsListResult = [{ pid: 9999, name: 'other' }, { pid: 44444, name: 'node' }];
     upsertSession(baseSession(id, 'active', 44444));
 
@@ -436,7 +330,6 @@ describe('SessionMonitor.reconcileClaudeCodeSessions — active/ended logic', ()
     monitor.stop();
 
     const result = (getSessions({}) as Array<{ id: string; status: string }>).find(s => s.id === id);
-    // PID is alive → session stays active. PID is the source of truth now.
     expect(result?.status).toBe('active');
   });
 
@@ -444,7 +337,6 @@ describe('SessionMonitor.reconcileClaudeCodeSessions — active/ended logic', ()
   it('T011: startup sweep should end idle session whose PID has died', async () => {
     const id = `t011-${randomUUID()}`;
     // PID 66666 not in mockPsListResult
-
     upsertSession(baseSession(id, 'idle', 66666));
 
     const monitor = new SessionMonitor();
@@ -455,10 +347,9 @@ describe('SessionMonitor.reconcileClaudeCodeSessions — active/ended logic', ()
     expect(result?.status).toBe('ended');
   });
 
-  // T012: startup reconcileStaleSessions — idle session + alive PID → unchanged
-  it('T012: startup sweep should leave idle session unchanged when PID is still alive', async () => {
+  // T012: startup reconcileStaleSessions — idle session + alive PID → active (reconciliation promotes to active)
+  it('T012: startup sweep should mark idle session as active when PID is still alive', async () => {
     const id = `t012-${randomUUID()}`;
-    createJsonlWithAge(id, 65); // stale, but PID alive
     mockPsListResult = [{ pid: 9999, name: 'other' }, { pid: 77777, name: 'node' }];
     upsertSession(baseSession(id, 'idle', 77777));
 
@@ -467,22 +358,6 @@ describe('SessionMonitor.reconcileClaudeCodeSessions — active/ended logic', ()
     monitor.stop();
 
     const result = (getSessions({}) as Array<{ id: string; status: string }>).find(s => s.id === id);
-    expect(result?.status).toBe('idle');
-  });
-
-  // T014: threshold read from config (60 min), not hardcoded constant (30 min)
-  it('T014: should use config threshold (60 min) — 31-min-old null-PID session stays active', async () => {
-    const id = `t014-${randomUUID()}`;
-    createJsonlWithAge(id, 31); // 31 min old: beyond 30-min constant but within 60-min config threshold
-    upsertSession(baseSession(id, 'active', null));
-
-    const monitor = new SessionMonitor();
-    await monitor.start();
-    monitor.stop();
-
-    const result = (getSessions({}) as Array<{ id: string; status: string }>).find(s => s.id === id);
-    // New code reads 60-min config → 31 < 60 → fresh → active (no change)
-    // Old code used 30-min constant → 31 > 30 → stale → ended
     expect(result?.status).toBe('active');
   });
 });

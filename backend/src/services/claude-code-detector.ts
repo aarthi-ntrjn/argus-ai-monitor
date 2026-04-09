@@ -31,8 +31,6 @@ interface HookPayload {
   [key: string]: unknown;
 }
 
-export const ACTIVE_JSONL_THRESHOLD_MS = 30 * 60 * 1000;
-
 export class ClaudeCodeDetector {
   private outputStore = new OutputStore();
   private watchers = new Map<string, FSWatcher>();

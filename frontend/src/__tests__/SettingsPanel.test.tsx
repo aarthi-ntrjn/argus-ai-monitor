@@ -6,8 +6,8 @@ import { SettingsPanel } from '../components/SettingsPanel/SettingsPanel';
 import type { DashboardSettings } from '../types';
 
 vi.mock('../services/api', () => ({
-  getArgusSettings: vi.fn().mockResolvedValue({ idleSessionThresholdMinutes: 60 }),
-  patchArgusSettings: vi.fn().mockResolvedValue({ idleSessionThresholdMinutes: 60 }),
+  getArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false }),
+  patchArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false }),
 }));
 
 function renderWithQuery(ui: React.ReactElement) {

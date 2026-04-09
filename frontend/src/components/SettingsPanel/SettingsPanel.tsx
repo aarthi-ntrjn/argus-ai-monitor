@@ -1,7 +1,4 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { DashboardSettings } from '../../types';
-import { getArgusSettings, patchArgusSettings } from '../../services/api';
 
 interface SettingsPanelProps {
   settings: DashboardSettings;
@@ -10,26 +7,6 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPanelProps) {
-  const qc = useQueryClient();
-  const { data: argusSettings } = useQuery({
-    queryKey: ['argus-settings'],
-    queryFn: getArgusSettings,
-    staleTime: 30_000,
-  });
-  const { mutate: saveThreshold } = useMutation({
-    mutationFn: (val: number) => patchArgusSettings({ idleSessionThresholdMinutes: val }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['argus-settings'] }),
-  });
-  const [thresholdInput, setThresholdInput] = useState<string>('');
-  const currentThreshold = argusSettings?.idleSessionThresholdMinutes ?? 60;
-  const displayThreshold = thresholdInput !== '' ? thresholdInput : String(currentThreshold);
-
-  function handleThresholdBlur() {
-    const val = parseInt(thresholdInput, 10);
-    if (!Number.isNaN(val) && val >= 1) saveThreshold(val);
-    setThresholdInput('');
-  }
-
   return (
     <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3">
       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Settings</p>
@@ -63,18 +40,6 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
         />
         <span className="text-sm text-gray-700">Hide inactive sessions (&gt;20 min)</span>
       </label>
-      <div className="flex items-center justify-between py-1 gap-2">
-        <span className="text-sm text-gray-700">Idle threshold (min)</span>
-        <input
-          type="number"
-          aria-label="Idle session threshold in minutes"
-          min={1}
-          value={displayThreshold}
-          onChange={e => setThresholdInput(e.target.value)}
-          onBlur={handleThresholdBlur}
-          className="w-16 text-sm border border-gray-300 rounded px-1.5 py-0.5 text-right focus:outline-none focus:ring-1 focus:ring-blue-400"
-        />
-      </div>
       {onRestartTour && (
         <div className="mt-2 pt-2 border-t border-gray-100 flex flex-col gap-1">
           <button

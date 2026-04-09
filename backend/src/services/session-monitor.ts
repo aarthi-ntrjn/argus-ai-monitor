@@ -1,12 +1,8 @@
 import { EventEmitter } from 'events';
-import { existsSync } from 'fs';
-import { promises as fsPromises } from 'fs';
-import { join } from 'path';
-import { homedir } from 'os';
 import psList from 'ps-list';
 import { RepositoryScanner } from './repository-scanner.js';
 import { CopilotCliDetector } from './copilot-cli-detector.js';
-import { ClaudeCodeDetector, ACTIVE_JSONL_THRESHOLD_MS } from './claude-code-detector.js';
+import { ClaudeCodeDetector } from './claude-code-detector.js';
 import { ClaudeSessionRegistry } from './claude-session-registry.js';
 import { loadConfig } from '../config/config-loader.js';
 import { getSessions, getSession, upsertSession, updateSessionStatus, getRepositories, getRepositoryByPath, updateRepositoryBranch } from '../db/database.js';
@@ -130,8 +126,6 @@ export class SessionMonitor extends EventEmitter {
       const liveSessions = getSessions({ status: 'active', type: 'claude-code' });
       if (liveSessions.length === 0) return;
 
-      const config = loadConfig();
-      const thresholdMs = config.idleSessionThresholdMinutes * 60_000;
       const processes = await psList();
       const runningPids = new Set(processes.map((p) => p.pid));
       const repos = getRepositories();
@@ -146,42 +140,12 @@ export class SessionMonitor extends EventEmitter {
           continue;
         }
 
-        // Sessions with a PID: check if the process is still running
-        if (session.pid != null) {
-          if (!runningPids.has(session.pid)) {
-            updateSessionStatus(session.id, 'ended', now);
-            this.claudeDetector.closeSessionWatcher(session.id);
-            this.emit('session.ended', { ...session, status: 'ended', endedAt: now });
-          }
-          continue;
-        }
-
-        // Null-PID sessions: use JSONL file freshness as the liveness signal.
-        // Give new sessions a 60-second grace period before checking JSONL,
-        // because Claude may not have written the file yet.
-        const sessionAgeMs = Date.now() - new Date(session.startedAt).getTime();
-        if (sessionAgeMs < 60_000) continue;
-
-        const jsonlPath = join(
-          homedir(), '.claude', 'projects',
-          ClaudeCodeDetector.projectDirName(repo.path),
-          `${session.id}.jsonl`
-        );
-
-        let jsonlAgeMs: number | null = null;
-        try {
-          const stat = await fsPromises.stat(jsonlPath);
-          jsonlAgeMs = Date.now() - stat.mtime.getTime();
-        } catch {
-          // file missing
-        }
-
-        if (jsonlAgeMs === null || jsonlAgeMs > thresholdMs) {
+        // Check if the process is still running
+        if (session.pid != null && !runningPids.has(session.pid)) {
           updateSessionStatus(session.id, 'ended', now);
           this.claudeDetector.closeSessionWatcher(session.id);
           this.emit('session.ended', { ...session, status: 'ended', endedAt: now });
         }
-        // else: JSONL is fresh → stay active, no change
       }
     } catch { /* ignore — liveness check is best-effort */ }
   }
