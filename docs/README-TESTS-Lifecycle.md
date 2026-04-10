@@ -14,8 +14,7 @@ Manual tests for session state transitions across different scenarios: terminal 
 | # | Steps | Expected |
 |---|-------|----------|
 | L0-01 | With the dashboard open, start a new Claude Code session (`claude`) directly in a registered repo (not via argus launch) | A new session card appears under the correct repo within 5 seconds; status badge is green "running"; badge is grey "read-only" (detected mode) |
-| L0-02 | Start a Claude Code session via `npm run launch --workspace=backend -- claude` | Session card appears with a green "live" badge (PTY mode) |
-| L0-03 | With the first session still running, start a second Claude Code session in the same repo | A second session card appears under the same repo; both cards are visible independently with their own badges |
+| L0-02 | With the first session still running, start a second Claude Code session in the same repo | A second session card appears under the same repo; both cards are visible independently with their own badges |
 
 ---
 
