@@ -9,7 +9,7 @@ Manual tests for session state transitions across different scenarios: terminal 
 
 ---
 
-## L0: Session start: server already running (Claude Code)
+## L0: Session start: server already running (CC and GHCP)
 
 | # | Steps | Expected |
 |---|-------|----------|
