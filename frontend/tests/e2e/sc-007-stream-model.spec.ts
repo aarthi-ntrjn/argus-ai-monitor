@@ -131,6 +131,10 @@ test.describe('SC-007: Output Stream & Model Display', () => {
   // ─── Output pane: remaining badge types ────────────────────────────────────
 
   test('output pane shows RESULT badge for tool_result items', async ({ page }) => {
+    // Verbose mode required: orphaned tool_result items are hidden in focused mode
+    await page.addInitScript(() => {
+      localStorage.setItem('argus:settings', JSON.stringify({ outputDisplayMode: 'verbose' }));
+    });
     await Promise.all([
       page.route('**/api/v1/repositories', route =>
         route.fulfill({ contentType: 'application/json', body: JSON.stringify(REPOS) })
