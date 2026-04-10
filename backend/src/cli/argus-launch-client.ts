@@ -56,6 +56,10 @@ export class ArgusLaunchClient {
     this.send({ type: 'prompt_failed', actionId, error });
   }
 
+  sendDiagnostic(actionId: string, detail: string): void {
+    this.send({ type: 'diagnostic', actionId, detail });
+  }
+
   updatePid(pid: number): void {
     this.send({ type: 'update_pid', pid });
   }

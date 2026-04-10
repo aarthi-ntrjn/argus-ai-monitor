@@ -129,8 +129,22 @@ if (sessionType === 'copilot-cli') {
 client.onSendPrompt((actionId: string, prompt: string) => {
   try {
     process.stderr.write(`[launch] onSendPrompt actionId=${actionId} promptLen=${prompt.length} — writing to PTY\n`);
+
+    // Capture PTY output after the write for diagnostics
+    let postWriteOutput = '';
+    const diagListener = (data: string) => { postWriteOutput += data; };
+    pty.onData(diagListener);
+
     pty.write(prompt + '\r');
     client.ackDelivered(actionId);
+
+    // Report PTY response after 3 seconds so the backend can see what copilot did
+    setTimeout(() => {
+      // Strip ANSI escape sequences for readability
+      const clean = postWriteOutput.replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, '').replace(/\x1b\][^\x07]*\x07/g, '').trim();
+      const snippet = clean.slice(-300) || '(no output)';
+      client.sendDiagnostic(actionId, `PTY output after write (${postWriteOutput.length} raw chars): ${snippet}`);
+    }, 3000);
   } catch (err) {
     process.stderr.write(`[launch] onSendPrompt PTY write failed: ${err}\n`);
     client.ackFailed(actionId, err instanceof Error ? err.message : 'PTY write failed');
