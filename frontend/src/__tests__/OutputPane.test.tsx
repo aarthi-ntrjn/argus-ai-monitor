@@ -29,7 +29,7 @@ function makeSession(overrides: Partial<Session> = {}): Session {
 
 function renderOutputPane(session: Session) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  vi.mocked(api.getSessionOutput).mockResolvedValue({ items: [] });
+  vi.mocked(api.getSessionOutput).mockResolvedValue({ items: [], nextBefore: null, total: 0 });
   return render(
     <QueryClientProvider client={qc}>
       <OutputPane session={session} onClose={vi.fn()} />

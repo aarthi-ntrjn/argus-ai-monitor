@@ -3,7 +3,7 @@ import type { Components } from 'react-markdown';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { SessionOutput, OutputDisplayMode } from '../../types';
-import { summariseToolUse, isAlwaysVisible } from './sessionDetailUtils';
+import { summariseToolUse } from './sessionDetailUtils';
 
 interface Props {
   sessionId: string;
@@ -45,6 +45,7 @@ function formatTime(timestamp: string): string {
 export default function SessionDetail({ items, dark = false, className, displayMode = 'focused' }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [expandedFullIds, setExpandedFullIds] = useState<Set<string>>(new Set());
 
   function toggleExpand(id: string) {
     setExpandedIds(prev => {
@@ -52,6 +53,10 @@ export default function SessionDetail({ items, dark = false, className, displayM
       if (next.has(id)) { next.delete(id); } else { next.add(id); }
       return next;
     });
+  }
+
+  function expandFull(id: string) {
+    setExpandedFullIds(prev => new Set(prev).add(id));
   }
 
   const markdownComponents = useMemo<Components>(() => ({
@@ -162,7 +167,29 @@ export default function SessionDetail({ items, dark = false, className, displayM
                 </div>
               ) : (
                 <div>
-                  <span className={`min-w-0 break-words whitespace-pre-wrap ${dark ? 'text-gray-200' : 'text-gray-800'}`}>{item.content}</span>
+                  {(() => {
+                    const MAX_LINES = 40;
+                    const lines = item.content.split('\n');
+                    const isTruncatable = !isFocused && item.type === 'tool_result' && lines.length > MAX_LINES;
+                    const isFullyExpanded = expandedFullIds.has(item.id);
+                    const displayContent = isTruncatable && !isFullyExpanded
+                      ? lines.slice(0, MAX_LINES).join('\n')
+                      : item.content;
+                    return (
+                      <>
+                        <span className={`min-w-0 break-words whitespace-pre-wrap ${dark ? 'text-gray-200' : 'text-gray-800'}`}>{displayContent}</span>
+                        {isTruncatable && !isFullyExpanded && (
+                          <button
+                            aria-label="Show more"
+                            onClick={() => expandFull(item.id)}
+                            className={`block text-xs underline mt-1 ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+                          >
+                            show more
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
                   {(isToolUse || (isFocused && item.type === 'tool_result')) && isExpanded && (
                     <button
                       aria-label="Hide details"

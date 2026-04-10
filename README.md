@@ -43,6 +43,15 @@ Click any card to open a **live output pane** on the right. The card list stays 
 
 Output lines carry type badges so you always know what's what: **YOU** (your input), **AI** (assistant reply), **TOOL** (tool call), **RESULT** (tool result), **STATUS** (status change), **ERR** (error). Claude Code sessions stream everything in real time, including tool calls.
 
+#### Focused and Verbose Mode
+
+The output pane has two display modes, toggled via the **Focused / Verbose** button in the pane header:
+
+- **Focused** (default): hides noisy tool results. Tool calls show a compact one-line summary. Click **show result** on any row to expand it inline. Your messages, AI replies, status changes, and errors are always visible.
+- **Verbose**: shows everything. Long tool results (over 40 lines) are truncated with a **show more** button. Tool calls show their full content.
+
+The selected mode persists across sessions and page reloads.
+
 ### Session Detection
 
 Argus detects sessions using two sources:

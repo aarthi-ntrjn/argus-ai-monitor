@@ -23,7 +23,6 @@ function truncate(text: string, max: number): string {
 export function summariseToolUse(item: SessionOutput): string {
   const { toolName, content } = item;
   const prefix = toolName ? `${toolName}: ` : '';
-  const maxContent = MAX_SUMMARY_LENGTH - prefix.length;
 
   if (!content) return toolName ?? '';
 

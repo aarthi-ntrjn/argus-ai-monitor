@@ -122,6 +122,39 @@ describe('SessionDetail — timestamps', () => {
   });
 });
 
+describe('SessionDetail — verbose mode truncation (P3)', () => {
+  it('truncates tool_result content > 40 lines in verbose mode', () => {
+    const longContent = Array.from({ length: 50 }, (_, i) => `line ${i + 1}`).join('\n');
+    const items = [
+      output({ id: '1', type: 'tool_result', role: null, content: longContent, toolName: null, sequenceNumber: 1 }),
+    ];
+    render(<SessionDetail sessionId="s1" items={items} displayMode="verbose" />);
+    expect(screen.queryByText('line 50')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /show more/i })).toBeInTheDocument();
+  });
+
+  it('does not truncate tool_result content <= 40 lines in verbose mode', () => {
+    const shortContent = Array.from({ length: 10 }, (_, i) => `line ${i + 1}`).join('\n');
+    const items = [
+      output({ id: '1', type: 'tool_result', role: null, content: shortContent, toolName: null, sequenceNumber: 1 }),
+    ];
+    render(<SessionDetail sessionId="s1" items={items} displayMode="verbose" />);
+    expect(screen.getByText(/line 10/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /show more/i })).not.toBeInTheDocument();
+  });
+
+  it('reveals full content when Show more is clicked', async () => {
+    const user = userEvent.setup();
+    const longContent = Array.from({ length: 50 }, (_, i) => `line ${i + 1}`).join('\n');
+    const items = [
+      output({ id: '1', type: 'tool_result', role: null, content: longContent, toolName: null, sequenceNumber: 1 }),
+    ];
+    render(<SessionDetail sessionId="s1" items={items} displayMode="verbose" />);
+    await user.click(screen.getByRole('button', { name: /show more/i }));
+    expect(screen.getByText(/line 50/)).toBeInTheDocument();
+  });
+});
+
 describe('SessionDetail — focused mode (default)', () => {
   it('hides tool_result rows in focused mode by default', () => {
     const items = [
