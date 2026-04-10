@@ -79,7 +79,13 @@ export function initSocketHandlers(qc: QueryClient): void {
       return old.map((s) => s.id === session.id ? { ...s, ...session } : s);
     });
   });
-  onEvent('session.ended', () => { qc.invalidateQueries({ queryKey: ['sessions'] }); });
+  onEvent('session.ended', (data) => {
+    const session = data as unknown as Session;
+    qc.setQueryData<Session[]>(['sessions'], (old) => {
+      if (!old) return old;
+      return old.map((s) => s.id === session.id ? { ...s, ...session } : s);
+    });
+  });
   onEvent('repository.added', () => {
     qc.invalidateQueries({ queryKey: ['repositories'] });
     qc.invalidateQueries({ queryKey: ['sessions'] });
