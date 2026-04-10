@@ -134,16 +134,19 @@ client.onSendPrompt((actionId: string, prompt: string) => {
 });
 
 // On Windows, pty.pid is the powershell.exe wrapper. Walk the process tree
-// to find the real tool process (claude.exe, node.exe, etc.) and update Argus.
+// to find the real tool process (claude.exe, copilot.exe, etc.) and update Argus.
 if (isWin) {
+  const targetExe = `${cmd}.exe`.toLowerCase(); // e.g. claude.exe or copilot.exe
   let pidAttempts = 0;
   const pidInterval = setInterval(() => {
     pidAttempts++;
     if (pidAttempts > 20) { clearInterval(pidInterval); return; } // give up after ~10s
     try {
-      // Walk the process tree from pty.pid downward to find the deepest descendant.
-      // powershell.exe -> cmd.exe / conhost.exe -> claude.exe / node.exe
+      // Walk the process tree from pty.pid downward.
+      // Stop as soon as we find the target exe; otherwise take the deepest non-conhost child.
+      // powershell.exe -> conhost.exe / copilot.exe (or node.exe wrapping it)
       let currentPid = pty.pid;
+      let currentName = 'powershell.exe';
       for (let depth = 0; depth < 5; depth++) {
         const out = execSync(
           `wmic process where (ParentProcessId=${currentPid}) get ProcessId /value`,
@@ -151,8 +154,10 @@ if (isWin) {
         );
         const childPids = [...out.matchAll(/ProcessId=(\d+)/g)].map(m => parseInt(m[1], 10));
         if (childPids.length === 0) break;
-        // Prefer a child that isn't conhost.exe
+
         let chosen = childPids[0];
+        let chosenName = '';
+        let foundTarget = false;
         for (const cpid of childPids) {
           try {
             const nameOut = execSync(
@@ -160,12 +165,20 @@ if (isWin) {
               { encoding: 'utf-8', timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] }
             );
             const name = nameOut.match(/Name=(.+)/)?.[1]?.trim().toLowerCase() ?? '';
-            if (name !== 'conhost.exe') { chosen = cpid; break; }
+            if (name === targetExe) {
+              chosen = cpid; chosenName = name; foundTarget = true; break;
+            }
+            if (name !== 'conhost.exe') {
+              chosen = cpid; chosenName = name;
+            }
           } catch { /* use first child */ }
         }
         currentPid = chosen;
+        currentName = chosenName;
+        if (foundTarget) break; // no need to walk deeper once the target is found
       }
       if (currentPid !== pty.pid) {
+        process.stderr.write(`[launch] resolved tool process: ${currentName} PID=${currentPid}\n`);
         client.updatePid(currentPid);
         clearInterval(pidInterval);
       }
