@@ -65,7 +65,7 @@ Manual tests to run against a live Argus instance with at least one real local r
 
 ### PTY launch and prompt delivery
 
-**Prerequisite for P1-12a through P1-13b:** Start a session via `npm run launch --workspace=backend -- claude` (or `gh copilot suggest`) in any terminal, so a PTY-launched (live) session is visible on the dashboard.
+**Prerequisite for P1-12a through P1-13b:** Start a session via `npm run launch --workspace=backend -- claude` (or `copilot`) in any terminal, so a PTY-launched (live) session is visible on the dashboard.
 
 | # | Steps | Expected |
 |---|-------|----------|
@@ -155,4 +155,4 @@ Manual tests to run against a live Argus instance with at least one real local r
 | P2-17 | Send a prompt to a detected (read-only) session via a direct API call | API returns 202 with `status: failed` and a message "Prompt delivery requires starting this session via argus launch"; UI shows read-only state so the prompt bar is disabled |
 | P2-18 | Attempt Stop on an already-ended session | Error or no-op with appropriate feedback; no crash |
 | P2-19 | Start a PTY session via `argus launch claude`, send a prompt from the dashboard, then kill the `argus launch` process mid-delivery | Prompt bar shows an error message; session card transitions to read-only (live badge disappears) on next poll |
-| P2-20 | Start a Copilot CLI session via `npm run launch --workspace=backend -- gh copilot suggest`, send a prompt from the dashboard | Prompt is delivered to the Copilot CLI process via PTY; input clears; no error |
+| P2-20 | Start a Copilot CLI session via `npm run launch --workspace=backend -- copilot`, send a prompt from the dashboard | Prompt is delivered to the Copilot CLI process via PTY; input clears; no error |

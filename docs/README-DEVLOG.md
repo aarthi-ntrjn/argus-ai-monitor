@@ -243,7 +243,7 @@ Feature 020 shipped. The core problem: the prompt bar had always accepted text a
 Stdin injection was the first candidate and was ruled out fast. macOS removed `TIOCSTI` in 2022 (kernel security patch); it was never reliably available for non-spawned processes on Windows either. The file-based hook injection Claude Code uses only carries structured JSON payloads, not raw text. There was no channel from Argus to the running process's stdin.
 
 **PTY launcher solution**
-The solution: instead of detecting existing processes and trying to inject into them, Argus now optionally owns the process lifecycle. `argus launch claude` (or `gh copilot suggest`) spawns the tool inside a PTY using `node-pty` (the same library VS Code uses: Windows ConPTY on Windows, POSIX PTY on Mac/Linux). The Argus process holds the PTY master handle and can write to it at will.
+The solution: instead of detecting existing processes and trying to inject into them, Argus now optionally owns the process lifecycle. `argus launch claude` (or `copilot`) spawns the tool inside a PTY using `node-pty` (the same library VS Code uses: Windows ConPTY on Windows, POSIX PTY on Mac/Linux). The Argus process holds the PTY master handle and can write to it at will.
 
 The launch process connects back to the backend over a WebSocket at `/launcher`. The backend registers the connection in a `PtyRegistry` singleton keyed by session ID. When `POST /sessions/:id/send` arrives, `SessionController` looks up the registry, sends a `send_prompt` message to the launcher, and waits (up to 10 seconds) for a `prompt_delivered` or `prompt_failed` ack. The ControlAction status is updated asynchronously.
 

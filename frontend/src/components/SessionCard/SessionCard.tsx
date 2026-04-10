@@ -1,9 +1,9 @@
-import { memo, useState, useRef, useEffect, useCallback } from 'react';
+import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ExternalLink, Moon, Play, TriangleAlert } from 'lucide-react';
+import { ExternalLink, Moon, Play } from 'lucide-react';
 import type { Session } from '../../types';
-import { getSessionOutput, stopSession, dismissSession } from '../../services/api';
+import { getSessionOutput } from '../../services/api';
 import { isInactive } from '../../utils/sessionUtils';
 import SessionPromptBar from '../SessionPromptBar/SessionPromptBar';
 import SessionTypeIcon from '../SessionTypeIcon/SessionTypeIcon';
@@ -42,97 +42,8 @@ function claudeShortId(id: string): string {
   return id.match(/[0-9a-f]{8}-[0-9a-f]{4}/)?.[0].slice(0, 8) ?? id.slice(0, 8);
 }
 
-function KillModal({ session, onCancel, onConfirm, killing, error }: {
-  session: Session;
-  onCancel: () => void;
-  onConfirm: () => void;
-  killing: boolean;
-  error: string | null;
-}) {
-  const cancelRef = useRef<HTMLButtonElement>(null);
-  useEffect(() => { cancelRef.current?.focus(); }, []);
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') onCancel();
-  }, [onCancel]);
-
-  const isLive = session.launchMode === 'pty';
-  const hasPid = !!session.pid;
-
-  return (
-    <div
-      role="alertdialog"
-      aria-modal="true"
-      aria-labelledby="kill-modal-title"
-      className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
-      onKeyDown={handleKeyDown}
-      onClick={onCancel}
-    >
-      <div className="bg-white rounded-lg p-5 w-full max-w-sm shadow-lg" onClick={e => e.stopPropagation()}>
-        <h3 id="kill-modal-title" className="text-sm font-semibold text-gray-900 mb-2">
-          {isLive ? 'Kill live session?' : hasPid ? 'Kill detected session?' : 'Dismiss session?'}
-        </h3>
-        <p className="text-xs text-gray-600 mb-1">
-          {isLive
-            ? 'This will terminate the Claude process and close the PTY connection.'
-            : hasPid
-              ? `This will kill the process (PID ${session.pid}). The session was not launched by Argus, so it may be running in another terminal.`
-              : 'This session has no tracked process. It will be marked as ended and removed from the active list.'}
-        </p>
-        {session.summary && (
-          <p className="text-xs text-gray-400 italic mb-3 truncate">Topic: {session.summary}</p>
-        )}
-        {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
-        <div className="flex justify-end gap-2">
-          <button
-            ref={cancelRef}
-            onClick={onCancel}
-            disabled={killing}
-            className="text-sm px-3 py-1.5 text-gray-600 hover:text-gray-800 rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={killing}
-            className="text-sm px-3 py-1.5 bg-red-600 text-white rounded-sm hover:bg-red-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-400"
-          >
-            {killing ? 'Killing...' : isLive || hasPid ? 'Kill' : 'Dismiss'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function SessionCard({ session, selected, onSelect }: Props) {
-  const [showKillModal, setShowKillModal] = useState(false);
-  const [killing, setKilling] = useState(false);
-  const [killError, setKillError] = useState<string | null>(null);
-  const isAlive = session.status !== 'ended' && session.status !== 'completed';
-
-  const handleKillClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setKillError(null);
-    setShowKillModal(true);
-  };
-
-  const handleKillConfirm = async () => {
-    setKilling(true);
-    setKillError(null);
-    try {
-      if (session.pid) {
-        await stopSession(session.id);
-      } else {
-        await dismissSession(session.id);
-      }
-      setShowKillModal(false);
-    } catch (err) {
-      setKillError(err instanceof Error ? err.message : 'Failed to kill session');
-    } finally {
-      setKilling(false);
-    }
-  };
-
   const { data: lastOutput } = useQuery({
     queryKey: ['session-output-last', session.id],
     queryFn: () => getSessionOutput(session.id, { limit: 10 }),
@@ -188,17 +99,6 @@ function SessionCard({ session, selected, onSelect }: Props) {
           ) : (
             <span className="inline-flex items-center text-xs px-2 py-0.5 rounded font-medium bg-gray-100 text-gray-500" title="Detected session — start with argus launch to enable prompts">read-only</span>
           )}
-          {isAlive && (
-            <button
-              onClick={handleKillClick}
-              disabled={killing}
-              title="Kill session"
-              aria-label="Kill session"
-              className="text-gray-400 hover:text-red-600 transition-colors disabled:opacity-40"
-            >
-              <TriangleAlert size={14} />
-            </button>
-          )}
           <Link
             to={`/sessions/${session.id}`}
             onClick={e => e.stopPropagation()}
@@ -224,16 +124,6 @@ function SessionCard({ session, selected, onSelect }: Props) {
         <div onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
           <SessionPromptBar session={session} />
         </div>
-      )}
-
-      {showKillModal && (
-        <KillModal
-          session={session}
-          onCancel={() => setShowKillModal(false)}
-          onConfirm={handleKillConfirm}
-          killing={killing}
-          error={killError}
-        />
       )}
     </div>
   );
