@@ -9,16 +9,13 @@ Manual tests for session state transitions across different scenarios: terminal 
 
 ---
 
-## L0: Session appears when started (server already running)
+## L0: Session start: server already running (Claude Code)
 
 | # | Steps | Expected |
 |---|-------|----------|
-| L-01 | With the dashboard open, start a new Claude Code session (`claude`) in a registered repo | A new session card appears under the correct repo within 5 seconds; status badge is green "running" |
-| L-02 | With the dashboard open, start a new Copilot CLI session (`copilot`) in a registered repo | A new session card appears under the correct repo within 5 seconds; status badge is green "running" |
-| L-03 | Start a Claude Code session via `npm run launch --workspace=backend -- claude` | Session card appears with a green "live" badge (PTY mode) |
-| L-04 | Start a Claude Code session directly in a separate terminal (not via argus launch) | Session card appears with a grey "read-only" badge (detected mode) |
-| L-05 | Start a Copilot CLI session via `npm run launch --workspace=backend -- copilot` | Session card appears with a green "live" badge (PTY mode) |
-| L-06 | Start a Copilot CLI session directly in a separate terminal (not via argus launch) | Session card appears with a grey "read-only" badge (detected mode) |
+| L0-01 | With the dashboard open, start a new Claude Code session (`claude`) in a registered repo | A new session card appears under the correct repo within 5 seconds; status badge is green "running" |
+| L0-02 | Start a Claude Code session via `npm run launch --workspace=backend -- claude` | Session card appears with a green "live" badge (PTY mode) |
+| L0-03 | Start a Claude Code session directly in a separate terminal (not via argus launch) | Session card appears with a grey "read-only" badge (detected mode) |
 
 ---
 
