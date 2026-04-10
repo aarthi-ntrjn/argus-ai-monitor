@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS session_output (
   id TEXT PRIMARY KEY, session_id TEXT NOT NULL REFERENCES sessions(id),
   timestamp TEXT NOT NULL, type TEXT NOT NULL, content TEXT NOT NULL,
-  tool_name TEXT, sequence_number INTEGER NOT NULL, role TEXT
+  tool_name TEXT, tool_call_id TEXT, sequence_number INTEGER NOT NULL, role TEXT
 );
 CREATE TABLE IF NOT EXISTS control_actions (
   id TEXT PRIMARY KEY, session_id TEXT NOT NULL REFERENCES sessions(id),

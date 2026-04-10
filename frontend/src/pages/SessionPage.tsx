@@ -6,6 +6,7 @@ import SessionDetail from '../components/SessionDetail/SessionDetail';
 import SessionPromptBar from '../components/SessionPromptBar/SessionPromptBar';
 import SessionTypeIcon from '../components/SessionTypeIcon/SessionTypeIcon';
 import { isInactive } from '../utils/sessionUtils';
+import { useSettings } from '../hooks/useSettings';
 
 function getElapsed(startedAt: string, endedAt: string | null): string {
   const end = endedAt ? new Date(endedAt) : new Date();
@@ -39,6 +40,12 @@ const TYPE_COLORS: Record<string, string> = {
 export default function SessionPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [settings, updateSetting] = useSettings();
+  const displayMode = settings.outputDisplayMode ?? 'focused';
+
+  function toggleMode() {
+    updateSetting('outputDisplayMode', displayMode === 'focused' ? 'verbose' : 'focused');
+  }
   const { data: session, isLoading: sessionLoading, error: sessionError } = useQuery({
     queryKey: ['session', id],
     queryFn: () => getSession(id!),
@@ -127,8 +134,14 @@ export default function SessionPage() {
         <div className="max-w-4xl mx-auto w-full flex-1 min-h-0 flex flex-col">
 
           <div data-tour-id="session-output-stream" className="flex-1 min-h-0 flex flex-col bg-white border border-gray-200 rounded-lg shadow overflow-hidden">
-            <div className="p-4 border-b border-gray-200 shrink-0">
+            <div className="p-4 border-b border-gray-200 shrink-0 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">Output Stream</h2>
+              <button
+                onClick={toggleMode}
+                className="text-xs px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-100"
+              >
+                {displayMode === 'focused' ? 'Focused' : 'Verbose'}
+              </button>
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto bg-gray-900 rounded-b-lg">
               {outputLoading ? (
@@ -137,6 +150,7 @@ export default function SessionPage() {
                 <SessionDetail
                   sessionId={session.id}
                   items={outputPage?.items ?? []}
+                  displayMode={displayMode}
                   dark
                 />
               )}

@@ -254,6 +254,10 @@ test.describe('Session Detail Page', () => {
   });
 
   test('shows RESULT badge for tool_result items', async ({ page }) => {
+    // Verbose mode required: orphaned tool_result items are hidden in focused mode
+    await page.addInitScript(() => {
+      localStorage.setItem('argus:settings', JSON.stringify({ outputDisplayMode: 'verbose' }));
+    });
     await mockSession(page, {}, [makeOutput({ type: 'tool_result', role: null, content: 'file1.ts\nfile2.ts', toolName: 'bash' })]);
     await page.goto(`/sessions/${SESSION_ID}`);
     await expect(page.getByText('RESULT', { exact: true })).toBeVisible({ timeout: 5000 });
@@ -274,10 +278,11 @@ test.describe('Session Detail Page', () => {
     await expect(page.getByText('Session became active')).toBeVisible();
   });
 
-  test('shows tool name in brackets for tool_use items', async ({ page }) => {
+  test('shows tool name badge for tool_use items', async ({ page }) => {
     await mockSession(page, {}, [makeOutput({ type: 'tool_use', role: null, content: 'cat README.md', toolName: 'bash' })]);
     await page.goto(`/sessions/${SESSION_ID}`);
-    await expect(page.getByText('[bash]')).toBeVisible({ timeout: 5000 });
+    // Tool name appears as a colored badge pill (not bracket notation)
+    await expect(page.getByText('bash', { exact: true })).toBeVisible({ timeout: 5000 });
   });
 
   test('renders message content as Markdown (bold and inline code)', async ({ page }) => {
@@ -289,6 +294,10 @@ test.describe('Session Detail Page', () => {
   });
 
   test('renders multiple output items of different types together', async ({ page }) => {
+    // Verbose mode so all badges and content are visible without expanding pairs
+    await page.addInitScript(() => {
+      localStorage.setItem('argus:settings', JSON.stringify({ outputDisplayMode: 'verbose' }));
+    });
     const items = [
       makeOutput({ id: 'multi-1', type: 'message', role: 'user', content: 'Run the tests', sequenceNumber: 1 }),
       makeOutput({ id: 'multi-2', type: 'tool_use', role: null, content: 'npm test', toolName: 'bash', sequenceNumber: 2 }),
@@ -307,11 +316,16 @@ test.describe('Session Detail Page', () => {
     await expect(page.getByText('Done, all green')).toBeVisible();
   });
 
-  test('shows tool name in brackets for tool_result items (not just tool_use)', async ({ page }) => {
+  test('shows tool name badge for tool_result items', async ({ page }) => {
+    // Verbose mode required: orphaned tool_result items are hidden in focused mode
+    await page.addInitScript(() => {
+      localStorage.setItem('argus:settings', JSON.stringify({ outputDisplayMode: 'verbose' }));
+    });
     await mockSession(page, {}, [makeOutput({ type: 'tool_result', role: null, content: 'exit code 0', toolName: 'bash' })]);
     await page.goto(`/sessions/${SESSION_ID}`);
     await expect(page.getByText('RESULT', { exact: true })).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('[bash]')).toBeVisible();
+    // Tool name appears as a colored badge pill (not bracket notation)
+    await expect(page.getByText('bash', { exact: true })).toBeVisible();
   });
 
   test('shows formatted timestamp for each output item', async ({ page }) => {

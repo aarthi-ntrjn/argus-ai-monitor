@@ -15,6 +15,7 @@ describe('useSettings', () => {
       hideEndedSessions: false,
       hideReposWithNoActiveSessions: false,
       hideInactiveSessions: false,
+      outputDisplayMode: 'focused',
     });
   });
 
@@ -36,6 +37,7 @@ describe('useSettings', () => {
       hideEndedSessions: false,
       hideReposWithNoActiveSessions: false,
       hideInactiveSessions: false,
+      outputDisplayMode: 'focused',
     });
   });
 

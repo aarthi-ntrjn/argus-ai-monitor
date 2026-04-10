@@ -7,6 +7,7 @@ export type ControlActionStatus = 'pending' | 'sent' | 'completed' | 'failed' | 
 export type RepositorySource = 'config' | 'ui';
 export type OutputType = 'message' | 'tool_use' | 'tool_result' | 'error' | 'status_change';
 export type OutputRole = 'user' | 'assistant';
+export type OutputDisplayMode = 'focused' | 'verbose';
 
 export interface Repository {
   id: string;
@@ -41,6 +42,7 @@ export interface SessionOutput {
   type: OutputType;
   content: string;
   toolName: string | null;
+  toolCallId: string | null;
   role: OutputRole | null;
   sequenceNumber: number;
 }
@@ -57,12 +59,14 @@ export interface DashboardSettings {
   hideEndedSessions: boolean;
   hideReposWithNoActiveSessions: boolean;
   hideInactiveSessions: boolean;
+  outputDisplayMode: OutputDisplayMode;
 }
 
 export const DEFAULT_SETTINGS: DashboardSettings = {
   hideEndedSessions: false,
   hideReposWithNoActiveSessions: false,
   hideInactiveSessions: false,
+  outputDisplayMode: 'focused',
 };
 
 export interface ControlAction {

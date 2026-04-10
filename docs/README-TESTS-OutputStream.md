@@ -73,3 +73,49 @@ Manual tests for the inline output pane and real-time updates. Run these against
 | P-21 | Open a Claude Code session where an error occurred (e.g. tool failure) | An "ERR" (red) badge appears with the error content |
 | P-22 | Open a Copilot CLI session where an error occurred | An "ERR" (red) badge appears with the error content |
 | P-23 | Open a session whose JSONL file contains a malformed line | The valid entries still render; the malformed line is skipped without crashing the pane |
+
+---
+
+## P5: Focused mode
+
+**Prerequisites:** A session with multiple tool calls and results (e.g. an active Claude Code session that has used Read, Edit, or Bash).
+
+| # | Steps | Expected |
+|---|-------|----------|
+| P-24 | Open the output pane for any session | The mode toggle button in the header reads "Focused" (this is the default) |
+| P-25 | Locate a tool call row in focused mode | The TOOL row shows the tool name badge and a one-line summary; no separate RESULT row appears beneath it |
+| P-26 | Click "show result" on a paired tool row | The tool result content expands inline; the button label changes to "hide result" |
+| P-27 | Click "hide result" on an expanded tool row | The result collapses; the button reverts to "show result" |
+| P-28 | Find a session where the model made several consecutive tool calls | The tool calls are grouped into a single collapsible block showing a summary such as "3 tool calls: Read, Edit, Bash" |
+| P-29 | Click the ▸ arrow on a tool group | The group expands to show all individual tool pairs inside it; the arrow changes to ▾ |
+| P-30 | Click the ▾ arrow on an expanded tool group | The group collapses back to the summary row |
+| P-31 | Inspect the output for a session that has orphaned tool results (result with no matching tool use) | The orphaned RESULT rows do not appear in the list |
+| P-32 | Observe a tool_use entry that arrived before its result (e.g. mid-stream in an active session) | The tool call renders as a single TOOL row with a "show details" button rather than a paired row |
+
+---
+
+## P6: Verbose mode
+
+**Prerequisites:** A session with multiple tool calls and results, including at least one tool result that is more than 40 lines long.
+
+| # | Steps | Expected |
+|---|-------|----------|
+| P-33 | With the output pane open in Focused mode, click the "Focused" button | The button label changes to "Verbose" and the output re-renders immediately |
+| P-34 | Inspect the output in verbose mode | Every item appears as its own row: tool calls have a TOOL row and their results have a separate RESULT row directly beneath |
+| P-35 | Verify tool grouping in verbose mode | No collapsible tool groups appear; all rows are flat and sequential |
+| P-36 | Locate a RESULT row whose content exceeds 40 lines in verbose mode | The content is truncated at 40 lines with a "show more" button at the bottom |
+| P-37 | Click "show more" on a truncated RESULT row | The full content expands; the "show more" button disappears |
+| P-38 | Switch back to focused mode by clicking the "Verbose" button | The button label returns to "Focused" and tool pairs are grouped and paired again |
+
+---
+
+## P7: Mode persistence
+
+**Prerequisites:** Argus is running with at least one session visible.
+
+| # | Steps | Expected |
+|---|-------|----------|
+| P-39 | Switch the output pane to Verbose mode, then close the pane | The mode selection is saved |
+| P-40 | Click a session card to reopen the output pane | The pane reopens in Verbose mode (the toggle button reads "Verbose") |
+| P-41 | Refresh the page, then open any session's output pane | The previously chosen mode (Verbose) is still active after the page reload |
+| P-42 | Switch to Focused mode, refresh, and reopen the output pane | The pane opens in Focused mode, confirming the setting was updated and persisted |

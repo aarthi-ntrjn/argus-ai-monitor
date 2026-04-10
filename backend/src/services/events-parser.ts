@@ -106,6 +106,7 @@ export function parseJsonlLine(line: string, sessionId: string, sequenceNumber: 
       toolName: typeof event.tool_name === 'string' ? event.tool_name
               : typeof event.data?.toolName === 'string' ? event.data.toolName
               : null,
+      toolCallId: typeof event.data?.toolCallId === 'string' ? event.data.toolCallId : null,
       role,
       sequenceNumber,
     };

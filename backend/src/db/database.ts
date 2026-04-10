@@ -28,6 +28,7 @@ export function getDb(): Database.Database {
     if (!sessionCols.includes('model')) db.exec('ALTER TABLE sessions ADD COLUMN model TEXT');
     const outputCols = (db.pragma('table_info(session_output)') as Array<{ name: string }>).map(c => c.name);
     if (!outputCols.includes('role')) db.exec('ALTER TABLE session_output ADD COLUMN role TEXT');
+    if (!outputCols.includes('tool_call_id')) db.exec('ALTER TABLE session_output ADD COLUMN tool_call_id TEXT');
     if (!sessionCols.includes('launch_mode')) db.exec("ALTER TABLE sessions ADD COLUMN launch_mode TEXT CHECK(launch_mode IN ('pty','detected'))");
     if (!sessionCols.includes('pid_source')) {
       db.exec('ALTER TABLE sessions ADD COLUMN pid_source TEXT');
@@ -137,7 +138,7 @@ export function upsertSession(session: Session): void {
 }
 
 export function getOutputForSession(sessionId: string, limit = 100, before?: string): SessionOutput[] {
-  let sql = 'SELECT id, session_id as sessionId, timestamp, type, content, tool_name as toolName, role, sequence_number as sequenceNumber FROM session_output WHERE session_id = ?';
+  let sql = 'SELECT id, session_id as sessionId, timestamp, type, content, tool_name as toolName, tool_call_id as toolCallId, role, sequence_number as sequenceNumber FROM session_output WHERE session_id = ?';
   const params: unknown[] = [sessionId];
   if (before) { sql += ' AND sequence_number < ?'; params.push(parseInt(before, 10)); }
   sql += ' ORDER BY sequence_number DESC LIMIT ?';
@@ -152,8 +153,8 @@ export function deleteSessionOutput(sessionId: string): void {
 
 export function insertOutput(output: SessionOutput): void {
   getDb().prepare(
-    'INSERT OR IGNORE INTO session_output (id, session_id, timestamp, type, content, tool_name, sequence_number, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-  ).run(output.id, output.sessionId, output.timestamp, output.type, output.content, output.toolName, output.sequenceNumber, output.role ?? null);
+    'INSERT OR IGNORE INTO session_output (id, session_id, timestamp, type, content, tool_name, tool_call_id, sequence_number, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(output.id, output.sessionId, output.timestamp, output.type, output.content, output.toolName, output.toolCallId ?? null, output.sequenceNumber, output.role ?? null);
 }
 
 export function insertControlAction(action: ControlAction): void {

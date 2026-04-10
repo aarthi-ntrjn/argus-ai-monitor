@@ -60,6 +60,15 @@ Output lines carry type badges so you always know what's what: **YOU** (your inp
 
 [aarthin] Add description of the Verbose and Focused mode for the output pane. This is a new feature being worked on in a branch and this needs to get fixed once the branch is merged.
 
+#### Focused and Verbose Mode
+
+The output pane has two display modes, toggled via the **Focused / Verbose** button in the pane header:
+
+- **Focused** (default): hides noisy tool results. Tool calls show a compact one-line summary. Click **show result** on any row to expand it inline. Your messages, AI replies, status changes, and errors are always visible.
+- **Verbose**: shows everything. Long tool results (over 40 lines) are truncated with a **show more** button. Tool calls show their full content.
+
+The selected mode persists across sessions and page reloads.
+
 ### Session Detection
 
 Argus detects sessions using two sources:

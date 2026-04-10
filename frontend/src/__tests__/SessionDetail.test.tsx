@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import SessionDetail from '../components/SessionDetail/SessionDetail';
 import type { SessionOutput } from '../types';
 
@@ -11,6 +12,7 @@ function output(overrides: Partial<SessionOutput>): SessionOutput {
     type: 'message',
     content: 'Hello',
     toolName: null,
+    toolCallId: null,
     role: 'user',
     sequenceNumber: 1,
     ...overrides,
@@ -48,7 +50,7 @@ describe('SessionDetail — type badges', () => {
   });
 
   it('shows RESULT badge for tool_result items', () => {
-    render(<SessionDetail sessionId="s1" items={[output({ type: 'tool_result', role: null, content: 'exit 0' })]} />);
+    render(<SessionDetail sessionId="s1" items={[output({ type: 'tool_result', role: null, content: 'exit 0' })]} displayMode="verbose" />);
     expect(screen.getByText('RESULT')).toBeInTheDocument();
   });
 
@@ -64,14 +66,14 @@ describe('SessionDetail — type badges', () => {
 });
 
 describe('SessionDetail — tool names', () => {
-  it('shows the tool name in brackets for tool_use items', () => {
+  it('shows the tool name as a badge in the content column for tool_use items', () => {
     render(<SessionDetail sessionId="s1" items={[output({ type: 'tool_use', role: null, toolName: 'read_file', content: 'read_file(main.ts)' })]} />);
-    expect(screen.getByText('[read_file]')).toBeInTheDocument();
+    expect(screen.getByText('read_file')).toBeInTheDocument();
   });
 
-  it('shows the tool name in brackets for tool_result items', () => {
-    render(<SessionDetail sessionId="s1" items={[output({ type: 'tool_result', role: null, toolName: 'bash', content: 'exit 0' })]} />);
-    expect(screen.getByText('[bash]')).toBeInTheDocument();
+  it('shows the tool name as a badge in the content column for tool_result items', () => {
+    render(<SessionDetail sessionId="s1" items={[output({ type: 'tool_result', role: null, toolName: 'bash', content: 'exit 0' })]} displayMode="verbose" />);
+    expect(screen.getByText('bash')).toBeInTheDocument();
   });
 
   it('does not show a tool name when toolName is null', () => {
@@ -87,7 +89,7 @@ describe('SessionDetail — content rendering', () => {
   });
 
   it('renders non-message content as plain text without markdown processing', () => {
-    render(<SessionDetail sessionId="s1" items={[output({ type: 'tool_result', role: null, content: '**not bold**', toolName: null })]} />);
+    render(<SessionDetail sessionId="s1" items={[output({ type: 'tool_result', role: null, content: '**not bold**', toolName: null })]} displayMode="verbose" />);
     // The raw asterisks should be visible as-is
     expect(screen.getByText('**not bold**')).toBeInTheDocument();
   });
@@ -118,5 +120,204 @@ describe('SessionDetail — timestamps', () => {
     // Should show time in HH:MM:SS format
     const timePattern = /\d{1,2}:\d{2}:\d{2}/;
     expect(screen.getByText(timePattern)).toBeInTheDocument();
+  });
+});
+
+describe('SessionDetail — verbose mode truncation (P3)', () => {
+  it('truncates tool_result content > 40 lines in verbose mode', () => {
+    const longContent = Array.from({ length: 50 }, (_, i) => `line ${i + 1}`).join('\n');
+    const items = [
+      output({ id: '1', type: 'tool_result', role: null, content: longContent, toolName: null, sequenceNumber: 1 }),
+    ];
+    render(<SessionDetail sessionId="s1" items={items} displayMode="verbose" />);
+    expect(screen.queryByText('line 50')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /show more/i })).toBeInTheDocument();
+  });
+
+  it('does not truncate tool_result content <= 40 lines in verbose mode', () => {
+    const shortContent = Array.from({ length: 10 }, (_, i) => `line ${i + 1}`).join('\n');
+    const items = [
+      output({ id: '1', type: 'tool_result', role: null, content: shortContent, toolName: null, sequenceNumber: 1 }),
+    ];
+    render(<SessionDetail sessionId="s1" items={items} displayMode="verbose" />);
+    expect(screen.getByText(/line 10/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /show more/i })).not.toBeInTheDocument();
+  });
+
+  it('reveals full content when Show more is clicked', async () => {
+    const user = userEvent.setup();
+    const longContent = Array.from({ length: 50 }, (_, i) => `line ${i + 1}`).join('\n');
+    const items = [
+      output({ id: '1', type: 'tool_result', role: null, content: longContent, toolName: null, sequenceNumber: 1 }),
+    ];
+    render(<SessionDetail sessionId="s1" items={items} displayMode="verbose" />);
+    await user.click(screen.getByRole('button', { name: /show more/i }));
+    expect(screen.getByText(/line 50/)).toBeInTheDocument();
+  });
+});
+
+describe('SessionDetail — focused mode (default)', () => {
+  it('hides tool_result rows in focused mode by default', () => {
+    const items = [
+      output({ id: '1', type: 'tool_use', toolCallId: 'call-1', toolName: 'bash', content: 'run()', sequenceNumber: 1 }),
+      output({ id: '2', type: 'tool_result', toolCallId: 'call-1', content: 'file contents here', toolName: null, sequenceNumber: 2 }),
+    ];
+    render(<SessionDetail sessionId="s1" items={items} />);
+    expect(screen.queryByText('file contents here')).not.toBeInTheDocument();
+  });
+
+  it('shows tool_result rows in verbose mode', () => {
+    const items = [
+      output({ id: '1', type: 'tool_result', role: null, content: 'file contents here', toolName: null, sequenceNumber: 1 }),
+    ];
+    render(<SessionDetail sessionId="s1" items={items} displayMode="verbose" />);
+    expect(screen.getByText('file contents here')).toBeInTheDocument();
+  });
+
+  it('shows expand button for collapsed tool_result in focused mode', async () => {
+    const user = userEvent.setup();
+    const items = [
+      output({ id: '1', type: 'tool_use', toolCallId: 'call-1', toolName: 'bash', content: 'run()', sequenceNumber: 1 }),
+      output({ id: '2', type: 'tool_result', toolCallId: 'call-1', content: 'hidden content', toolName: null, sequenceNumber: 2 }),
+    ];
+    render(<SessionDetail sessionId="s1" items={items} />);
+    await user.click(screen.getByRole('button', { name: /expand tool calls/i }));
+    expect(screen.getByRole('button', { name: /show result/i })).toBeInTheDocument();
+  });
+
+  it('reveals tool_result content after clicking expand button', async () => {
+    const user = userEvent.setup();
+    const items = [
+      output({ id: '1', type: 'tool_use', toolCallId: 'call-1', toolName: 'bash', content: 'run()', sequenceNumber: 1 }),
+      output({ id: '2', type: 'tool_result', toolCallId: 'call-1', content: 'revealed content', toolName: null, sequenceNumber: 2 }),
+    ];
+    render(<SessionDetail sessionId="s1" items={items} />);
+    await user.click(screen.getByRole('button', { name: /expand tool calls/i }));
+    await user.click(screen.getByRole('button', { name: /show result/i }));
+    expect(screen.getByText('revealed content')).toBeInTheDocument();
+  });
+
+  it('keeps the tool summary visible after clicking show result', async () => {
+    const user = userEvent.setup();
+    const items = [
+      output({ id: '1', type: 'tool_use', toolCallId: 'call-1', toolName: 'Bash', content: 'npm run test', sequenceNumber: 1 }),
+      output({ id: '2', type: 'tool_result', toolCallId: 'call-1', content: 'all tests passed', toolName: null, sequenceNumber: 2 }),
+    ];
+    render(<SessionDetail sessionId="s1" items={items} />);
+    await user.click(screen.getByRole('button', { name: /expand tool calls/i }));
+    await user.click(screen.getByRole('button', { name: /show result/i }));
+    expect(screen.getByText('Bash: npm run test')).toBeInTheDocument();
+    expect(screen.getByText('all tests passed')).toBeInTheDocument();
+  });
+
+  it('shows compact summary for tool_use rows — not raw JSON', () => {
+    const jsonContent = JSON.stringify({ path: 'src/App.tsx', old_str: 'foo', new_str: 'bar' });
+    const items = [
+      output({ id: '1', type: 'tool_use', role: null, content: jsonContent, toolName: 'Edit', sequenceNumber: 1 }),
+    ];
+    render(<SessionDetail sessionId="s1" items={items} />);
+    expect(screen.getByText('Edit: src/App.tsx')).toBeInTheDocument();
+    expect(screen.queryByText(jsonContent)).not.toBeInTheDocument();
+  });
+
+  it('shows expand button for tool_use rows to reveal full JSON', () => {
+    const items = [
+      output({ id: '1', type: 'tool_use', role: null, content: 'src/App.tsx', toolName: 'Read', sequenceNumber: 1 }),
+    ];
+    render(<SessionDetail sessionId="s1" items={items} />);
+    expect(screen.getByRole('button', { name: /show details/i })).toBeInTheDocument();
+  });
+
+  it('reveals tool_use full content after clicking expand', async () => {
+    const user = userEvent.setup();
+    const items = [
+      output({ id: '1', type: 'tool_use', role: null, content: 'src/App.tsx', toolName: 'Read', sequenceNumber: 1 }),
+    ];
+    render(<SessionDetail sessionId="s1" items={items} />);
+    await user.click(screen.getByRole('button', { name: /show details/i }));
+    expect(screen.getByText('src/App.tsx')).toBeInTheDocument();
+  });
+
+  it('always shows error rows regardless of display mode', () => {
+    const items = [
+      output({ id: '1', type: 'error', role: null, content: 'Fatal error occurred', toolName: null, sequenceNumber: 1 }),
+    ];
+    render(<SessionDetail sessionId="s1" items={items} />);
+    expect(screen.getByText('Fatal error occurred')).toBeInTheDocument();
+  });
+
+  it('always shows status_change rows regardless of display mode', () => {
+    const items = [
+      output({ id: '1', type: 'status_change', role: null, content: 'Session started', toolName: null, sequenceNumber: 1 }),
+    ];
+    render(<SessionDetail sessionId="s1" items={items} />);
+    expect(screen.getByText('Session started')).toBeInTheDocument();
+  });
+});
+
+describe('SessionDetail — tool groups (focused mode)', () => {
+  it('shows a collapsed summary for a single tool pair', () => {
+    const items = [
+      output({ id: '1', type: 'tool_use', toolCallId: 'call-1', toolName: 'Bash', content: 'ls', sequenceNumber: 1 }),
+      output({ id: '2', type: 'tool_result', toolCallId: 'call-1', content: 'file.txt', toolName: null, sequenceNumber: 2 }),
+    ];
+    render(<SessionDetail sessionId="s1" items={items} />);
+    expect(screen.getByText(/1 tool call/)).toBeInTheDocument();
+    expect(screen.queryByText('Bash: ls')).not.toBeInTheDocument();
+  });
+
+  it('shows a collapsed summary for 2+ consecutive tool pairs', () => {
+    const items = [
+      output({ id: '1', type: 'tool_use', toolCallId: 'call-1', toolName: 'Bash', content: 'ls', sequenceNumber: 1 }),
+      output({ id: '2', type: 'tool_result', toolCallId: 'call-1', content: 'file.txt', toolName: null, sequenceNumber: 2 }),
+      output({ id: '3', type: 'tool_use', toolCallId: 'call-2', toolName: 'Read', content: 'file.txt', sequenceNumber: 3 }),
+      output({ id: '4', type: 'tool_result', toolCallId: 'call-2', content: 'content here', toolName: null, sequenceNumber: 4 }),
+    ];
+    render(<SessionDetail sessionId="s1" items={items} />);
+    expect(screen.getByText(/2 tool calls/)).toBeInTheDocument();
+    expect(screen.queryByText('ls')).not.toBeInTheDocument();
+  });
+
+  it('expands a tool group when clicking the summary', async () => {
+    const user = userEvent.setup();
+    const items = [
+      output({ id: '1', type: 'tool_use', toolCallId: 'call-1', toolName: 'Bash', content: 'ls', sequenceNumber: 1 }),
+      output({ id: '2', type: 'tool_result', toolCallId: 'call-1', content: 'file.txt', toolName: null, sequenceNumber: 2 }),
+      output({ id: '3', type: 'tool_use', toolCallId: 'call-2', toolName: 'Read', content: 'file.txt', sequenceNumber: 3 }),
+      output({ id: '4', type: 'tool_result', toolCallId: 'call-2', content: 'content here', toolName: null, sequenceNumber: 4 }),
+    ];
+    render(<SessionDetail sessionId="s1" items={items} />);
+    await user.click(screen.getByRole('button', { name: /expand tool calls/i }));
+    expect(screen.getByText('Bash: ls')).toBeInTheDocument();
+    expect(screen.getByText('Read: file.txt')).toBeInTheDocument();
+  });
+
+  it('splits groups on non-empty assistant messages between pairs (GHCP pattern)', () => {
+    const items = [
+      output({ id: '1', type: 'tool_use', toolCallId: 'call-1', toolName: 'Bash', content: 'ls', sequenceNumber: 1 }),
+      output({ id: '2', type: 'tool_result', toolCallId: 'call-1', content: 'file.txt', toolName: null, sequenceNumber: 2 }),
+      output({ id: '3', type: 'message', role: 'assistant', content: 'Now reading...', toolName: null, sequenceNumber: 3 }),
+      output({ id: '4', type: 'tool_use', toolCallId: 'call-2', toolName: 'Read', content: 'file.txt', sequenceNumber: 4 }),
+      output({ id: '5', type: 'tool_result', toolCallId: 'call-2', content: 'content here', toolName: null, sequenceNumber: 5 }),
+    ];
+    render(<SessionDetail sessionId="s1" items={items} />);
+    // Two separate groups plus the assistant message as a standalone
+    expect(screen.getAllByRole('button', { name: /expand tool calls/i })).toHaveLength(2);
+    expect(screen.getByText('Now reading...')).toBeInTheDocument();
+    // Each group has 1 tool call
+    const summaries = screen.getAllByText(/1 tool call/);
+    expect(summaries).toHaveLength(2);
+  });
+
+  it('skips empty assistant messages between pairs (keeps them in one group)', () => {
+    const items = [
+      output({ id: '1', type: 'tool_use', toolCallId: 'call-1', toolName: 'Bash', content: 'ls', sequenceNumber: 1 }),
+      output({ id: '2', type: 'tool_result', toolCallId: 'call-1', content: 'file.txt', toolName: null, sequenceNumber: 2 }),
+      output({ id: '3', type: 'message', role: 'assistant', content: '', toolName: null, sequenceNumber: 3 }),
+      output({ id: '4', type: 'tool_use', toolCallId: 'call-2', toolName: 'Read', content: 'file.txt', sequenceNumber: 4 }),
+      output({ id: '5', type: 'tool_result', toolCallId: 'call-2', content: 'content here', toolName: null, sequenceNumber: 5 }),
+    ];
+    render(<SessionDetail sessionId="s1" items={items} />);
+    expect(screen.getByText(/2 tool calls/)).toBeInTheDocument();
   });
 });

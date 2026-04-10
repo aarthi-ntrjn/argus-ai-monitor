@@ -19,12 +19,14 @@ const allOff: DashboardSettings = {
   hideEndedSessions: false,
   hideReposWithNoActiveSessions: false,
   hideInactiveSessions: false,
+  outputDisplayMode: 'focused',
 };
 
 const allOn: DashboardSettings = {
   hideEndedSessions: true,
   hideReposWithNoActiveSessions: true,
   hideInactiveSessions: true,
+  outputDisplayMode: 'focused',
 };
 
 describe('SettingsPanel', () => {

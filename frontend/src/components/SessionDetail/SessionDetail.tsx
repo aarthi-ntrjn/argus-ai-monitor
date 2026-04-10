@@ -1,14 +1,16 @@
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useState } from 'react';
 import type { Components } from 'react-markdown';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { SessionOutput } from '../../types';
+import type { SessionOutput, OutputDisplayMode } from '../../types';
+import { summariseToolUse, fullToolUseText, buildDisplayItems } from './sessionDetailUtils';
 
 interface Props {
   sessionId: string;
   items: SessionOutput[];
   dark?: boolean;
   className?: string;
+  displayMode?: OutputDisplayMode;
 }
 
 type BadgeStyle = { label: string; light: string; dark: string };
@@ -40,8 +42,22 @@ function formatTime(timestamp: string): string {
   });
 }
 
-export default function SessionDetail({ items, dark = false, className }: Props) {
+export default function SessionDetail({ items, dark = false, className, displayMode = 'focused' }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [expandedFullIds, setExpandedFullIds] = useState<Set<string>>(new Set());
+
+  function toggleExpand(id: string) {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      return next;
+    });
+  }
+
+  function expandFull(id: string) {
+    setExpandedFullIds(prev => new Set(prev).add(id));
+  }
 
   const markdownComponents = useMemo<Components>(() => ({
     p: ({ children }) => <p className="my-0 leading-snug whitespace-pre-wrap">{children}</p>,
@@ -62,6 +78,11 @@ export default function SessionDetail({ items, dark = false, className }: Props)
     a: ({ children, href }) => <a href={href} className={`underline ${dark ? 'text-blue-400' : 'text-blue-600'}`}>{children}</a>,
   }), [dark]);
 
+  const displayItems = useMemo(
+    () => buildDisplayItems(items, displayMode === 'focused'),
+    [items, displayMode],
+  );
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [items.length]);
@@ -74,38 +95,217 @@ export default function SessionDetail({ items, dark = false, className }: Props)
     );
   }
 
+  function renderBadgeCol(item: SessionOutput) {
+    const typeInfo = getBadge(item);
+    const badgeColor = dark ? typeInfo.dark : typeInfo.light;
+    return (
+      <div className="flex flex-col gap-0.5 w-24 shrink-0">
+        <span className={`text-xs px-1.5 py-0.5 rounded font-medium whitespace-nowrap self-start ${badgeColor}`}>
+          {typeInfo.label}
+        </span>
+        <span className={`text-[10px] whitespace-nowrap ${dark ? 'text-gray-400' : 'text-gray-600'}`}>
+          {formatTime(item.timestamp)}
+        </span>
+      </div>
+    );
+  }
+
+  function renderToolNameBadge(toolName: string | null | undefined) {
+    if (!toolName) return null;
+    const badgeColor = dark ? 'bg-purple-900 text-purple-300' : 'bg-purple-100 text-purple-700';
+    return (
+      <span className={`text-xs px-1.5 py-0.5 rounded font-medium whitespace-nowrap shrink-0 ${badgeColor}`}>
+        {toolName}
+      </span>
+    );
+  }
+
+  function renderContent(item: SessionOutput) {
+    const isFocused = displayMode === 'focused';
+    const isExpanded = expandedIds.has(item.id);
+    const isToolUse = item.type === 'tool_use';
+
+    if (item.type === 'message') {
+      return (
+        <div className={`max-w-none break-words leading-snug ${dark ? 'text-gray-200' : 'text-gray-800'}`}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+            {item.content}
+          </ReactMarkdown>
+        </div>
+      );
+    }
+
+    if (isToolUse && !isExpanded) {
+      return (
+        <div className="flex items-center gap-2">
+          {renderToolNameBadge(item.toolName)}
+          <span className={`break-words ${dark ? 'text-gray-200' : 'text-gray-800'}`}>{summariseToolUse(item)}</span>
+          <button
+            aria-label="Show details"
+            onClick={() => toggleExpand(item.id)}
+            className={`text-xs underline shrink-0 ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+          >
+            show details
+          </button>
+        </div>
+      );
+    }
+
+    const MAX_LINES = 40;
+    const lines = item.content.split('\n');
+    const isTruncatable = !isFocused && item.type === 'tool_result' && lines.length > MAX_LINES;
+    const isFullyExpanded = expandedFullIds.has(item.id);
+    const displayContent = isTruncatable && !isFullyExpanded
+      ? lines.slice(0, MAX_LINES).join('\n')
+      : item.content;
+
+    return (
+      <div>
+        {item.toolName && <div className="mb-0.5">{renderToolNameBadge(item.toolName)}</div>}
+        <span className={`min-w-0 break-words whitespace-pre-wrap ${dark ? 'text-gray-200' : 'text-gray-800'}`}>{displayContent}</span>
+        {isTruncatable && !isFullyExpanded && (
+          <button
+            aria-label="Show more"
+            onClick={() => expandFull(item.id)}
+            className={`block text-xs underline mt-1 ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+          >
+            show more
+          </button>
+        )}
+        {(isToolUse || (isFocused && item.type === 'tool_result')) && isExpanded && (
+          <button
+            aria-label="Hide details"
+            onClick={() => toggleExpand(item.id)}
+            className={`block text-xs underline mt-1 ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+          >
+            hide
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className={`overflow-y-auto p-4 space-y-1 font-mono text-xs min-h-full ${dark ? 'bg-gray-900' : ''} ${className ?? ''}`}>
-      {items.map((item) => {
-        const typeInfo = getBadge(item);
-        const badgeColor = dark ? typeInfo.dark : typeInfo.light;
+      {displayItems.map((di) => {
+        if (di.kind === 'tool_group') {
+          const pairs = di.groupItems.filter(gi => gi.kind === 'tool_pair') as Array<{ kind: 'tool_pair'; toolUse: SessionOutput; toolResult: SessionOutput }>;
+          const groupId = pairs[0].toolUse.id;
+          const isExpanded = expandedIds.has(groupId);
+          const toolNames = pairs.map(p => p.toolUse.toolName).filter(Boolean);
+          const uniqueNames = [...new Set(toolNames)];
+          const nameSummary = uniqueNames.slice(0, 3).join(', ') + (uniqueNames.length > 3 ? ', …' : '');
+          const summary = `${pairs.length} tool call${pairs.length === 1 ? '' : 's'}${nameSummary ? `: ${nameSummary}` : ''}`;
+          return (
+            <div key={groupId} className={`rounded border ${dark ? 'border-gray-700 bg-gray-800/40' : 'border-gray-200 bg-gray-50'}`}>
+              <button
+                aria-label={isExpanded ? 'Collapse tool calls' : 'Expand tool calls'}
+                onClick={() => toggleExpand(groupId)}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 text-left ${dark ? 'hover:bg-gray-700/50' : 'hover:bg-gray-100'}`}
+              >
+                <span className={`text-[10px] ${dark ? 'text-gray-400' : 'text-gray-500'}`}>{isExpanded ? '▾' : '▸'}</span>
+                <span className={`text-xs font-medium ${dark ? 'text-gray-300' : 'text-gray-600'}`}>{summary}</span>
+              </button>
+              {isExpanded && (
+                <div className={`border-t px-3 py-2 space-y-2 ${dark ? 'border-gray-700' : 'border-gray-200'}`}>
+                  {di.groupItems.map((gi) => {
+                    if (gi.kind === 'single') {
+                      return (
+                        <div key={gi.item.id} className="flex gap-3 items-start">
+                          {renderBadgeCol(gi.item)}
+                          <div className="min-w-0 flex-1">{renderContent(gi.item)}</div>
+                        </div>
+                      );
+                    }
+                    const { toolUse, toolResult } = gi;
+                    const pairExpanded = expandedIds.has(`pair-${toolUse.id}`);
+                    const typeInfo = getBadge(toolUse);
+                    const badgeColor = dark ? typeInfo.dark : typeInfo.light;
+                    return (
+                      <div key={toolUse.id} className="flex gap-3 items-start">
+                        <div className="flex flex-col gap-0.5 w-24 shrink-0">
+                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium whitespace-nowrap self-start ${badgeColor}`}>
+                            {typeInfo.label}
+                          </span>
+                          <span className={`text-[10px] whitespace-nowrap ${dark ? 'text-gray-400' : 'text-gray-600'}`}>
+                            {formatTime(toolUse.timestamp)}
+                          </span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            {renderToolNameBadge(toolUse.toolName)}
+                            <span className={`break-words ${dark ? 'text-gray-200' : 'text-gray-800'}`}>
+                              {pairExpanded ? fullToolUseText(toolUse) : summariseToolUse(toolUse)}
+                            </span>
+                            <button
+                              aria-label={pairExpanded ? 'Hide result' : 'Show result'}
+                              onClick={() => toggleExpand(`pair-${toolUse.id}`)}
+                              className={`text-xs underline shrink-0 ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                              {pairExpanded ? 'hide result' : 'show result'}
+                            </button>
+                          </div>
+                          {pairExpanded && (
+                            <div className={`mt-1 whitespace-pre-wrap break-words ${dark ? 'text-gray-300' : 'text-gray-700'}`}>
+                              {toolResult.content}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        if (di.kind === 'tool_pair') {
+          const { toolUse, toolResult } = di;
+          const isExpanded = expandedIds.has(toolUse.id);
+          const typeInfo = getBadge(toolUse);
+          const badgeColor = dark ? typeInfo.dark : typeInfo.light;
+          return (
+            <div key={toolUse.id} className="flex gap-3 items-start">
+              <div className="flex flex-col gap-0.5 w-24 shrink-0">
+                <span className={`text-xs px-1.5 py-0.5 rounded font-medium whitespace-nowrap self-start ${badgeColor}`}>
+                  {typeInfo.label}
+                </span>
+                <span className={`text-[10px] whitespace-nowrap ${dark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {formatTime(toolUse.timestamp)}
+                </span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  {renderToolNameBadge(toolUse.toolName)}
+                  <span className={`break-words ${dark ? 'text-gray-200' : 'text-gray-800'}`}>
+                    {isExpanded ? fullToolUseText(toolUse) : summariseToolUse(toolUse)}
+                  </span>
+                  <button
+                    aria-label={isExpanded ? 'Hide result' : 'Show result'}
+                    onClick={() => toggleExpand(toolUse.id)}
+                    className={`text-xs underline shrink-0 ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+                  >
+                    {isExpanded ? 'hide result' : 'show result'}
+                  </button>
+                </div>
+                {isExpanded && (
+                  <div className={`mt-1 whitespace-pre-wrap break-words ${dark ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {toolResult.content}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        }
+
+        const { item } = di;
         return (
           <div key={item.id} className="flex gap-3 items-start">
-            {/* Column 1: badge, toolname, timestamp */}
-            <div className="flex flex-col gap-0.5 w-24 shrink-0">
-              <span className={`text-xs px-1.5 py-0.5 rounded font-medium whitespace-nowrap self-start ${badgeColor}`}>
-                {typeInfo.label}
-              </span>
-              {item.toolName && (
-                <span className={`text-xs truncate ${dark ? 'text-purple-400' : 'text-purple-600'}`}>[{item.toolName}]</span>
-              )}
-              <span className={`text-[10px] whitespace-nowrap ${dark ? 'text-gray-400' : 'text-gray-600'}`}>
-                {formatTime(item.timestamp)}
-              </span>
+            {renderBadgeCol(item)}
+            <div className="min-w-0 flex-1">
+              {renderContent(item)}
             </div>
-            {/* Column 2: content */}
-            {item.type === 'message' ? (
-              <div className={`min-w-0 max-w-none break-words leading-snug ${dark ? 'text-gray-200' : 'text-gray-800'}`}>
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={markdownComponents}
-                >
-                  {item.content}
-                </ReactMarkdown>
-              </div>
-            ) : (
-              <span className={`min-w-0 break-words whitespace-pre-wrap ${dark ? 'text-gray-200' : 'text-gray-800'}`}>{item.content}</span>
-            )}
           </div>
         );
       })}
