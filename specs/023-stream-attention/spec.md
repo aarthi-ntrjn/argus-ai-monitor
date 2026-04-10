@@ -2,7 +2,7 @@
 
 **Feature Branch**: `023-stream-attention`
 **Created**: 2026-04-10
-**Status**: Draft
+**Status**: Clarified
 **Input**: User description: "Change how output stream content is shown. Right now it shows everything. Want to change it to help manage user attention better. Need to understand the kind of messages that are sent in an AI session."
 
 ## Background: AI Session Message Types
@@ -85,7 +85,7 @@ tool_results at full content. Click again to return to focused mode.
 
 1. **Given** focused mode is active, **When** the user clicks "Verbose" toggle, **Then** all tool_result rows become visible with full content.
 2. **Given** verbose mode is active, **When** the user clicks "Focused" toggle, **Then** tool_result rows collapse again.
-3. **Given** the user switches to verbose mode, **When** they close and reopen the output pane, **Then** the mode [NEEDS CLARIFICATION: should the toggle state persist across pane reopens, or always reset to focused?]
+3. **Given** the user switches to verbose mode, **When** they close and reopen the output pane, **Then** the mode persists globally — the user's last chosen mode (Focused or Verbose) is remembered across all sessions and pane reopens.
 
 ---
 
@@ -130,7 +130,7 @@ content is capped and a "Show more" button is present.
 - **FR-007**: `error` type rows MUST always be visible regardless of display mode.
 - **FR-008**: `status_change` rows MUST always be visible regardless of display mode.
 - **FR-009**: Tool result content exceeding 40 lines in Verbose mode MUST be truncated with a "Show more" control (P3).
-- **FR-010**: Display mode toggle state MUST be [NEEDS CLARIFICATION: see User Story 3 — persist vs always reset to focused].
+- **FR-010**: Display mode toggle state MUST persist globally in user settings — the last chosen mode (Focused or Verbose) is retained across all sessions and pane reopens. Default is Focused.
 
 ### Key Entities
 
@@ -156,3 +156,10 @@ content is capped and a "Show more" button is present.
 - Tool argument summarisation is done client-side using the existing `content` field (already extracted from raw JSON by the backend parser).
 - Mobile layout is in scope; the toggle and expand controls must be touch-friendly.
 - The existing dark/light theme support in `SessionDetail` must be preserved.
+
+## Clarifications
+
+### Session 2026-04-10
+
+- **Toggle persistence**: The Focused/Verbose mode toggle persists globally in user settings. The last chosen mode is remembered across all sessions and pane reopens. Default is Focused.
+- **Tool_use summarisation**: The compact summary (`ToolName: content-preview`) is constructed from the `toolName` field and the existing `content` field already extracted by the backend — no additional parsing required. For multi-argument tools, the `path` key is used as the preview value when available. The summary row is expandable to reveal full JSON arguments on click.

@@ -16,4 +16,5 @@
 
 ## Open Clarifications
 
-- [ ] FR-010 / US-3: Should the Focused/Verbose toggle state persist across pane reopens?
+- [x] FR-010 / US-3: Toggle state persists globally in user settings (last chosen mode remembered, default Focused).
+- [x] FR-003 / US-2: tool_use summary uses existing toolName + content fields; expandable to full JSON on click.
