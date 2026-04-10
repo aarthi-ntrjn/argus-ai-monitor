@@ -66,17 +66,22 @@ export class CopilotCliDetector {
     const pid = lockFile ? this.extractPid(lockFile) : null;
     const isRunning = pid !== null && runningPids.has(pid);
 
+    const sessionId = workspace.id ?? randomUUID();
+    const existingSession = getSession(sessionId);
+
+    // Skip directories for sessions already recorded as ended: no lock file means
+    // nothing has changed since we last marked them ended.
+    if (!isRunning && existingSession?.status === 'ended') return null;
+
     const repo = workspace.cwd ? getRepositoryByPath(normalize(workspace.cwd)) : null;
     if (!repo) return null;
 
-    const sessionId = workspace.id ?? randomUUID();
     const status = isRunning ? 'active' : 'ended';
 
     const toIso = (val: string | Date | undefined): string =>
       val ? (val instanceof Date ? val.toISOString() : val) : new Date().toISOString();
 
     // Check if this session was already claimed as a PTY session on a previous scan
-    const existingSession = getSession(sessionId);
     const alreadyClaimed = existingSession?.launchMode === 'pty';
 
     let launchMode: 'pty' | null = null;
