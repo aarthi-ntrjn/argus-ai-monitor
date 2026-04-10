@@ -15,8 +15,7 @@ Manual tests for the `argus launch` command and PTY session lifecycle. Run these
 |# | Steps | Expected |
 |---|-------|----------|
 | L0-01 | On a repo card, click the **Launch with Argus** button | A dropdown opens showing the available tools (Claude Code and/or GitHub Copilot CLI) |
-| L0-02 | In the dropdown, click **Launch Claude** | Claude opens in a new terminal window; a new session card with a green **live** badge and "claude-code" (orange) type badge appears on the dashboard within 5 seconds |
-| L0-03 | On the live session card, click the prompt input without typing anything | The send button is disabled (greyed out) |
+| L0-02 | In the dropdown, click **Launch Claude** | Claude opens in a new terminal window; a new session card with a green **live** badge and "claude-code" (orange) type badge appears on the dashboard within 5 seconds; the prompt input is visible and the send button is disabled (greyed out) |
 | L0-05 | On the new session card, type **"what is the day today?"** in the prompt input and press Enter | The prompt appears in the Claude terminal; Claude responds; the response is visible in both the terminal and the session card output stream; the input clears |
 | L0-06 | On the same session card, type **"say hello"** and click the send button instead of pressing Enter | Same result: prompt delivered, response appears, input clears |
 | L0-07 | In the Claude terminal, type **"what is 2 + 2?"** directly (not from the dashboard) | The question and Claude's response appear in the session card's output stream on the dashboard within a few seconds |

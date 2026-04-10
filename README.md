@@ -65,7 +65,7 @@ To send prompts to a session, start it through Argus using the `argus launch` co
 npm run launch --workspace=backend -- claude
 
 # GitHub Copilot CLI
-npm run launch --workspace=backend -- gh copilot suggest
+npm run launch --workspace=backend -- copilot
 ```
 
 Run this in any terminal: VS Code integrated terminal, Windows Terminal, iTerm2, or any other terminal emulator. The session appears in the Argus dashboard with a **live** badge and the prompt bar is enabled.

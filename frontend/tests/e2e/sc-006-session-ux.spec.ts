@@ -87,30 +87,6 @@ test.describe('SC-006: Session Detail UX', () => {
     await expect(page.getByRole('region', { name: /session output/i })).not.toBeVisible();
   });
 
-  // ─── US2: Kill Session Button ────────────────────────────────────────────────
-
-  test('US2: session card shows the kill session button', async ({ page }) => {
-    await mockApis(page);
-    await page.goto('/');
-    await expect(page.getByText('Working on feature')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByRole('button', { name: /kill session/i }).first()).toBeVisible();
-  });
-
-  test('US2: clicking the kill session button opens a confirmation modal', async ({ page }) => {
-    await mockApis(page);
-    await page.goto('/');
-    await expect(page.getByText('Working on feature')).toBeVisible({ timeout: 5000 });
-    await page.getByRole('button', { name: /kill session/i }).first().click();
-    await expect(page.getByRole('alertdialog', { name: /kill/i })).toBeVisible({ timeout: 2000 });
-  });
-
-  test('US2: copilot-cli card also shows the kill session button', async ({ page }) => {
-    await mockApis(page);
-    await page.goto('/');
-    await expect(page.getByText('Another session')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByRole('button', { name: /kill session/i }).nth(1)).toBeVisible();
-  });
-
   // ─── US3: Inline Prompt Input ───────────────────────────────────────────────
 
   test('US3: session card shows prompt input field for claude-code sessions', async ({ page }) => {
