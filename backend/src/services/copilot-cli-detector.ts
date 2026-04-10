@@ -90,7 +90,6 @@ export class CopilotCliDetector {
     let resolvedPidSource: PidSource | null = pid != null ? 'lockfile' : null;
 
     const registryHas = ptyRegistry.has(sessionId);
-    console.log(`[CopilotDetector] scan sessionId=${sessionId} pid=${pid} isRunning=${isRunning} alreadyClaimed=${alreadyClaimed} registryHas=${registryHas}`);
 
     if (alreadyClaimed) {
       // Preserve launchMode:'pty' as a historical record — this session was launched via argus launch
@@ -137,8 +136,6 @@ export class CopilotCliDetector {
         console.log(`[CopilotDetector] claimForSession MISS — no pending WS — sessionId=${sessionId} will be read-only`);
       }
     }
-
-    console.log(`[CopilotDetector] result sessionId=${sessionId} launchMode=${launchMode} status=${status} hostPid=${resolvedHostPid} pid=${resolvedPid}`);
 
     const session: Session = {
       id: sessionId,
