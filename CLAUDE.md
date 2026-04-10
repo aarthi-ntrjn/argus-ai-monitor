@@ -9,9 +9,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - During implementation, commit after completing each task (use the task ID in the commit message).
 - After making any frontend changes, run `npm run build --workspace=frontend` before committing so the served build at port 7411 reflects the changes.
 
+## Writing Style
+
+- **Never use em dashes** (`—`) in any documentation, comments, or content. They are tiresome to read. Use a comma, colon, parentheses, or rewrite the sentence instead.
+
 ## Project Purpose
 
-Argus is a tool for centrally monitoring and remotely controlling Claude Code and GitHub Copilot sessions. The repository currently contains no application code — only the Speckit SDD (Specification-Driven Development) infrastructure for building it.
+Argus is a tool for centrally monitoring and remotely controlling Claude Code and GitHub Copilot sessions. The repository currently contains application code and the Speckit SDD (Specification-Driven Development) infrastructure for building it.
 
 ## Speckit Workflow
 
@@ -70,9 +74,7 @@ All automation is PowerShell (`.ps1`) under `.specify/scripts/powershell/`. VS C
 
 Optional lifecycle hooks (`before_specify`, `after_specify`, etc.) can be defined in `.specify/extensions.yml`.
 
-## Writing Style
-
-- **Never use em dashes** (`—`) in any documentation, comments, or content. They are tiresome to read. Use a comma, colon, parentheses, or rewrite the sentence instead.
-
 - `.specify/init-options.json`: `speckit_version: "0.4.3"`, `ai: "claude"`, `script: "ps"`, `branch_numbering: "sequential"`
-- `.gitignore` excludes `.claude/` and `.github/copilot/` credential folders
+- `.gitignore` excludes `.claude/` and `.github/copilot/` credential folders  
+[aarthin] why is the above line needed. infact it is also not true.  
+[aarthin] CLAUDE.md is largely about speckit and does not actually have anything about project itself. shouldnt it point to the README.md files
