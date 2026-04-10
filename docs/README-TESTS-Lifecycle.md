@@ -29,7 +29,6 @@ Manual tests for session state transitions across different scenarios: terminal 
 | L-13 | Leave a Claude Code session with no activity and wait past the resting threshold (default 20 min on frontend) | Session card shows an amber "resting" badge with a moon icon; card opacity reduces |
 | L-14 | After a Claude Code session shows "resting", send it a new prompt or trigger activity | Badge changes back from "resting" (amber) to "running" (green) within 5 seconds |
 | L-15 | Leave a Copilot CLI session idle for 20+ minutes | Session remains "running" (green), not "resting", because Copilot CLI does not have idle detection. It stays active as long as the PID is alive |
-| L-16 | Open Settings and change the resting threshold to a lower value (e.g. 5 minutes) | The threshold change takes effect; Claude Code sessions that exceed the new threshold show "resting" |
 
 ---
 
