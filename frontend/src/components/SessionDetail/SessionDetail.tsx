@@ -188,6 +188,68 @@ export default function SessionDetail({ items, dark = false, className, displayM
   return (
     <div className={`overflow-y-auto p-4 space-y-1 font-mono text-xs min-h-full ${dark ? 'bg-gray-900' : ''} ${className ?? ''}`}>
       {displayItems.map((di) => {
+        if (di.kind === 'tool_group') {
+          const groupId = di.pairs[0].toolUse.id;
+          const isExpanded = expandedIds.has(groupId);
+          const toolNames = di.pairs.map(p => p.toolUse.toolName).filter(Boolean);
+          const uniqueNames = [...new Set(toolNames)];
+          const nameSummary = uniqueNames.slice(0, 3).join(', ') + (uniqueNames.length > 3 ? ', …' : '');
+          const summary = `${di.pairs.length} tool calls${nameSummary ? `: ${nameSummary}` : ''}`;
+          return (
+            <div key={groupId} className={`rounded border ${dark ? 'border-gray-700 bg-gray-800/40' : 'border-gray-200 bg-gray-50'}`}>
+              <button
+                aria-label={isExpanded ? 'Collapse tool calls' : 'Expand tool calls'}
+                onClick={() => toggleExpand(groupId)}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 text-left ${dark ? 'hover:bg-gray-700/50' : 'hover:bg-gray-100'}`}
+              >
+                <span className={`text-[10px] ${dark ? 'text-gray-400' : 'text-gray-500'}`}>{isExpanded ? '▾' : '▸'}</span>
+                <span className={`text-xs font-medium ${dark ? 'text-gray-300' : 'text-gray-600'}`}>{summary}</span>
+              </button>
+              {isExpanded && (
+                <div className={`border-t px-3 py-2 space-y-2 ${dark ? 'border-gray-700' : 'border-gray-200'}`}>
+                  {di.pairs.map(({ toolUse, toolResult }) => {
+                    const pairExpanded = expandedIds.has(`pair-${toolUse.id}`);
+                    const typeInfo = getBadge(toolUse);
+                    const badgeColor = dark ? typeInfo.dark : typeInfo.light;
+                    return (
+                      <div key={toolUse.id} className="flex gap-3 items-start">
+                        <div className="flex flex-col gap-0.5 w-24 shrink-0">
+                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium whitespace-nowrap self-start ${badgeColor}`}>
+                            {typeInfo.label}
+                          </span>
+                          <span className={`text-[10px] whitespace-nowrap ${dark ? 'text-gray-400' : 'text-gray-600'}`}>
+                            {formatTime(toolUse.timestamp)}
+                          </span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            {renderToolNameBadge(toolUse.toolName)}
+                            <span className={`break-words ${dark ? 'text-gray-200' : 'text-gray-800'}`}>
+                              {pairExpanded ? fullToolUseText(toolUse) : summariseToolUse(toolUse)}
+                            </span>
+                            <button
+                              aria-label={pairExpanded ? 'Hide result' : 'Show result'}
+                              onClick={() => toggleExpand(`pair-${toolUse.id}`)}
+                              className={`text-xs underline shrink-0 ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                              {pairExpanded ? 'hide result' : 'show result'}
+                            </button>
+                          </div>
+                          {pairExpanded && (
+                            <div className={`mt-1 whitespace-pre-wrap break-words ${dark ? 'text-gray-300' : 'text-gray-700'}`}>
+                              {toolResult.content}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        }
+
         if (di.kind === 'tool_pair') {
           const { toolUse, toolResult } = di;
           const isExpanded = expandedIds.has(toolUse.id);

@@ -156,4 +156,50 @@ describe('buildDisplayItems', () => {
       expect(result[0].toolResult.id).toBe('2');
     }
   });
+
+  it('focused mode groups 2+ consecutive tool_pairs into a tool_group', () => {
+    const items = [
+      output({ id: '1', type: 'tool_use', toolCallId: 'call-1' }),
+      output({ id: '2', type: 'tool_result', toolCallId: 'call-1' }),
+      output({ id: '3', type: 'tool_use', toolCallId: 'call-2' }),
+      output({ id: '4', type: 'tool_result', toolCallId: 'call-2' }),
+    ];
+    const result = buildDisplayItems(items, true);
+    expect(result).toHaveLength(1);
+    expect(result[0].kind).toBe('tool_group');
+    if (result[0].kind === 'tool_group') {
+      expect(result[0].pairs).toHaveLength(2);
+      expect(result[0].pairs[0].toolUse.id).toBe('1');
+      expect(result[0].pairs[1].toolUse.id).toBe('3');
+    }
+  });
+
+  it('focused mode keeps isolated tool_pair as tool_pair (not grouped)', () => {
+    const items = [
+      output({ id: '1', type: 'tool_use', toolCallId: 'call-1' }),
+      output({ id: '2', type: 'tool_result', toolCallId: 'call-1' }),
+    ];
+    const result = buildDisplayItems(items, true);
+    expect(result).toHaveLength(1);
+    expect(result[0].kind).toBe('tool_pair');
+  });
+
+  it('focused mode splits groups broken by a message', () => {
+    const items = [
+      output({ id: '1', type: 'tool_use', toolCallId: 'call-1' }),
+      output({ id: '2', type: 'tool_result', toolCallId: 'call-1' }),
+      output({ id: '3', type: 'tool_use', toolCallId: 'call-2' }),
+      output({ id: '4', type: 'tool_result', toolCallId: 'call-2' }),
+      output({ id: '5', type: 'message', role: 'assistant', content: 'done' }),
+      output({ id: '6', type: 'tool_use', toolCallId: 'call-3' }),
+      output({ id: '7', type: 'tool_result', toolCallId: 'call-3' }),
+      output({ id: '8', type: 'tool_use', toolCallId: 'call-4' }),
+      output({ id: '9', type: 'tool_result', toolCallId: 'call-4' }),
+    ];
+    const result = buildDisplayItems(items, true);
+    expect(result).toHaveLength(3);
+    expect(result[0].kind).toBe('tool_group');
+    expect(result[1].kind).toBe('single');
+    expect(result[2].kind).toBe('tool_group');
+  });
 });

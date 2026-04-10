@@ -250,3 +250,31 @@ describe('SessionDetail — focused mode (default)', () => {
     expect(screen.getByText('Session started')).toBeInTheDocument();
   });
 });
+
+describe('SessionDetail — tool groups (focused mode)', () => {
+  it('shows a collapsed summary for 2+ consecutive tool pairs', () => {
+    const items = [
+      output({ id: '1', type: 'tool_use', toolCallId: 'call-1', toolName: 'Bash', content: 'ls', sequenceNumber: 1 }),
+      output({ id: '2', type: 'tool_result', toolCallId: 'call-1', content: 'file.txt', toolName: null, sequenceNumber: 2 }),
+      output({ id: '3', type: 'tool_use', toolCallId: 'call-2', toolName: 'Read', content: 'file.txt', sequenceNumber: 3 }),
+      output({ id: '4', type: 'tool_result', toolCallId: 'call-2', content: 'content here', toolName: null, sequenceNumber: 4 }),
+    ];
+    render(<SessionDetail sessionId="s1" items={items} />);
+    expect(screen.getByText(/2 tool calls/)).toBeInTheDocument();
+    expect(screen.queryByText('ls')).not.toBeInTheDocument();
+  });
+
+  it('expands a tool group when clicking the summary', async () => {
+    const user = userEvent.setup();
+    const items = [
+      output({ id: '1', type: 'tool_use', toolCallId: 'call-1', toolName: 'Bash', content: 'ls', sequenceNumber: 1 }),
+      output({ id: '2', type: 'tool_result', toolCallId: 'call-1', content: 'file.txt', toolName: null, sequenceNumber: 2 }),
+      output({ id: '3', type: 'tool_use', toolCallId: 'call-2', toolName: 'Read', content: 'file.txt', sequenceNumber: 3 }),
+      output({ id: '4', type: 'tool_result', toolCallId: 'call-2', content: 'content here', toolName: null, sequenceNumber: 4 }),
+    ];
+    render(<SessionDetail sessionId="s1" items={items} />);
+    await user.click(screen.getByRole('button', { name: /expand tool calls/i }));
+    expect(screen.getByText('Bash: ls')).toBeInTheDocument();
+    expect(screen.getByText('Read: file.txt')).toBeInTheDocument();
+  });
+});

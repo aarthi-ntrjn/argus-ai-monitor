@@ -55,7 +55,8 @@ export function isAlwaysVisible(item: SessionOutput): boolean {
 
 export type DisplayItem =
   | { kind: 'single'; item: SessionOutput }
-  | { kind: 'tool_pair'; toolUse: SessionOutput; toolResult: SessionOutput };
+  | { kind: 'tool_pair'; toolUse: SessionOutput; toolResult: SessionOutput }
+  | { kind: 'tool_group'; pairs: Array<{ toolUse: SessionOutput; toolResult: SessionOutput }> };
 
 /**
  * In focused mode, pairs tool_use and tool_result into a single display row.
@@ -128,6 +129,34 @@ export function buildDisplayItems(items: SessionOutput[], focused: boolean): Dis
       }
     } else {
       result.push({ kind: 'single', item });
+    }
+  }
+  return groupConsecutiveToolPairs(result);
+}
+
+/**
+ * Groups runs of 2+ consecutive tool_pair items into a tool_group.
+ * Isolated single tool_pairs remain as-is.
+ */
+function groupConsecutiveToolPairs(items: DisplayItem[]): DisplayItem[] {
+  const result: DisplayItem[] = [];
+  let i = 0;
+  while (i < items.length) {
+    if (items[i].kind === 'tool_pair') {
+      const pairs: Array<{ toolUse: SessionOutput; toolResult: SessionOutput }> = [];
+      while (i < items.length && items[i].kind === 'tool_pair') {
+        const di = items[i] as { kind: 'tool_pair'; toolUse: SessionOutput; toolResult: SessionOutput };
+        pairs.push({ toolUse: di.toolUse, toolResult: di.toolResult });
+        i++;
+      }
+      if (pairs.length >= 2) {
+        result.push({ kind: 'tool_group', pairs });
+      } else {
+        result.push({ kind: 'tool_pair', toolUse: pairs[0].toolUse, toolResult: pairs[0].toolResult });
+      }
+    } else {
+      result.push(items[i]);
+      i++;
     }
   }
   return result;
