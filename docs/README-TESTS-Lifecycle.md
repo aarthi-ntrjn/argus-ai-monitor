@@ -48,21 +48,7 @@ Manual tests for session state transitions across different scenarios: terminal 
 
 ---
 
-## L3: Mixed lifecycle transitions on the dashboard
-
-| # | Steps | Expected |
-|---|-------|----------|
-| L-32 | Have a Claude Code session running and a Copilot CLI session running in the same repo | Both sessions appear as separate cards under the same repo; each has its correct type badge |
-| L-33 | End the Claude Code session while the Copilot CLI session continues | Claude Code card transitions to "ended"; Copilot CLI card remains "running"; no cross-contamination |
-| L-34 | Have a Claude Code session in "resting" state and start a new Claude Code session in the same repo | Both sessions appear: one with "resting" (amber), one with "running" (green) |
-| L-35 | Have sessions across multiple repos, end all sessions in one repo | Only that repo's sessions transition to "ended"; other repos' sessions are unaffected |
-| L-36 | With "Hide ended sessions" ON in settings, end a running session | The session card disappears from the dashboard as soon as it transitions to "ended" |
-| L-37 | With "Hide ended sessions" ON, start a new session | The new session card appears normally (it is "running", not ended) |
-| L-38 | With "Hide inactive sessions" ON, a Claude Code session goes idle past threshold | The session card disappears from the dashboard when it becomes "resting" |
-
----
-
-## L4: Session ends (server already running)
+## L3: Session ends (server already running)
 
 | # | Steps | Expected |
 |---|-------|----------|
