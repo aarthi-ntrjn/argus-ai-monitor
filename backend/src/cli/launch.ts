@@ -87,6 +87,10 @@ client.setRegisterInfo({ sessionId, pid: pty.pid, sessionType, cwd });
 // For copilot-cli: watch the session-state dir for a workspace.yaml whose cwd
 // matches ours, then send its session ID to Argus for direct claim — no repoPath
 // matching required, which eliminates path-normalization failures.
+// Record the launch time so the watcher ignores pre-existing workspace.yaml files
+// from older sessions that happen to share the same cwd.
+const launchStartMs = Date.now();
+
 let workspaceWatcher: ReturnType<typeof setInterval> | null = null;
 if (sessionType === 'copilot-cli') {
   const sessionStateDir = join(homedir(), '.copilot', 'session-state');
@@ -102,14 +106,17 @@ if (sessionType === 'copilot-cli') {
         const workspaceFile = join(sessionStateDir, entry.name, 'workspace.yaml');
         if (!existsSync(workspaceFile)) continue;
         try {
-          const content = yamlLoad(readFileSync(workspaceFile, 'utf-8')) as { id?: string; cwd?: string };
-          if (content?.cwd && content.id &&
-              normalize(content.cwd).toLowerCase() === normalize(cwd).toLowerCase()) {
-            client.sendWorkspaceId(content.id);
-            clearInterval(workspaceWatcher!);
-            workspaceWatcher = null;
-            break;
-          }
+          const content = yamlLoad(readFileSync(workspaceFile, 'utf-8')) as { id?: string; cwd?: string; created_at?: string };
+          if (!content?.cwd || !content.id) continue;
+          if (normalize(content.cwd).toLowerCase() !== normalize(cwd).toLowerCase()) continue;
+          // Ignore workspace.yaml files that predate this launch — they belong to sessions
+          // already running before argus launch was invoked (e.g. process 42088 above).
+          const createdAt = content.created_at ? new Date(content.created_at).getTime() : 0;
+          if (createdAt < launchStartMs - 3000) continue;
+          client.sendWorkspaceId(content.id);
+          clearInterval(workspaceWatcher!);
+          workspaceWatcher = null;
+          break;
         } catch { /* ignore malformed yaml */ }
       }
     } catch { /* ignore fs errors */ }
