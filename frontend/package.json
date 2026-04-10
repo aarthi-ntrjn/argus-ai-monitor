@@ -10,8 +10,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test --config ../playwright.config.ts",
+    "pretest:e2e:real": "node ../scripts/kill-port.mjs 7412",
     "test:e2e:real": "playwright test --config ../playwright.real.config.ts",
     "test:e2e:ui": "playwright test --config ../playwright.config.ts --ui --ui-host=localhost --ui-port=9323",
+    "pretest:e2e:real:ui": "node ../scripts/kill-port.mjs 7412",
     "test:e2e:real:ui": "playwright test --config ../playwright.real.config.ts --ui --ui-host=localhost --ui-port=9324"
   },
   "dependencies": {
