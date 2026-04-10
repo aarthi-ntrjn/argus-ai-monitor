@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { summariseToolUse, isAlwaysVisible } from '../components/SessionDetail/sessionDetailUtils';
+import { summariseToolUse, isAlwaysVisible, buildDisplayItems } from '../components/SessionDetail/sessionDetailUtils';
 import type { SessionOutput } from '../types';
 
 function output(overrides: Partial<SessionOutput>): SessionOutput {
@@ -10,6 +10,7 @@ function output(overrides: Partial<SessionOutput>): SessionOutput {
     type: 'tool_use',
     content: '',
     toolName: null,
+    toolCallId: null,
     role: null,
     sequenceNumber: 1,
     ...overrides,
@@ -87,5 +88,71 @@ describe('isAlwaysVisible', () => {
 
   it('returns true for tool_use type', () => {
     expect(isAlwaysVisible(output({ type: 'tool_use' }))).toBe(true);
+  });
+});
+
+describe('buildDisplayItems', () => {
+  it('verbose mode returns all items as singles', () => {
+    const items = [
+      output({ id: '1', type: 'tool_use', toolCallId: 'call-1' }),
+      output({ id: '2', type: 'tool_result', toolCallId: 'call-1' }),
+    ];
+    const result = buildDisplayItems(items, false);
+    expect(result).toHaveLength(2);
+    expect(result[0].kind).toBe('single');
+    expect(result[1].kind).toBe('single');
+  });
+
+  it('focused mode pairs tool_use and tool_result by toolCallId', () => {
+    const toolUse = output({ id: '1', type: 'tool_use', toolCallId: 'call-1' });
+    const toolResult = output({ id: '2', type: 'tool_result', toolCallId: 'call-1' });
+    const result = buildDisplayItems([toolUse, toolResult], true);
+    expect(result).toHaveLength(1);
+    expect(result[0].kind).toBe('tool_pair');
+    if (result[0].kind === 'tool_pair') {
+      expect(result[0].toolUse.id).toBe('1');
+      expect(result[0].toolResult.id).toBe('2');
+    }
+  });
+
+  it('focused mode drops orphaned tool_result with no matching tool_use', () => {
+    const items = [
+      output({ id: '1', type: 'message', role: 'user', content: 'hello' }),
+      output({ id: '2', type: 'tool_result', toolCallId: 'call-orphan' }),
+    ];
+    const result = buildDisplayItems(items, true);
+    expect(result).toHaveLength(1);
+    expect(result[0].kind).toBe('single');
+    if (result[0].kind === 'single') expect(result[0].item.id).toBe('1');
+  });
+
+  it('focused mode emits unpaired tool_use (result not yet arrived) as single', () => {
+    const items = [
+      output({ id: '1', type: 'tool_use', toolCallId: 'call-pending' }),
+    ];
+    const result = buildDisplayItems(items, true);
+    expect(result).toHaveLength(1);
+    expect(result[0].kind).toBe('single');
+  });
+
+  it('focused mode pairs by ID even when not adjacent', () => {
+    const toolUse = output({ id: '1', type: 'tool_use', toolCallId: 'call-1' });
+    const message = output({ id: '2', type: 'message', role: 'assistant', content: 'thinking' });
+    const toolResult = output({ id: '3', type: 'tool_result', toolCallId: 'call-1' });
+    const result = buildDisplayItems([toolUse, message, toolResult], true);
+    expect(result).toHaveLength(2);
+    expect(result[0].kind).toBe('tool_pair');
+    expect(result[1].kind).toBe('single');
+  });
+
+  it('focused mode handles null toolCallId: tool_use emitted as single, tool_result dropped', () => {
+    const items = [
+      output({ id: '1', type: 'tool_use', toolCallId: null }),
+      output({ id: '2', type: 'tool_result', toolCallId: null }),
+    ];
+    const result = buildDisplayItems(items, true);
+    expect(result).toHaveLength(1);
+    expect(result[0].kind).toBe('single');
+    if (result[0].kind === 'single') expect(result[0].item.id).toBe('1');
   });
 });

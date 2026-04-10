@@ -37,7 +37,7 @@ function parseUserEntry(entry: ClaudeEntry, sessionId: string, sequenceNumber: n
   if (typeof content === 'string') {
     results.push({
       id: randomUUID(), sessionId, timestamp,
-      type: 'message', role: 'user', content, toolName: null, sequenceNumber,
+      type: 'message', role: 'user', content, toolName: null, toolCallId: null, sequenceNumber,
     });
     return results;
   }
@@ -45,7 +45,7 @@ function parseUserEntry(entry: ClaudeEntry, sessionId: string, sequenceNumber: n
   if (!Array.isArray(content)) {
     results.push({
       id: randomUUID(), sessionId, timestamp,
-      type: 'message', role: 'user', content: '', toolName: null, sequenceNumber,
+      type: 'message', role: 'user', content: '', toolName: null, toolCallId: null, sequenceNumber,
     });
     return results;
   }
@@ -54,14 +54,15 @@ function parseUserEntry(entry: ClaudeEntry, sessionId: string, sequenceNumber: n
     if (block.type === 'text') {
       results.push({
         id: randomUUID(), sessionId, timestamp,
-        type: 'message', role: 'user', content: block.text ?? '', toolName: null, sequenceNumber,
+        type: 'message', role: 'user', content: block.text ?? '', toolName: null, toolCallId: null, sequenceNumber,
       });
     } else if (block.type === 'tool_result') {
       results.push({
         id: randomUUID(), sessionId, timestamp,
         type: 'tool_result', role: null,
         content: stringifyContent(block.content),
-        toolName: block.tool_use_id ?? null,
+        toolName: null,
+        toolCallId: block.tool_use_id ?? null,
         sequenceNumber,
       });
     }
@@ -81,7 +82,7 @@ function parseAssistantEntry(entry: ClaudeEntry, sessionId: string, sequenceNumb
     if (block.type === 'text') {
       results.push({
         id: randomUUID(), sessionId, timestamp,
-        type: 'message', role: 'assistant' as OutputRole, content: block.text ?? '', toolName: null, sequenceNumber,
+        type: 'message', role: 'assistant' as OutputRole, content: block.text ?? '', toolName: null, toolCallId: null, sequenceNumber,
       });
     } else if (block.type === 'tool_use') {
       results.push({
@@ -89,6 +90,7 @@ function parseAssistantEntry(entry: ClaudeEntry, sessionId: string, sequenceNumb
         type: 'tool_use', role: null,
         content: JSON.stringify(block.input ?? {}),
         toolName: block.name ?? null,
+        toolCallId: block.id ?? null,
         sequenceNumber,
       });
     }

@@ -365,6 +365,26 @@ describe('parseModelFromEvent', () => {
   it('should return null for invalid JSON', () => {
     expect(parseModelFromEvent('not-json')).toBeNull();
   });
+
+  it('should extract toolCallId from tool.execution_start data.toolCallId', () => {
+    const line = JSON.stringify({
+      type: 'tool.execution_start',
+      data: { toolCallId: 'tc-99', toolName: 'bash', arguments: { command: 'ls' } },
+      id: 'abc', timestamp: '2024-01-01T00:00:00.000Z', parentId: null,
+    });
+    const result = parseJsonlLine(line, 'session-1', 3);
+    expect(result?.toolCallId).toBe('tc-99');
+  });
+
+  it('should extract toolCallId from tool.execution_complete data.toolCallId', () => {
+    const line = JSON.stringify({
+      type: 'tool.execution_complete',
+      data: { toolCallId: 'tc-99', result: { content: 'done' } },
+      id: 'abc', timestamp: '2024-01-01T00:00:00.000Z', parentId: null,
+    });
+    const result = parseJsonlLine(line, 'session-1', 4);
+    expect(result?.toolCallId).toBe('tc-99');
+  });
 });
 
 describe('EventsParser', () => {

@@ -51,6 +51,7 @@ export interface SessionOutput {
   type: OutputType;
   content: string;
   toolName: string | null;
+  toolCallId: string | null;
   role: OutputRole | null;
   sequenceNumber: number;
 }

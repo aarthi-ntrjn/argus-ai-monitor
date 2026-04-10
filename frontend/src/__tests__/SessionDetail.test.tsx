@@ -12,6 +12,7 @@ function output(overrides: Partial<SessionOutput>): SessionOutput {
     type: 'message',
     content: 'Hello',
     toolName: null,
+    toolCallId: null,
     role: 'user',
     sequenceNumber: 1,
     ...overrides,
@@ -49,7 +50,7 @@ describe('SessionDetail — type badges', () => {
   });
 
   it('shows RESULT badge for tool_result items', () => {
-    render(<SessionDetail sessionId="s1" items={[output({ type: 'tool_result', role: null, content: 'exit 0' })]} />);
+    render(<SessionDetail sessionId="s1" items={[output({ type: 'tool_result', role: null, content: 'exit 0' })]} displayMode="verbose" />);
     expect(screen.getByText('RESULT')).toBeInTheDocument();
   });
 
@@ -71,7 +72,7 @@ describe('SessionDetail — tool names', () => {
   });
 
   it('shows the tool name in brackets for tool_result items', () => {
-    render(<SessionDetail sessionId="s1" items={[output({ type: 'tool_result', role: null, toolName: 'bash', content: 'exit 0' })]} />);
+    render(<SessionDetail sessionId="s1" items={[output({ type: 'tool_result', role: null, toolName: 'bash', content: 'exit 0' })]} displayMode="verbose" />);
     expect(screen.getByText('[bash]')).toBeInTheDocument();
   });
 
@@ -158,7 +159,8 @@ describe('SessionDetail — verbose mode truncation (P3)', () => {
 describe('SessionDetail — focused mode (default)', () => {
   it('hides tool_result rows in focused mode by default', () => {
     const items = [
-      output({ id: '1', type: 'tool_result', role: null, content: 'file contents here', toolName: null, sequenceNumber: 1 }),
+      output({ id: '1', type: 'tool_use', toolCallId: 'call-1', toolName: 'bash', content: 'run()', sequenceNumber: 1 }),
+      output({ id: '2', type: 'tool_result', toolCallId: 'call-1', content: 'file contents here', toolName: null, sequenceNumber: 2 }),
     ];
     render(<SessionDetail sessionId="s1" items={items} />);
     expect(screen.queryByText('file contents here')).not.toBeInTheDocument();
@@ -174,7 +176,8 @@ describe('SessionDetail — focused mode (default)', () => {
 
   it('shows expand button for collapsed tool_result in focused mode', () => {
     const items = [
-      output({ id: '1', type: 'tool_result', role: null, content: 'hidden content', toolName: 'bash', sequenceNumber: 1 }),
+      output({ id: '1', type: 'tool_use', toolCallId: 'call-1', toolName: 'bash', content: 'run()', sequenceNumber: 1 }),
+      output({ id: '2', type: 'tool_result', toolCallId: 'call-1', content: 'hidden content', toolName: null, sequenceNumber: 2 }),
     ];
     render(<SessionDetail sessionId="s1" items={items} />);
     expect(screen.getByRole('button', { name: /show result/i })).toBeInTheDocument();
@@ -183,7 +186,8 @@ describe('SessionDetail — focused mode (default)', () => {
   it('reveals tool_result content after clicking expand button', async () => {
     const user = userEvent.setup();
     const items = [
-      output({ id: '1', type: 'tool_result', role: null, content: 'revealed content', toolName: 'bash', sequenceNumber: 1 }),
+      output({ id: '1', type: 'tool_use', toolCallId: 'call-1', toolName: 'bash', content: 'run()', sequenceNumber: 1 }),
+      output({ id: '2', type: 'tool_result', toolCallId: 'call-1', content: 'revealed content', toolName: null, sequenceNumber: 2 }),
     ];
     render(<SessionDetail sessionId="s1" items={items} />);
     await user.click(screen.getByRole('button', { name: /show result/i }));

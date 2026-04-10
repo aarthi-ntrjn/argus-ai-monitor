@@ -63,7 +63,8 @@ describe('parseClaudeJsonlLine', () => {
     expect(result).toHaveLength(1);
     expect(result[0].type).toBe('tool_result');
     expect(result[0].role).toBeNull();
-    expect(result[0].toolName).toBe('toolu_abc123');
+    expect(result[0].toolName).toBeNull();
+    expect(result[0].toolCallId).toBe('toolu_abc123');
     expect(result[0].content).toBe('command output');
   });
 
@@ -84,6 +85,7 @@ describe('parseClaudeJsonlLine', () => {
     expect(result[0].type).toBe('tool_use');
     expect(result[0].role).toBeNull();
     expect(result[0].toolName).toBe('Bash');
+    expect(result[0].toolCallId).toBe('toolu_xyz');
     expect(result[0].content).toBe(JSON.stringify({ command: 'ls -la' }));
   });
 

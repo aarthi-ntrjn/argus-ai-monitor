@@ -3,7 +3,7 @@ import type { Components } from 'react-markdown';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { SessionOutput, OutputDisplayMode } from '../../types';
-import { summariseToolUse } from './sessionDetailUtils';
+import { summariseToolUse, buildDisplayItems } from './sessionDetailUtils';
 
 interface Props {
   sessionId: string;
@@ -78,6 +78,11 @@ export default function SessionDetail({ items, dark = false, className, displayM
     a: ({ children, href }) => <a href={href} className={`underline ${dark ? 'text-blue-400' : 'text-blue-600'}`}>{children}</a>,
   }), [dark]);
 
+  const displayItems = useMemo(
+    () => buildDisplayItems(items, displayMode === 'focused'),
+    [items, displayMode],
+  );
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [items.length]);
@@ -90,117 +95,135 @@ export default function SessionDetail({ items, dark = false, className, displayM
     );
   }
 
+  function renderBadgeCol(item: SessionOutput) {
+    const typeInfo = getBadge(item);
+    const badgeColor = dark ? typeInfo.dark : typeInfo.light;
+    return (
+      <div className="flex flex-col gap-0.5 w-24 shrink-0">
+        <span className={`text-xs px-1.5 py-0.5 rounded font-medium whitespace-nowrap self-start ${badgeColor}`}>
+          {typeInfo.label}
+        </span>
+        {item.toolName && (
+          <span className={`text-xs truncate ${dark ? 'text-purple-400' : 'text-purple-600'}`}>[{item.toolName}]</span>
+        )}
+        <span className={`text-[10px] whitespace-nowrap ${dark ? 'text-gray-400' : 'text-gray-600'}`}>
+          {formatTime(item.timestamp)}
+        </span>
+      </div>
+    );
+  }
+
+  function renderContent(item: SessionOutput) {
+    const isFocused = displayMode === 'focused';
+    const isExpanded = expandedIds.has(item.id);
+    const isToolUse = item.type === 'tool_use';
+
+    if (item.type === 'message') {
+      return (
+        <div className={`max-w-none break-words leading-snug ${dark ? 'text-gray-200' : 'text-gray-800'}`}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+            {item.content}
+          </ReactMarkdown>
+        </div>
+      );
+    }
+
+    if (isToolUse && !isExpanded) {
+      return (
+        <div className="flex items-center gap-2">
+          <span className={`break-words ${dark ? 'text-gray-200' : 'text-gray-800'}`}>{summariseToolUse(item)}</span>
+          <button
+            aria-label="Show details"
+            onClick={() => toggleExpand(item.id)}
+            className={`text-xs underline shrink-0 ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+          >
+            show details
+          </button>
+        </div>
+      );
+    }
+
+    const MAX_LINES = 40;
+    const lines = item.content.split('\n');
+    const isTruncatable = !isFocused && item.type === 'tool_result' && lines.length > MAX_LINES;
+    const isFullyExpanded = expandedFullIds.has(item.id);
+    const displayContent = isTruncatable && !isFullyExpanded
+      ? lines.slice(0, MAX_LINES).join('\n')
+      : item.content;
+
+    return (
+      <div>
+        <span className={`min-w-0 break-words whitespace-pre-wrap ${dark ? 'text-gray-200' : 'text-gray-800'}`}>{displayContent}</span>
+        {isTruncatable && !isFullyExpanded && (
+          <button
+            aria-label="Show more"
+            onClick={() => expandFull(item.id)}
+            className={`block text-xs underline mt-1 ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+          >
+            show more
+          </button>
+        )}
+        {(isToolUse || (isFocused && item.type === 'tool_result')) && isExpanded && (
+          <button
+            aria-label="Hide details"
+            onClick={() => toggleExpand(item.id)}
+            className={`block text-xs underline mt-1 ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+          >
+            hide
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className={`overflow-y-auto p-4 space-y-1 font-mono text-xs min-h-full ${dark ? 'bg-gray-900' : ''} ${className ?? ''}`}>
-      {items.map((item) => {
-        const isFocused = displayMode === 'focused';
-        const isExpanded = expandedIds.has(item.id);
-        const typeInfo = getBadge(item);
-        const badgeColor = dark ? typeInfo.dark : typeInfo.light;
-
-        // In focused mode, collapse tool_result rows unless expanded
-        if (isFocused && item.type === 'tool_result' && !isExpanded) {
+      {displayItems.map((di) => {
+        if (di.kind === 'tool_pair') {
+          const { toolUse, toolResult } = di;
+          const isExpanded = expandedIds.has(toolUse.id);
+          const typeInfo = getBadge(toolUse);
+          const badgeColor = dark ? typeInfo.dark : typeInfo.light;
           return (
-            <div key={item.id} className="flex gap-3 items-center">
+            <div key={toolUse.id} className="flex gap-3 items-start">
               <div className="flex flex-col gap-0.5 w-24 shrink-0">
                 <span className={`text-xs px-1.5 py-0.5 rounded font-medium whitespace-nowrap self-start ${badgeColor}`}>
                   {typeInfo.label}
                 </span>
-                {item.toolName && (
-                  <span className={`text-xs truncate ${dark ? 'text-purple-400' : 'text-purple-600'}`}>[{item.toolName}]</span>
+                {toolUse.toolName && (
+                  <span className={`text-xs truncate ${dark ? 'text-purple-400' : 'text-purple-600'}`}>[{toolUse.toolName}]</span>
                 )}
                 <span className={`text-[10px] whitespace-nowrap ${dark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {formatTime(item.timestamp)}
+                  {formatTime(toolUse.timestamp)}
                 </span>
               </div>
-              <button
-                aria-label="Show result"
-                onClick={() => toggleExpand(item.id)}
-                className={`text-xs underline ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
-              >
-                show result
-              </button>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className={`break-words ${dark ? 'text-gray-200' : 'text-gray-800'}`}>{summariseToolUse(toolUse)}</span>
+                  <button
+                    aria-label={isExpanded ? 'Hide result' : 'Show result'}
+                    onClick={() => toggleExpand(toolUse.id)}
+                    className={`text-xs underline shrink-0 ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+                  >
+                    {isExpanded ? 'hide result' : 'show result'}
+                  </button>
+                </div>
+                {isExpanded && (
+                  <div className={`mt-1 whitespace-pre-wrap break-words ${dark ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {toolResult.content}
+                  </div>
+                )}
+              </div>
             </div>
           );
         }
 
-        // For tool_use, show compact summary with expand option
-        const isToolUse = item.type === 'tool_use';
-        const summary = isToolUse ? summariseToolUse(item) : null;
-        const showRawToolUse = isToolUse && isExpanded;
-
+        const { item } = di;
         return (
           <div key={item.id} className="flex gap-3 items-start">
-            {/* Column 1: badge, toolname, timestamp */}
-            <div className="flex flex-col gap-0.5 w-24 shrink-0">
-              <span className={`text-xs px-1.5 py-0.5 rounded font-medium whitespace-nowrap self-start ${badgeColor}`}>
-                {typeInfo.label}
-              </span>
-              {item.toolName && (
-                <span className={`text-xs truncate ${dark ? 'text-purple-400' : 'text-purple-600'}`}>[{item.toolName}]</span>
-              )}
-              <span className={`text-[10px] whitespace-nowrap ${dark ? 'text-gray-400' : 'text-gray-600'}`}>
-                {formatTime(item.timestamp)}
-              </span>
-            </div>
-            {/* Column 2: content */}
+            {renderBadgeCol(item)}
             <div className="min-w-0 flex-1">
-              {item.type === 'message' ? (
-                <div className={`max-w-none break-words leading-snug ${dark ? 'text-gray-200' : 'text-gray-800'}`}>
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={markdownComponents}
-                  >
-                    {item.content}
-                  </ReactMarkdown>
-                </div>
-              ) : isToolUse && !showRawToolUse ? (
-                <div className="flex items-center gap-2">
-                  <span className={`break-words ${dark ? 'text-gray-200' : 'text-gray-800'}`}>{summary}</span>
-                  <button
-                    aria-label="Show details"
-                    onClick={() => toggleExpand(item.id)}
-                    className={`text-xs underline shrink-0 ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
-                  >
-                    show details
-                  </button>
-                </div>
-              ) : (
-                <div>
-                  {(() => {
-                    const MAX_LINES = 40;
-                    const lines = item.content.split('\n');
-                    const isTruncatable = !isFocused && item.type === 'tool_result' && lines.length > MAX_LINES;
-                    const isFullyExpanded = expandedFullIds.has(item.id);
-                    const displayContent = isTruncatable && !isFullyExpanded
-                      ? lines.slice(0, MAX_LINES).join('\n')
-                      : item.content;
-                    return (
-                      <>
-                        <span className={`min-w-0 break-words whitespace-pre-wrap ${dark ? 'text-gray-200' : 'text-gray-800'}`}>{displayContent}</span>
-                        {isTruncatable && !isFullyExpanded && (
-                          <button
-                            aria-label="Show more"
-                            onClick={() => expandFull(item.id)}
-                            className={`block text-xs underline mt-1 ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
-                          >
-                            show more
-                          </button>
-                        )}
-                      </>
-                    );
-                  })()}
-                  {(isToolUse || (isFocused && item.type === 'tool_result')) && isExpanded && (
-                    <button
-                      aria-label="Hide details"
-                      onClick={() => toggleExpand(item.id)}
-                      className={`block text-xs underline mt-1 ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
-                    >
-                      hide
-                    </button>
-                  )}
-                </div>
-              )}
+              {renderContent(item)}
             </div>
           </div>
         );
