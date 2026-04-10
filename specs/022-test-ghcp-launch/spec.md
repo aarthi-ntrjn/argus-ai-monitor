@@ -2,7 +2,7 @@
 
 **Feature Branch**: `022-test-ghcp-launch`
 **Created**: 2026-04-10
-**Status**: Draft
+**Status**: Clarified
 **Input**: User description: "test that GHCP launch with argus is working well"
 
 ## User Scenarios & Testing *(mandatory)*
