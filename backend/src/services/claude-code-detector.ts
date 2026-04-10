@@ -14,7 +14,7 @@ import type { Session, Repository } from '../models/index.js';
 
 const CLAUDE_SETTINGS_PATH = join(homedir(), '.claude', 'settings.json');
 const HOOK_COMMAND = 'curl -sf -X POST http://127.0.0.1:7411/hooks/claude -H "Content-Type: application/json" -d @- 2>/dev/null || true';
-const HOOK_EVENTS = ['SessionStart', 'PreToolUse', 'PostToolUse', 'Stop', 'SessionEnd'];
+const HOOK_EVENTS = ['SessionStart', 'SessionEnd'];
 
 interface ClaudeSettings {
   hooks?: Record<string, Array<{ matcher: string; hooks: Array<{ type: string; command: string }> }>>;
@@ -45,6 +45,20 @@ export class ClaudeCodeDetector {
       }
       if (!settings.hooks) settings.hooks = {};
       let changed = false;
+
+      // Remove Argus hooks from events no longer in HOOK_EVENTS (e.g. PreToolUse, PostToolUse, Stop)
+      for (const event of Object.keys(settings.hooks)) {
+        if (!HOOK_EVENTS.includes(event)) {
+          const before = settings.hooks[event];
+          const after = before.filter((e) => !e.hooks?.some((h) => h.command === HOOK_COMMAND));
+          if (after.length !== before.length) {
+            settings.hooks[event] = after;
+            changed = true;
+          }
+        }
+      }
+
+      // Add hooks for current HOOK_EVENTS
       for (const event of HOOK_EVENTS) {
         if (!this.hasHook(settings, event)) {
           if (!settings.hooks[event]) settings.hooks[event] = [];
@@ -355,6 +369,15 @@ export class ClaudeCodeDetector {
       this.sequenceCounters.set(sessionId, seq);
       if (outputs.length > 0) {
         this.outputStore.insertOutput(sessionId, outputs);
+
+        // Update lastActivityAt from the JSONL watcher — replaces PreToolUse/PostToolUse hooks
+        const now = new Date().toISOString();
+        const active = getSession(sessionId);
+        if (active) {
+          const updated = { ...active, lastActivityAt: now };
+          upsertSession(updated);
+          broadcast({ type: 'session.updated', timestamp: now, data: updated as unknown as Record<string, unknown> });
+        }
       }
 
       // Update summary with the most recent user prompt in this batch
