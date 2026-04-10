@@ -5,6 +5,17 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 
 ---
 
+## T112 — GHCP launched via argus launch shows as read-only instead of live PTY session
+
+**Date**: 2026-04-10
+**Symptom**: After running `argus launch copilot`, the session appeared in Argus as a read-only detected session with `launchMode: null`. The PTY was running and the WS connection was registered, but sending prompts failed immediately.
+**Root cause**: `CopilotCliDetector.processSessionDir()` always hardcoded `launchMode: null`. Unlike `ClaudeCodeDetector` which calls `ptyRegistry.claimForSession()` when a hook fires, the copilot detector never checked `ptyRegistry` for a pending WS connection matching the same `cwd`. The pending entry sat unclaimed in `pendingByRepoPath` forever.
+**Why it was missed**: The copilot-cli detection path was implemented independently from the PTY launcher path. The `claimForSession` pattern was only documented in comments referencing Claude hooks. No integration test existed that covered the scenario of a PTY pending + a workspace.yaml scan happening together.
+**How to prevent**: When adding a new session detection pathway, explicitly check whether a PTY claim step is needed — especially when `launchMode: null` is the default. Add a test that combines `ptyRegistry.registerPending` with a scan to verify `launchMode` is set correctly.
+**Fix summary**: `copilot-cli-detector.ts` — added `ptyRegistry` import and PTY claim logic in `processSessionDir()`. If `ptyRegistry.claimForSession()` returns a claimed entry for the repo path, `launchMode` is set to `'pty'` and `pid`/`pidSource` are taken from the registry instead of the lock file.
+
+---
+
 ## T109 — Adding a reminder does not appear in the list
 
 **Date**: 2026-04-05
