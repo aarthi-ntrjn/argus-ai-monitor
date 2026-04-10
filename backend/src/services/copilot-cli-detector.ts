@@ -83,6 +83,9 @@ export class CopilotCliDetector {
     let resolvedPid = pid;
     let resolvedPidSource: PidSource | null = pid != null ? 'lockfile' : null;
 
+    const registryHas = ptyRegistry.has(sessionId);
+    console.log(`[CopilotDetector] scan sessionId=${sessionId} pid=${pid} isRunning=${isRunning} alreadyClaimed=${alreadyClaimed} registryHas=${registryHas}`);
+
     if (alreadyClaimed) {
       // Preserve launchMode:'pty' as a historical record — this session was launched via argus launch
       launchMode = 'pty';
@@ -91,28 +94,41 @@ export class CopilotCliDetector {
       // If the WS is gone but the process is still running (e.g. Argus restarted), try to
       // re-link to a freshly reconnected launcher WS. If that also fails, keep the existing
       // pid/pidSource — the launcher will reconnect within 2s and the next scan will claim it.
-      if (!ptyRegistry.has(sessionId) && isRunning) {
+      if (!registryHas && isRunning) {
+        console.log(`[CopilotDetector] alreadyClaimed + WS gone + isRunning — attempting re-link sessionId=${sessionId}`);
         const claimed = ptyRegistry.claimForSession(sessionId, repo.path);
         if (claimed) {
           resolvedPid = claimed.pid;
           resolvedPidSource = 'pty_registry';
+          console.log(`[CopilotDetector] re-link OK sessionId=${sessionId} pid=${claimed.pid}`);
+        } else {
+          console.log(`[CopilotDetector] re-link MISS — no pending WS yet for sessionId=${sessionId}`);
         }
       }
-    } else if (ptyRegistry.has(sessionId)) {
+    } else if (registryHas) {
       // workspace_id message already claimed this session before the scan ran
+      console.log(`[CopilotDetector] ptyRegistry already has sessionId=${sessionId} — marking pty`);
       launchMode = 'pty';
       resolvedPidSource = 'pty_registry';
     } else if (isRunning) {
       // Fallback: try claiming via repoPath (workspace_id message not yet received).
       // Non-running (ended) sessions must not steal a pending launcher WS that belongs
       // to the new active session for the same cwd.
+      console.log(`[CopilotDetector] isRunning + not claimed — trying claimForSession sessionId=${sessionId} repoPath="${repo.path}"`);
       const claimed = ptyRegistry.claimForSession(sessionId, repo.path);
       if (claimed) {
         launchMode = 'pty';
         resolvedPid = claimed.pid;
         resolvedPidSource = 'pty_registry';
+        console.log(`[CopilotDetector] claimForSession OK sessionId=${sessionId} pid=${claimed.pid}`);
+      } else {
+        console.log(`[CopilotDetector] claimForSession MISS — no pending WS — sessionId=${sessionId} will be read-only`);
       }
+    } else {
+      console.log(`[CopilotDetector] not running + not claimed — sessionId=${sessionId} read-only`);
     }
+
+    console.log(`[CopilotDetector] result sessionId=${sessionId} launchMode=${launchMode} status=${status} pid=${resolvedPid}`);
 
     const session: Session = {
       id: sessionId,

@@ -33,13 +33,18 @@ export class PtyRegistry {
   // We hold the connection here without creating a DB session — the DB session
   // is created once Claude fires its first hook and we learn the real session ID.
   registerPending(tempId: string, ws: WebSocket, repoPath: string, pid: number): void {
-    this.pendingByRepoPath.set(normalizePath(repoPath), { tempId, ws, pid });
+    const key = normalizePath(repoPath);
+    console.log(`[PtyRegistry] registerPending tempId=${tempId} pid=${pid} repoPath="${repoPath}" key="${key}"`);
+    this.pendingByRepoPath.set(key, { tempId, ws, pid });
   }
 
   // Update the PID for a pending connection (before claim).
   updatePendingPid(repoPath: string, pid: number): void {
     const pending = this.pendingByRepoPath.get(normalizePath(repoPath));
-    if (pending) pending.pid = pid;
+    if (pending) {
+      console.log(`[PtyRegistry] updatePendingPid tempId=${pending.tempId} pid=${pid} repoPath="${repoPath}"`);
+      pending.pid = pid;
+    }
   }
 
   // Called by the launcher WS handler when launch.ts sends a workspace_id message
@@ -48,12 +53,14 @@ export class PtyRegistry {
   claimByTempId(tempId: string, sessionId: string): { pid: number } | null {
     for (const [key, pending] of this.pendingByRepoPath) {
       if (pending.tempId === tempId) {
+        console.log(`[PtyRegistry] claimByTempId tempId=${tempId} sessionId=${sessionId} pid=${pending.pid} key="${key}"`);
         this.connections.set(sessionId, pending.ws);
         this.tempToClaimedId.set(tempId, sessionId);
         this.pendingByRepoPath.delete(key);
         return { pid: pending.pid };
       }
     }
+    console.log(`[PtyRegistry] claimByTempId MISS tempId=${tempId} sessionId=${sessionId} — no pending entry found`);
     return null;
   }
 
@@ -64,7 +71,11 @@ export class PtyRegistry {
   claimForSession(claudeSessionId: string, repoPath: string): { pid: number } | null {
     const key = normalizePath(repoPath);
     const pending = this.pendingByRepoPath.get(key);
-    if (!pending) return null;
+    if (!pending) {
+      console.log(`[PtyRegistry] claimForSession MISS sessionId=${claudeSessionId} repoPath="${repoPath}" key="${key}"`);
+      return null;
+    }
+    console.log(`[PtyRegistry] claimForSession OK sessionId=${claudeSessionId} pid=${pending.pid} repoPath="${repoPath}"`);
     this.connections.set(claudeSessionId, pending.ws);
     this.tempToClaimedId.set(pending.tempId, claudeSessionId);
     this.pendingByRepoPath.delete(key);
@@ -79,11 +90,13 @@ export class PtyRegistry {
 
   // Clean up a pending connection that never got claimed (e.g. claude crashed before first hook).
   unregisterPending(repoPath: string, tempId: string): void {
+    console.log(`[PtyRegistry] unregisterPending tempId=${tempId} repoPath="${repoPath}"`);
     this.pendingByRepoPath.delete(normalizePath(repoPath));
     this.tempToClaimedId.delete(tempId);
   }
 
   unregister(sessionId: string): void {
+    console.log(`[PtyRegistry] unregister sessionId=${sessionId}`);
     this.connections.delete(sessionId);
   }
 

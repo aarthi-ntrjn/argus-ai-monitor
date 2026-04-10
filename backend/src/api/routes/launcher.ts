@@ -132,16 +132,20 @@ const launcherRoutes: FastifyPluginAsync = async (fastify) => {
         // launch.ts found the copilot workspace.yaml and is telling us the real session ID.
         // Claim the pending connection by tempId directly — no repoPath matching needed.
         if (!tempId) return;
+        fastify.log.info({ tempId, workspaceSessionId: msg.sessionId }, 'Launcher: workspace_id received');
         const claimed = ptyRegistry.claimByTempId(tempId, msg.sessionId);
         if (claimed) {
           // Eagerly upgrade the DB session if a scan already created it with launchMode:null
           const session = getSession(msg.sessionId);
           if (session && session.launchMode !== 'pty') {
+            fastify.log.info({ claudeSessionId: msg.sessionId }, 'Launcher: upgrading existing session to launchMode=pty');
             const updated = { ...session, launchMode: 'pty' as const, pid: claimed.pid, pidSource: 'pty_registry' as const };
             upsertSession(updated);
             broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: updated as unknown as Record<string, unknown> });
           }
           fastify.log.info({ claudeSessionId: msg.sessionId, pid: claimed.pid }, 'Copilot session claimed via workspace_id');
+        } else {
+          fastify.log.warn({ tempId, workspaceSessionId: msg.sessionId }, 'Launcher: workspace_id claim failed — no pending entry for tempId');
         }
         return;
       }
@@ -180,6 +184,8 @@ const launcherRoutes: FastifyPluginAsync = async (fastify) => {
             data: { id: claudeSessionId } as Record<string, unknown>,
           });
           fastify.log.info({ claudeSessionId }, 'Launcher disconnected — session marked ended');
+        } else {
+          fastify.log.info({ claudeSessionId, status: session?.status }, 'Launcher disconnected — session already ended, no status change');
         }
       } else if (repoPath) {
         // Never claimed — claude never started or crashed before first hook.
