@@ -56,5 +56,3 @@ Manual tests for session state transitions across different scenarios: terminal 
 | L-08 | In a running Copilot CLI session, end the session normally | Session card transitions from "running" (green) to "ended" (grey) within a few seconds |
 | L-09 | Kill a Claude Code session process externally (`kill <PID>` or Task Manager) | Session card transitions to "ended" within the next poll cycle (~5 seconds) |
 | L-10 | Kill a Copilot CLI session process externally | Session card transitions to "ended" within the next poll cycle (~5 seconds) |
-| L-11 | End a live (PTY) Claude Code session via the dashboard "Stop Session" button | Session status changes to "ended"; the "live" badge disappears; prompt bar becomes disabled |
-| L-12 | End a live (PTY) Copilot CLI session via the dashboard "Stop Session" button | Session status changes to "ended"; the "live" badge disappears; prompt bar becomes disabled |
