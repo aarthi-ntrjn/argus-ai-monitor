@@ -1,12 +1,15 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import supertest from 'supertest';
 import { buildServer } from '../../src/server.js';
+import { closeDb } from '../../src/db/database.js';
 
 describe('Sessions API', () => {
   let request: ReturnType<typeof supertest>;
   let app: Awaited<ReturnType<typeof buildServer>>['app'];
 
   beforeAll(async () => {
+    process.env.ARGUS_DB_PATH = ':memory:';
+    closeDb();
     const result = await buildServer();
     app = result.app;
     await app.ready();
@@ -15,6 +18,7 @@ describe('Sessions API', () => {
 
   afterAll(async () => {
     await app.close();
+    closeDb();
   });
 
   describe('GET /api/v1/sessions', () => {

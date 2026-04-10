@@ -158,9 +158,10 @@ updated_at: ${new Date().toISOString()}
     expect(mockClaimForSession).toHaveBeenCalledWith(testSessionId, testRepoCwd);
   });
 
-  it('preserves launchMode=pty when alreadyClaimed=true and WS disconnected but process ended (no re-claim)', async () => {
-    // Process not running — WS closed because session ended, not because of backend restart.
-    // launchMode must be preserved as a historical record; claimForSession must NOT be called.
+  it('skips ended+not-running session and does not re-claim (no re-claim)', async () => {
+    // Process not running and already recorded as ended — the scan optimization skips this
+    // directory entirely (early return before ptyRegistry.has() is reached).
+    // claimForSession must NOT be called.
     mockGetSession.mockReturnValueOnce({
       id: testSessionId,
       launchMode: 'pty',
@@ -169,15 +170,14 @@ updated_at: ${new Date().toISOString()}
       pidSource: 'pty_registry' as const,
       status: 'ended',
     });
-    mockHas.mockReturnValueOnce(false);
+    // No mockHas needed — code returns null before ptyRegistry.has() is called for ended sessions.
 
     const detector = new CopilotCliDetector(testDir);
     const sessions = await detector.scan();
     const session = sessions.find((s) => s.id === testSessionId);
 
-    expect(session?.launchMode).toBe('pty');
-    expect(session?.pid).toBe(11111); // preserved from existingSession
-    expect(session?.hostPid).toBe(10000); // preserved from existingSession
+    // Ended + not-running sessions are skipped entirely by the scan optimisation.
+    expect(session).toBeUndefined();
     expect(mockClaimForSession).not.toHaveBeenCalled();
   });
 
