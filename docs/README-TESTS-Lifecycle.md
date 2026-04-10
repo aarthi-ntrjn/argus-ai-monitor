@@ -48,22 +48,7 @@ Manual tests for session state transitions across different scenarios: terminal 
 
 ---
 
-## L3: Server restarts while sessions are running
-
-**Prerequisites:** Have active sessions, then restart the Argus server.
-
-| # | Steps | Expected |
-|---|-------|----------|
-| L-22 | With an active Claude Code session, stop the Argus server, then immediately restart it | The session is rediscovered on startup; it appears as "running" with no interruption in output history |
-| L-23 | With an active Copilot CLI session, stop the Argus server, then immediately restart it | The session is rediscovered on startup; it appears as "running" |
-| L-24 | With an active Claude Code session, stop the server, wait 2 minutes (session continues generating output), then restart | Session is rediscovered; any output generated during the server downtime is picked up from the JSONL file and appears in the stream |
-| L-25 | With an active Copilot CLI session, stop the server, wait 2 minutes, then restart | Session is rediscovered; output generated during downtime is picked up from events.jsonl |
-| L-26 | With an active Claude Code session, stop the server, then kill the session externally, then restart the server | On startup, reconciliation detects the PID is gone; session appears as "ended" |
-| L-27 | With an active Copilot CLI session, stop the server, then kill the session, then restart the server | On startup, lock file check fails (PID gone); session appears as "ended" |
-
----
-
-## L4: Server is down during entire session lifecycle
+## L3: Server is down during entire session lifecycle
 
 | # | Steps | Expected |
 |---|-------|----------|
@@ -74,7 +59,7 @@ Manual tests for session state transitions across different scenarios: terminal 
 
 ---
 
-## L5: Mixed lifecycle transitions on the dashboard
+## L4: Mixed lifecycle transitions on the dashboard
 
 | # | Steps | Expected |
 |---|-------|----------|
@@ -88,7 +73,7 @@ Manual tests for session state transitions across different scenarios: terminal 
 
 ---
 
-## L6: Session ends (server already running)
+## L5: Session ends (server already running)
 
 | # | Steps | Expected |
 |---|-------|----------|
