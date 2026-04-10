@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getSessionOutput } from '../../services/api';
 import type { Session } from '../../types';
+import { useSettings } from '../../hooks/useSettings';
 import SessionDetail from '../SessionDetail/SessionDetail';
 
 interface Props {
@@ -11,6 +12,8 @@ interface Props {
 
 export default function OutputPane({ session, onClose }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [settings, updateSetting] = useSettings();
+  const displayMode = settings.outputDisplayMode ?? 'focused';
 
   const { data, isError } = useQuery({
     queryKey: ['session-output', session.id],
@@ -29,6 +32,10 @@ export default function OutputPane({ session, onClose }: Props) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [data]);
 
+  function toggleMode() {
+    updateSetting('outputDisplayMode', displayMode === 'focused' ? 'verbose' : 'focused');
+  }
+
   return (
     <section
       aria-label="Session output"
@@ -38,22 +45,32 @@ export default function OutputPane({ session, onClose }: Props) {
         <span className="text-sm font-medium text-gray-700 truncate">
           Output — {session.id.slice(0, 8)}
         </span>
-        <button
-          onClick={onClose}
-          aria-label="Close output pane"
-          className="text-gray-500 hover:text-gray-700 transition-colors p-1 rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400"
-        >
-          <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleMode}
+            aria-label={displayMode === 'focused' ? 'Focused' : 'Verbose'}
+            title={displayMode === 'focused' ? 'Switch to verbose mode' : 'Switch to focused mode'}
+            className="text-xs px-2 py-0.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-100 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400"
+          >
+            {displayMode === 'focused' ? 'Focused' : 'Verbose'}
+          </button>
+          <button
+            onClick={onClose}
+            aria-label="Close output pane"
+            className="text-gray-500 hover:text-gray-700 transition-colors p-1 rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400"
+          >
+            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto rounded-b-lg">
         {isError ? (
           <p className="p-6 text-center text-sm text-red-400">Failed to load output. Is the server running?</p>
         ) : (
           <>
-            <SessionDetail sessionId={session.id} items={data?.items ?? []} dark className="max-h-none pb-0" />
+            <SessionDetail sessionId={session.id} items={data?.items ?? []} dark displayMode={displayMode} className="max-h-none pb-0" />
             <div ref={bottomRef} />
           </>
         )}
