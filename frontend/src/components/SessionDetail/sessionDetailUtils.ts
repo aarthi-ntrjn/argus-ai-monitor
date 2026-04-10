@@ -105,49 +105,50 @@ export function buildDisplayItems(items: SessionOutput[], focused: boolean): Dis
 }
 
 /**
- * Groups runs of tool_pair items into a tool_group.
- * Message singles between tool_pairs are treated as transparent — they are absorbed
- * into the group so ordering is preserved when expanded. This handles GHCP sessions
- * where the model emits a narration message before each tool call.
- * Only "hard" singles (user messages, status_change, error) break a group.
+ * Groups runs of consecutive tool_pair items into a tool_group.
+ * Empty assistant message singles are silently skipped (no display value).
+ * Non-empty assistant messages and user messages break a group — they are
+ * emitted as standalone singles between separate groups.
  */
 function groupConsecutiveToolPairs(items: DisplayItem[]): DisplayItem[] {
   const result: DisplayItem[] = [];
   let i = 0;
 
   while (i < items.length) {
-    if (items[i].kind !== 'tool_pair') {
-      result.push(items[i]);
+    const cur = items[i];
+
+    // Skip empty assistant messages entirely — they carry no display value.
+    if (cur.kind === 'single' && cur.item.type === 'message' &&
+        cur.item.role === 'assistant' && !cur.item.content?.trim()) {
       i++;
       continue;
     }
 
-    // Start a group. Collect tool_pairs and absorb message singles between them.
+    if (cur.kind !== 'tool_pair') {
+      result.push(cur);
+      i++;
+      continue;
+    }
+
+    // Start a group — collect consecutive tool_pairs, skipping empty assistant messages.
     const groupItems: ToolGroupItem[] = [];
-    // Pending: message singles seen after the last tool_pair (not yet confirmed in group).
-    const pending: ToolGroupItem[] = [];
 
     while (i < items.length) {
-      const cur = items[i];
-      if (cur.kind === 'tool_pair') {
-        // Confirm any pending messages into the group, then add the pair.
-        groupItems.push(...pending);
-        pending.length = 0;
-        groupItems.push(cur);
+      const item = items[i];
+      if (item.kind === 'tool_pair') {
+        groupItems.push(item);
         i++;
-      } else if (cur.kind === 'single' && cur.item.type === 'message' && cur.item.role !== 'user') {
-        // Tentatively buffer assistant messages — only absorbed if a tool_pair follows.
-        pending.push(cur);
+      } else if (item.kind === 'single' && item.item.type === 'message' &&
+                 item.item.role === 'assistant' && !item.item.content?.trim()) {
+        // Empty assistant message inside a group — skip silently.
         i++;
       } else {
-        // Hard break: user message, status_change, error, or non-message single.
+        // Any other item (non-empty message, user message, status, error) breaks the group.
         break;
       }
     }
 
     result.push({ kind: 'tool_group', groupItems });
-    // Trailing buffered messages weren't followed by a tool_pair — emit as singles.
-    for (const p of pending) result.push(p);
   }
 
   return result;

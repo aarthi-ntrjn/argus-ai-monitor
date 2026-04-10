@@ -139,13 +139,22 @@ describe('buildDisplayItems', () => {
     expect(result[0].kind).toBe('single');
   });
 
-  it('focused mode pairs by ID even when not adjacent', () => {
+  it('focused mode pairs by ID even when not adjacent (empty assistant message skipped)', () => {
     const toolUse = output({ id: '1', type: 'tool_use', toolCallId: 'call-1' });
-    const message = output({ id: '2', type: 'message', role: 'assistant', content: 'thinking' });
+    const emptyMsg = output({ id: '2', type: 'message', role: 'assistant', content: '' });
     const toolResult = output({ id: '3', type: 'tool_result', toolCallId: 'call-1' });
-    const result = buildDisplayItems([toolUse, message, toolResult], true);
-    // The pair is formed by ID; the assistant message ends up trailing after the pair
-    // with no following tool_pair, so it is emitted as a separate single.
+    const result = buildDisplayItems([toolUse, emptyMsg, toolResult], true);
+    // Empty assistant message is skipped; pair forms one group
+    expect(result).toHaveLength(1);
+    expect(result[0].kind).toBe('tool_group');
+  });
+
+  it('focused mode: non-empty assistant message between pairs breaks the group', () => {
+    const toolUse = output({ id: '1', type: 'tool_use', toolCallId: 'call-1' });
+    const contentMsg = output({ id: '2', type: 'message', role: 'assistant', content: 'thinking' });
+    const toolResult = output({ id: '3', type: 'tool_result', toolCallId: 'call-1' });
+    const result = buildDisplayItems([toolUse, contentMsg, toolResult], true);
+    // The pair is formed by ID; the non-empty assistant message is emitted as a separate single
     expect(result).toHaveLength(2);
     expect(result[0].kind).toBe('tool_group');
     expect(result[1].kind).toBe('single');
@@ -170,7 +179,7 @@ describe('buildDisplayItems', () => {
     }
   });
 
-  it('focused mode absorbs assistant messages between tool_pairs into the group', () => {
+  it('focused mode: non-empty assistant message between tool pairs splits into separate groups', () => {
     const items = [
       output({ id: '1', type: 'tool_use', toolCallId: 'call-1' }),
       output({ id: '2', type: 'tool_result', toolCallId: 'call-1' }),
@@ -179,11 +188,26 @@ describe('buildDisplayItems', () => {
       output({ id: '5', type: 'tool_result', toolCallId: 'call-2' }),
     ];
     const result = buildDisplayItems(items, true);
+    expect(result).toHaveLength(3);
+    expect(result[0].kind).toBe('tool_group');
+    expect(result[1].kind).toBe('single');
+    if (result[1].kind === 'single') expect(result[1].item.id).toBe('3');
+    expect(result[2].kind).toBe('tool_group');
+  });
+
+  it('focused mode: empty assistant messages between tool pairs are skipped', () => {
+    const items = [
+      output({ id: '1', type: 'tool_use', toolCallId: 'call-1' }),
+      output({ id: '2', type: 'tool_result', toolCallId: 'call-1' }),
+      output({ id: '3', type: 'message', role: 'assistant', content: '' }),
+      output({ id: '4', type: 'tool_use', toolCallId: 'call-2' }),
+      output({ id: '5', type: 'tool_result', toolCallId: 'call-2' }),
+    ];
+    const result = buildDisplayItems(items, true);
     expect(result).toHaveLength(1);
     expect(result[0].kind).toBe('tool_group');
     if (result[0].kind === 'tool_group') {
-      const pairs = result[0].groupItems.filter(gi => gi.kind === 'tool_pair');
-      expect(pairs).toHaveLength(2);
+      expect(result[0].groupItems.filter(gi => gi.kind === 'tool_pair')).toHaveLength(2);
     }
   });
 

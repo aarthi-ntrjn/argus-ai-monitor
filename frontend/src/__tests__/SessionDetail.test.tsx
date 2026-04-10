@@ -292,7 +292,7 @@ describe('SessionDetail — tool groups (focused mode)', () => {
     expect(screen.getByText('Read: file.txt')).toBeInTheDocument();
   });
 
-  it('groups tool pairs separated by assistant messages (GHCP pattern)', async () => {
+  it('splits groups on non-empty assistant messages between pairs (GHCP pattern)', async () => {
     const user = userEvent.setup();
     const items = [
       output({ id: '1', type: 'tool_use', toolCallId: 'call-1', toolName: 'Bash', content: 'ls', sequenceNumber: 1 }),
@@ -302,10 +302,23 @@ describe('SessionDetail — tool groups (focused mode)', () => {
       output({ id: '5', type: 'tool_result', toolCallId: 'call-2', content: 'content here', toolName: null, sequenceNumber: 5 }),
     ];
     render(<SessionDetail sessionId="s1" items={items} />);
-    expect(screen.getByText(/2 tool calls/)).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /expand tool calls/i }));
-    expect(screen.getByText('Bash: ls')).toBeInTheDocument();
+    // Two separate groups plus the assistant message as a standalone
+    expect(screen.getAllByRole('button', { name: /expand tool calls/i })).toHaveLength(2);
     expect(screen.getByText('Now reading...')).toBeInTheDocument();
-    expect(screen.getByText('Read: file.txt')).toBeInTheDocument();
+    // Each group has 1 tool call
+    const summaries = screen.getAllByText(/1 tool call/);
+    expect(summaries).toHaveLength(2);
+  });
+
+  it('skips empty assistant messages between pairs (keeps them in one group)', () => {
+    const items = [
+      output({ id: '1', type: 'tool_use', toolCallId: 'call-1', toolName: 'Bash', content: 'ls', sequenceNumber: 1 }),
+      output({ id: '2', type: 'tool_result', toolCallId: 'call-1', content: 'file.txt', toolName: null, sequenceNumber: 2 }),
+      output({ id: '3', type: 'message', role: 'assistant', content: '', toolName: null, sequenceNumber: 3 }),
+      output({ id: '4', type: 'tool_use', toolCallId: 'call-2', toolName: 'Read', content: 'file.txt', sequenceNumber: 4 }),
+      output({ id: '5', type: 'tool_result', toolCallId: 'call-2', content: 'content here', toolName: null, sequenceNumber: 5 }),
+    ];
+    render(<SessionDetail sessionId="s1" items={items} />);
+    expect(screen.getByText(/2 tool calls/)).toBeInTheDocument();
   });
 });
