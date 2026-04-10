@@ -34,6 +34,21 @@ export function summariseToolUse(item: SessionOutput): string {
   return truncate(`${prefix}${content}`, MAX_SUMMARY_LENGTH);
 }
 
+export function fullToolUseText(item: SessionOutput): string {
+  const { toolName, content } = item;
+  const prefix = toolName ? `${toolName}: ` : '';
+
+  if (!content) return toolName ?? '';
+
+  if (content.trimStart().startsWith('{')) {
+    const preview = extractJsonPreview(content);
+    if (preview) return `${prefix}${preview}`;
+    return `${prefix}${content}`;
+  }
+
+  return `${prefix}${content}`;
+}
+
 export function isAlwaysVisible(item: SessionOutput): boolean {
   return item.type !== 'tool_result';
 }
