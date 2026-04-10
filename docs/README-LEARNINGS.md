@@ -16,6 +16,16 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 
 ---
 
+## T115 — ended sessions stealing pending PTY WS claim
+
+**Date**: 2026-04-10
+**Symptom**: After `argus launch copilot`, the new GHCP session was detected as read-only (`launchMode: null`) even when the launcher WS connected and registered successfully.
+**Root cause**: `CopilotCliDetector.processSessionDir()` called `ptyRegistry.claimForSession(sessionId, repo.path)` in the `else` branch (not yet claimed) without checking `isRunning`. GHCP creates a new UUID session directory for each launch; old ended directories from previous runs with the same `cwd` were also scanned. If an old ended directory was processed before the new active one, it consumed the single pending WS entry in `pendingByRepoPath[cwd]`, leaving the new active session with nothing to claim (`launchMode: null`).
+**Why it was missed**: Tests used a single session directory. The bug only manifests when multiple GHCP session directories share the same `cwd` and the non-running one is processed first.
+**How to prevent**: Whenever a scan-based detector calls a singleton registry to claim a resource keyed by path, always guard the claim with a liveness check (`isRunning`). A non-running session has no business claiming a live connection.
+**Fix summary**: `copilot-cli-detector.ts` — changed `else { claimForSession(...) }` to `else if (isRunning) { claimForSession(...) }` so only active sessions can claim a pending launcher WS.
+
+---
 
 
 **Date**: 2026-04-10
