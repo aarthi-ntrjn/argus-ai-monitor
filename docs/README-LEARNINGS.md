@@ -5,7 +5,18 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 
 ---
 
-## T113 — Sending a prompt to a GHCP PTY session fails after Argus backend restart
+## T114 — T113 regression: PTY launchMode wiped when session ends
+
+**Date**: 2026-04-10
+**Symptom**: After T113, GHCP sessions showed as read-only (launchMode: null) again immediately after the session exited.
+**Root cause**: T113 changed `if (alreadyClaimed)` to `if (alreadyClaimed && ptyRegistry.has(sessionId))`. When a PTY session exits, the WS closes and the server calls `ptyRegistry.unregister`, removing the session from `connections`. On the next scan: `alreadyClaimed=true` but `has()=false`, so the `else` branch ran, `claimForSession` failed (no pending WS for an ended process), and `launchMode` was set to `null` — incorrectly erasing the historical launch mode. The fix needed to distinguish between "WS gone because process ended" and "WS gone because Argus restarted while process was still running".
+**Why it was missed**: The T113 tests used test PID 99999 (never running), so `isRunning=false` in all tests. The re-claim branch was never tested with `isRunning=true` vs `isRunning=false`. The existing test for `downgrades to null` was actually testing a wrong scenario and passed by coincidence with the wrong expected value.
+**How to prevent**: When adding a conditional re-claim path, always test BOTH sub-cases: (1) process still running (backend restart), and (2) process ended (normal exit). Use a `ps-list` mock to control `isRunning` independently of the PID value used in test fixtures.
+**Fix summary**: `copilot-cli-detector.ts` — restructured the `alreadyClaimed` branch to always preserve `launchMode:'pty'` as a historical record, then separately try `claimForSession` only when `!has() && isRunning` (restart scenario). Also fixed pre-existing TypeScript type error by using `PidSource | null` instead of a narrowed literal union.
+
+---
+
+
 
 **Date**: 2026-04-10
 **Symptom**: After restarting the Argus backend (while `argus launch copilot` was still running), the session continued to show as PTY-launched in the UI, but every `sendPrompt` call failed with "Session launcher is not connected to Argus".
