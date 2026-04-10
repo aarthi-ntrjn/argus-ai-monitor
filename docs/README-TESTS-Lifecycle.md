@@ -4,7 +4,7 @@ Manual tests for session state transitions across different scenarios: terminal 
 
 **Prerequisites:**
 1. `npm run dev` running (backend on `http://localhost:7411`)
-2. At least two registered repositories
+2. At least one registered repository
 3. Access to a terminal to start/stop Claude Code and Copilot CLI sessions manually
 
 ---
