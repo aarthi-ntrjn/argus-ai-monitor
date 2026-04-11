@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 import { spawn } from 'node-pty';
 import { execSync } from 'child_process';
-import { readdirSync, existsSync, readFileSync, appendFileSync, mkdirSync, statSync } from 'fs';
+import { appendFileSync, mkdirSync } from 'fs';
 import { randomUUID } from 'crypto';
-import { platform, homedir, tmpdir } from 'os';
-import { join, normalize } from 'path';
-import { load as yamlLoad } from 'js-yaml';
+import { platform, tmpdir } from 'os';
+import { join } from 'path';
 import { resolveLaunchCommand } from './launch-command-resolver.js';
 import { ArgusLaunchClient } from './argus-launch-client.js';
 
@@ -116,64 +115,6 @@ client.setRegisterInfo({ sessionId, hostPid: pty.pid, pid: isWin ? null : pty.pi
 // For copilot-cli: watch the session-state dir for a workspace.yaml whose cwd
 // matches ours, then send its session ID to Argus for direct claim — no repoPath
 // matching required, which eliminates path-normalization failures.
-// Record the launch time so the watcher ignores pre-existing workspace.yaml files
-// from older sessions that happen to share the same cwd.
-const launchStartMs = Date.now();
-
-let workspaceWatcher: ReturnType<typeof setInterval> | null = null;
-// if (sessionType === 'copilot-cli') {
-//   log(`sessionType is copilot-cli — starting workspace.yaml watcher`);
-//   const sessionStateDir = join(homedir(), '.copilot', 'session-state');
-//   let watchAttempts = 0;
-//   workspaceWatcher = setInterval(() => {
-//     watchAttempts++;
-//     if (watchAttempts > 60) {
-//       log(`workspace watcher: giving up after 60 attempts`);
-//       clearInterval(workspaceWatcher!); workspaceWatcher = null; return;
-//     }
-//     try {
-//       if (!existsSync(sessionStateDir)) {
-//         log(`workspace watcher: sessionStateDir not found (attempt ${watchAttempts})`);
-//         return;
-//       }
-//       const entries = readdirSync(sessionStateDir, { withFileTypes: true });
-//       for (const entry of entries) {
-//         if (!entry.isDirectory()) continue;
-//         const dirPath = join(sessionStateDir, entry.name);
-//         const dirStat = statSync(dirPath);
-//         if (dirStat.birthtimeMs < spawnStartMs) {
-//           log(`workspace watcher: skipping ${entry.name} — dir created before spawn (birthtime=${new Date(dirStat.birthtimeMs).toISOString()})`);
-//           continue;
-//         }
-//         const workspaceFile = join(dirPath, 'workspace.yaml');
-//         if (!existsSync(workspaceFile)) continue;
-//         try {
-//           const content = yamlLoad(readFileSync(workspaceFile, 'utf-8')) as { id?: string; cwd?: string };
-//           if (!content?.cwd || !content.id) {
-//             log(`workspace watcher: skipping ${entry.name} — missing cwd or id`);
-//             continue;
-//           }
-//           if (normalize(content.cwd).toLowerCase() !== normalize(cwd).toLowerCase()) {
-//             log(`workspace watcher: skipping ${entry.name} — cwd mismatch (got ${content.cwd})`);
-//             continue;
-//           }
-//           log(`workspace watcher: matched ${entry.name} workspaceId=${content.id}`);
-//           client.sendWorkspaceId(content.id);
-//           clearInterval(workspaceWatcher!);
-//           workspaceWatcher = null;
-//           break;
-//         } catch (err) {
-//           log(`workspace watcher: error parsing ${entry.name}/workspace.yaml — ${err}`);
-//         }
-//       }
-//     } catch (err) {
-//       log(`workspace watcher: fs error — ${err}`);
-//     }
-//   }, 500);
-// } else {
-//   log(`sessionType is ${sessionType} — skipping workspace.yaml watcher`);
-// }
-log(`workspace watcher: disabled`);
 
 // Yield Win32 input mode sequences (ESC[Vk;Sc;Uc;Kd;Cs;Rc_) for a single character,
 // one buffer per event: key-down first, then key-up.
@@ -206,16 +147,16 @@ client.onSendPrompt((actionId: string, prompt: string) => {
   try {
     if (sessionType === 'copilot-cli') {
       log(`win32 focus-in`);
-      process.stdin.push(Buffer.from('\x1b[I'));
+      pty.write('\x1b[I');
       for (const ch of prompt) {
         for (const buf of win32InputEvents(ch)) {
           log(`win32 push ch=${JSON.stringify(ch)} seq=${buf.toString()}`);
-          process.stdin.push(buf);
+          pty.write(buf.toString('binary'));
         }
       }
       for (const buf of win32InputEvents('\r')) {
         log(`win32 enter seq=${buf.toString()}`);
-        process.stdin.push(buf);
+        pty.write(buf.toString('binary'));
       }
     } else {
       pty.write(prompt + '\r');
@@ -296,10 +237,6 @@ if (isWin) {
 // When the tool exits, clean up
 pty.onExit(({ exitCode }: { exitCode: number }) => {
   log(`PTY exited with exitCode=${exitCode}`);
-  if (workspaceWatcher) {
-    log(`clearing workspace watcher`);
-    clearInterval(workspaceWatcher); workspaceWatcher = null;
-  }
   if (process.stdin.isTTY) {
     process.stdin.setRawMode(false);
   }
