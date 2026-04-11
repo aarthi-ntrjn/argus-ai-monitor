@@ -121,58 +121,59 @@ client.setRegisterInfo({ sessionId, hostPid: pty.pid, pid: isWin ? null : pty.pi
 const launchStartMs = Date.now();
 
 let workspaceWatcher: ReturnType<typeof setInterval> | null = null;
-if (sessionType === 'copilot-cli') {
-  log(`sessionType is copilot-cli — starting workspace.yaml watcher`);
-  const sessionStateDir = join(homedir(), '.copilot', 'session-state');
-  let watchAttempts = 0;
-  workspaceWatcher = setInterval(() => {
-    watchAttempts++;
-    if (watchAttempts > 60) {
-      log(`workspace watcher: giving up after 60 attempts`);
-      clearInterval(workspaceWatcher!); workspaceWatcher = null; return;
-    }
-    try {
-      if (!existsSync(sessionStateDir)) {
-        log(`workspace watcher: sessionStateDir not found (attempt ${watchAttempts})`);
-        return;
-      }
-      const entries = readdirSync(sessionStateDir, { withFileTypes: true });
-      for (const entry of entries) {
-        if (!entry.isDirectory()) continue;
-        const dirPath = join(sessionStateDir, entry.name);
-        const dirStat = statSync(dirPath);
-        if (dirStat.birthtimeMs < spawnStartMs) {
-          log(`workspace watcher: skipping ${entry.name} — dir created before spawn (birthtime=${new Date(dirStat.birthtimeMs).toISOString()})`);
-          continue;
-        }
-        const workspaceFile = join(dirPath, 'workspace.yaml');
-        if (!existsSync(workspaceFile)) continue;
-        try {
-          const content = yamlLoad(readFileSync(workspaceFile, 'utf-8')) as { id?: string; cwd?: string };
-          if (!content?.cwd || !content.id) {
-            log(`workspace watcher: skipping ${entry.name} — missing cwd or id`);
-            continue;
-          }
-          if (normalize(content.cwd).toLowerCase() !== normalize(cwd).toLowerCase()) {
-            log(`workspace watcher: skipping ${entry.name} — cwd mismatch (got ${content.cwd})`);
-            continue;
-          }
-          log(`workspace watcher: matched ${entry.name} workspaceId=${content.id}`);
-          client.sendWorkspaceId(content.id);
-          clearInterval(workspaceWatcher!);
-          workspaceWatcher = null;
-          break;
-        } catch (err) {
-          log(`workspace watcher: error parsing ${entry.name}/workspace.yaml — ${err}`);
-        }
-      }
-    } catch (err) {
-      log(`workspace watcher: fs error — ${err}`);
-    }
-  }, 500);
-} else {
-  log(`sessionType is ${sessionType} — skipping workspace.yaml watcher`);
-}
+// if (sessionType === 'copilot-cli') {
+//   log(`sessionType is copilot-cli — starting workspace.yaml watcher`);
+//   const sessionStateDir = join(homedir(), '.copilot', 'session-state');
+//   let watchAttempts = 0;
+//   workspaceWatcher = setInterval(() => {
+//     watchAttempts++;
+//     if (watchAttempts > 60) {
+//       log(`workspace watcher: giving up after 60 attempts`);
+//       clearInterval(workspaceWatcher!); workspaceWatcher = null; return;
+//     }
+//     try {
+//       if (!existsSync(sessionStateDir)) {
+//         log(`workspace watcher: sessionStateDir not found (attempt ${watchAttempts})`);
+//         return;
+//       }
+//       const entries = readdirSync(sessionStateDir, { withFileTypes: true });
+//       for (const entry of entries) {
+//         if (!entry.isDirectory()) continue;
+//         const dirPath = join(sessionStateDir, entry.name);
+//         const dirStat = statSync(dirPath);
+//         if (dirStat.birthtimeMs < spawnStartMs) {
+//           log(`workspace watcher: skipping ${entry.name} — dir created before spawn (birthtime=${new Date(dirStat.birthtimeMs).toISOString()})`);
+//           continue;
+//         }
+//         const workspaceFile = join(dirPath, 'workspace.yaml');
+//         if (!existsSync(workspaceFile)) continue;
+//         try {
+//           const content = yamlLoad(readFileSync(workspaceFile, 'utf-8')) as { id?: string; cwd?: string };
+//           if (!content?.cwd || !content.id) {
+//             log(`workspace watcher: skipping ${entry.name} — missing cwd or id`);
+//             continue;
+//           }
+//           if (normalize(content.cwd).toLowerCase() !== normalize(cwd).toLowerCase()) {
+//             log(`workspace watcher: skipping ${entry.name} — cwd mismatch (got ${content.cwd})`);
+//             continue;
+//           }
+//           log(`workspace watcher: matched ${entry.name} workspaceId=${content.id}`);
+//           client.sendWorkspaceId(content.id);
+//           clearInterval(workspaceWatcher!);
+//           workspaceWatcher = null;
+//           break;
+//         } catch (err) {
+//           log(`workspace watcher: error parsing ${entry.name}/workspace.yaml — ${err}`);
+//         }
+//       }
+//     } catch (err) {
+//       log(`workspace watcher: fs error — ${err}`);
+//     }
+//   }, 500);
+// } else {
+//   log(`sessionType is ${sessionType} — skipping workspace.yaml watcher`);
+// }
+log(`workspace watcher: disabled`);
 
 // When Argus sends a prompt, write it to the PTY.
 // For copilot-cli: write the prompt text first, then wait 500ms for copilot's
