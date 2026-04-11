@@ -23,13 +23,14 @@ pty.onExit(({ exitCode }) => {
 });
 
 const PROMPT = 'list files in current directory';
-const DELAY_MS = 5000;
+const DELAY_MS = 10000;
 
 console.error(`[test] Waiting ${DELAY_MS}ms for copilot to start...`);
 setTimeout(() => {
   console.error(`[test] Writing prompt: "${PROMPT}"`);
   outputLog = '';
-  pty.write(PROMPT + '\r');
+  pty.write(PROMPT);  
+  pty.write('\r');
 
   setTimeout(() => {
     console.error(`\n[test] Output captured after write:\n${outputLog}`);
