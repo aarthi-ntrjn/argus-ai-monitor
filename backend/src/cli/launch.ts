@@ -175,17 +175,45 @@ let workspaceWatcher: ReturnType<typeof setInterval> | null = null;
 // }
 log(`workspace watcher: disabled`);
 
+// Encode a string as Win32 input mode sequences (ESC[Vk;Sc;Uc;Kd;Cs;Rc_).
+// When copilot enables WIN32_INPUT_MODE, it receives key events as these
+// structured sequences rather than raw ASCII, so we must send the same format.
+// Each character produces a key-down then key-up pair.
+function encodeAsWin32Input(text: string): Buffer {
+  // [VirtualKey, ScanCode] for US QWERTY layout
+  const keyInfo: Record<string, [number, number]> = {
+    'a': [65, 30], 'b': [66, 48], 'c': [67, 46], 'd': [68, 32], 'e': [69, 18],
+    'f': [70, 33], 'g': [71, 34], 'h': [72, 35], 'i': [73, 23], 'j': [74, 36],
+    'k': [75, 37], 'l': [76, 38], 'm': [77, 50], 'n': [78, 49], 'o': [79, 24],
+    'p': [80, 25], 'q': [81, 16], 'r': [82, 19], 's': [83, 31], 't': [84, 20],
+    'u': [85, 22], 'v': [86, 47], 'w': [87, 17], 'x': [88, 45], 'y': [89, 21],
+    'z': [90, 44], ' ': [32, 57], '\r': [13, 28],
+    '0': [48, 11], '1': [49, 2], '2': [50, 3], '3': [51, 4], '4': [52, 5],
+    '5': [53, 6], '6': [54, 7], '7': [55, 8], '8': [56, 9], '9': [57, 10],
+    '-': [189, 12], '=': [187, 13], '[': [219, 26], ']': [221, 27],
+    ';': [186, 39], "'": [222, 40], ',': [188, 51], '.': [190, 52], '/': [191, 53],
+  };
+  const parts: string[] = [];
+  for (const ch of text) {
+    const lower = ch.toLowerCase();
+    const [vk, sc] = keyInfo[lower] ?? [ch.charCodeAt(0), 0];
+    const uc = ch.charCodeAt(0);
+    parts.push(`\x1b[${vk};${sc};${uc};1;0;1_`); // key down
+    parts.push(`\x1b[${vk};${sc};${uc};0;0;1_`); // key up
+  }
+  return Buffer.from(parts.join(''));
+}
+
 // When Argus sends a prompt, write it to the PTY.
-// For copilot-cli: write the prompt text first, then wait 500ms for copilot's
-// For copilot-cli, push the prompt into process.stdin so it flows through the
-// existing stdin->pty pipe, matching how real keystrokes arrive.
+// For copilot-cli, encode as Win32 input sequences to match real keystrokes.
 // For other session types, write directly to the PTY.
 client.onSendPrompt((actionId: string, prompt: string) => {
   log(`onSendPrompt actionId=${actionId} promptLen=${prompt.length}`);
   try {
     if (sessionType === 'copilot-cli') {
-      log(`push buffer`);
-      process.stdin.push(Buffer.from(prompt + '\r'));
+      const encoded = encodeAsWin32Input(prompt + '\r');
+      log(`win32 encoded len=${encoded.length}`);
+      process.stdin.push(encoded);
     } else {
       pty.write(prompt + '\r');
     }
