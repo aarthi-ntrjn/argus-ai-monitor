@@ -126,31 +126,19 @@ if (sessionType === 'copilot-cli') {
 }
 
 // When Argus sends a prompt, write it to the PTY.
-// For copilot-cli: wait 500ms before typing so copilot's input loop is in its
-// read-ready state (the first ~400ms after a send fires are a dead window where
-// the TUI discards input). Then type character by character with 50ms delays.
+// Write prompt + Enter as a single call so the entire string lands in copilot's
+// readline buffer as one event. Char-by-char causes the first ~8 characters to
+// be lost because each char triggers a TUI echo/redraw cycle (~400ms) during
+// which subsequent chars arrive and are discarded by copilot's input handler.
 client.onSendPrompt((actionId: string, prompt: string) => {
   process.stderr.write(`[launch] onSendPrompt actionId=${actionId} promptLen=${prompt.length}\n`);
-
-  const doWrite = async () => {
-    if (sessionType === 'copilot-cli') {
-      await new Promise<void>(r => setTimeout(r, 1000));
-      for (const ch of prompt) {
-        pty.write(ch);
-        await new Promise<void>(r => setTimeout(r, 50));
-      }
-      await new Promise<void>(r => setTimeout(r, 100));
-      pty.write('\r');
-    } else {
-      pty.write(prompt + '\r');
-    }
+  try {
+    pty.write(prompt + '\r');
     client.ackDelivered(actionId);
-  };
-
-  doWrite().catch(err => {
+  } catch (err) {
     process.stderr.write(`[launch] PTY write failed: ${err}\n`);
     client.ackFailed(actionId, err instanceof Error ? err.message : 'PTY write failed');
-  });
+  }
 });
 
 // On Windows, pty.pid is the powershell.exe wrapper. Walk the process tree
