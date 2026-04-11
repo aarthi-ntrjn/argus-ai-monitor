@@ -80,9 +80,9 @@ const pty = spawn(ptyFile, ptyArgs, {
 log(`PTY spawned: pty.pid=${pty.pid}`);
 
 // Proxy PTY output to the user's terminal
-pty.onData((data: string) => {
-  log(`pty.onData len=${data.length}`);
-  process.stderr.write(data);
+pty.onData((data: string) => {  
+  // This is needed. It's the display pipe: PTY output -> onData -> process.stderr -> Windows Terminal tab.
+  process.stdout.write(data);
 });
 
 // Proxy user's keystrokes to PTY stdin
@@ -94,7 +94,7 @@ if (process.stdin.isTTY) {
 }
 process.stdin.resume();
 process.stdin.on('data', (chunk: Buffer) => {
-  log(`stdin.data len=${chunk.length}`);
+  log(`stdin.data len=${chunk.length} chunk=${chunk.toString('utf8')}`);
   pty.write(chunk.toString('binary'));
 });
 
