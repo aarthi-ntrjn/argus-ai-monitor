@@ -194,7 +194,7 @@ client.onSendPrompt((actionId: string, prompt: string) => {
 // On Windows, pty.pid is the powershell.exe wrapper. Walk the process tree
 // to find the real tool process (claude.exe, copilot.exe, etc.) and update Argus.
 if (isWin) {
-  const targetExe = `${cmd}.exe`.toLowerCase(); // e.g. claude.exe or copilot.exe
+  const targetExe = `${cmd}.exe`.toLowerCase();
   log(`pid resolver: starting — looking for ${targetExe} under pty.pid=${pty.pid}`);
   let pidAttempts = 0;
   const pidInterval = setInterval(() => {
@@ -204,38 +204,43 @@ if (isWin) {
       clearInterval(pidInterval); return;
     }
     try {
-      // Fetch all processes in one snapshot and walk the tree in memory.
-      // This avoids stale-PID issues from multiple sequential queries.
+      // Take one snapshot of all processes, then walk from pty.pid: for each visited
+      // PID scan the list for entries whose ParentProcessId matches, check the name,
+      // and push unmatched ones onto the stack.
       const out = execSync(
-        `powershell -NoProfile -Command "Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,Name | ConvertTo-Json -Compress"`,
+        `powershell -NoProfile -Command "$cutoff = [DateTimeOffset]::FromUnixTimeMilliseconds(${spawnStartMs}).LocalDateTime; Get-CimInstance Win32_Process | Where-Object { $_.CreationDate -ge $cutoff } | Select-Object ProcessId,ParentProcessId,Name,CreationDate | ConvertTo-Json -Compress"`,
         { encoding: 'utf-8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] }
       );
-      const all: { ProcessId: number; ParentProcessId: number; Name: string }[] = JSON.parse(out.trim());
+      type ProcEntry = { ProcessId: number; ParentProcessId: number; Name: string; CreationDate: string | null };
+      const all: ProcEntry[] = JSON.parse(out.trim());
       log(`pid resolver: snapshot has ${all.length} processes`);
+      log(`pid resolver: snapshot=${JSON.stringify(all)}`);
 
-      // Build parent -> children map
-      const children = new Map<number, { pid: number; name: string }[]>();
-      for (const p of all) {
-        const name = p.Name.trim().toLowerCase();
-        const arr = children.get(p.ParentProcessId) ?? [];
-        arr.push({ pid: p.ProcessId, name });
-        children.set(p.ParentProcessId, arr);
-      }
-
-      // DFS from pty.pid to find targetExe
+      // copilot.exe spawns a wrapper that immediately forks a second copilot.exe;
+      // the second one is the real process. For copilot we skip the first match and
+      // only stop when we find a copilot.exe whose parent is also copilot.exe.
+      const needsDoubleHop = targetExe === 'copilot.exe';
+      let firstHopPid: number | null = null;
       let foundPid: number | null = null;
       const stack = [pty.pid];
-      while (stack.length > 0) {
+      outer: while (stack.length > 0) {
         const current = stack.pop()!;
-        for (const child of children.get(current) ?? []) {
-          log(`pid resolver: visiting ${child.name} PID=${child.pid}`);
-          if (child.name === targetExe) {
-            foundPid = child.pid;
-            break;
+        for (const p of all) {
+          if (p.ParentProcessId !== current) continue;
+          const name = p.Name.trim().toLowerCase();
+          log(`pid resolver: visiting ${name} PID=${p.ProcessId}`);
+          if (name === targetExe) {
+            if (needsDoubleHop && firstHopPid === null) {
+              firstHopPid = p.ProcessId;
+              stack.push(p.ProcessId); // keep walking into its children
+            } else {
+              foundPid = p.ProcessId;
+              break outer;
+            }
+          } else {
+            stack.push(p.ProcessId);
           }
-          stack.push(child.pid);
         }
-        if (foundPid) break;
       }
 
       if (foundPid) {
