@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from 'node-pty';
 import { execSync } from 'child_process';
-import { readdirSync, existsSync, readFileSync, appendFileSync, mkdirSync } from 'fs';
+import { readdirSync, existsSync, readFileSync, appendFileSync, mkdirSync, statSync } from 'fs';
 import { randomUUID } from 'crypto';
 import { platform, homedir, tmpdir } from 'os';
 import { join, normalize } from 'path';
@@ -139,23 +139,22 @@ if (sessionType === 'copilot-cli') {
       const entries = readdirSync(sessionStateDir, { withFileTypes: true });
       for (const entry of entries) {
         if (!entry.isDirectory()) continue;
-        const workspaceFile = join(sessionStateDir, entry.name, 'workspace.yaml');
+        const dirPath = join(sessionStateDir, entry.name);
+        const dirStat = statSync(dirPath);
+        if (dirStat.birthtimeMs < spawnStartMs) {
+          log(`workspace watcher: skipping ${entry.name} — dir created before spawn (birthtime=${new Date(dirStat.birthtimeMs).toISOString()})`);
+          continue;
+        }
+        const workspaceFile = join(dirPath, 'workspace.yaml');
         if (!existsSync(workspaceFile)) continue;
         try {
-          const content = yamlLoad(readFileSync(workspaceFile, 'utf-8')) as { id?: string; cwd?: string; created_at?: string };
+          const content = yamlLoad(readFileSync(workspaceFile, 'utf-8')) as { id?: string; cwd?: string };
           if (!content?.cwd || !content.id) {
             log(`workspace watcher: skipping ${entry.name} — missing cwd or id`);
             continue;
           }
           if (normalize(content.cwd).toLowerCase() !== normalize(cwd).toLowerCase()) {
             log(`workspace watcher: skipping ${entry.name} — cwd mismatch (got ${content.cwd})`);
-            continue;
-          }
-          // Ignore workspace.yaml files that predate this launch — they belong to sessions
-          // already running before argus launch was invoked (e.g. process 42088 above).
-          const createdAt = content.created_at ? new Date(content.created_at).getTime() : 0;
-          if (createdAt < launchStartMs - 3000) {
-            log(`workspace watcher: skipping ${entry.name} — predates launch (createdAt=${content.created_at})`);
             continue;
           }
           log(`workspace watcher: matched ${entry.name} workspaceId=${content.id}`);
