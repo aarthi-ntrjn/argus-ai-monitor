@@ -209,13 +209,13 @@ if (isWin) {
       let currentPid = pty.pid;
       let currentName = 'powershell.exe';
 
-      // First: ask wmic directly for a child of pty.pid with the exact target name.
+      // First: ask PowerShell directly for a child of pty.pid with the exact target name.
       try {
         const out = execSync(
-          `wmic process where (ParentProcessId=${pty.pid} and Name="${targetExe}") get ProcessId /value`,
+          `powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \\"ParentProcessId=${pty.pid} AND Name='${targetExe}'\\" | Select-Object -First 1 -ExpandProperty ProcessId"`,
           { encoding: 'utf-8', timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] }
         );
-        const pid = parseInt(out.match(/ProcessId=(\d+)/)?.[1] ?? '', 10);
+        const pid = parseInt(out.trim(), 10);
         if (pid) {
           log(`pid resolver: found ${targetExe} as direct child PID=${pid}`);
           currentPid = pid; currentName = targetExe;
@@ -223,7 +223,7 @@ if (isWin) {
           log(`pid resolver: ${targetExe} not a direct child of ${pty.pid} — falling back to depth walk`);
         }
       } catch (err) {
-        log(`pid resolver: wmic direct lookup failed — ${err}`);
+        log(`pid resolver: direct lookup failed — ${err}`);
       }
 
       // Fallback: target exe not a direct child (e.g. wrapped in node.exe).
@@ -231,16 +231,24 @@ if (isWin) {
       if (currentPid === pty.pid) {
         for (let depth = 0; depth < 5; depth++) {
           const out = execSync(
-            `wmic process where (ParentProcessId=${currentPid} and Name!="conhost.exe") get ProcessId,Name /value`,
+            `powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \\"ParentProcessId=${currentPid} AND Name <> 'conhost.exe'\\" | Select-Object -First 1 ProcessId,Name | ConvertTo-Json -Compress"`,
             { encoding: 'utf-8', timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] }
           );
-          const blocks = out.split(/\r?\n\r?\n/).filter(b => b.trim());
-          if (blocks.length === 0) {
+          const trimmed = out.trim();
+          if (!trimmed) {
             log(`pid resolver: depth walk stopped at depth=${depth} — no more children of PID=${currentPid}`);
             break;
           }
-          const pid = parseInt(blocks[0].match(/ProcessId=(\d+)/)?.[1] ?? '', 10);
-          const name = blocks[0].match(/Name=(.+)/)?.[1]?.trim().toLowerCase() ?? '';
+          let pid = 0;
+          let name = '';
+          try {
+            const parsed = JSON.parse(trimmed);
+            pid = parsed.ProcessId ?? 0;
+            name = (parsed.Name ?? '').trim().toLowerCase();
+          } catch {
+            log(`pid resolver: depth walk stopped at depth=${depth} — could not parse JSON: ${trimmed}`);
+            break;
+          }
           if (!pid) {
             log(`pid resolver: depth walk stopped at depth=${depth} — could not parse PID`);
             break;
