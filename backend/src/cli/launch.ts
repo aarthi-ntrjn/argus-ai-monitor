@@ -125,17 +125,31 @@ if (sessionType === 'copilot-cli') {
   }, 500);
 }
 
-// When Argus sends a prompt, write it to the PTY
+// When Argus sends a prompt, write it to the PTY.
+// For copilot-cli: type character by character with 50ms delays so the TUI
+// processes each keystroke, then send Enter. This matches how the copilot TUI
+// expects input (same pattern confirmed working in test-pty-copilot.mjs).
 client.onSendPrompt((actionId: string, prompt: string) => {
-  try {
-    process.stderr.write(`[launch] onSendPrompt actionId=${actionId} promptLen=${prompt.length} — writing to PTY\n`);
+  process.stderr.write(`[launch] onSendPrompt actionId=${actionId} promptLen=${prompt.length}\n`);
 
+  const doWrite = async () => {
     // Capture PTY output after the write for diagnostics
     let postWriteOutput = '';
     const diagListener = (data: string) => { postWriteOutput += data; };
     pty.onData(diagListener);
 
-    pty.write(prompt + '\r');
+    if (sessionType === 'copilot-cli') {
+      // Type character by character with 50ms delay between keystrokes
+      for (const ch of prompt) {
+        pty.write(ch);
+        await new Promise<void>(r => setTimeout(r, 50));
+      }
+      await new Promise<void>(r => setTimeout(r, 100));
+      pty.write('\r');
+    } else {
+      pty.write(prompt + '\r');
+    }
+
     client.ackDelivered(actionId);
 
     // Report PTY response after 3 seconds so the backend can see what copilot did
@@ -145,10 +159,12 @@ client.onSendPrompt((actionId: string, prompt: string) => {
       const snippet = clean.slice(-300) || '(no output)';
       client.sendDiagnostic(actionId, `PTY output after write (${postWriteOutput.length} raw chars): ${snippet}`);
     }, 3000);
-  } catch (err) {
-    process.stderr.write(`[launch] onSendPrompt PTY write failed: ${err}\n`);
+  };
+
+  doWrite().catch(err => {
+    process.stderr.write(`[launch] PTY write failed: ${err}\n`);
     client.ackFailed(actionId, err instanceof Error ? err.message : 'PTY write failed');
-  }
+  });
 });
 
 // On Windows, pty.pid is the powershell.exe wrapper. Walk the process tree
