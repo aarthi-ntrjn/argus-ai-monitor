@@ -204,71 +204,46 @@ if (isWin) {
       clearInterval(pidInterval); return;
     }
     try {
-      // Walk the process tree from pty.pid downward.
-      // Stop as soon as we find the target exe; otherwise take the deepest non-conhost child.
-      // powershell.exe -> conhost.exe / copilot.exe (or node.exe wrapping it)
-      let currentPid = pty.pid;
-      let currentName = 'powershell.exe';
+      // Fetch all processes in one snapshot and walk the tree in memory.
+      // This avoids stale-PID issues from multiple sequential queries.
+      const out = execSync(
+        `powershell -NoProfile -Command "Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,Name | ConvertTo-Json -Compress"`,
+        { encoding: 'utf-8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] }
+      );
+      const all: { ProcessId: number; ParentProcessId: number; Name: string }[] = JSON.parse(out.trim());
+      log(`pid resolver: snapshot has ${all.length} processes`);
 
-      // First: ask PowerShell directly for a child of pty.pid with the exact target name.
-      try {
-        const out = execSync(
-          `powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \\"ParentProcessId=${pty.pid} AND Name='${targetExe}'\\" | Select-Object -First 1 -ExpandProperty ProcessId"`,
-          { encoding: 'utf-8', timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] }
-        );
-        const pid = parseInt(out.trim(), 10);
-        if (pid) {
-          log(`pid resolver: found ${targetExe} as direct child PID=${pid}`);
-          currentPid = pid; currentName = targetExe;
-        } else {
-          log(`pid resolver: ${targetExe} not a direct child of ${pty.pid} — falling back to depth walk`);
-        }
-      } catch (err) {
-        log(`pid resolver: direct lookup failed — ${err}`);
+      // Build parent -> children map
+      const children = new Map<number, { pid: number; name: string }[]>();
+      for (const p of all) {
+        const name = p.Name.trim().toLowerCase();
+        const arr = children.get(p.ParentProcessId) ?? [];
+        arr.push({ pid: p.ProcessId, name });
+        children.set(p.ParentProcessId, arr);
       }
 
-      // Fallback: target exe not a direct child (e.g. wrapped in node.exe).
-      // Walk the tree depth-first until no more children.
-      if (currentPid === pty.pid) {
-        for (let depth = 0; depth < 10; depth++) {
-          const out = execSync(
-            `powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \\"ParentProcessId=${currentPid}\\" | Select-Object -First 1 ProcessId,Name | ConvertTo-Json -Compress"`,
-            { encoding: 'utf-8', timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] }
-          );
-          const trimmed = out.trim();
-          if (!trimmed) {
-            log(`pid resolver: depth walk stopped at depth=${depth} — no more children of PID=${currentPid}`);
+      // DFS from pty.pid to find targetExe
+      let foundPid: number | null = null;
+      const stack = [pty.pid];
+      while (stack.length > 0) {
+        const current = stack.pop()!;
+        for (const child of children.get(current) ?? []) {
+          log(`pid resolver: visiting ${child.name} PID=${child.pid}`);
+          if (child.name === targetExe) {
+            foundPid = child.pid;
             break;
           }
-          let pid = 0;
-          let name = '';
-          try {
-            const parsed = JSON.parse(trimmed);
-            pid = parsed.ProcessId ?? 0;
-            name = (parsed.Name ?? '').trim().toLowerCase();
-          } catch {
-            log(`pid resolver: depth walk stopped at depth=${depth} — could not parse JSON: ${trimmed}`);
-            break;
-          }
-          if (!pid) {
-            log(`pid resolver: depth walk stopped at depth=${depth} — could not parse PID`);
-            break;
-          }
-          log(`pid resolver: depth walk depth=${depth} found ${name} PID=${pid}`);
-          currentPid = pid;
-          currentName = name;
-          if (name === targetExe) {
-            log(`pid resolver: depth walk found target ${targetExe} at depth=${depth}`);
-            break;
-          }
+          stack.push(child.pid);
         }
+        if (foundPid) break;
       }
-      if (currentName === targetExe) {
-        log(`resolved tool process: ${currentName} PID=${currentPid}`);
-        client.updatePid(currentPid);
+
+      if (foundPid) {
+        log(`resolved tool process: ${targetExe} PID=${foundPid}`);
+        client.updatePid(foundPid);
         clearInterval(pidInterval);
       } else {
-        log(`pid resolver: attempt ${pidAttempts} — target ${targetExe} not yet visible (deepest found: ${currentName} PID=${currentPid})`);
+        log(`pid resolver: attempt ${pidAttempts} — ${targetExe} not yet in process tree`);
       }
     } catch (err) {
       log(`pid resolver: unexpected error on attempt ${pidAttempts} — ${err}`);
