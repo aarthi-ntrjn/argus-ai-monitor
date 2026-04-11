@@ -130,21 +130,16 @@ if (sessionType === 'copilot-cli') {
 // TUI to finish its echo/redraw cycle, then send Enter. Sending Enter in the
 // same write as the text causes it to be discarded during the redraw.
 client.onSendPrompt((actionId: string, prompt: string) => {
-  process.stderr.write(`[launch] onSendPrompt actionId=${actionId} promptLen=${prompt.length}\n`);
+  process.stderr.write(`[launch] onSendPrompt actionId=${actionId} prompt=${prompt}\n`);
 
-  const doWrite = async () => {
-    pty.write(prompt);
-    if (sessionType === 'copilot-cli') {
-      await new Promise<void>(r => setTimeout(r, 500));
-    }
+  try {
+    pty.write(prompt + '\r');
     pty.write('\r');
     client.ackDelivered(actionId);
-  };
-
-  doWrite().catch(err => {
+  } catch (err) {
     process.stderr.write(`[launch] PTY write failed: ${err}\n`);
     client.ackFailed(actionId, err instanceof Error ? err.message : 'PTY write failed');
-  });
+  }
 });
 
 // On Windows, pty.pid is the powershell.exe wrapper. Walk the process tree
