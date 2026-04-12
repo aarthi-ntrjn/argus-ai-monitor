@@ -110,7 +110,6 @@ export default function LaunchDropdown({ repoPath }: Props) {
                   >
                     <span className="text-purple-600 shrink-0"><CopilotIcon size={13} /></span>
                     Launch Copilot
-                    <span className="text-red-500 text-[10px] ml-1">very flaky</span>
                   </button>
                   <button
                     onClick={() => handleCopy('copilot')}
