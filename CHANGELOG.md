@@ -23,6 +23,5 @@ First public release.
 - **Mobile browser support**: responsive layout for viewports 390px and up
 - **Onboarding tour**: interactive walkthrough for first-time users
 - **npm package**: install and run via `npx argus-ai-monitor`
-- **Screenshots**: full visual documentation in README
 - **CONTRIBUTING.md**: contribution guidelines
 - **SECURITY.md**: security policy with GitHub Private Vulnerability Reporting
