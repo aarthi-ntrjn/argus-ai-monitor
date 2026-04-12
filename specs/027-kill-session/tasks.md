@@ -14,8 +14,8 @@
 
 **Purpose**: Create shared components and hooks used by multiple user stories
 
-- [ ] T001 [P] Create `useKillSession` hook in `frontend/src/hooks/useKillSession.ts` that wraps `useMutation` calling `stopSession()`, exposes `isPending`, `isError`, `error`, `reset()`, dialog open/close state, and `targetSessionId`
-- [ ] T002 [P] Create `KillSessionDialog` component in `frontend/src/components/KillSessionDialog/KillSessionDialog.tsx` following the `YoloWarningDialog` pattern: modal overlay, session identification text, Cancel and Confirm buttons, loading state on confirm, error message display
+- [x] T001 [P] Create `useKillSession` hook in `frontend/src/hooks/useKillSession.ts` that wraps `useMutation` calling `stopSession()`, exposes `isPending`, `isError`, `error`, `reset()`, dialog open/close state, and `targetSessionId`
+- [x] T002 [P] Create `KillSessionDialog` component in `frontend/src/components/KillSessionDialog/KillSessionDialog.tsx` following the `YoloWarningDialog` pattern: modal overlay, session identification text, Cancel and Confirm buttons, loading state on confirm, error message display
 
 ---
 
@@ -25,9 +25,9 @@
 
 **⚠️ CRITICAL**: Tests MUST be written and confirmed failing before Phase 3 implementation
 
-- [ ] T003 [P] Write unit tests for `useKillSession` hook in `frontend/src/__tests__/useKillSession.test.ts`: test mutation call, loading state, error state, dialog open/close, cache invalidation on success
-- [ ] T004 [P] Write unit tests for `KillSessionDialog` in `frontend/src/__tests__/KillSessionDialog.test.tsx`: test render when open/closed, confirm triggers callback, cancel triggers callback, loading disables confirm button, error message display, session info shown, accessibility attributes
-- [ ] T005 [P] Write unit tests for kill button in `SessionMetaRow` in `frontend/src/__tests__/SessionMetaRow.test.tsx`: test button renders when `onKill` provided and session is killable, button hidden when no PID, button hidden when session ended/completed, button click triggers `onKill`
+- [x] T003 [P] Write unit tests for `useKillSession` hook in `frontend/src/__tests__/useKillSession.test.ts`: test mutation call, loading state, error state, dialog open/close, cache invalidation on success
+- [x] T004 [P] Write unit tests for `KillSessionDialog` in `frontend/src/__tests__/KillSessionDialog.test.tsx`: test render when open/closed, confirm triggers callback, cancel triggers callback, loading disables confirm button, error message display, session info shown, accessibility attributes
+- [x] T005 [P] Write unit tests for kill button in `SessionMetaRow` in `frontend/src/__tests__/SessionMetaRow.test.tsx`: test button renders when `onKill` provided and session is killable, button hidden when no PID, button hidden when session ended/completed, button click triggers `onKill`
 
 **Checkpoint**: All tests written and failing (Red phase)
 
@@ -41,11 +41,11 @@
 
 ### Implementation for User Story 1
 
-- [ ] T006 [US1] Implement `useKillSession` hook in `frontend/src/hooks/useKillSession.ts` (make T003 tests pass)
-- [ ] T007 [US1] Implement `KillSessionDialog` component in `frontend/src/components/KillSessionDialog/KillSessionDialog.tsx` (make T004 tests pass)
-- [ ] T008 [US1] Add kill button to `SessionMetaRow` in `frontend/src/components/SessionMetaRow/SessionMetaRow.tsx`: add `onKill` and `killPending` optional props, render a red `X`/`Square` icon button next to the View Details link when `onKill` is provided and session is killable (has PID, not ended/completed), disable button when `killPending` is true (make T005 tests pass)
-- [ ] T009 [US1] Wire kill flow in `SessionCard` in `frontend/src/components/SessionCard/SessionCard.tsx`: use `useKillSession` hook, pass `onKill` and `killPending` to `SessionMetaRow`, render `KillSessionDialog` with session info, handle confirm/cancel
-- [ ] T010 [US1] Verify all Phase 2 tests pass (Green phase), run `npm run test --workspace=frontend`
+- [x] T006 [US1] Implement `useKillSession` hook in `frontend/src/hooks/useKillSession.ts` (make T003 tests pass)
+- [x] T007 [US1] Implement `KillSessionDialog` component in `frontend/src/components/KillSessionDialog/KillSessionDialog.tsx` (make T004 tests pass)
+- [x] T008 [US1] Add kill button to `SessionMetaRow` in `frontend/src/components/SessionMetaRow/SessionMetaRow.tsx`: add `onKill` and `killPending` optional props, render a red `X`/`Square` icon button next to the View Details link when `onKill` is provided and session is killable (has PID, not ended/completed), disable button when `killPending` is true (make T005 tests pass)
+- [x] T009 [US1] Wire kill flow in `SessionCard` in `frontend/src/components/SessionCard/SessionCard.tsx`: use `useKillSession` hook, pass `onKill` and `killPending` to `SessionMetaRow`, render `KillSessionDialog` with session info, handle confirm/cancel
+- [x] T010 [US1] Verify all Phase 2 tests pass (Green phase), run `npm run test --workspace=frontend`
 
 **Checkpoint**: Kill from dashboard card works end-to-end
 
@@ -59,8 +59,8 @@
 
 ### Implementation for User Story 2
 
-- [ ] T011 [US2] Wire kill flow in `SessionPage` in `frontend/src/pages/SessionPage.tsx`: use `useKillSession` hook, pass `onKill` and `killPending` to `SessionMetaRow`, render `KillSessionDialog`
-- [ ] T012 [US2] Add kill button tests for `SessionPage` to `frontend/src/__tests__/SessionDetail.test.tsx`: test kill button visible for active sessions with PID, hidden for ended sessions, dialog opens on click
+- [x] T011 [US2] Wire kill flow in `SessionPage` in `frontend/src/pages/SessionPage.tsx`: use `useKillSession` hook, pass `onKill` and `killPending` to `SessionMetaRow`, render `KillSessionDialog`
+- [x] T012 [US2] Add kill button tests for `SessionPage` to `frontend/src/__tests__/SessionDetail.test.tsx`: test kill button visible for active sessions with PID, hidden for ended sessions, dialog opens on click
 
 **Checkpoint**: Kill from detail page works end-to-end
 
