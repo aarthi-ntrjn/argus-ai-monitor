@@ -83,4 +83,5 @@ export interface ArgusConfig {
   sessionRetentionHours: number;
   outputRetentionMbPerSession: number;
   autoRegisterRepos: boolean;
+  yoloMode: boolean;
 }

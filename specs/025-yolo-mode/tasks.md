@@ -9,7 +9,7 @@
 
 **Purpose**: No new files or dependencies required. This feature extends existing code only.
 
-- [ ] T001 Verify existing test runner passes with `npm test --workspace=backend` and `npm test --workspace=frontend` (baseline health check)
+- [x] T001 Verify existing test runner passes with `npm test --workspace=backend` and `npm test --workspace=frontend` (baseline health check)
 
 ---
 
@@ -19,10 +19,10 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T002 Add `yoloMode: boolean` to `ArgusConfig` interface in `backend/src/models/index.ts`
-- [ ] T003 [P] Add `yoloMode: boolean` to `ArgusConfig` interface in `frontend/src/types.ts`
-- [ ] T004 Add `yoloMode: false` to `DEFAULTS` in `backend/src/config/config-loader.ts`
-- [ ] T005 Add `'yoloMode'` to `ALLOWED_KEYS` set in `backend/src/api/routes/settings.ts`
+- [x] T002 Add `yoloMode: boolean` to `ArgusConfig` interface in `backend/src/models/index.ts`
+- [x] T003 [P] Add `yoloMode: boolean` to `ArgusConfig` interface in `frontend/src/types.ts`
+- [x] T004 Add `yoloMode: false` to `DEFAULTS` in `backend/src/config/config-loader.ts`
+- [x] T005 Add `'yoloMode'` to `ALLOWED_KEYS` set in `backend/src/api/routes/settings.ts`
 
 **Checkpoint**: `ArgusConfig` has `yoloMode` in both backend model and frontend types; PATCH settings accepts `yoloMode`.
 
