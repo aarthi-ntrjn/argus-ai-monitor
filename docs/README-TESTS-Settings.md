@@ -35,5 +35,8 @@ Manual tests for the settings panel. Run these against a live Argus instance.
 | G-12 | Toggle **Yolo mode** ON and click **Enable Yolo Mode** | The dialog closes, the checkbox is checked, and a yellow "All permission checks disabled" label appears beneath it |
 | G-13 | With Yolo mode ON, copy a Claude launch command | The copied command includes `--dangerously-skip-permissions` |
 | G-14 | With Yolo mode ON, copy a Copilot launch command | The copied command includes `--allow-all` |
-| G-15 | Toggle **Yolo mode** OFF | No dialog appears; the checkbox unchecks immediately and the warning label disappears |
-| G-16 | With Yolo mode OFF, copy a Claude launch command | The copied command does NOT include `--dangerously-skip-permissions` |
+| G-15 | With Yolo mode ON, click **Launch Claude** from the Launch dropdown for any repo | A new terminal window opens and the Claude session starts; verify the terminal shows no permission prompts (all auto-approved) |
+| G-16 | With Yolo mode ON, click **Launch Copilot** from the Launch dropdown for any repo | A new terminal window opens and the Copilot session starts with all permissions pre-approved |
+| G-17 | Toggle **Yolo mode** OFF | No dialog appears; the checkbox unchecks immediately and the warning label disappears |
+| G-18 | With Yolo mode OFF, click **Launch Claude** | A new terminal window opens and Claude prompts for permissions as normal |
+| G-19 | With Yolo mode OFF, copy a Claude launch command | The copied command does NOT include `--dangerously-skip-permissions` |
