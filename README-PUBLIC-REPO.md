@@ -185,19 +185,19 @@ A comprehensive scan of the repository was performed covering all source files, 
 
 ### Phase 1: Blockers (fix before flipping the switch)
 
-- [ ] **Add LICENSE file** (MIT recommended) to repository root
-- [ ] **Fix all dependency vulnerabilities** (`npm audit fix`, bump Vite)
+- [x] **Add LICENSE file** (MIT, Copyright Aarthi Natarajan)
+- [x] **Fix all dependency vulnerabilities** (vite 8.0.3→8.0.8, vitest's vite 6.4.1→6.4.2 via override)
 - [ ] **Clean README.md** (remove all `[aarthin]` inline comments)
 - [ ] **Test README instructions end-to-end** on a clean machine
-- [ ] **Review git history** one final time for any sensitive content (use `git log --all --oneline | grep -i secret` as a sanity check)
-- [ ] **Run full test suite** and confirm green (backend, frontend, e2e)
+- [x] **Review git history** for sensitive content (clean)
+- [x] **Run full test suite** and confirm green (258 backend + 234 frontend)
 
 ### Phase 2: Strongly recommended (do within the first week)
 
-- [ ] **Create CONTRIBUTING.md** with PR workflow and coding standards
-- [ ] **Create CODE_OF_CONDUCT.md** (Contributor Covenant v2.1)
-- [ ] **Create SECURITY.md** with responsible disclosure policy
-- [ ] **Document Speckit infrastructure** for external users/contributors
+- [x] **Create CONTRIBUTING.md** (not accepting contributions, issues welcome)
+- [ ] ~~Create CODE_OF_CONDUCT.md~~ (skipped, OpenClaw doesn't have one either)
+- [x] **Create SECURITY.md** (GitHub Private Vulnerability Reporting)
+- [x] **Document Speckit infrastructure** (added to docs/README-CONTRIBUTORS.md)
 - [ ] **Restructure README** for public audience (elevator pitch, quick start, screenshots)
 - [ ] **Enable branch protection** on `master` (require PR reviews, status checks)
 
