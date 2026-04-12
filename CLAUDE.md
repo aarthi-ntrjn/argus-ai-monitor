@@ -13,9 +13,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Never use em dashes** (`—`) in any documentation, comments, or content. They are tiresome to read. Use a comma, colon, parentheses, or rewrite the sentence instead.
 
-## Project Purpose
+## Project Context
 
-Argus is a tool for centrally monitoring and remotely controlling Claude Code and GitHub Copilot sessions. The repository currently contains application code and the Speckit SDD (Specification-Driven Development) infrastructure for building it.
+Argus is a tool for centrally monitoring and remotely controlling Claude Code and GitHub Copilot sessions. For full project documentation, see [README.md](README.md). For architecture, API reference, and dev setup, see [docs/README-CONTRIBUTORS.md](docs/README-CONTRIBUTORS.md).
 
 ## Speckit Workflow
 
