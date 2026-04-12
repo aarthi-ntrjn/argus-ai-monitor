@@ -4,6 +4,7 @@ import { platform } from 'os';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import path from 'path';
+import { loadConfig } from '../../config/config-loader.js';
 
 // Resolve argus repo root from this file's location.
 // Source:   backend/src/api/routes/  -> 4 levels up = repo root
@@ -12,16 +13,22 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ARGUS_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 
+const YOLO_FLAGS: Record<'claude' | 'copilot', string> = {
+  claude: '--dangerously-skip-permissions',
+  copilot: '--allow-all',
+};
+
 // Base command (no --cwd): safe to copy and run manually from any directory.
-function buildLaunchCmdBase(tool: 'claude' | 'copilot'): string {
+function buildLaunchCmdBase(tool: 'claude' | 'copilot', yoloMode = false): string {
   const toolArg = tool === 'copilot' ? 'copilot' : 'claude';
-  return `npm --prefix "${ARGUS_ROOT}" run launch --workspace=backend -- ${toolArg}`;
+  const base = `npm --prefix "${ARGUS_ROOT}" run launch --workspace=backend -- ${toolArg}`;
+  return yoloMode ? `${base} ${YOLO_FLAGS[tool]}` : base;
 }
 
 // Full command with --cwd baked in: used when the backend spawns the terminal.
 // npm --workspace changes cwd to the workspace root, so we must pass --cwd explicitly.
-function buildLaunchCmdWithCwd(tool: 'claude' | 'copilot', repoPath: string): string {
-  return `${buildLaunchCmdBase(tool)} --cwd "${repoPath}"`;
+function buildLaunchCmdWithCwd(tool: 'claude' | 'copilot', repoPath: string, yoloMode = false): string {
+  return `${buildLaunchCmdBase(tool, yoloMode)} --cwd "${repoPath}"`;
 }
 
 function isInstalled(cmd: string): boolean {
@@ -62,11 +69,12 @@ const toolsRoutes: FastifyPluginAsync = async (app) => {
   app.get('/api/v1/tools', async (_req, reply) => {
     const hasClaude = isInstalled('claude');
     const hasCopilot = isCopilotInstalled();
+    const { yoloMode } = loadConfig();
     return reply.send({
       claude: hasClaude,
       copilot: hasCopilot,
-      claudeCmd: hasClaude ? buildLaunchCmdBase('claude') : undefined,
-      copilotCmd: hasCopilot ? buildLaunchCmdBase('copilot') : undefined,
+      claudeCmd: hasClaude ? buildLaunchCmdBase('claude', yoloMode) : undefined,
+      copilotCmd: hasCopilot ? buildLaunchCmdBase('copilot', yoloMode) : undefined,
     });
   });
 
@@ -86,9 +94,10 @@ const toolsRoutes: FastifyPluginAsync = async (app) => {
     },
     async (req, reply) => {
       const { tool, repoPath } = req.body;
+      const { yoloMode } = loadConfig();
       const cmd = repoPath
-        ? buildLaunchCmdWithCwd(tool, repoPath)
-        : buildLaunchCmdBase(tool);
+        ? buildLaunchCmdWithCwd(tool, repoPath, yoloMode)
+        : buildLaunchCmdBase(tool, yoloMode);
       openTerminalWithCommand(cmd);
       return reply.status(202).send({ status: 'launched' });
     }

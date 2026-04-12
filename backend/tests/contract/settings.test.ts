@@ -63,4 +63,30 @@ describe('Settings API', () => {
       expect(res.body).not.toHaveProperty('unknownField');
     });
   });
+
+  describe('yoloMode setting', () => {
+    it('GET /api/v1/settings returns yoloMode: false by default', async () => {
+      const res = await request.get('/api/v1/settings');
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('yoloMode', false);
+    });
+
+    it('PATCH /api/v1/settings with yoloMode: true returns yoloMode: true', async () => {
+      const res = await request.patch('/api/v1/settings').send({ yoloMode: true });
+      expect(res.status).toBe(200);
+      expect(res.body.yoloMode).toBe(true);
+    });
+
+    it('GET /api/v1/settings after enabling yoloMode reflects yoloMode: true', async () => {
+      await request.patch('/api/v1/settings').send({ yoloMode: true });
+      const res = await request.get('/api/v1/settings');
+      expect(res.body.yoloMode).toBe(true);
+    });
+
+    it('PATCH /api/v1/settings with yoloMode: false disables it', async () => {
+      await request.patch('/api/v1/settings').send({ yoloMode: true });
+      const res = await request.patch('/api/v1/settings').send({ yoloMode: false });
+      expect(res.body.yoloMode).toBe(false);
+    });
+  });
 });

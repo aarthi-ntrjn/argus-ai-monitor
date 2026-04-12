@@ -1,13 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SettingsPanel } from '../components/SettingsPanel/SettingsPanel';
 import type { DashboardSettings } from '../types';
+import * as api from '../services/api';
 
 vi.mock('../services/api', () => ({
-  getArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false }),
-  patchArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false }),
+  getArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false, yoloMode: false }),
+  patchArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false, yoloMode: false }),
 }));
 
 function renderWithQuery(ui: React.ReactElement) {
@@ -84,5 +85,68 @@ describe('SettingsPanel', () => {
     renderWithQuery(<SettingsPanel settings={allOff} onToggle={onToggle} />);
     await userEvent.click(screen.getByRole('checkbox', { name: /hide ended sessions/i }));
     expect(onToggle).toHaveBeenCalledOnce();
+  });
+
+  describe('yolo mode toggle', () => {
+    it('renders the yolo mode checkbox', async () => {
+      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
+      await waitFor(() => {
+        expect(screen.getByRole('checkbox', { name: /yolo mode/i })).toBeInTheDocument();
+      });
+    });
+
+    it('shows warning dialog when toggling yolo mode on', async () => {
+      vi.mocked(api.getArgusSettings).mockResolvedValue({ autoRegisterRepos: false, yoloMode: false } as any);
+      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
+      await waitFor(() => screen.getByRole('checkbox', { name: /yolo mode/i }));
+      await userEvent.click(screen.getByRole('checkbox', { name: /yolo mode/i }));
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+
+    it('calls patchArgusSettings with yoloMode: true when dialog is confirmed', async () => {
+      vi.mocked(api.getArgusSettings).mockResolvedValue({ autoRegisterRepos: false, yoloMode: false } as any);
+      vi.mocked(api.patchArgusSettings).mockResolvedValue({ autoRegisterRepos: false, yoloMode: true } as any);
+      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
+      await waitFor(() => screen.getByRole('checkbox', { name: /yolo mode/i }));
+      await userEvent.click(screen.getByRole('checkbox', { name: /yolo mode/i }));
+      await userEvent.click(screen.getByRole('button', { name: /enable yolo mode/i }));
+      expect(api.patchArgusSettings).toHaveBeenCalledWith({ yoloMode: true });
+    });
+
+    it('does not call patchArgusSettings when dialog is cancelled', async () => {
+      vi.mocked(api.getArgusSettings).mockResolvedValue({ autoRegisterRepos: false, yoloMode: false } as any);
+      const patchSpy = vi.mocked(api.patchArgusSettings);
+      patchSpy.mockClear();
+      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
+      await waitFor(() => screen.getByRole('checkbox', { name: /yolo mode/i }));
+      await userEvent.click(screen.getByRole('checkbox', { name: /yolo mode/i }));
+      await userEvent.click(screen.getByRole('button', { name: /cancel/i }));
+      expect(patchSpy).not.toHaveBeenCalled();
+    });
+
+    it('calls patchArgusSettings with yoloMode: false when toggled off (no dialog)', async () => {
+      vi.mocked(api.getArgusSettings).mockResolvedValue({ autoRegisterRepos: false, yoloMode: true } as any);
+      vi.mocked(api.patchArgusSettings).mockResolvedValue({ autoRegisterRepos: false, yoloMode: false } as any);
+      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
+      await waitFor(() => screen.getByRole('checkbox', { name: /yolo mode/i }));
+      await userEvent.click(screen.getByRole('checkbox', { name: /yolo mode/i }));
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(api.patchArgusSettings).toHaveBeenCalledWith({ yoloMode: false });
+    });
+
+    it('shows warning label when yolo mode is on', async () => {
+      vi.mocked(api.getArgusSettings).mockResolvedValue({ autoRegisterRepos: false, yoloMode: true } as any);
+      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
+      await waitFor(() => {
+        expect(screen.getByText(/all permission checks disabled/i)).toBeInTheDocument();
+      });
+    });
+
+    it('does not show warning label when yolo mode is off', async () => {
+      vi.mocked(api.getArgusSettings).mockResolvedValue({ autoRegisterRepos: false, yoloMode: false } as any);
+      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
+      await waitFor(() => screen.getByRole('checkbox', { name: /yolo mode/i }));
+      expect(screen.queryByText(/all permission checks disabled/i)).not.toBeInTheDocument();
+    });
   });
 });

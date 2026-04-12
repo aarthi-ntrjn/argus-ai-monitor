@@ -36,22 +36,22 @@
 
 ### Tests for User Story 1 (write first, confirm failing before implementing)
 
-- [ ] T006 [US1] Write backend contract tests for `yoloMode` in `backend/tests/contract/settings.test.ts`:
+- [x] T006 [US1] Write backend contract tests for `yoloMode` in `backend/tests/contract/settings.test.ts`:
   - `GET /api/v1/settings` returns `yoloMode: false` by default
   - `PATCH /api/v1/settings` with `{ yoloMode: true }` returns `yoloMode: true`
   - `GET /api/v1/settings` after PATCH reflects `yoloMode: true`
-- [ ] T007 [US1] Create `backend/tests/contract/tools.test.ts` with flag injection tests:
+- [x] T007 [US1] Create `backend/tests/contract/tools.test.ts` with flag injection tests:
   - When yoloMode is false: `claudeCmd` and `copilotCmd` do NOT contain yolo flags
   - When yoloMode is true: `claudeCmd` contains `--dangerously-skip-permissions`
   - When yoloMode is true: `copilotCmd` contains `--allow-all`
   - When yoloMode is true: `POST /api/v1/sessions/launch-terminal` opens terminal with yolo flag in command
-- [ ] T008 [P] [US1] Create `frontend/src/__tests__/YoloWarningDialog.test.tsx`:
+- [x] T008 [P] [US1] Create `frontend/src/__tests__/YoloWarningDialog.test.tsx`:
   - Dialog renders when `open=true`
   - Dialog does not render when `open=false`
   - Clicking confirm calls `onConfirm`
   - Clicking cancel calls `onCancel`
   - Dialog text mentions bypassing permission checks
-- [ ] T009 [P] [US1] Extend `frontend/src/__tests__/SettingsPanel.test.tsx` with yolo mode tests:
+- [x] T009 [P] [US1] Extend `frontend/src/__tests__/SettingsPanel.test.tsx` with yolo mode tests:
   - Renders yolo mode checkbox
   - Clicking yolo mode checkbox (off to on) opens warning dialog (mock `getArgusSettings`, `patchArgusSettings`)
   - Confirming dialog calls `patchArgusSettings` with `{ yoloMode: true }`
@@ -59,10 +59,10 @@
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Add `YOLO_FLAGS` constant and update `buildLaunchCmdBase(tool, yoloMode)` signature in `backend/src/api/routes/tools.ts`; load config in both route handlers and pass `yoloMode`
-- [ ] T011 [P] [US1] Create `frontend/src/hooks/useArgusSettings.ts` with `useQuery`/`useMutation` for `getArgusSettings` / `patchArgusSettings`
-- [ ] T012 [US1] Create `frontend/src/components/YoloWarningDialog/YoloWarningDialog.tsx` with confirm/cancel buttons and risk-explanation text
-- [ ] T013 [US1] Add yolo mode toggle to `frontend/src/components/SettingsPanel/SettingsPanel.tsx`: use `useArgusSettings` hook, intercept enable toggle to show `YoloWarningDialog`, save on confirm, revert on cancel
+- [x] T010 [US1] Add `YOLO_FLAGS` constant and update `buildLaunchCmdBase(tool, yoloMode)` signature in `backend/src/api/routes/tools.ts`; load config in both route handlers and pass `yoloMode`
+- [x] T011 [P] [US1] Create `frontend/src/hooks/useArgusSettings.ts` with `useQuery`/`useMutation` for `getArgusSettings` / `patchArgusSettings`
+- [x] T012 [US1] Create `frontend/src/components/YoloWarningDialog/YoloWarningDialog.tsx` with confirm/cancel buttons and risk-explanation text
+- [x] T013 [US1] Add yolo mode toggle to `frontend/src/components/SettingsPanel/SettingsPanel.tsx`: use `useArgusSettings` hook, intercept enable toggle to show `YoloWarningDialog`, save on confirm, revert on cancel
 
 **Checkpoint**: Yolo mode can be enabled from settings panel with warning confirmation. `GET /api/v1/tools` and `POST /api/v1/sessions/launch-terminal` return/use commands with yolo flags.
 
@@ -76,16 +76,16 @@
 
 ### Tests for User Story 2 (write first, confirm failing before implementing)
 
-- [ ] T014 [US2] Extend `frontend/src/__tests__/SettingsPanel.test.tsx`:
+- [x] T014 [US2] Extend `frontend/src/__tests__/SettingsPanel.test.tsx`:
   - When yolo mode is on and user toggles it off, `patchArgusSettings` is called with `{ yoloMode: false }` and NO warning dialog appears
-- [ ] T015 [US2] Extend `backend/tests/contract/tools.test.ts`:
+- [x] T015 [US2] Extend `backend/tests/contract/tools.test.ts`:
   - After disabling yolo mode (PATCH `yoloMode: false`), `GET /api/v1/tools` commands no longer contain yolo flags
 
 ### Implementation for User Story 2
 
 The toggle-off path through `SettingsPanel` does not show the dialog and directly calls `patchArgusSettings({ yoloMode: false })`. This is implemented in T013. Verify the conditional path is correct and add no-dialog assertion to tests.
 
-- [ ] T016 [US2] Verify `SettingsPanel.tsx` toggle-off path skips dialog and calls `patchArgusSettings({ yoloMode: false })` directly (review T013 output; adjust if needed)
+- [x] T016 [US2] Verify `SettingsPanel.tsx` toggle-off path skips dialog and calls `patchArgusSettings({ yoloMode: false })` directly (review T013 output; adjust if needed)
 
 **Checkpoint**: Toggle off requires no confirmation; commands revert to standard form.
 
@@ -99,13 +99,13 @@ The toggle-off path through `SettingsPanel` does not show the dialog and directl
 
 ### Tests for User Story 3 (write first, confirm failing before implementing)
 
-- [ ] T017 [US3] Extend `frontend/src/__tests__/SettingsPanel.test.tsx`:
+- [x] T017 [US3] Extend `frontend/src/__tests__/SettingsPanel.test.tsx`:
   - When yolo mode is on (backend returns `yoloMode: true`), a warning/risk label text is visible
   - When yolo mode is off, no warning label is visible
 
 ### Implementation for User Story 3
 
-- [ ] T018 [US3] Add conditional warning label (e.g., yellow text "All permission checks disabled") next to the yolo mode toggle in `SettingsPanel.tsx` (only rendered when `yoloMode === true`)
+- [x] T018 [US3] Add conditional warning label (e.g., yellow text "All permission checks disabled") next to the yolo mode toggle in `SettingsPanel.tsx` (only rendered when `yoloMode === true`)
 
 **Checkpoint**: All three user stories are independently functional.
 
