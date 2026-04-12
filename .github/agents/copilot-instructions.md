@@ -1,6 +1,6 @@
-﻿# argus2 Development Guidelines
+# argus2 Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-04-11
+Auto-generated from all feature plans. Last updated: 2026-04-12
 
 ## Active Technologies
 - TypeScript 5.9, Node.js 22 + node-pty (new), Fastify 5, better-sqlite3, ws, @fastify/websocket (020-fix-send-prompts)
@@ -11,6 +11,8 @@ Auto-generated from all feature plans. Last updated: 2026-04-11
 - `localStorage` via existing `useSettings` hook (`argus:settings` key) (023-stream-attention)
 - TypeScript 5.x (backend Node.js 20, frontend React 18 + Vite) + Fastify (backend API), React Query (frontend data fetching), Tailwind CSS (frontend styling) (025-yolo-mode)
 - `~/.argus/config.json` (existing key-value config file managed by `config-loader.ts`) (025-yolo-mode)
+- TypeScript 5.x (React 18 frontend, Node.js backend) + React, TanStack React Query, Tailwind CSS, Lucide icons, React Router (027-kill-session)
+- SQLite (existing, no schema changes needed) (027-kill-session)
 
 - TypeScript 5.9 (frontend + backend) + Fastify 5.x (backend), React 18 + TailwindCSS 3 + React Query (frontend), better-sqlite3 (storage), pino (logging), vitest + Playwright (testing) (014-engineer-todo-list)
 
@@ -31,9 +33,9 @@ npm test; npm run lint
 TypeScript 5.9 (frontend + backend): Follow standard conventions
 
 ## Recent Changes
+- 027-kill-session: Added TypeScript 5.x (React 18 frontend, Node.js backend) + React, TanStack React Query, Tailwind CSS, Lucide icons, React Router
 - 025-yolo-mode: Added TypeScript 5.x (backend Node.js 20, frontend React 18 + Vite) + Fastify (backend API), React Query (frontend data fetching), Tailwind CSS (frontend styling)
 - 023-stream-attention: Added TypeScript 5.x, React 18.3 + React Query (existing), Tailwind CSS (existing), React Markdown (existing)
-- 021-session-pid-mapping: Added TypeScript 5.x (Node.js 22 LTS) + better-sqlite3, chokidar, ps-list, fastify, @tanstack/react-query
 
 
 <!-- MANUAL ADDITIONS START -->

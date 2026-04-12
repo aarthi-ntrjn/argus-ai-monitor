@@ -23,12 +23,11 @@ export async function validatePidOwnership(
   }
 
   const name = proc.name.toLowerCase();
-  const cmd = proc.cmd?.toLowerCase() ?? '';
 
   const isAiTool =
     sessionType === 'claude-code'
-      ? name.includes('claude') || cmd.includes('claude')
-      : name.includes('gh') || cmd.includes('gh') || cmd.includes('copilot');
+      ? name.includes('claude')
+      : name.includes('copilot');
 
   if (!isAiTool) {
     return { valid: false, reason: 'process_not_ai_tool' };

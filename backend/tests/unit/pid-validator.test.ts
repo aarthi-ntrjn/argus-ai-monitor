@@ -65,22 +65,23 @@ describe('validatePidOwnership', () => {
     expect(result.reason).toBeUndefined();
   });
 
-  it('accepts a valid claude-code pid matched by cmd when name is node', async () => {
+  it('rejects a claude-code pid when only cmd matches but name does not', async () => {
     mockProcessList = [{ pid: 2345, name: 'node', cmd: '/usr/local/bin/claude --version' }];
     const { validatePidOwnership } = await import('../../src/services/pid-validator.js');
     const result = await validatePidOwnership(2345, 'claude-code');
-    expect(result.valid).toBe(true);
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe('process_not_ai_tool');
   });
 
-  it('accepts a valid copilot-cli pid matched by name gh', async () => {
-    mockProcessList = [{ pid: 3456, name: 'gh', cmd: 'gh copilot suggest' }];
+  it('accepts a valid copilot-cli pid matched by name copilot', async () => {
+    mockProcessList = [{ pid: 3456, name: 'copilot', cmd: 'copilot suggest' }];
     const { validatePidOwnership } = await import('../../src/services/pid-validator.js');
     const result = await validatePidOwnership(3456, 'copilot-cli');
     expect(result.valid).toBe(true);
   });
 
-  it('accepts a valid copilot-cli pid matched by cmd containing copilot', async () => {
-    mockProcessList = [{ pid: 4567, name: 'node', cmd: '/usr/bin/gh copilot explain' }];
+  it('accepts a valid copilot-cli pid matched by name copilot.exe', async () => {
+    mockProcessList = [{ pid: 4567, name: 'copilot.exe', cmd: '' }];
     const { validatePidOwnership } = await import('../../src/services/pid-validator.js');
     const result = await validatePidOwnership(4567, 'copilot-cli');
     expect(result.valid).toBe(true);

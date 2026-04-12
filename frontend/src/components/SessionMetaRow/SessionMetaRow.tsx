@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Moon, Play, ShieldOff, ExternalLink, Plug, Eye } from 'lucide-react';
+import { Moon, Play, ShieldOff, ExternalLink, Plug, Eye, Power } from 'lucide-react';
 import type { Session } from '../../types';
 import { isInactive } from '../../utils/sessionUtils';
 import { useSettings } from '../../hooks/useSettings';
@@ -8,6 +8,8 @@ import SessionTypeIcon from '../SessionTypeIcon/SessionTypeIcon';
 interface Props {
   session: Session;
   showLink?: boolean;
+  onKill?: (sessionId: string) => void;
+  killPending?: boolean;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -39,9 +41,10 @@ function claudeShortId(id: string): string {
   return id.match(/[0-9a-f]{8}-[0-9a-f]{4}/)?.[0].slice(0, 8) ?? id.slice(0, 8);
 }
 
-export default function SessionMetaRow({ session, showLink = false }: Props) {
+export default function SessionMetaRow({ session, showLink = false, onKill, killPending = false }: Props) {
   const [settings] = useSettings();
   const thresholdMs = settings.restingThresholdMinutes * 60_000;
+  const isKillable = onKill && session.pid != null && session.status !== 'ended' && session.status !== 'completed';
 
   return (
     <div className="flex justify-between items-start">
@@ -88,6 +91,16 @@ export default function SessionMetaRow({ session, showLink = false }: Props) {
           >
             <ExternalLink size={14} />
           </Link>
+        )}
+        {isKillable && (
+          <button
+            onClick={e => { e.stopPropagation(); onKill(session.id); }}
+            disabled={killPending}
+            className="text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Kill session"
+          >
+            <Power size={14} />
+          </button>
         )}
       </div>
     </div>

@@ -5,11 +5,14 @@ import { getSession } from '../services/api';
 import OutputPane from '../components/OutputPane/OutputPane';
 import SessionPromptBar from '../components/SessionPromptBar/SessionPromptBar';
 import SessionMetaRow from '../components/SessionMetaRow/SessionMetaRow';
+import { useKillSession } from '../hooks/useKillSession';
+import { KillSessionDialog } from '../components/KillSessionDialog/KillSessionDialog';
 
 
 export default function SessionPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const kill = useKillSession({ onKilled: () => navigate('/') });
 
   const { data: session, isLoading: sessionLoading, error: sessionError } = useQuery({
     queryKey: ['session', id],
@@ -49,7 +52,11 @@ export default function SessionPage() {
             <ArrowLeft size={14} />Back
           </button>
           <div className="bg-white rounded-lg shadow px-3 pt-3 pb-2" data-tour-id="session-status">
-            <SessionMetaRow session={session} />
+            <SessionMetaRow
+              session={session}
+              onKill={() => kill.requestKill(session.id)}
+              killPending={kill.isPending}
+            />
             {session.summary && (
               <p className="font-mono text-sm text-gray-800 mt-2 px-1">{session.summary}</p>
             )}
@@ -74,6 +81,15 @@ export default function SessionPage() {
         </div>
       </div>
 
+      <KillSessionDialog
+        open={kill.dialogOpen}
+        sessionType={session.type}
+        sessionId={session.id}
+        isPending={kill.isPending}
+        error={kill.isError ? kill.error : null}
+        onConfirm={kill.confirmKill}
+        onCancel={kill.cancelKill}
+      />
     </div>
   );
 }

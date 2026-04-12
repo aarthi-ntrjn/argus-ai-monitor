@@ -56,3 +56,31 @@ Manual tests for session state transitions across different scenarios: terminal 
 | L3-02 | In a running Copilot CLI session, end the session normally | Session card transitions from "running" (green) to "ended" (grey) within a few seconds |
 | L3-03 | Kill a Claude Code session process externally (`kill <PID>` or Task Manager) | Session card transitions to "ended" within the next poll cycle (~5 seconds) |
 | L3-04 | Kill a Copilot CLI session process externally | Session card transitions to "ended" within the next poll cycle (~5 seconds) |
+
+---
+
+## L4: Kill session via dashboard button
+
+| # | Steps | Expected |
+|---|-------|----------|
+| L4-01 | On the dashboard, locate a running session card with a visible power button icon (right side of the meta row) | Power icon button is visible next to the "Details" link; it is only shown for sessions with a PID and status that is not "ended" or "completed" |
+| L4-02 | Click the power button on a running session card | A confirmation dialog appears (via portal, above all content) asking "Are you sure you want to terminate this [type] session ([short-id])?" with Cancel and Kill Session buttons |
+| L4-03 | In the confirmation dialog, click Cancel | Dialog closes; session is unaffected and still running |
+| L4-04 | Click the power button again, then click Kill Session | Dialog switches to a spinner view showing "Killing session..." and "Waiting for the process to exit"; Cancel button and backdrop click are disabled |
+| L4-05 | Wait for the process to exit after confirming kill | Spinner disappears, dialog closes automatically, session card updates to "ended" (grey badge) |
+| L4-06 | Try to kill a session that has already ended (e.g. the power button should not be visible) | The power button is not rendered for ended/completed sessions |
+| L4-07 | Kill a session on a card that has reduced opacity (inactive/resting session) | The confirmation dialog appears above all content (not trapped behind the card's opacity layer) |
+| L4-08 | Kill a connected Claude Code session (launched via `argus launch`) | Dialog shows type "claude-code"; process terminates, card transitions to "ended" |
+| L4-09 | Kill a read-only Claude Code session (detected, not launched via argus) | Dialog shows type "claude-code"; process terminates, card transitions to "ended" |
+| L4-10 | Kill a connected Copilot CLI session (launched via `argus launch`) | Dialog shows type "copilot-cli"; process terminates, card transitions to "ended" |
+| L4-11 | Kill a read-only Copilot CLI session (detected, not launched via argus) | Dialog shows type "copilot-cli"; process terminates, card transitions to "ended" |
+
+---
+
+## L5: Kill session from detail page
+
+| # | Steps | Expected |
+|---|-------|----------|
+| L5-01 | Navigate to a running session's detail page; locate the power button in the meta row | Power icon button is visible in the session header meta row |
+| L5-02 | Click the power button, then click Kill Session in the confirmation dialog | Spinner shows "Killing session..."; after the process exits, the page navigates back to the dashboard |
+| L5-03 | On the dashboard, verify the killed session now shows "ended" status | Session card shows grey "ended" badge |
