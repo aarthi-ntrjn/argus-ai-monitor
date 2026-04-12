@@ -85,7 +85,7 @@
 
 **Purpose**: End-to-end Playwright test for the kill session flow
 
-- [ ] T015 Write e2e test in `frontend/tests/e2e/sc-027-kill-session.spec.ts`: mock active session with PID, click kill button on card, verify dialog appears, confirm kill, verify API call made, verify session status updates to ended; also test cancel dismisses dialog
+- [x] T015 Write e2e test in `frontend/tests/e2e/sc-027-kill-session.spec.ts`: mock active session with PID, click kill button on card, verify dialog appears, confirm kill, verify API call made, verify session status updates to ended; also test cancel dismisses dialog
 
 ---
 
