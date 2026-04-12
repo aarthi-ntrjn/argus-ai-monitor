@@ -59,7 +59,7 @@ test.describe('SC-004: Stop Session', () => {
       route.fulfill({ contentType: 'application/json', body: JSON.stringify(detected) })
     );
     await page.goto(`/sessions/${SESSION_ID}`);
-    await expect(page.getByText(/read-only/i)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/start with argus launch to send prompts/i)).toBeVisible({ timeout: 5000 });
   });
 
   test('status badge shows ended state on session page', async ({ page }) => {

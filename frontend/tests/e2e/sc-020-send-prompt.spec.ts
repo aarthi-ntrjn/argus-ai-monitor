@@ -218,12 +218,12 @@ test.describe('SC-020: Send Prompt — detected (read-only) session (mocked API)
 
   test('"read-only" badge is shown for detected sessions', async ({ page }) => {
     await page.goto(`/sessions/${DETECTED_SESSION.id}`);
-    await expect(page.getByText('read-only')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('read-only').first()).toBeVisible({ timeout: 5000 });
   });
 
   test('tooltip explains how to enable prompts', async ({ page }) => {
     await page.goto(`/sessions/${DETECTED_SESSION.id}`);
-    const tooltip = page.locator('[title*="argus launch"]');
+    const tooltip = page.locator('[title*="argus launch"]').first();
     await expect(tooltip).toBeVisible({ timeout: 5000 });
   });
 
