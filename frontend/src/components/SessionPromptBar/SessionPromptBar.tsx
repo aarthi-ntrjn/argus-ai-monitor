@@ -52,8 +52,8 @@ export default function SessionPromptBar({ session }: Props) {
 
   if (isReadOnly) {
     return (
-      <p className="text-xs text-gray-400 italic" title="Start this session with argus launch to enable prompt injection">
-        read-only — start with argus launch to send prompts
+      <p className="text-xs text-gray-600 italic" title="Start this session with argus launch to enable prompt injection">
+        read-only - start with argus launch to send prompts
       </p>
     );
   }
