@@ -66,7 +66,7 @@ export interface DashboardSettings {
 }
 
 export const DEFAULT_SETTINGS: DashboardSettings = {
-  hideEndedSessions: false,
+  hideEndedSessions: true,
   hideReposWithNoActiveSessions: false,
   hideInactiveSessions: false,
   outputDisplayMode: 'focused',

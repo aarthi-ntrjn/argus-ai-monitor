@@ -136,7 +136,7 @@ Click the **gear icon** (top-right) to open Settings.
 
 | Setting                            | Default  | Description                                                                        |
 | ---------------------------------- | -------- | ---------------------------------------------------------------------------------- |
-| Hide ended sessions                | Off      | Hides sessions with status `completed` or `ended`                                  |
+| Hide ended sessions                | On       | Hides sessions with status `completed` or `ended`                                  |
 | Hide repos with no active sessions | Off      | Hides repo cards that have no sessions with status `active`, `waiting`, or `error` |
 | Hide inactive sessions             | Off      | Hides sessions with no output in the last N minutes (see Resting threshold below)  |
 | Resting after (minutes)            | 20       | Minutes of inactivity before a session is shown as **resting**. Valid range: 1 to 60. Click **Reset** to restore the default. |

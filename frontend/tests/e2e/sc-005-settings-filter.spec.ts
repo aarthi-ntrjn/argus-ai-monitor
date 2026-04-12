@@ -46,7 +46,7 @@ test.describe('SC-005: Dashboard Settings — Filter Ended Sessions', () => {
     await expect(page.getByText('Ended session')).not.toBeVisible();
   });
 
-  test('shows all sessions when hideEndedSessions is false (default)', async ({ page }) => {
+  test('shows all sessions when hideEndedSessions is explicitly false', async ({ page }) => {
     await mockApis(page);
     await page.addInitScript(() => {
       localStorage.setItem('argus:settings', JSON.stringify({ hideEndedSessions: false }));
@@ -57,12 +57,12 @@ test.describe('SC-005: Dashboard Settings — Filter Ended Sessions', () => {
     await expect(page.getByText('Ended session')).toBeVisible({ timeout: 5000 });
   });
 
-  test('shows all sessions by default when no setting is stored', async ({ page }) => {
+  test('hides ended sessions by default when no setting is stored', async ({ page }) => {
     await mockApis(page);
     await page.goto('/');
     await expect(page.getByText('Active session')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('Completed session')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('Ended session')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Completed session')).not.toBeVisible();
+    await expect(page.getByText('Ended session')).not.toBeVisible();
   });
 
   // US2: Persistence

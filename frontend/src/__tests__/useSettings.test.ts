@@ -9,10 +9,10 @@ describe('useSettings', () => {
     localStorage.clear();
   });
 
-  it('returns all-false defaults when nothing is stored', () => {
+  it('returns defaults when nothing is stored', () => {
     const { result } = renderHook(() => useSettings());
     expect(result.current[0]).toEqual({
-      hideEndedSessions: false,
+      hideEndedSessions: true,
       hideReposWithNoActiveSessions: false,
       hideInactiveSessions: false,
       outputDisplayMode: 'focused',
@@ -35,7 +35,7 @@ describe('useSettings', () => {
     localStorage.setItem(KEY, 'not-valid-json{{{');
     const { result } = renderHook(() => useSettings());
     expect(result.current[0]).toEqual({
-      hideEndedSessions: false,
+      hideEndedSessions: true,
       hideReposWithNoActiveSessions: false,
       hideInactiveSessions: false,
       outputDisplayMode: 'focused',
