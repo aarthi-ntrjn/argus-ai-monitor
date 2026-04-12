@@ -78,14 +78,15 @@ test.describe('SC-005: Dashboard Settings — Filter Ended Sessions', () => {
     await expect(page.getByText('Completed session')).not.toBeVisible();
   });
 
-  test('falls back to default (show all) when stored settings are corrupt', async ({ page }) => {
+  test('falls back to default (hide ended) when stored settings are corrupt', async ({ page }) => {
     await mockApis(page);
     await page.addInitScript(() => {
       localStorage.setItem('argus:settings', 'not-valid-json');
     });
     await page.goto('/');
-    await expect(page.getByText('Completed session')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('Ended session')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Active session')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Completed session')).not.toBeVisible();
+    await expect(page.getByText('Ended session')).not.toBeVisible();
   });
 
   // US3: Settings panel discoverability
@@ -102,15 +103,15 @@ test.describe('SC-005: Dashboard Settings — Filter Ended Sessions', () => {
     await expect(page.getByText('Hide ended sessions')).toBeVisible({ timeout: 3000 });
   });
 
-  test('toggling Hide ended sessions on via panel hides ended sessions immediately', async ({ page }) => {
+  test('toggling Hide ended sessions off via panel shows ended sessions immediately', async ({ page }) => {
     await mockApis(page);
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'active-repo' })).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('Completed session')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Completed session')).not.toBeVisible();
     await page.getByRole('button', { name: /settings/i }).click();
-    await page.getByRole('checkbox', { name: /hide ended sessions/i }).check();
-    await expect(page.getByText('Completed session', { exact: true })).not.toBeVisible();
-    await expect(page.getByText('Ended session', { exact: true })).not.toBeVisible();
+    await page.getByRole('checkbox', { name: /hide ended sessions/i }).uncheck();
+    await expect(page.getByText('Completed session', { exact: true })).toBeVisible();
+    await expect(page.getByText('Ended session', { exact: true })).toBeVisible();
     await expect(page.getByText('Active session', { exact: true })).toBeVisible();
   });
 });

@@ -154,6 +154,9 @@ test.describe('SC-003: Session Card — Status Badges', () => {
   test('completed session shows "completed" status badge', async ({ page }) => {
     const s = { ...SESSION_COPILOT, status: 'completed', endedAt: new Date().toISOString() };
     await mockApis(page, [s]);
+    await page.addInitScript(() => {
+      localStorage.setItem('argus:settings', JSON.stringify({ hideEndedSessions: false }));
+    });
     await page.goto('/');
     await expect(page.getByText('completed')).toBeVisible({ timeout: 5000 });
   });
@@ -161,6 +164,9 @@ test.describe('SC-003: Session Card — Status Badges', () => {
   test('ended session shows "ended" status badge', async ({ page }) => {
     const s = { ...SESSION_COPILOT, status: 'ended', endedAt: new Date().toISOString() };
     await mockApis(page, [s]);
+    await page.addInitScript(() => {
+      localStorage.setItem('argus:settings', JSON.stringify({ hideEndedSessions: false }));
+    });
     await page.goto('/');
     await expect(page.getByText('ended')).toBeVisible({ timeout: 5000 });
   });

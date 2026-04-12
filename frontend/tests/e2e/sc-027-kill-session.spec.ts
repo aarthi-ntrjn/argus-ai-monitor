@@ -92,6 +92,9 @@ test.describe('SC-027: Kill Session', () => {
 
   test('kill button hidden for ended sessions on dashboard', async ({ page }) => {
     await mockDashboard(page, [SESSION_ENDED]);
+    await page.addInitScript(() => {
+      localStorage.setItem('argus:settings', JSON.stringify({ hideEndedSessions: false }));
+    });
     await page.goto('/');
     await expect(page.getByText('ended', { exact: true })).toBeVisible({ timeout: 5000 });
     await expect(page.getByRole('button', { name: /kill session/i })).not.toBeVisible();
