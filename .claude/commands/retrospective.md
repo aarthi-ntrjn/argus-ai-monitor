@@ -1,5 +1,5 @@
 ---
-description: Scan Claude Code session histories for user-specified behavioral patterns such as cyclic reasoning, user corrections, decision reversals, and repeated failures.
+description: Scan Claude Code and Copilot session histories for user-specified behavioral patterns such as cyclic reasoning, user corrections, decision reversals, and repeated failures.
 ---
 
 ## User Input
