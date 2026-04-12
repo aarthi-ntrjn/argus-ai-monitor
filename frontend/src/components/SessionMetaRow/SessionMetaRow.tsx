@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Moon, Play, ShieldOff, ExternalLink, Zap, Eye } from 'lucide-react';
+import { Moon, Play, ShieldOff, ExternalLink, Link2, Eye } from 'lucide-react';
 import type { Session } from '../../types';
 import { isInactive } from '../../utils/sessionUtils';
 import SessionTypeIcon from '../SessionTypeIcon/SessionTypeIcon';
@@ -66,7 +66,7 @@ export default function SessionMetaRow({ session, showLink = false }: Props) {
           </span>
         )}
         {session.launchMode === 'pty' ? (
-          <span className="inline-flex items-center gap-0.5 text-xs px-2 py-0.5 rounded font-medium bg-emerald-100 text-emerald-700" title="Started via argus launch: prompt injection enabled"><Zap size={10} />connected</span>
+          <span className="inline-flex items-center gap-0.5 text-xs px-2 py-0.5 rounded font-medium bg-emerald-100 text-emerald-700" title="Started via argus launch: prompt injection enabled"><Link2 size={10} />connected</span>
         ) : (
           <span className="inline-flex items-center gap-0.5 text-xs px-2 py-0.5 rounded font-medium bg-gray-100 text-gray-500" title="Detected session: start with argus launch to enable prompts"><Eye size={10} />read-only</span>
         )}
