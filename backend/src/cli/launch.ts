@@ -94,13 +94,13 @@ if (process.stdin.isTTY) {
 }
 process.stdin.resume();
 process.stdin.on('data', (chunk: Buffer) => {
-  log(`stdin.data len=${chunk.length} chunk=${chunk.toString('utf8')}`);
+  // log(`stdin.data len=${chunk.length} chunk=${chunk.toString('utf8')}`);
   pty.write(chunk.toString('binary'));
 });
 
 // Forward terminal resize events to the PTY
 process.stdout.on('resize', () => {
-  log(`terminal resized to ${process.stdout.columns}x${process.stdout.rows}`);
+  // log(`terminal resized to ${process.stdout.columns}x${process.stdout.rows}`);
   pty.resize(process.stdout.columns || 80, process.stdout.rows || 24);
 });
 
@@ -150,19 +150,19 @@ client.onSendPrompt((actionId: string, prompt: string) => {
       pty.write('\x1b[I');
       for (const ch of prompt) {
         for (const buf of win32InputEvents(ch)) {
-          log(`win32 push ch=${JSON.stringify(ch)} seq=${buf.toString()}`);
+          // log(`win32 push ch=${JSON.stringify(ch)} seq=${buf.toString()}`);
           pty.write(buf.toString('binary'));
         }
       }
       for (const buf of win32InputEvents('\r')) {
-        log(`win32 enter seq=${buf.toString()}`);
+        //log(`win32 enter seq=${buf.toString()}`);
         pty.write(buf.toString('binary'));
       }
     } else {
       pty.write(prompt + '\r');
     }
     client.ackDelivered(actionId);
-    log(`ackDelivered actionId=${actionId}`);
+    // log(`ackDelivered actionId=${actionId}`);
   } catch (err) {
     log(`prompt delivery failed: ${err}`);
     client.ackFailed(actionId, err instanceof Error ? err.message : 'prompt delivery failed');
