@@ -209,14 +209,14 @@ test.describe('SC-007: Output Stream & Model Display', () => {
     await expect(page.getByText('STATUS', { exact: true })).toBeVisible({ timeout: 2000 });
   });
 
-  test('output pane header shows first 8 chars of session ID', async ({ page }) => {
+  test('output pane header shows session ID', async ({ page }) => {
     await mockApis(page);
     await page.goto('/');
     await expect(page.getByText('Feature work')).toBeVisible({ timeout: 5000 });
     await page.getByText('Feature work').click();
     await expect(page.getByRole('region', { name: /session output/i })).toBeVisible({ timeout: 3000 });
-    // OutputPane header: "Output — {session.id.slice(0, 8)}"
-    await expect(page.getByText(/Output — session-/)).toBeVisible({ timeout: 2000 });
+    // OutputPane header: "Session {session.id}"
+    await expect(page.getByText(/session-abc-123/)).toBeVisible({ timeout: 2000 });
   });
 
 });

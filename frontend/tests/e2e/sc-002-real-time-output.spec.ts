@@ -23,7 +23,7 @@ test.describe('SC-002: Real-time Output', () => {
     });
 
     await page.goto(`/sessions/${sessionId}`);
-    await expect(page.getByText('Output Stream')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('region', { name: /session output/i })).toBeVisible({ timeout: 5000 });
 
     // Simulate sending a WS message
     await page.evaluate((sid) => {

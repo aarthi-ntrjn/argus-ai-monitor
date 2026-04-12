@@ -31,8 +31,8 @@ export default function SessionPage() {
   if (sessionError || !session) {
     return (
       <div className="min-h-screen bg-slate-50 p-4 md:p-8">
-        <button onClick={() => navigate('/')} className="text-blue-600 hover:text-blue-800 mb-4 flex items-center gap-1">
-          ← Back to Dashboard
+        <button onClick={() => navigate('/')} className="text-sm font-medium text-gray-700 hover:text-blue-600 mb-4 flex items-center gap-1">
+          <ArrowLeft size={14} />Back
         </button>
         <div className="text-center text-gray-500 py-16">Session not found.</div>
       </div>

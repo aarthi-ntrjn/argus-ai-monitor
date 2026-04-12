@@ -145,7 +145,7 @@ test.describe('Session Detail Page', () => {
   test('shows session duration', async ({ page }) => {
     await mockSession(page);
     await page.goto(`/sessions/${SESSION_ID}`);
-    await expect(page.getByText(/Duration:/)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/\d+m/)).toBeVisible({ timeout: 5000 });
   });
 
   test('shows session summary', async ({ page }) => {
@@ -154,19 +154,19 @@ test.describe('Session Detail Page', () => {
     await expect(page.getByText('Implementing authentication module')).toBeVisible({ timeout: 5000 });
   });
 
-  test('shows full session ID in the card body', async ({ page }) => {
+  test('shows full session ID in the output pane header', async ({ page }) => {
     await mockSession(page);
     await page.goto(`/sessions/${SESSION_ID}`);
-    await expect(page.getByText(`ID: ${SESSION_ID}`)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(SESSION_ID)).toBeVisible({ timeout: 5000 });
   });
 
   // ─── Navigation ─────────────────────────────────────────────────────────────
 
-  test('"Back to Dashboard" link navigates to /', async ({ page }) => {
+  test('"Back" button navigates to /', async ({ page }) => {
     await mockSession(page);
     await page.goto(`/sessions/${SESSION_ID}`);
-    await expect(page.getByText(/Back to Dashboard/i)).toBeVisible({ timeout: 5000 });
-    await page.getByText(/Back to Dashboard/i).click();
+    await expect(page.getByRole('button', { name: /Back/i })).toBeVisible({ timeout: 5000 });
+    await page.getByRole('button', { name: /Back/i }).first().click();
     await expect(page).toHaveURL('/');
   });
 
@@ -181,7 +181,7 @@ test.describe('Session Detail Page', () => {
     await expect(page.getByText('Session not found.')).toBeVisible({ timeout: 5000 });
   });
 
-  test('"Back to Dashboard" link visible on 404 page', async ({ page }) => {
+  test('"Back" button visible on 404 page', async ({ page }) => {
     await page.route(`**/api/v1/sessions/${SESSION_ID}`, route =>
       route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ error: 'NOT_FOUND' }) })
     );
@@ -190,7 +190,7 @@ test.describe('Session Detail Page', () => {
     );
     await page.goto(`/sessions/${SESSION_ID}`);
     await expect(page.getByText('Session not found.')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText(/Back to Dashboard/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /Back/i })).toBeVisible();
   });
 
   // ─── Stop Session button ─────────────────────────────────────────────────────
@@ -211,10 +211,10 @@ test.describe('Session Detail Page', () => {
 
   // ─── Output Stream section ───────────────────────────────────────────────────
 
-  test('shows "Output Stream" heading', async ({ page }) => {
+  test('shows output pane with session output', async ({ page }) => {
     await mockSession(page);
     await page.goto(`/sessions/${SESSION_ID}`);
-    await expect(page.getByRole('heading', { name: 'Output Stream' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('region', { name: /session output/i })).toBeVisible({ timeout: 5000 });
   });
 
   test('shows empty state when there are no output items', async ({ page }) => {

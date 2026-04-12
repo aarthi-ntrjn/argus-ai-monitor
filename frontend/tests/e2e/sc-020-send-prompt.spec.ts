@@ -157,9 +157,9 @@ test.describe('SC-020: Send Prompt — PTY session dashboard actions (mocked API
     await mockDashboard(page, PTY_SESSION);
   });
 
-  test('"live" badge is shown for PTY sessions', async ({ page }) => {
+  test('"connected" badge is shown for PTY sessions', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByText('live')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('connected')).toBeVisible({ timeout: 5000 });
   });
 
   // Skipped: quick-action menu (Merge/Pull latest) is not yet implemented in the UI
