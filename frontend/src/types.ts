@@ -33,7 +33,7 @@ export interface Session {
   summary: string | null;
   expiresAt: string | null;
   model: string | null;
-  yoloMode: boolean;
+  yoloMode: boolean | null;
 }
 
 export interface SessionOutput {

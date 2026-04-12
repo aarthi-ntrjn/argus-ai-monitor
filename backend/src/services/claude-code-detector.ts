@@ -238,7 +238,7 @@ export class ClaudeCodeDetector {
       expiresAt: null,
       model: null,
       reconciled: true,
-      yoloMode: false,
+      yoloMode: null,
     };
 
     session.status = 'active';
@@ -311,7 +311,7 @@ export class ClaudeCodeDetector {
       expiresAt: null,
       model: null,
       reconciled: true,
-      yoloMode: claudePid ? detectYoloModeFromPids(claudePid, null, 'claude-code') : false,
+      yoloMode: claudePid ? detectYoloModeFromPids(claudePid, null, 'claude-code') : null,
     };
     console.log(`[ClaudeDetector] session activated sessionId=${sessionId} pid=${claudePid}`);
     upsertSession({ ...base, status: 'active', endedAt: null, lastActivityAt: now, pid: claudePid });

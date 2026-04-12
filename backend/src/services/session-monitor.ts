@@ -206,10 +206,16 @@ export class SessionMonitor extends EventEmitter {
         // Skip PID assignment if already claimed by PTY registry (PTY takes precedence)
         if (existing.pidSource === 'pty_registry') continue;
 
-        // Assign PID if not yet set or if source was not session_registry
-        if (existing.pid !== entry.pid || existing.pidSource !== 'session_registry') {
-          console.log(`[ClaudeRegistry] pid assigned sessionId=${entry.sessionId} pid=${entry.pid} (was ${existing.pid})`);
-          const updated = { ...existing, pid: entry.pid, pidSource: 'session_registry' as const };
+        const pidChanged = existing.pid !== entry.pid || existing.pidSource !== 'session_registry';
+        // Re-detect yolo mode if still unknown (null) — WMI may now have the process info
+        const yoloMode = existing.yoloMode !== null
+          ? existing.yoloMode
+          : detectYoloModeFromPids(entry.pid, null, 'claude-code');
+        const yoloResolved = existing.yoloMode === null && yoloMode !== null;
+
+        if (pidChanged || yoloResolved) {
+          console.log(`[ClaudeRegistry] pid assigned sessionId=${entry.sessionId} pid=${entry.pid} (was ${existing.pid}) yoloMode=${yoloMode}`);
+          const updated = { ...existing, pid: entry.pid, pidSource: 'session_registry' as const, yoloMode };
           upsertSession(updated);
           broadcast({ type: 'session.updated', timestamp: now, data: updated as unknown as Record<string, unknown> });
         }
@@ -235,7 +241,7 @@ export class SessionMonitor extends EventEmitter {
           expiresAt: null,
           model: null,
           reconciled: true,
-          yoloMode: entry.pid ? detectYoloModeFromPids(entry.pid, null, 'claude-code') : false,
+          yoloMode: entry.pid ? detectYoloModeFromPids(entry.pid, null, 'claude-code') : null,
         };
         upsertSession(session);
         broadcast({ type: 'session.created', timestamp: now, data: session as unknown as Record<string, unknown> });

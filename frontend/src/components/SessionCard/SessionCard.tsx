@@ -99,7 +99,7 @@ function SessionCard({ session, selected, onSelect }: Props) {
           ) : (
             <span className="inline-flex items-center text-xs px-2 py-0.5 rounded font-medium bg-gray-100 text-gray-500" title="Detected session — start with argus launch to enable prompts">read-only</span>
           )}
-          {session.yoloMode && (
+          {session.yoloMode === true && (
             <span className="inline-flex items-center gap-0.5 text-xs px-2 py-0.5 rounded font-medium bg-red-100 text-red-700" title="Session launched with auto-approve (yolo mode)">
               <ShieldOff size={10} />yolo
             </span>

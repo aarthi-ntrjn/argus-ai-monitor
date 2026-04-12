@@ -9,15 +9,15 @@ const YOLO_FLAGS: Record<SessionType, string> = {
 
 /**
  * Inspect a running process's command line to detect yolo mode flags.
- * Returns true if the process was launched with the yolo flag for its session type.
+ * Returns true/false if the process was found, null if the command line could not be read.
  */
-export function detectYoloMode(pid: number, type: SessionType): boolean {
+export function detectYoloMode(pid: number, type: SessionType): boolean | null {
   try {
     const cmdLine = getProcessCommandLine(pid);
-    if (!cmdLine) return false;
+    if (!cmdLine) return null;
     return cmdLine.includes(YOLO_FLAGS[type]);
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -43,15 +43,24 @@ function getProcessCommandLine(pid: number): string | null {
 
 /**
  * Check yolo mode by inspecting multiple PIDs (pid and hostPid).
- * The hostPid (e.g., powershell.exe on Windows) often contains the full
- * command including yolo flags, while the tool pid may not.
+ * Returns true if any process has the yolo flag, false if a process was found but has no flag,
+ * or null if no process command line could be read (process not ready or WMI unavailable).
  */
 export function detectYoloModeFromPids(
   pid: number | null,
   hostPid: number | null,
   type: SessionType
-): boolean {
-  if (hostPid != null && detectYoloMode(hostPid, type)) return true;
-  if (pid != null && pid !== hostPid && detectYoloMode(pid, type)) return true;
-  return false;
+): boolean | null {
+  let anyFound = false;
+  if (hostPid != null) {
+    const r = detectYoloMode(hostPid, type);
+    if (r === true) return true;
+    if (r === false) anyFound = true;
+  }
+  if (pid != null && pid !== hostPid) {
+    const r = detectYoloMode(pid, type);
+    if (r === true) return true;
+    if (r === false) anyFound = true;
+  }
+  return anyFound ? false : null;
 }
