@@ -115,12 +115,12 @@ The toggle-off path through `SettingsPanel` does not show the dialog and directl
 
 **Purpose**: Observability, build verification, documentation.
 
-- [ ] T019 Add structured log line in `backend/src/cli/launch.ts` at PTY spawn: log `yoloMode` flag presence from `cmdArgs` (no config read needed here; the flag is already in `cmdArgs` if enabled)
-- [ ] T020 Run `npm test --workspace=backend` and confirm all tests pass
-- [ ] T021 Run `npm test --workspace=frontend` and confirm all tests pass
-- [ ] T022 Run `npm run build --workspace=frontend` and confirm clean build
-- [ ] T023 Update `README.md`: document `yoloMode` setting with description, how to enable it, and the flags it adds
-- [ ] T024 Commit all changes with message `feat(025): implement yolo-mode`
+- [x] T019 Add structured log line in `backend/src/cli/launch.ts` at PTY spawn: log `yoloMode` flag presence from `cmdArgs` (no config read needed here; the flag is already in `cmdArgs` if enabled)
+- [x] T020 Run `npm test --workspace=backend` and confirm all tests pass
+- [x] T021 Run `npm test --workspace=frontend` and confirm all tests pass
+- [x] T022 Run `npm run build --workspace=frontend` and confirm clean build
+- [x] T023 Update `README.md`: document `yoloMode` setting with description, how to enable it, and the flags it adds
+- [x] T024 Commit all changes with message `feat(025): implement yolo-mode`
 
 ---
 

@@ -43,7 +43,8 @@ if (toolArgs.length === 0) {
 }
 
 const { sessionType, cmd, cmdArgs } = resolveLaunchCommand(toolArgs);
-log(`launch started: sessionType=${sessionType} cmd=${cmd} args=${JSON.stringify(cmdArgs)} cwd=${cwd}`);
+const yoloActive = cmdArgs.includes('--dangerously-skip-permissions') || cmdArgs.includes('--allow-all');
+log(`launch started: sessionType=${sessionType} cmd=${cmd} args=${JSON.stringify(cmdArgs)} cwd=${cwd} yoloMode=${yoloActive}`);
 
 // On Windows, node-pty's ConPTY API requires a real .exe — .cmd/.bat scripts
 // (like claude.cmd, copilot.cmd) must be run through a shell.

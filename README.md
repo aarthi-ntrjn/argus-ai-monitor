@@ -148,6 +148,21 @@ Click the **gear icon** (top-right) to open Settings.
 These settings are saved in your browser (`localStorage`) and restored on every load.  
 [aarthin] the default for hide ended sessions should be On.
 
+### Launch Behaviour: Yolo Mode
+
+| Setting    | Default | Description                                                                             |
+| ---------- | ------- | --------------------------------------------------------------------------------------- |
+| Yolo mode  | Off     | Launches all sessions with all permission checks and safety prompts disabled            |
+
+When **Yolo mode** is enabled, a warning dialog is shown. After confirmation:
+
+- **Claude Code** sessions are launched with `--dangerously-skip-permissions`
+- **Copilot CLI** sessions are launched with `--allow-all`
+
+This applies to both sessions launched directly from the Argus UI and commands copied to clipboard. The setting is stored in `~/.argus/config.json` and persists across restarts.
+
+To disable, toggle Yolo mode off in Settings. No confirmation is required to disable.
+
 ## Onboarding
 
 New to Argus? An interactive tour launches automatically on your first visit. Dismiss it any time and replay it later from Settings.
