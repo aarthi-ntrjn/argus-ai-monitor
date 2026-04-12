@@ -18,9 +18,6 @@ function getElapsed(startedAt: string, endedAt: string | null): string {
   return `${Math.floor(m / 60)}h ${m % 60}m`;
 }
 
-function claudeShortId(id: string): string {
-  return id.match(/[0-9a-f]{8}-[0-9a-f]{4}/)?.[0].slice(0, 8) ?? id.slice(0, 8);
-}
 
 const STATUS_COLORS: Record<string, string> = {
   active: 'bg-green-100 text-green-800',
@@ -114,9 +111,6 @@ export default function SessionPage() {
               {session.pid && (
                 <span className="text-xs text-gray-500 font-mono">PID: {session.pid}</span>
               )}
-              {!session.pid && session.type === 'claude-code' && (
-                <span className="text-xs text-gray-500 font-mono">ID: {claudeShortId(session.id)}</span>
-              )}
               <span className="text-xs text-gray-500 font-mono">
                 Duration: {getElapsed(session.startedAt, session.endedAt)}
               </span>
@@ -124,7 +118,6 @@ export default function SessionPage() {
             {session.summary && (
               <p className="text-gray-600 text-sm mt-1">{session.summary}</p>
             )}
-            <p className="text-xs text-gray-500 mt-1">ID: {session.id}</p>
           </div>
         </div>
       </div>
@@ -134,11 +127,11 @@ export default function SessionPage() {
         <div className="max-w-4xl mx-auto w-full flex-1 min-h-0 flex flex-col">
 
           <div data-tour-id="session-output-stream" className="flex-1 min-h-0 flex flex-col bg-white border border-gray-200 rounded-lg shadow overflow-hidden">
-            <div className="p-4 border-b border-gray-200 shrink-0 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">Output Stream</h2>
+            <div className="px-3 py-1 border-b border-gray-200 shrink-0 flex items-center justify-between bg-gray-50">
+              <span className="text-xs text-gray-500 font-mono truncate">Session {session.id}</span>
               <button
                 onClick={toggleMode}
-                className="text-xs px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-100"
+                className="text-xs px-2 py-0.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-100 shrink-0 ml-2"
               >
                 {displayMode === 'focused' ? 'Focused' : 'Verbose'}
               </button>
