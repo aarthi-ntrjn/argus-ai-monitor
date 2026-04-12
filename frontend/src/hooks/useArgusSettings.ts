@@ -17,6 +17,8 @@ export function useArgusSettings() {
     mutationFn: (patch: Partial<ArgusConfig>) => patchArgusSettings(patch),
     onSuccess: (updated) => {
       queryClient.setQueryData(ARGUS_SETTINGS_QUERY_KEY, updated);
+      // Invalidate the tools cache so the copy command picks up the new yolo flags.
+      queryClient.invalidateQueries({ queryKey: ['available-tools'] });
     },
   });
 
