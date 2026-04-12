@@ -57,8 +57,16 @@ export class ClaudeCodeDetector {
       if (!settings.hooks) settings.hooks = {};
       let changed = false;
 
-      // Remove Argus hook entries whose (event, matcher) pair is no longer in HOOK_EVENTS
+      // Remove Argus hook entries whose (event, matcher) pair is no longer in HOOK_EVENTS.
+      // Also delete any malformed keys (e.g. '[object Object]' from object-as-key coercion).
       for (const event of Object.keys(settings.hooks)) {
+        // A valid hook event key must be a non-empty string of word characters only.
+        // Malformed keys (like '[object Object]') are always removed.
+        if (!/^\w+$/.test(event)) {
+          delete settings.hooks[event];
+          changed = true;
+          continue;
+        }
         const before = settings.hooks[event];
         const after = before.filter((entry) => {
           const isArgusEntry = entry.hooks?.some((h) => h.command === HOOK_COMMAND);
