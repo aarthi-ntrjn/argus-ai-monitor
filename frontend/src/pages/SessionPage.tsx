@@ -48,7 +48,7 @@ export default function SessionPage() {
           <button onClick={() => navigate('/')} className="text-sm font-medium text-gray-700 hover:text-blue-600 mb-4 py-2 flex items-center gap-1">
             <ArrowLeft size={14} />Back
           </button>
-          <div className="bg-white rounded-lg shadow px-3 py-2" data-tour-id="session-status">
+          <div className="bg-white rounded-lg shadow px-3 py-3" data-tour-id="session-status">
             <SessionMetaRow session={session} />
             {session.summary && (
               <p className="font-mono text-sm text-gray-800 mt-2 px-1">{session.summary}</p>
