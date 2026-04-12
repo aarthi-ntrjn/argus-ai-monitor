@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { RotateCcw } from 'lucide-react';
 import type { DashboardSettings } from '../../types';
 import { useArgusSettings } from '../../hooks/useArgusSettings';
 import { YoloWarningDialog } from '../YoloWarningDialog/YoloWarningDialog';
@@ -130,9 +131,10 @@ export function SettingsPanel({ settings, onToggle, onUpdateThreshold, onRestart
               type="button"
               onClick={handleReset}
               aria-label="Reset resting threshold to default"
-              className="text-xs text-gray-500 hover:text-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded-sm px-1"
+              title="Reset to default (20 min)"
+              className="text-gray-400 hover:text-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded-sm"
             >
-              Reset
+              <RotateCcw size={12} />
             </button>
           </div>
           {thresholdError && (
