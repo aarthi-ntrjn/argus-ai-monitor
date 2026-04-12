@@ -85,6 +85,15 @@ The frontend shows a **resting** badge when there has been no output for 20 minu
 
 Take charge of any session without touching the terminal.
 
+### Killing a Session
+
+Every session card and the session detail page have a **kill button** (■ icon) next to the session badges. It appears for sessions that have a known PID and are still running (not ended or completed).
+
+1. Click the kill button on any active session card or on the session detail page header.
+2. A confirmation dialog appears showing the session type and ID prefix.
+3. Click **Kill Session** to terminate the process, or **Cancel** to dismiss.
+4. If the kill fails (session already ended, not found, or a network error), the error message is shown in the dialog so you can retry or dismiss.
+
 ### Starting a Session with Prompt Control
 
 To send prompts to a session, start it through Argus using the `argus launch` command. This gives Argus a direct PTY write channel to the process.

@@ -93,9 +93,9 @@
 
 **Purpose**: Documentation, build verification, final cleanup
 
-- [ ] T016 Update `README.md` to document kill session feature (§XI)
-- [ ] T017 Run full frontend build `npm run build --workspace=frontend` and verify success
-- [ ] T018 Run full test suite `npm run test --workspace=frontend` and verify all tests pass
+- [x] T016 Update `README.md` to document kill session feature (§XI)
+- [x] T017 Run full frontend build `npm run build --workspace=frontend` and verify success
+- [x] T018 Run full test suite `npm run test --workspace=frontend` and verify all tests pass
 
 ---
 
