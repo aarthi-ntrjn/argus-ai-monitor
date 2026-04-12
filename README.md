@@ -139,7 +139,9 @@ The **To Tackle** panel lives on the right side of the dashboard.Use it to jot d
 
 ## Mobile Browser Support
 
-Argus is fully usable when you remote into your machine from mobile devices (390px and up). On narrow viewports:
+![Mobile View](docs/images/argus-mobile.png)
+
+Argus is fully usablewhen you remote into your machine from mobile devices (390px and up). On narrow viewports:
 
 - Sessions and Tasks views are accessible via a **bottom tab bar** (Sessions / Tasks).
 - Tapping a session card opens the full **session detail page** instead of the inline output pane.
