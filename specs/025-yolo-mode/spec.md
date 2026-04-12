@@ -2,7 +2,7 @@
 
 **Feature Branch**: `025-yolo-mode`
 **Created**: 2026-04-11
-**Status**: Draft
+**Status**: Clarified
 **Input**: User description: "add the ability to launch Claude code and copilot in yolo mode. This should be a setting and when user turns on this setting showing a warning dialog. If this setting is on then all launch with Argus should have --allow-all for copilot and --dangerously-skip-permissions for claude code."
 
 ## User Scenarios & Testing *(mandatory)*
@@ -72,8 +72,8 @@ A developer wants to know at a glance whether yolo mode is active. The settings 
 - **FR-002**: System MUST expose `yoloMode` via `GET /api/v1/settings` and allow it to be toggled via `PATCH /api/v1/settings`.
 - **FR-003**: Frontend MUST show a confirmation warning dialog when the user attempts to enable yolo mode.
 - **FR-004**: Frontend MUST revert the toggle to off if the user cancels the warning dialog.
-- **FR-005**: When `yoloMode` is `true`, the backend MUST append `--dangerously-skip-permissions` to every Claude Code launch command.
-- **FR-006**: When `yoloMode` is `true`, the backend MUST append `--allow-all` to every Copilot launch command.
+- **FR-005**: When `yoloMode` is `true`, the backend MUST append `--dangerously-skip-permissions` to every Claude Code launch command in both PTY launches and copied command strings.
+- **FR-006**: When `yoloMode` is `true`, the backend MUST append `--allow-all` to every Copilot launch command in both PTY launches and copied command strings.
 - **FR-007**: When `yoloMode` is `false`, no yolo flags MUST be added to any launch command.
 - **FR-008**: The warning dialog MUST clearly state that all permission checks and safety prompts will be bypassed.
 - **FR-009**: The settings panel MUST display the current yolo mode state and a risk label when it is on.
@@ -96,6 +96,12 @@ A developer wants to know at a glance whether yolo mode is active. The settings 
 - **SC-004**: Cancelling the warning dialog leaves yolo mode off (toggle reverted, backend setting unchanged).
 - **SC-005**: The yolo mode setting persists across page reloads and server restarts.
 - **SC-006**: All existing launch tests continue to pass when yolo mode is off (no regression).
+
+## Clarifications
+
+### Session 2026-04-11
+
+- **Yolo flag injection scope**: Yolo flags MUST be injected into both (A) the copied command string shown in the frontend and (B) the backend PTY launch. Consistent behavior regardless of how a session is started.
 
 ## Assumptions
 
