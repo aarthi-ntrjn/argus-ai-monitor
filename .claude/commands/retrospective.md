@@ -283,7 +283,7 @@ If no matches are found, still write the file and note that clearly. After writi
 
 ---
 
-## Constraints
+## Constraints (CRITICAL)
 
 - Do not modify any source files or session data. The only file this skill writes is the output report in `docs/`.
 - JSONL files can be large due to tool call payloads (file reads, writes, command output). To avoid missing conversations, skip tool call content entirely when reading: ignore `tool.execution_start`, `tool.execution_complete`, and assistant content blocks of `type: "tool_use"` and their corresponding `tool_result` entries. Only extract user turns, assistant prose, and abort/error events. This keeps the full conversation thread without the bulk.
