@@ -42,7 +42,7 @@ export default function OutputPane({ session, onClose }: Props) {
       className="flex flex-col h-full bg-white border border-gray-200 rounded-lg overflow-hidden"
     >
       <div className="flex items-center justify-between px-3 py-1 bg-gray-50 border-b border-gray-200">
-        <span className="text-xs text-gray-500 font-mono truncate">{session.id}</span>
+        <span className="text-xs text-gray-500 font-mono truncate">Session {session.id}</span>
         <div className="flex items-center gap-2">
           <button
             onClick={toggleMode}
