@@ -8,24 +8,33 @@ import type { ControlAction } from '../models/index.js';
 
 export class SessionController {
   async stopSession(sessionId: string): Promise<ControlAction> {
+    console.log(`[stopSession] requested sessionId=${sessionId}`);
     const session = getSession(sessionId);
-    if (!session) throw Object.assign(new Error(`Session ${sessionId} not found`), { code: 'NOT_FOUND' });
+    if (!session) {
+      console.log(`[stopSession] NOT_FOUND sessionId=${sessionId}`);
+      throw Object.assign(new Error(`Session ${sessionId} not found`), { code: 'NOT_FOUND' });
+    }
     if (session.status === 'ended' || session.status === 'completed') {
+      console.log(`[stopSession] CONFLICT sessionId=${sessionId} status=${session.status}`);
       throw Object.assign(new Error('Session already ended'), { code: 'CONFLICT' });
     }
     if (!session.pid) {
+      console.log(`[stopSession] PID_NOT_SET sessionId=${sessionId}`);
       throw Object.assign(new Error('Session has no PID on record'), { code: 'PID_NOT_SET' });
     }
 
+    console.log(`[stopSession] validating PID ownership sessionId=${sessionId} pid=${session.pid} type=${session.type}`);
     const validation = await validatePidOwnership(session.pid, session.type as 'claude-code' | 'copilot-cli');
     if (!validation.valid) {
       const code = validation.reason === 'process_not_ai_tool' ? 'PID_NOT_AI_TOOL' : 'PID_NOT_FOUND';
       const message = validation.reason === 'process_not_ai_tool'
         ? 'PID does not belong to a monitored AI process'
         : 'Process is no longer running';
+      console.log(`[stopSession] validation failed sessionId=${sessionId} pid=${session.pid} reason=${validation.reason}`);
       throw Object.assign(new Error(message), { code });
     }
 
+    console.log(`[stopSession] validation passed, killing pid=${session.pid} sessionId=${sessionId}`);
     const action: ControlAction = {
       id: randomUUID(),
       sessionId,
@@ -44,11 +53,13 @@ export class SessionController {
       const completed = { ...action, status: 'completed' as const, completedAt: new Date().toISOString() };
       updateControlAction(action.id, 'completed', completed.completedAt, null);
       this.broadcastAction(completed);
+      console.log(`[stopSession] COMPLETED actionId=${action.id} sessionId=${sessionId} pid=${session.pid}`);
       return completed;
     } catch (err) {
       const failed = { ...action, status: 'failed' as const, completedAt: new Date().toISOString(), result: String(err) };
       updateControlAction(action.id, 'failed', failed.completedAt, failed.result);
       this.broadcastAction(failed);
+      console.log(`[stopSession] FAILED actionId=${action.id} sessionId=${sessionId} pid=${session.pid} error=${String(err)}`);
       return failed;
     }
   }
