@@ -45,7 +45,7 @@ export default function SessionPage() {
       {/* Always-visible header — shrink-0 sibling of the scrollable area */}
       <div className="shrink-0 px-4 md:px-8 pt-4 md:pt-6">
         <div className="max-w-4xl mx-auto w-full">
-          <button onClick={() => navigate('/')} className="text-sm font-medium text-blue-600 hover:text-blue-800 mb-4 py-2 flex items-center gap-1">
+          <button onClick={() => navigate('/')} className="text-sm font-medium text-gray-700 hover:text-blue-600 mb-4 py-2 flex items-center gap-1">
             <ArrowLeft size={14} />Back
           </button>
           <div className="bg-white rounded-lg shadow p-4" data-tour-id="session-status">
