@@ -49,3 +49,35 @@
 **Rationale**: The existing `useSettings` hook manages `DashboardSettings` (localStorage). Yolo mode is a backend setting and requires React Query for caching and invalidation. Keeping them separate avoids mixing concerns.
 
 **Alternatives considered**: Extend `useSettings` to also manage backend settings (rejected: mixes two distinct persistence layers).
+
+---
+
+### 6. Yolo mode detection for per-session icon display
+
+**Decision**: Store `yoloMode` per session in the database at launch time. This is the primary detection method. Process command line inspection is a secondary fallback for detected (non-PTY) sessions.
+
+**Rationale**: Seven detection methods were evaluated:
+
+| Method | Per-Session | Persists | Viable |
+|--------|------------|----------|--------|
+| Process command line (`Get-CimInstance Win32_Process`) | Yes | No (live only) | Yes |
+| Backend config (`loadConfig().yoloMode`) | No (global) | Yes | Already exists |
+| Session DB metadata (new `yolo_mode` column) | Yes | Yes | **Recommended** |
+| Claude Code config files (`~/.claude/`) | No | No | Not viable |
+| Copilot config files (`~/.copilot/session-state/`) | No | No | Not viable |
+| Environment variables | Yes | No | Fragile |
+| API/IPC from Claude/Copilot | No | No | Not viable |
+
+The session DB approach is the only method that is both per-session and persistent. The launch.ts CLI already detects `yoloActive` from command line args (line 46) but does not transmit it to the backend. Adding it to the WebSocket `RegisterMessage` and storing it in the session record completes the data flow.
+
+**Alternatives considered**: Process command line only (rejected: only works for running sessions, lost after exit, requires OS-specific process inspection). Environment variables (rejected: fragile, explicitly stripped for Claude Code). Global config check (rejected: does not track per-session state, e.g. user enables yolo, launches session, then disables yolo).
+
+---
+
+### 7. Yolo mode icon placement
+
+**Decision**: Add a small icon/badge inline with the existing session type badge in `SessionCard.tsx`, using Lucide React icons consistent with the existing icon system.
+
+**Rationale**: The SessionCard already shows type badges (Claude/Copilot), status badges (running/resting), and launch mode badges (live/read-only). A yolo mode indicator fits naturally as an additional badge. Using Lucide React icons (e.g., `ShieldOff` for yolo, `Shield` for normal) keeps the icon system consistent.
+
+**Alternatives considered**: Overlay icon on the session type badge (rejected: cluttered at small sizes). Color change on the card border (rejected: color already used for selection state). Separate column in session list (rejected: wastes space).
