@@ -233,6 +233,34 @@ Created to chain the entire Speckit pipeline — specify, clarify, plan, tasks, 
 
 ---
 
+## Feature Timeline
+
+| Feature | Branch | Shipped | Description |
+|---------|--------|---------|-------------|
+| 001 | session-dashboard | Apr 1, Day 1 | Full-stack dashboard: SQLite, WebSocket push, React SPA, Claude Code and Copilot CLI session detection |
+| 003 | remove-repository | Apr 1, Day 2 | Remove individual repos; scan a parent folder to bulk-import all git repos inside it |
+| 005 | dashboard-settings | Apr 1, Day 2 | Show/hide ended sessions and repos with no active sessions, persisted in localStorage |
+| 006 | session-detail-ux | Apr 1, Day 2 | Unified dark output stream, brand icons, inactive session detection, unified prompt bar |
+| 007 | session-stream-model-fixes | Apr 2, Day 3 | Real-time JSONL streaming, model badge, role labels (YOU / AI / TOOL / RESULT) |
+| 009 | security-review | Apr 3, Day 4 | PID ownership validation, shell injection hardening, path sandboxing, HTTP security headers |
+| 010 | supply-chain-hardening | Apr 3, Day 4 | SHA-pinned CI actions, exact dependency versions, lifecycle allowlist, advisory block on PRs |
+| 011 | security-dependency-updates | Apr 3, Day 4 | 7 CVEs patched; all packages pinned to exact versions |
+| 012 | user-onboarding | Apr 5, Day 5 | Interactive Joyride tour, restart/reset controls in settings, dismissible contextual hints |
+| 014 | engineer-todo-list | Apr 6, Day 6 | Persistent task panel: SQLite, inline edit, hover delete, relative timestamps |
+| 015 | docs-cleanup | Apr 6, Day 6 | docs/ folder, renamed files, em dash removal, README restructure, CLI comparison, GTM analysis |
+| 017 | repo-folder-picker | Apr 6, Day 6 | Text input for add-repo, replacing native OS folder picker |
+| 018 | mobile-responsive-layout | Apr 6, Day 6 | Bottom tab bar navigation and mobile-optimised SessionPage layout |
+| 019 | fix-output-rendering | Apr 7, Day 7 | Blank row fix for Copilot output, content-block array support, session summary from last user prompt |
+| 020 | fix-send-prompts | Apr 7-8, Day 7-8 | PTY launcher via node-pty: PtyRegistry, ArgusLaunchClient WebSocket, live/read-only badges, prompt delivery |
+| 021 | session-pid-mapping | Apr 10, Day 9-10 | Exact Claude PID mapping via ~/.claude/sessions/ registry, replacing psList heuristics |
+| 022 | test-ghcp-launch | Apr 10, Day 10 | Manual test scaffold and debugging infrastructure for Copilot CLI PTY launch |
+| 023 | stream-attention | Apr 10, Day 10 | Focused/verbose output mode, collapsible tool groups, ID-based tool call/result pairing |
+| 024 | short-name-ghcp | Apr 11, Day 11 | Win32 keystroke encoding for Copilot PTY; process tree DFS rewrite with spawn-time filtering |
+| 025 | yolo-mode | Apr 11, Day 11 | Per-session yolo mode detection, warning dialog, flag injection in commands and PTY launches |
+| 026 | configurable-resting | Apr 12, Day 12 | Resting threshold configurable (1-60 min, default 20) in SettingsPanel |
+
+---
+
 ## Day 7 — April 7, 2026
 
 **PTY prompt delivery — send prompts actually work.**
@@ -257,6 +285,158 @@ Sessions now carry a `launchMode` field (`'pty'` or `'detected'`). The session c
 Backend: 7 new test files covering PtyRegistry, ArgusLaunchClient, launch-command-resolver, and the `/launcher` WebSocket route. Unit test mocking used `vi.hoisted()` for the WebSocket mock factory. Frontend: 7 new unit tests for SessionCard PTY badges and SessionPromptBar read-only state. E2E: full mocked suite (sc-020) and real-server suite (sc-020-real) added.
 
 **Key dynamic:** The shift from "detect what is running" to "own the process lifecycle when control is needed." Detection remains available for visibility; ownership is opt-in via `argus launch`. This keeps the monitoring experience unchanged while unlocking prompt delivery without platform-specific hacks.
+
+---
+
+## Day 8 — April 8, 2026
+
+**Test documentation restructure, onboarding overhaul, and PTY stabilisation.**
+
+**Manual test documentation restructure**
+
+The single `README-MANUAL-TESTS.md` file was split into 10+ focused files, each covering one area: startup, repository management, view mode, session detail (read-only and live), settings, lifecycle, output stream, mobile layout, onboarding, todo panel, and control tests. Files were renamed to the `README-TESTS-<Foo>.md` convention. Test IDs were renumbered with standalone prefixes (S-, G-, L-, O-, T-) to avoid collisions between files.
+
+The split was driven by file size making it hard to find and update individual tests, and by the need to audit individual areas independently.
+
+**`/review-tests` skill**
+
+A new skill for auditing manual test MD files against the actual source code. Reads each test file, compares steps and expected results against the component code, and reports stale tests, missing coverage, and AI slop. Created because the test files were accumulating inaccurate steps.
+
+**Onboarding tour overhaul**
+
+The Joyride tour was made adaptive:
+- Tour now skips repository and session steps when the dashboard has no sessions yet. A catch-up mini-tour fires when the user adds a repo mid-tour.
+- New step: "To Do or Not To Do" for the todo panel.
+- New step: "Launch with Argus" explaining command mode vs view mode.
+- Tour rewritten from 6 steps to 7; "commander and army" language removed; Customize step removed.
+
+**PTY and session fixes**
+
+T111: PTY sessions were staying running after `/exit` because `process.exit()` was called before the WebSocket flush completed. Fixed with an explicit flush await before exit. The kill button on session cards was redesigned as a kill modal that distinguishes live (PTY) from read-only behaviour.
+
+Escape key in the prompt bar now sends an interrupt to the CLI session.
+
+**Infrastructure**
+
+`reset-db.ps1` added to delete the SQLite database for a clean start (sends files to Recycle Bin). `README-DB.md` added documenting the database schema and sqlite-utils inspection workflow. Argus logo and favicon updated.
+
+**Key dynamic:** The retrospective on Day 12 identified Day 8 as the heaviest day for user corrections on the 020 branch: three sessions with AI assumptions about read-only session input, the PTY session lifecycle, and kill button targeting. Restructuring the test docs into focused files was the direct response.
+
+---
+
+## Day 9 — April 9, 2026
+
+**Feature 021 built end-to-end in a single day.**
+
+**Feature 021 — Session PID Mapping**
+
+The full speckit pipeline (spec, clarify, plan, tasks, implement, polish) for feature 021 completed in one day. The core change: Claude Code session detection switches from `psList` process scanning to reading `~/.claude/sessions/`, a registry file that Claude Code maintains with session ID to PID mappings. This makes PID resolution exact and eliminates the class of false positives from process-name matching heuristics.
+
+7 phases, 26 tasks. Key work: DB schema migration adding a `pidSource` column, a new `ClaudeSessionRegistry` class, updated poll cycle integration, Copilot session hardening, and documentation. 239 tests passing at end of day.
+
+**Session lifecycle fixes**
+
+A cluster of edge cases addressed alongside 021:
+- PTY registry normalised to case-insensitive path matching on Windows.
+- `Stop` hook handling reverted and re-applied to detect `/exit` typed in-session.
+- 60-second grace period added for new sessions before JSONL reconciliation starts.
+- JSONL watcher closed when a session is re-created after a repo re-add.
+- PTY sessions excluded from JSONL/PID reconciliation to prevent premature session ending.
+
+**UI fixes**
+
+Todo panel max height constrained to viewport to prevent scrollbar overflow when the output pane is open. Session card output preview set to a fixed 2-line minimum height for visual consistency.
+
+**Key dynamic:** Feature 021 is an example of the speckit pipeline working at full speed on a complex infrastructure task. The entire replacement of a heuristic-based detection mechanism with a registry-based one, across backend, database, and two detector classes, was done in one continuous session.
+
+---
+
+## Day 10 — April 10, 2026
+
+**Four features merged and a major session lifecycle refactor.**
+
+**Feature 021 — Session PID Mapping (merged)**
+
+021 merged into master, followed immediately by 021-fix-test-documentation (a small branch fixing documentation and test assertions after the main merge).
+
+**Feature 022 — Test GHCP Launch**
+
+Spec and manual test infrastructure for verifying that Copilot CLI sessions launched via `argus launch copilot` are correctly detected and tracked. The feature established a structured debugging workflow for the Copilot PTY delivery problem, which had been intermittently failing. Also triggered removal of the Kill Session button from session cards (limited value, complicated the session state model).
+
+**Feature 023 — Stream Attention (focused/verbose output mode)**
+
+The output stream now has two display modes: focused (default) and verbose. In focused mode, consecutive tool calls collapse into a single expandable group. Tool names appear in the content column rather than the badge column. The mode toggle persists globally via localStorage. Tool call and result pairing now uses tool call IDs (with a positional fallback for legacy database rows without IDs).
+
+**Session lifecycle refactors**
+
+Several foundational changes merged:
+- `SessionEnd` hook triggers instant Claude session termination rather than waiting for the next poll cycle.
+- `hostPid` (the shell wrapper process) and `pid` (the AI tool process) are now tracked separately.
+- 3-way startup reconciliation: on server start, active sessions are matched against DB records and the PTY registry simultaneously.
+- Copilot sessions claimed via a `workspace_id` WebSocket message rather than by `repoPath` string matching.
+- Ended sessions no longer retry PTY claims on every scan cycle.
+
+**Copilot PTY delivery (ongoing)**
+
+PTY write delivery to Copilot CLI was still failing intermittently. Debugging continued: workspace watcher logic, `stdin.push` vs `pty.write`, focus-in/focus-out events, `Enter` sequencing. The root cause was not yet resolved on Day 10 but the diagnostic infrastructure (temp-file logging, PTY write feedback via WebSocket) was in place.
+
+**Key dynamic:** Days 10 and 11 show rapid iteration when a problem has been isolated but not yet solved. The Copilot PTY delivery bug drove 30+ commits across two days before the Win32 keystroke encoding solution was found.
+
+---
+
+## Day 11 — April 11, 2026
+
+**Three features shipped, the `/retrospective` skill created, and 35+ UI polish commits.**
+
+**Feature 024 — Copilot PTY delivery (short-name-ghcp, merged)**
+
+The Copilot PTY input delivery problem was resolved. Two root causes were fixed:
+- Windows PTY processes do not accept raw UTF-8 writes. Each keystroke must be encoded as a Win32 input sequence (key-down + key-up pair). The fix encodes prompt text as Win32 input records before writing to the PTY.
+- The PID resolver had been finding a hallucinated PID from stale WMI query results. Rewritten to use a single process snapshot with a DFS walk, filtered by spawn time to disambiguate duplicate process names.
+
+**Feature 025 — Yolo mode (merged)**
+
+Argus now detects and displays yolo mode status per session (from the `settings.json` `bypassPermissionsMode` field). Three-state model: `null` (not yet scanned), `true`, `false`. The yolo badge appears on session cards. The yolo flag is injected into commands generated by the "Copy command" button and into PTY-launched sessions via `ArgusConfig`. A warning dialog appears before launching in yolo mode.
+
+**Feature 026 — Configurable resting threshold (built and complete)**
+
+The 20-minute resting threshold (when the session badge changes from "running" to "resting") was hardcoded. Feature 026 moved it to a configurable field in SettingsPanel with a numeric input (1-60 minutes, default 20), persisted in `DashboardSettings` and propagated to the `isInactive` utility. Full speckit pipeline and all tasks completed within the same day.
+
+**`/retrospective` skill**
+
+Created a new skill for scanning Claude Code and Copilot JSONL session histories for user-specified behavioral patterns (cycles, corrections, decision reversals, failed tool loops). The skill went through six iterations across the day: correcting the Copilot session location, fixing large-file handling by skipping tool payloads, adding thinking-block analysis, writing output to `docs/RETROSPECTIVE-<SLUG>.md`, marking the constraints section as CRITICAL, and updating the description.
+
+**`/coding-styles` skill**
+
+A new skill documenting the project's writing and code style rules, starting with the em dash rule.
+
+**UI polish**
+
+35+ `chore(ui):` commits: badge renaming (live badge became "connected"), yolo mode badge styling, session header layout (session ID moved into output pane header), back button style, prompt bar padding, todo panel title font, output pane border. The `OutputPane` component was extracted as a shared component used on both the dashboard and SessionPage. `SessionMetaRow` was extracted as a shared component used in `SessionCard` and `SessionPage`.
+
+**Key dynamic:** Day 11 is the densest single day in the project. Three features shipped, a new skill category (retrospective analysis) introduced, and the UI had its most thorough polish pass. The Copilot PTY delivery fix was the hardest problem in the project to date, taking parts of Days 8-11 to solve.
+
+---
+
+## Day 12 — April 12, 2026
+
+**Feature 026 merged, retrospective analysis run, and skill hardening.**
+
+Feature 026 merged after three post-merge fixes: the resting threshold maximum was capped at 60 minutes (the input had no upper bound), the save trigger was changed from blur to every-valid-change so closing the dropdown never discarded an in-flight edit, and the text Reset button was replaced with a `RotateCcw` icon to match the settings UI style.
+
+**Retrospective analysis**
+
+The `/retrospective` skill was run twice across the full `argus*` project set (argus, argus2, argus3, argus4):
+- 80 sessions scanned for user corrections: 8 sessions matched. Corrections clustered on `024-short-name-ghcp` (PTY process ID hallucination) and `020-fix-send-prompts` (three sessions with incorrect assumptions about read-only session input and session state). One correction on `025-yolo-mode` involved three escalating corrections on the same session before the user demanded a revert.
+- 65 sessions scanned for AI cycles: 2 sessions matched. The clearest cycle was a tsx binary search loop on `004-real-e2e-tests` (same `ls` commands repeated twice within 2 minutes before running `npm install`).
+
+Reports written to `docs/RETROSPECTIVE-USER-CORRECTIONS.md` and `docs/RETROSPECTIVE-CYCLES.md`.
+
+**Skill update**
+
+The `/retrospective` skill was updated to require the repo path pattern as a mandatory argument. Running the skill without specifying paths now stops immediately and asks, rather than defaulting to the current directory.
+
+**Key dynamic:** Running a retrospective on the project's own AI sessions while the project is still active creates a tight feedback loop. The corrections report identified specific branches and problem domains (PTY process trees, read-only session state) where the AI was consistently unreliable. Those become areas to verify before trusting AI output rather than after.
 
 ---
 
