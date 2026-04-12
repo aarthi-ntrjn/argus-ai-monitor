@@ -66,7 +66,7 @@ export default function SessionPage() {
             data-tour-id="session-output-stream"
           />
 
-          <div data-tour-id="session-prompt-bar" className="mt-4 shrink-0">
+          <div data-tour-id="session-prompt-bar" className="mt-2 shrink-0">
             <SessionPromptBar session={session} />
           </div>
 
