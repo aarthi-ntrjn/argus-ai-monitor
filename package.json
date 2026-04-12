@@ -16,5 +16,10 @@
   },
   "devDependencies": {
     "vitest": "3.1.1"
+  },
+  "overrides": {
+    "vitest": {
+      "vite": "6.4.2"
+    }
   }
 }
