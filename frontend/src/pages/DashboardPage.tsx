@@ -104,7 +104,7 @@ export default function DashboardPage() {
     const repoSessions = sessionsByRepo.get(repo.id) ?? [];
     const visibleSessions = repoSessions.filter(s => {
       if (settings.hideEndedSessions && ENDED_STATUSES.has(s.status)) return false;
-      if (settings.hideInactiveSessions && isInactive(s)) return false;
+      if (settings.hideInactiveSessions && isInactive(s, settings.restingThresholdMinutes * 60_000)) return false;
       return true;
     });
     return { ...repo, sessions: visibleSessions };
@@ -252,6 +252,7 @@ export default function DashboardPage() {
                 <SettingsPanel
                   settings={settings}
                   onToggle={(key, value) => updateSetting(key, value)}
+                  onUpdateThreshold={(m) => updateSetting('restingThresholdMinutes', m)}
                   onRestartTour={() => {
                     setSettingsOpen(false);
                     resetOnboarding();

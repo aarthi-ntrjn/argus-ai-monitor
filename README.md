@@ -37,7 +37,7 @@ See everything happening across your AI sessions without switching terminals.
 Each card is a live snapshot of a session:
 
 - **CLI badge** (copilot-cli / claude-code) Argus currently support GitHub Copilot CLI and Claude Code CLI
-- **status badge** (running / resting / ended) Running - for conversation that have had activity in the last 20 mins, resting for converssations that have no activity in the last 20 mins, Ended for conversations that have exited.
+- **status badge** (running / resting / ended) Running - for conversations that have had activity within the configured resting threshold (default: 20 minutes), resting for conversations that have had no activity beyond the threshold, Ended for conversations that have exited.
 - **session type** (readonly / live) readonly - for conversation that were started outside of Argus, these sessions can be monitored only, they cannot be controlled from Argus. live - for conversations that were started from Argus using _Lauch with Argus_, these sessions can be monitored and controlled from Argus using the send prompt input
 - **Model** in small monospace text when known (e.g. `claude-opus-4-5`)
 - **PID** when known, or **session ID prefix** (e.g. `ID: abc12345`) for Claude Code sessions without a detected PID  
@@ -79,7 +79,7 @@ Argus detects sessions using two sources:
 
 In both cases, Argus checks every 5 seconds whether the session's PID is still running. If the process has exited, the session is marked **ended**. If a session has no PID yet (e.g., the registry file hasn't appeared), Argus falls back to JSONL file freshness with a configurable idle threshold (default: 60 minutes).  
 [aarthin] the above statement about 60min is wrong. there should be no idle threshold. confirm and fix this statement.
-The frontend shows a **resting** badge when there has been no output for 20 minutes but the process is still running.
+The frontend shows a **resting** badge when there has been no output beyond the configured resting threshold (default: 20 minutes) but the process is still running. The threshold is configurable in Settings.
 
 ## Control
 
@@ -148,11 +148,12 @@ Desktop layout (two-column with inline output pane) is unchanged.
 
 Click the **gear icon** (top-right) to open Settings.
 
-| Setting                            | Default | Description                                                                        |
-| ---------------------------------- | ------- | ---------------------------------------------------------------------------------- |
-| Hide ended sessions                | Off     | Hides sessions with status `completed` or `ended`                                  |
-| Hide repos with no active sessions | Off     | Hides repo cards that have no sessions with status `active`, `waiting`, or `error` |
-| Hide inactive sessions             | Off     | Hides sessions with no output in the last 20 minutes                               |
+| Setting                            | Default  | Description                                                                        |
+| ---------------------------------- | -------- | ---------------------------------------------------------------------------------- |
+| Hide ended sessions                | Off      | Hides sessions with status `completed` or `ended`                                  |
+| Hide repos with no active sessions | Off      | Hides repo cards that have no sessions with status `active`, `waiting`, or `error` |
+| Hide inactive sessions             | Off      | Hides sessions with no output in the last N minutes (see Resting threshold below)  |
+| Resting after (minutes)            | 20       | Minutes of inactivity before a session is shown as **resting**. Valid range: 1 to 60. Click **Reset** to restore the default. |
 
 These settings are saved in your browser (`localStorage`) and restored on every load.  
 [aarthin] the default for hide ended sessions should be On.

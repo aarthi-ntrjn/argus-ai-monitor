@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Moon, Play, ShieldOff, ExternalLink, Plug, Eye, Square } from 'lucide-react';
 import type { Session } from '../../types';
 import { isInactive } from '../../utils/sessionUtils';
+import { useSettings } from '../../hooks/useSettings';
 import SessionTypeIcon from '../SessionTypeIcon/SessionTypeIcon';
 
 interface Props {
@@ -41,7 +42,10 @@ function claudeShortId(id: string): string {
 }
 
 export default function SessionMetaRow({ session, showLink = false, onKill, killPending = false }: Props) {
+  const [settings] = useSettings();
+  const thresholdMs = settings.restingThresholdMinutes * 60_000;
   const isKillable = onKill && session.pid != null && session.status !== 'ended' && session.status !== 'completed';
+
   return (
     <div className="flex justify-between items-start">
       <div className="flex flex-wrap gap-2 items-center">
@@ -58,7 +62,7 @@ export default function SessionMetaRow({ session, showLink = false, onKill, kill
         </span>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        {isInactive(session) ? (
+        {isInactive(session, thresholdMs) ? (
           <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded font-medium bg-amber-100 text-amber-700">
             <Moon size={10} />resting
           </span>

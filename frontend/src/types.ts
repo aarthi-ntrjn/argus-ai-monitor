@@ -62,6 +62,7 @@ export interface DashboardSettings {
   hideReposWithNoActiveSessions: boolean;
   hideInactiveSessions: boolean;
   outputDisplayMode: OutputDisplayMode;
+  restingThresholdMinutes: number;
 }
 
 export const DEFAULT_SETTINGS: DashboardSettings = {
@@ -69,6 +70,7 @@ export const DEFAULT_SETTINGS: DashboardSettings = {
   hideReposWithNoActiveSessions: false,
   hideInactiveSessions: false,
   outputDisplayMode: 'focused',
+  restingThresholdMinutes: 20,
 };
 
 export interface ControlAction {

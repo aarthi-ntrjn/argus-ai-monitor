@@ -21,6 +21,7 @@ const allOff: DashboardSettings = {
   hideReposWithNoActiveSessions: false,
   hideInactiveSessions: false,
   outputDisplayMode: 'focused',
+  restingThresholdMinutes: 20,
 };
 
 const allOn: DashboardSettings = {
@@ -28,6 +29,7 @@ const allOn: DashboardSettings = {
   hideReposWithNoActiveSessions: true,
   hideInactiveSessions: true,
   outputDisplayMode: 'focused',
+  restingThresholdMinutes: 20,
 };
 
 describe('SettingsPanel', () => {
@@ -85,6 +87,86 @@ describe('SettingsPanel', () => {
     renderWithQuery(<SettingsPanel settings={allOff} onToggle={onToggle} />);
     await userEvent.click(screen.getByRole('checkbox', { name: /hide ended sessions/i }));
     expect(onToggle).toHaveBeenCalledOnce();
+  });
+
+  describe('resting threshold input', () => {
+    it('renders a threshold input with the current value', () => {
+      renderWithQuery(<SettingsPanel settings={{ ...allOff, restingThresholdMinutes: 15 }} onToggle={vi.fn()} />);
+      expect(screen.getByRole('spinbutton', { name: /resting after/i })).toHaveValue(15);
+    });
+
+    it('calls onUpdateThreshold with the parsed integer on valid blur', async () => {
+      const onUpdateThreshold = vi.fn();
+      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} onUpdateThreshold={onUpdateThreshold} />);
+      const input = screen.getByRole('spinbutton', { name: /resting after/i });
+      await userEvent.clear(input);
+      await userEvent.type(input, '5');
+      await userEvent.tab();
+      expect(onUpdateThreshold).toHaveBeenCalledWith(5);
+    });
+
+    it('shows an inline error and does NOT call onUpdateThreshold for value 0', async () => {
+      const onUpdateThreshold = vi.fn();
+      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} onUpdateThreshold={onUpdateThreshold} />);
+      const input = screen.getByRole('spinbutton', { name: /resting after/i });
+      await userEvent.clear(input);
+      await userEvent.type(input, '0');
+      await userEvent.tab();
+      expect(onUpdateThreshold).not.toHaveBeenCalled();
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    });
+
+    it('shows an inline error and does NOT call onUpdateThreshold with the invalid value > 60', async () => {
+      const onUpdateThreshold = vi.fn();
+      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} onUpdateThreshold={onUpdateThreshold} />);
+      const input = screen.getByRole('spinbutton', { name: /resting after/i });
+      await userEvent.clear(input);
+      await userEvent.type(input, '99');
+      await userEvent.tab();
+      // 99 itself must never be saved
+      expect(onUpdateThreshold).not.toHaveBeenCalledWith(99);
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    });
+
+    it('shows an inline error and does NOT call onUpdateThreshold for empty input', async () => {
+      const onUpdateThreshold = vi.fn();
+      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} onUpdateThreshold={onUpdateThreshold} />);
+      const input = screen.getByRole('spinbutton', { name: /resting after/i });
+      await userEvent.clear(input);
+      await userEvent.tab();
+      expect(onUpdateThreshold).not.toHaveBeenCalled();
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    });
+
+    it('the hide inactive sessions label includes the current threshold value', () => {
+      renderWithQuery(<SettingsPanel settings={{ ...allOff, restingThresholdMinutes: 30 }} onToggle={vi.fn()} />);
+      expect(screen.getByText(/hide inactive sessions.*30 min/i)).toBeInTheDocument();
+    });
+
+    it('renders the Reset button', () => {
+      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
+      expect(screen.getByRole('button', { name: /reset/i })).toBeInTheDocument();
+    });
+
+    it('clicking Reset calls onUpdateThreshold(20) and sets input to 20', async () => {
+      const onUpdateThreshold = vi.fn();
+      renderWithQuery(<SettingsPanel settings={{ ...allOff, restingThresholdMinutes: 5 }} onToggle={vi.fn()} onUpdateThreshold={onUpdateThreshold} />);
+      await userEvent.click(screen.getByRole('button', { name: /reset/i }));
+      expect(onUpdateThreshold).toHaveBeenCalledWith(20);
+      expect(screen.getByRole('spinbutton', { name: /resting after/i })).toHaveValue(20);
+    });
+
+    it('clicking Reset clears any existing validation error', async () => {
+      const onUpdateThreshold = vi.fn();
+      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} onUpdateThreshold={onUpdateThreshold} />);
+      const input = screen.getByRole('spinbutton', { name: /resting after/i });
+      await userEvent.clear(input);
+      await userEvent.type(input, '0');
+      await userEvent.tab();
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: /reset/i }));
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
   });
 
   describe('yolo mode toggle', () => {

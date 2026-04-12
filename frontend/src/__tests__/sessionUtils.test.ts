@@ -55,4 +55,26 @@ describe('isInactive', () => {
   it('returns true for waiting status sessions that exceed the threshold', () => {
     expect(isInactive(session({ status: 'waiting', lastActivityAt: OLD }))).toBe(true);
   });
+
+  describe('custom thresholdMs', () => {
+    it('returns true when last activity exceeds a custom short threshold (5 min)', () => {
+      const fiveMinAgo = new Date(Date.now() - 5 * 60_000 - 1_000).toISOString();
+      expect(isInactive(session({ lastActivityAt: fiveMinAgo }), 5 * 60_000)).toBe(true);
+    });
+
+    it('returns false when last activity is within a custom short threshold (5 min)', () => {
+      const threeMinAgo = new Date(Date.now() - 3 * 60_000).toISOString();
+      expect(isInactive(session({ lastActivityAt: threeMinAgo }), 5 * 60_000)).toBe(false);
+    });
+
+    it('returns false for activity > 20 min ago when a longer threshold (60 min) is given', () => {
+      const twentyFiveMinAgo = new Date(Date.now() - 25 * 60_000).toISOString();
+      expect(isInactive(session({ lastActivityAt: twentyFiveMinAgo }), 60 * 60_000)).toBe(false);
+    });
+
+    it('uses default 20-min threshold when no thresholdMs arg is passed', () => {
+      const twentyOneMinAgo = new Date(Date.now() - 21 * 60_000).toISOString();
+      expect(isInactive(session({ lastActivityAt: twentyOneMinAgo }))).toBe(true);
+    });
+  });
 });
