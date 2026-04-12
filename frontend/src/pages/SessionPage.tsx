@@ -66,7 +66,7 @@ export default function SessionPage() {
             data-tour-id="session-output-stream"
           />
 
-          <div data-tour-id="session-prompt-bar" className="bg-white rounded-lg shadow px-4 py-2 mt-4 shrink-0">
+          <div data-tour-id="session-prompt-bar" className="mt-4 shrink-0">
             <SessionPromptBar session={session} />
           </div>
 
