@@ -75,6 +75,4 @@ All automation is PowerShell (`.ps1`) under `.specify/scripts/powershell/`. VS C
 Optional lifecycle hooks (`before_specify`, `after_specify`, etc.) can be defined in `.specify/extensions.yml`.
 
 - `.specify/init-options.json`: `speckit_version: "0.4.3"`, `ai: "claude"`, `script: "ps"`, `branch_numbering: "sequential"`
-- `.gitignore` excludes `.claude/` and `.github/copilot/` credential folders  
-[aarthin] why is the above line needed. infact it is also not true.  
-[aarthin] CLAUDE.md is largely about speckit and does not actually have anything about project itself. shouldnt it point to the README.md files
+
