@@ -14,10 +14,17 @@ Manual tests for the settings panel. Run these against a live Argus instance.
 |---|-------|----------|
 | G-01 | Click the gear icon in the header | A settings dropdown panel opens |
 | G-02 | Check the available toggles | "Hide ended sessions", "Hide repos with no active sessions", and "Hide inactive sessions (>20 min)" checkboxes are visible |
-| G-03 | Check the idle threshold input | A number input labeled "Idle threshold (min)" is visible (default: 60, minimum: 1); this controls the backend idle detection, not the frontend "resting" badge which is hardcoded at 20 minutes |
+| G-03 | Check the "Launch Behaviour" section | A "Yolo mode" checkbox is visible under a "Launch Behaviour" heading, below the session filter toggles |
 | G-04 | Toggle **Hide ended sessions** ON | Ended session cards disappear from the dashboard |
 | G-05 | Toggle **Hide ended sessions** OFF | Ended session cards reappear |
 | G-06 | Toggle **Hide repos with no active sessions** ON | Repos that have only ended/completed sessions disappear |
 | G-07 | Toggle **Hide repos with no active sessions** OFF | Hidden repos reappear |
 | G-08 | Press **Escape** or click outside the panel | The settings panel closes |
 | G-09 | Check the bottom of the settings panel | A "Restart Tour" link is visible |
+| G-10 | Toggle **Yolo mode** ON | A warning dialog appears explaining that all permission checks will be bypassed |
+| G-11 | Click **Cancel** in the warning dialog | The dialog closes, the Yolo mode checkbox remains unchecked |
+| G-12 | Toggle **Yolo mode** ON and click **Enable Yolo Mode** | The dialog closes, the checkbox is checked, and a yellow "All permission checks disabled" label appears beneath it |
+| G-13 | With Yolo mode ON, copy a Claude launch command | The copied command includes `--dangerously-skip-permissions` |
+| G-14 | With Yolo mode ON, copy a Copilot launch command | The copied command includes `--allow-all` |
+| G-15 | Toggle **Yolo mode** OFF | No dialog appears; the checkbox unchecks immediately and the warning label disappears |
+| G-16 | With Yolo mode OFF, copy a Claude launch command | The copied command does NOT include `--dangerously-skip-permissions` |
