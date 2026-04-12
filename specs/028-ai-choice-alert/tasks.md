@@ -42,7 +42,7 @@
 
 ### Test tasks (write first)
 
-- [ ] T004 [P3] Add tests to `frontend/src/__tests__/SessionCard.test.tsx`:
+- [x] T004 [P3] Add tests to `frontend/src/__tests__/SessionCard.test.tsx`:
   - Summary shows "ATTENTION NEEDED" (with `role="alert"`) when `useQuery` returns items with a pending `ask_user` tool_use (readonly session).
   - Summary shows the question text alongside "ATTENTION NEEDED".
   - Summary shows labelled choices ("1. Option A / 2. Option B") alongside "ATTENTION NEEDED".
@@ -53,7 +53,7 @@
 
 ### Implementation tasks
 
-- [ ] T005 [P3] Update `frontend/src/components/SessionCard/SessionCard.tsx`:
+- [x] T005 [P3] Update `frontend/src/components/SessionCard/SessionCard.tsx`:
   - Call `detectPendingChoice(items)` after deriving `items` from the query.
   - Replace the summary `<p>` conditional to render:
     - If `pendingChoice !== null` AND `session.status` not in `['ended', 'completed']`:
