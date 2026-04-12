@@ -6,7 +6,7 @@ import { YoloWarningDialog } from '../YoloWarningDialog/YoloWarningDialog';
 
 const DEFAULT_THRESHOLD = 20;
 const MIN_THRESHOLD = 1;
-const MAX_THRESHOLD = 1440;
+const MAX_THRESHOLD = 60;
 
 interface SettingsPanelProps {
   settings: DashboardSettings;
@@ -54,7 +54,7 @@ export function SettingsPanel({ settings, onToggle, onUpdateThreshold, onRestart
       return;
     }
     if (rounded > MAX_THRESHOLD) {
-      setThresholdError('Maximum is 1440 minutes (24 hours).');
+      setThresholdError('Maximum is 60 minutes.');
       return;
     }
     setThresholdError(null);
@@ -131,7 +131,7 @@ export function SettingsPanel({ settings, onToggle, onUpdateThreshold, onRestart
               type="button"
               onClick={handleReset}
               aria-label="Reset resting threshold to default"
-              title="Reset to default (20 min)"
+              title="Reset to default (20 min, max 60 min)"
               className="text-gray-400 hover:text-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded-sm"
             >
               <RotateCcw size={12} />

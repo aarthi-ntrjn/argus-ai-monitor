@@ -116,15 +116,15 @@ describe('SettingsPanel', () => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
     });
 
-    it('shows an inline error and does NOT call onUpdateThreshold with the invalid value > 1440', async () => {
+    it('shows an inline error and does NOT call onUpdateThreshold with the invalid value > 60', async () => {
       const onUpdateThreshold = vi.fn();
       renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} onUpdateThreshold={onUpdateThreshold} />);
       const input = screen.getByRole('spinbutton', { name: /resting after/i });
       await userEvent.clear(input);
-      await userEvent.type(input, '9999');
+      await userEvent.type(input, '99');
       await userEvent.tab();
-      // 9999 itself must never be saved
-      expect(onUpdateThreshold).not.toHaveBeenCalledWith(9999);
+      // 99 itself must never be saved
+      expect(onUpdateThreshold).not.toHaveBeenCalledWith(99);
       expect(screen.getByRole('alert')).toBeInTheDocument();
     });
 

@@ -52,7 +52,7 @@ A user who has customized the resting threshold wants to restore it to the syste
 
 - **FR-001**: The system MUST provide a user-configurable setting for the resting duration threshold.
 - **FR-002**: The default value for the resting threshold MUST be 20 minutes.
-- **FR-003**: The accepted range for the threshold MUST be 1 to 1440 minutes (inclusive).
+- **FR-003**: The accepted range for the threshold MUST be 1 to 60 minutes (inclusive).
 - **FR-004**: The system MUST persist the configured threshold so it survives page reloads and app restarts.
 - **FR-005**: The system MUST apply the configured threshold immediately after saving, without requiring a page reload.
 - **FR-006**: The system MUST reject invalid inputs (zero, negative numbers, non-numeric values, values outside the allowed range) and display a descriptive inline error message.
