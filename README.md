@@ -1,4 +1,4 @@
-﻿﻿# Argus
+﻿# Argus
 
 Your command center for Claude Code and GitHub Copilot CLI sessions. Watch every session live, send commands, and stop runaway agents, all from a single browser tab.
 
@@ -25,13 +25,13 @@ Open **http://localhost:7411** and you're in. The port is configurable in [`~/.a
 
 ## Monitor
 
-<img src="docs/images/argus.png" alt="Argus Dashboard" height="200">
+<img src="docs/images/argus.png" alt="Argus Dashboard" height="300">
 
 See everything happening across your AI sessions without switching terminals.
 
 ### Session Cards
 
-<img src="docs/images/argus-sessions.png" alt="Session Cards" height="200">
+<img src="docs/images/argus-sessions.png" alt="Session Cards" height="300">
 
 Each card is a live snapshot of a session:
 
@@ -48,7 +48,7 @@ Each card is a live snapshot of a session:
 
 ### Session Output
 
-<img src="docs/images/argus-session-stream.png" alt="Session Output" height="200">
+<img src="docs/images/argus-session-stream.png" alt="Session Output" height="300">
 
 Click any card to open a **live output pane** on the right inline.The card list stays visible on the left. Press **Escape** or click the **X** icon to close it. Click another card to switch sessions.
 
@@ -60,11 +60,11 @@ The output pane has two display modes, toggled via the **Focused / Verbose** but
 
 - **Focused** (default): hides noisy tool results. Tool calls show a compact one-line summary. Click **show result** on any row to expand it inline. Your messages, AI replies, status changes, and errors are always visible.
 
-  <img src="docs/images/argus-stream-focused.png" alt="Focused Mode" height="200">
+  <img src="docs/images/argus-stream-focused.png" alt="Focused Mode" height="300">
 
 - **Verbose**: shows everything. Long tool results (over 40 lines) are truncated with a **show more** button. Tool calls show their full content.
 
-  <img src="docs/images/argus-stream-verbose.png" alt="Verbose Mode" height="200">
+  <img src="docs/images/argus-stream-verbose.png" alt="Verbose Mode" height="300">
 
 The selected mode persists across sessions and page reloads.
 
@@ -93,7 +93,7 @@ Every session card and the session detail page have a **kill button** (■ icon)
 
 ### Starting a Session with Prompt Control
 
-<img src="docs/images/argus-connected.png" alt="Connected Session" height="200">
+<img src="docs/images/argus-connected.png" alt="Connected Session" height="300">
 
 To send prompts to a session, start it through Argus.This gives Argus a direct PTY write channel to the process.
 
@@ -121,17 +121,17 @@ Prompt injection works for both Claude Code and Copilot CLI when started via `La
 
 ### Repository Management
 
-<img src="docs/images/argus-repos.png" alt="Repository Cards" height="200">
+<img src="docs/images/argus-repos.png" alt="Repository Cards" height="300">
 
 Click **Add Repository**, type or paste a root folder path (e.g. `C:\source` or `/home/user/projects`), then click **Scan &amp; Add**.
 
-<img src="docs/images/argus-addrepo.png" alt="Add Repository Dialog" height="200">
+<img src="docs/images/argus-addrepo.png" alt="Add Repository Dialog" height="300">
 
 Argus scans that folder recursively for git repos and registers all new ones in one go. Already-registered repos are skipped automatically.
 
 ## To Tackle
 
-<img src="docs/images/argus-todo.png" alt="To Tackle Panel" height="200">
+<img src="docs/images/argus-todo.png" alt="To Tackle Panel" height="300">
 
 The **To Tackle** panel lives on the right side of the dashboard.Use it to jot down tasks, reminders, or notes essentially your brain dump.
 
@@ -143,7 +143,7 @@ The **To Tackle** panel lives on the right side of the dashboard.Use it to jot d
 
 ## Mobile Browser Support
 
-<img src="docs/images/argus-mobile.png" alt="Mobile View" height="200">
+<img src="docs/images/argus-mobile.png" alt="Mobile View" height="300">
 
 Argus is fully usablewhen you remote into your machine from mobile devices (390px and up). On narrow viewports:
 
@@ -155,7 +155,7 @@ Desktop layout (two-column with inline output pane) is unchanged.
 
 ## Dashboard Settings
 
-<img src="docs/images/argus-settings.png" alt="Settings Panel" height="200">
+<img src="docs/images/argus-settings.png" alt="Settings Panel" height="300">
 
 Click the **gear icon** (top-right) to open Settings.
 
@@ -185,7 +185,7 @@ To disable, toggle Yolo mode off in Settings. No confirmation is required to dis
 
 ## Onboarding
 
-<img src="docs/images/argus-welcome.png" alt="Onboarding Tour" height="200">
+<img src="docs/images/argus-welcome.png" alt="Onboarding Tour" height="300">
 
 New to Argus? An interactive tour launches automatically on your first visit.Dismiss it any time and replay it later from Settings.
 
