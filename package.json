@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "Your command center for Claude Code and GitHub Copilot CLI sessions. Watch every session live, send commands, and stop runaway agents, all from a single browser tab.",
   "license": "MIT",
+  "homepage": "https://github.com/aarthi-ntrjn/argus#readme",
+  "bugs": {
+    "url": "https://github.com/aarthi-ntrjn/argus/issues"
+  },
   "type": "module",
   "bin": {
     "argus": "./bin/argus.js"
@@ -22,7 +26,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/aarthi-ntrjn/argus.git"
+    "url": "git+https://github.com/aarthi-ntrjn/argus.git"
   },
   "author": "aarthi-ntrjn",
   "workspaces": [
