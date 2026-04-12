@@ -2,12 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { stopSession, getSession } from '../services/api';
 
-export function useKillSession() {
+export function useKillSession(options?: { onKilled?: () => void }) {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [targetSessionId, setTargetSessionId] = useState<string | null>(null);
   const [isWaitingForExit, setIsWaitingForExit] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const onKilledRef = useRef(options?.onKilled);
+  onKilledRef.current = options?.onKilled;
 
   const mutation = useMutation({
     mutationFn: (sessionId: string) => stopSession(sessionId),
@@ -24,6 +26,7 @@ export function useKillSession() {
             setTargetSessionId(null);
             queryClient.invalidateQueries({ queryKey: ['session', sessionId] });
             queryClient.invalidateQueries({ queryKey: ['sessions'] });
+            onKilledRef.current?.();
           }
         } catch {
           // Session may have been removed; treat as success
@@ -32,6 +35,7 @@ export function useKillSession() {
           setDialogOpen(false);
           setTargetSessionId(null);
           queryClient.invalidateQueries({ queryKey: ['sessions'] });
+          onKilledRef.current?.();
         }
       }, 500);
     },

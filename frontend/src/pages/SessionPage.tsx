@@ -12,7 +12,7 @@ import { KillSessionDialog } from '../components/KillSessionDialog/KillSessionDi
 export default function SessionPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const kill = useKillSession();
+  const kill = useKillSession({ onKilled: () => navigate('/') });
 
   const { data: session, isLoading: sessionLoading, error: sessionError } = useQuery({
     queryKey: ['session', id],
