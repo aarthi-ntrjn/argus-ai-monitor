@@ -119,7 +119,7 @@ describe('detectPendingChoice', () => {
     expect(result?.choices).toEqual(['A', 'B', 'C']);
   });
 
-  it('returns PendingChoice with question and empty choices for unanswered AskUserQuestion (Claude)', () => {
+  it('returns PendingChoice with question and empty choices for unanswered AskUserQuestion (Claude, flat format)', () => {
     const content = JSON.stringify({ question: 'What directory?' });
     const items = [
       makeOutput({ type: 'tool_use', toolName: 'AskUserQuestion', toolCallId: 'tc-2', content, sequenceNumber: 3 }),
@@ -128,6 +128,27 @@ describe('detectPendingChoice', () => {
     expect(result).not.toBeNull();
     expect(result?.question).toBe('What directory?');
     expect(result?.choices).toEqual([]);
+  });
+
+  it('returns PendingChoice with question and label-extracted choices for AskUserQuestion nested format', () => {
+    const content = JSON.stringify({
+      questions: [{
+        question: 'Which color do you prefer?',
+        header: 'Color',
+        multiSelect: false,
+        options: [
+          { label: 'Red', description: 'Bold, passionate, fiery red' },
+          { label: 'Blue', description: 'Calm, cool, serene blue' },
+        ],
+      }],
+    });
+    const items = [
+      makeOutput({ type: 'tool_use', toolName: 'AskUserQuestion', toolCallId: 'tc-6', content, sequenceNumber: 5 }),
+    ];
+    const result = detectPendingChoice(items);
+    expect(result).not.toBeNull();
+    expect(result?.question).toBe('Which color do you prefer?');
+    expect(result?.choices).toEqual(['Red', 'Blue']);
   });
 
   it('returns null when ask_user tool_use has a subsequent tool_result', () => {

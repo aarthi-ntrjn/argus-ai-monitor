@@ -25,9 +25,33 @@ export function detectPendingChoice(items: SessionOutput[]): PendingChoice | nul
       if (lastResultSeq > item.sequenceNumber) return null;
       try {
         const parsed = JSON.parse(item.content) as Record<string, unknown>;
-        const question = typeof parsed.question === 'string' ? parsed.question : '';
-        const rawChoices = Array.isArray(parsed.choices) ? parsed.choices : Array.isArray(parsed.options) ? parsed.options : [];
-        const choices = rawChoices.filter((c): c is string => typeof c === 'string');
+
+        // AskUserQuestion format: { questions: [{ question, options: [{label, description}] }] }
+        // ask_user (Copilot) format: { question: string, choices: string[] }
+        const firstQ = Array.isArray(parsed.questions) && parsed.questions.length > 0
+          ? parsed.questions[0] as Record<string, unknown>
+          : null;
+
+        const question = typeof parsed.question === 'string'
+          ? parsed.question
+          : typeof firstQ?.question === 'string' ? firstQ.question : '';
+
+        const rawChoices: unknown[] = Array.isArray(parsed.choices)
+          ? parsed.choices
+          : Array.isArray(parsed.options)
+            ? parsed.options
+            : Array.isArray(firstQ?.options)
+              ? firstQ.options as unknown[]
+              : [];
+
+        const choices = rawChoices.map((c) => {
+          if (typeof c === 'string') return c;
+          if (c && typeof c === 'object' && typeof (c as Record<string, unknown>).label === 'string') {
+            return (c as Record<string, unknown>).label as string;
+          }
+          return null;
+        }).filter((c): c is string => c !== null);
+
         return { question, choices };
       } catch {
         return { question: '', choices: [] };
