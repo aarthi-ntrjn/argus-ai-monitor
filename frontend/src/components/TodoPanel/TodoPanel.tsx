@@ -139,7 +139,7 @@ export default function TodoPanel() {
           onClick={() => setCollapsed(v => !v)}
           aria-expanded={!collapsed}
           aria-controls="tackle-panel-body"
-          className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 tracking-wide hover:text-gray-900 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400 rounded-sm"
+          className="flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400 rounded-sm"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
