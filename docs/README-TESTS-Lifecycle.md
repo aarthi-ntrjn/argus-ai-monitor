@@ -70,6 +70,10 @@ Manual tests for session state transitions across different scenarios: terminal 
 | L4-05 | Wait for the process to exit after confirming kill | Spinner disappears, dialog closes automatically, session card updates to "ended" (grey badge) |
 | L4-06 | Try to kill a session that has already ended (e.g. the power button should not be visible) | The power button is not rendered for ended/completed sessions |
 | L4-07 | Kill a session on a card that has reduced opacity (inactive/resting session) | The confirmation dialog appears above all content (not trapped behind the card's opacity layer) |
+| L4-08 | Kill a connected Claude Code session (launched via `argus launch`) | Dialog shows type "claude-code"; process terminates, card transitions to "ended" |
+| L4-09 | Kill a read-only Claude Code session (detected, not launched via argus) | Dialog shows type "claude-code"; process terminates, card transitions to "ended" |
+| L4-10 | Kill a connected Copilot CLI session (launched via `argus launch`) | Dialog shows type "copilot-cli"; process terminates, card transitions to "ended" |
+| L4-11 | Kill a read-only Copilot CLI session (detected, not launched via argus) | Dialog shows type "copilot-cli"; process terminates, card transitions to "ended" |
 
 ---
 
