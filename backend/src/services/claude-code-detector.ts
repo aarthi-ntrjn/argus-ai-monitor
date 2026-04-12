@@ -11,11 +11,16 @@ import { OutputStore } from './output-store.js';
 import { broadcast } from '../api/ws/event-dispatcher.js';
 import { parseClaudeJsonlLine, parseModel } from './claude-code-jsonl-parser.js';
 import { detectYoloModeFromPids } from './process-utils.js';
-import type { Session, Repository } from '../models/index.js';
+import type { Session, Repository, PendingChoice } from '../models/index.js';
 
 const CLAUDE_SETTINGS_PATH = join(homedir(), '.claude', 'settings.json');
 const HOOK_COMMAND = 'curl -sf -X POST http://127.0.0.1:7411/hooks/claude -H "Content-Type: application/json" -d @- 2>/dev/null || true';
-const HOOK_EVENTS = ['SessionStart', 'SessionEnd'];
+const HOOK_EVENTS: Array<{ event: string; matcher: string }> = [
+  { event: 'SessionStart', matcher: '' },
+  { event: 'SessionEnd', matcher: '' },
+  { event: 'PreToolUse', matcher: 'AskUserQuestion' },
+  { event: 'PostToolUse', matcher: 'AskUserQuestion' },
+];
 
 interface ClaudeSettings {
   hooks?: Record<string, Array<{ matcher: string; hooks: Array<{ type: string; command: string }> }>>;
@@ -37,6 +42,11 @@ export class ClaudeCodeDetector {
   private watchers = new Map<string, FSWatcher>();
   private filePositions = new Map<string, number>();
   private sequenceCounters = new Map<string, number>();
+  private pendingChoices = new Map<string, PendingChoice>();
+
+  getPendingChoice(sessionId: string): PendingChoice | null {
+    return this.pendingChoices.get(sessionId) ?? null;
+  }
   injectHooks(): void {
     try {
       mkdirSync(dirname(CLAUDE_SETTINGS_PATH), { recursive: true });
@@ -47,23 +57,33 @@ export class ClaudeCodeDetector {
       if (!settings.hooks) settings.hooks = {};
       let changed = false;
 
-      // Remove Argus hooks from events no longer in HOOK_EVENTS (e.g. PreToolUse, PostToolUse, Stop)
+      // Remove Argus hook entries whose (event, matcher) pair is no longer in HOOK_EVENTS.
+      // Also delete any malformed keys (e.g. '[object Object]' from object-as-key coercion).
       for (const event of Object.keys(settings.hooks)) {
-        if (!HOOK_EVENTS.includes(event)) {
-          const before = settings.hooks[event];
-          const after = before.filter((e) => !e.hooks?.some((h) => h.command === HOOK_COMMAND));
-          if (after.length !== before.length) {
-            settings.hooks[event] = after;
-            changed = true;
-          }
+        // A valid hook event key must be a non-empty string of word characters only.
+        // Malformed keys (like '[object Object]') are always removed.
+        if (!/^\w+$/.test(event)) {
+          delete settings.hooks[event];
+          changed = true;
+          continue;
+        }
+        const before = settings.hooks[event];
+        const after = before.filter((entry) => {
+          const isArgusEntry = entry.hooks?.some((h) => h.command === HOOK_COMMAND);
+          if (!isArgusEntry) return true; // keep non-Argus entries
+          return HOOK_EVENTS.some((he) => he.event === event && he.matcher === entry.matcher);
+        });
+        if (after.length !== before.length) {
+          settings.hooks[event] = after;
+          changed = true;
         }
       }
 
-      // Add hooks for current HOOK_EVENTS
-      for (const event of HOOK_EVENTS) {
-        if (!this.hasHook(settings, event)) {
+      // Add hooks for current HOOK_EVENTS (skipping any already present)
+      for (const { event, matcher } of HOOK_EVENTS) {
+        if (!this.hasHook(settings, event, matcher)) {
           if (!settings.hooks[event]) settings.hooks[event] = [];
-          settings.hooks[event].push({ matcher: '', hooks: [{ type: 'command', command: HOOK_COMMAND }] });
+          settings.hooks[event].push({ matcher, hooks: [{ type: 'command', command: HOOK_COMMAND }] });
           changed = true;
         }
       }
@@ -77,7 +97,7 @@ export class ClaudeCodeDetector {
       const settings: ClaudeSettings = JSON.parse(readFileSync(CLAUDE_SETTINGS_PATH, 'utf-8'));
       if (!settings.hooks) return;
       let changed = false;
-      for (const event of HOOK_EVENTS) {
+      for (const { event } of HOOK_EVENTS) {
         const entries = settings.hooks[event];
         if (!entries) continue;
         const filtered = entries.filter(
@@ -92,11 +112,11 @@ export class ClaudeCodeDetector {
     } catch { /* ignore */ }
   }
 
-  private hasHook(settings: ClaudeSettings, event: string): boolean {
+  private hasHook(settings: ClaudeSettings, event: string, matcher: string): boolean {
     const eventHooks = settings.hooks?.[event];
     if (!eventHooks) return false;
     return eventHooks.some((entry) =>
-      entry.hooks?.some((h) => h.command === HOOK_COMMAND)
+      entry.matcher === matcher && entry.hooks?.some((h) => h.command === HOOK_COMMAND)
     );
   }
 
@@ -187,6 +207,39 @@ export class ClaudeCodeDetector {
         this.closeSessionWatcher(session_id);
         broadcast({ type: 'session.ended', timestamp: now, data: { ...existing, status: 'ended', endedAt: now } as unknown as Record<string, unknown> });
       }
+      return;
+    }
+
+    // PreToolUse/AskUserQuestion: store pending choice and broadcast to frontend
+    if (hook_event_name === 'PreToolUse' && payload.tool_name === 'AskUserQuestion') {
+      if (!existing) return; // Only act on known sessions
+      const toolInput = payload.tool_input ?? {};
+      const firstQ = Array.isArray(toolInput.questions) && toolInput.questions.length > 0
+        ? toolInput.questions[0] as Record<string, unknown>
+        : null;
+      const question = typeof toolInput.question === 'string'
+        ? toolInput.question
+        : typeof firstQ?.question === 'string' ? firstQ.question : '';
+      const rawOptions: unknown[] = Array.isArray(toolInput.choices)
+        ? toolInput.choices
+        : Array.isArray(firstQ?.options) ? firstQ.options as unknown[] : [];
+      const choices = rawOptions.map((c) => {
+        if (typeof c === 'string') return c;
+        if (c && typeof c === 'object' && typeof (c as Record<string, unknown>).label === 'string') {
+          return (c as Record<string, unknown>).label as string;
+        }
+        return null;
+      }).filter((c): c is string => c !== null);
+      this.pendingChoices.set(session_id, { question, choices });
+      broadcast({ type: 'session.pending_choice', timestamp: now, data: { sessionId: session_id, question, choices } });
+      return;
+    }
+
+    // PostToolUse/AskUserQuestion: clear pending choice and broadcast resolution
+    if (hook_event_name === 'PostToolUse' && payload.tool_name === 'AskUserQuestion') {
+      if (!existing) return; // Only act on known sessions
+      this.pendingChoices.delete(session_id);
+      broadcast({ type: 'session.pending_choice.resolved', timestamp: now, data: { sessionId: session_id } });
       return;
     }
 

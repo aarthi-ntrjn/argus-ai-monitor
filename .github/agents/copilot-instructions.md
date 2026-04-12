@@ -13,6 +13,9 @@ Auto-generated from all feature plans. Last updated: 2026-04-12
 - `~/.argus/config.json` (existing key-value config file managed by `config-loader.ts`) (025-yolo-mode)
 - TypeScript 5.x (React 18 frontend, Node.js backend) + React, TanStack React Query, Tailwind CSS, Lucide icons, React Router (027-kill-session)
 - SQLite (existing, no schema changes needed) (027-kill-session)
+- TypeScript 5.x, React 18 + React, Tailwind CSS, Vitest, Playwright (026-configurable-resting)
+- `localStorage` via the existing `useSettings` hook (`argus:settings` key) (026-configurable-resting)
+- N/A (reads from existing session output query cache; no new persistence) (028-ai-choice-alert)
 
 - TypeScript 5.9 (frontend + backend) + Fastify 5.x (backend), React 18 + TailwindCSS 3 + React Query (frontend), better-sqlite3 (storage), pino (logging), vitest + Playwright (testing) (014-engineer-todo-list)
 
@@ -33,9 +36,10 @@ npm test; npm run lint
 TypeScript 5.9 (frontend + backend): Follow standard conventions
 
 ## Recent Changes
+- 028-ai-choice-alert: Added TypeScript 5.x, React 18 + React, Tailwind CSS, Vitest, Playwright
 - 027-kill-session: Added TypeScript 5.x (React 18 frontend, Node.js backend) + React, TanStack React Query, Tailwind CSS, Lucide icons, React Router
+- 026-configurable-resting: Added TypeScript 5.x, React 18 + React, Tailwind CSS, Vitest, Playwright
 - 025-yolo-mode: Added TypeScript 5.x (backend Node.js 20, frontend React 18 + Vite) + Fastify (backend API), React Query (frontend data fetching), Tailwind CSS (frontend styling)
-- 023-stream-attention: Added TypeScript 5.x, React 18.3 + React Query (existing), Tailwind CSS (existing), React Markdown (existing)
 
 
 <!-- MANUAL ADDITIONS START -->

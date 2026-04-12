@@ -86,3 +86,8 @@ export interface ArgusConfig {
   autoRegisterRepos: boolean;
   yoloMode: boolean;
 }
+
+export interface PendingChoice {
+  question: string;
+  choices: string[];
+}

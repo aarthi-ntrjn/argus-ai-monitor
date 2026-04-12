@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { Session } from '../../types';
 import { getSessionOutput } from '../../services/api';
-import { isInactive } from '../../utils/sessionUtils';
+import { isInactive, detectPendingChoice, type PendingChoice } from '../../utils/sessionUtils';
 import { useSettings } from '../../hooks/useSettings';
 import SessionPromptBar from '../SessionPromptBar/SessionPromptBar';
 import SessionMetaRow from '../SessionMetaRow/SessionMetaRow';
@@ -26,6 +26,13 @@ function SessionCard({ session, selected, onSelect }: Props) {
     staleTime: Infinity,
   });
 
+  const { data: hookPendingChoice = null } = useQuery<PendingChoice | null>({
+    queryKey: ['session-pending-choice', session.id],
+    queryFn: () => Promise.resolve(null),
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+
   const kill = useKillSession();
 
   const items = lastOutput?.items ?? [];
@@ -35,6 +42,8 @@ function SessionCard({ session, selected, onSelect }: Props) {
     items[items.length - 1] ??
     null;
   const previewContent = previewItem?.content?.trim() ?? null;
+  const isTerminated = session.status === 'ended' || session.status === 'completed';
+  const pendingChoice = isTerminated ? null : (hookPendingChoice ?? detectPendingChoice(items));
 
   return (
     <div
@@ -50,9 +59,21 @@ function SessionCard({ session, selected, onSelect }: Props) {
       <SessionMetaRow session={session} showLink onKill={kill.requestKill} killPending={kill.isPending} />
 
       {/* Summary / topic */}
-      <p className={`text-sm mt-2 truncate ${session.summary ? 'text-gray-600' : 'text-gray-400 italic'}`}>
-        {session.summary || 'Nothing sent yet'}
-      </p>
+      {pendingChoice !== null ? (
+        <p role="alert" className="text-sm mt-2 line-clamp-3 whitespace-normal break-words">
+          <span className="font-bold text-red-600">ATTENTION NEEDED</span>
+          {pendingChoice.question ? ` ${pendingChoice.question}` : ''}
+          {pendingChoice.choices.length > 0 && (
+            <span className="text-gray-600">
+              {' '}{pendingChoice.choices.map((c, i) => `${i + 1}. ${c}`).join(' / ')}
+            </span>
+          )}
+        </p>
+      ) : (
+        <p className={`text-sm mt-2 truncate ${session.summary ? 'text-gray-600' : 'text-gray-400 italic'}`}>
+          {session.summary || 'Nothing sent yet'}
+        </p>
+      )}
 
       {/* Last output preview — fixed 2-line height */}
       <p className={`text-xs bg-gray-900 mt-2 px-2 py-1 rounded line-clamp-2 whitespace-pre-wrap break-words font-mono min-h-[2.5rem] ${previewContent ? 'text-gray-300' : 'text-gray-500 italic'}`}>

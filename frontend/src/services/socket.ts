@@ -135,4 +135,18 @@ export function initSocketHandlers(qc: QueryClient): void {
       }
     );
   });
+  onEvent('session.pending_choice', (data) => {
+    const { sessionId, question, choices } = data as { sessionId: string; question: string; choices: string[] };
+    qc.setQueryData<import('../utils/sessionUtils').PendingChoice | null>(
+      ['session-pending-choice', sessionId],
+      { question, choices }
+    );
+  });
+  onEvent('session.pending_choice.resolved', (data) => {
+    const { sessionId } = data as { sessionId: string };
+    qc.setQueryData<import('../utils/sessionUtils').PendingChoice | null>(
+      ['session-pending-choice', sessionId],
+      null
+    );
+  });
 }

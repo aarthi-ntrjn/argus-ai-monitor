@@ -121,6 +121,22 @@ Run this in any terminal: VS Code integrated terminal, Windows Terminal, iTerm2,
 
 Sessions detected automatically (not started via `argus launch`) show a **read-only** badge. Their prompt bars are not visible. Use the **Kill Session** button to terminate any session with a known PID.
 
+### ATTENTION NEEDED Alert
+
+When an AI session is waiting for user input, the session card summary line changes to a bold red **ATTENTION NEEDED** indicator.
+
+The alert shows:
+- The question the AI asked (e.g., "Which option?")
+- Numbered choices when available (e.g., "1. Alpha / 2. Beta")
+
+The alert appears for both read-only and connected sessions. It is never shown for sessions with status `ended` or `completed`.
+
+**Detection methods by session type:**
+
+- **Claude Code sessions**: Argus uses a `PreToolUse` hook (auto-configured in `~/.claude/settings.json`) that fires the moment Claude calls `AskUserQuestion`, before the interactive menu is shown. This gives real-time detection independent of JSONL file updates. When the user answers, a `PostToolUse` hook clears the alert immediately. Argus manages these hook entries automatically alongside the existing `SessionStart` and `SessionEnd` hooks.
+
+- **GitHub Copilot sessions**: Detection is based on output stream parsing. When a `ask_user` tool_use appears in the session output without a subsequent `tool_result`, the alert is shown. It disappears once the `tool_result` (the user's answer) is written to the output.
+
 ### Prompt Bar
 
 Every session card has a prompt bar. For **live** (PTY-launched) sessions, type a message and press **↵** to send it.
