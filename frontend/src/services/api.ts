@@ -131,3 +131,25 @@ export async function getArgusSettings(): Promise<ArgusConfig> {
 export async function patchArgusSettings(patch: Partial<ArgusConfig>): Promise<ArgusConfig> {
   return apiFetch<ArgusConfig>('/settings', { method: 'PATCH', body: JSON.stringify(patch) });
 }
+
+export interface TeamsSettings {
+  enabled: boolean;
+  botAppId?: string;
+  botAppPassword?: string;
+  channelId?: string;
+  serviceUrl?: string;
+  tenantId?: string;
+  ownerTeamsUserId?: string;
+  connectionStatus: 'connected' | 'disconnected' | 'error' | 'unconfigured';
+}
+
+export async function getTeamsSettings(): Promise<TeamsSettings> {
+  return apiFetch<TeamsSettings>('/settings/teams');
+}
+
+export async function patchTeamsSettings(patch: Partial<TeamsSettings>): Promise<TeamsSettings> {
+  return apiFetch<TeamsSettings>('/settings/teams', {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+}

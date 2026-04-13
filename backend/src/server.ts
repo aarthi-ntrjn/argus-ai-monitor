@@ -19,6 +19,7 @@ import launcherRoutes from './api/routes/launcher.js';
 import toolsRoutes from './api/routes/tools.js';
 import settingsRoutes from './api/routes/settings.js';
 import teamsWebhookRoutes from './api/routes/teams-webhook.js';
+import teamsSettingsRoutes from './api/routes/teams-settings.js';
 import { SessionMonitor } from './services/session-monitor.js';
 import { startPruningJob } from './services/pruning-job.js';
 import { TeamsIntegrationService } from './services/teams-integration.js';
@@ -97,6 +98,7 @@ export async function buildServer() {
   await app.register(toolsRoutes);
   await app.register(settingsRoutes);
   await app.register(teamsWebhookRoutes);
+  await app.register(teamsSettingsRoutes);
 
   app.register(async (fastify) => {
     fastify.get('/ws', { websocket: true }, (socket) => {
@@ -132,8 +134,8 @@ export async function startServer() {
   startPruningJob();
 
   const teamsApiClient = new TeamsApiClient();
-  const teamsBuffer = new TeamsMessageBuffer(1000, app.log);
-  const teamsService = new TeamsIntegrationService(teamsApiClient, teamsBuffer, app.log);
+  const teamsBuffer = new TeamsMessageBuffer(1000, app.log as any);
+  const teamsService = new TeamsIntegrationService(teamsApiClient, teamsBuffer, app.log as any);
 
   monitor.on('session.created', (session: Session) => {
     teamsService.onSessionCreated(session).catch(err => app.log.error({ err }, 'teams.session.created.error'));

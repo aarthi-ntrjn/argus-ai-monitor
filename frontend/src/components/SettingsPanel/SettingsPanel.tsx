@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import type { DashboardSettings } from '../../types';
 import { useArgusSettings } from '../../hooks/useArgusSettings';
+import { useTeamsSettings } from '../../hooks/useTeamsSettings';
 import { YoloWarningDialog } from '../YoloWarningDialog/YoloWarningDialog';
 import { Checkbox } from '../Checkbox';
 import { Button } from '../Button';
@@ -19,9 +20,18 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({ settings, onToggle, onUpdateThreshold, onRestartTour }: SettingsPanelProps) {
   const { settings: argusSettings, patchSetting } = useArgusSettings();
+  const { config: teamsConfig, isSaving: isTeamsSaving, error: teamsError, save: saveTeams } = useTeamsSettings();
   const [showYoloWarning, setShowYoloWarning] = useState(false);
   const [thresholdInput, setThresholdInput] = useState(String(settings.restingThresholdMinutes ?? DEFAULT_THRESHOLD));
   const [thresholdError, setThresholdError] = useState<string | null>(null);
+  const [teamsForm, setTeamsForm] = useState({
+    botAppId: '',
+    botAppPassword: '',
+    channelId: '',
+    serviceUrl: '',
+    tenantId: '',
+    ownerTeamsUserId: '',
+  });
 
   const handleYoloChange = (checked: boolean) => {
     if (checked) {
@@ -181,6 +191,106 @@ export function SettingsPanel({ settings, onToggle, onUpdateThreshold, onRestart
         onConfirm={handleYoloConfirm}
         onCancel={handleYoloCancel}
       />
+      <div className="mt-3 pt-3 border-t border-gray-100">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-gray-700">Microsoft Teams</span>
+          {teamsConfig && (
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+              teamsConfig.connectionStatus === 'connected' ? 'bg-green-100 text-green-700' :
+              teamsConfig.connectionStatus === 'error' ? 'bg-red-100 text-red-700' :
+              'bg-gray-100 text-gray-600'
+            }`}>
+              {teamsConfig.connectionStatus}
+            </span>
+          )}
+        </div>
+        <div className="flex flex-col gap-2">
+          <div>
+            <label htmlFor="teams-bot-app-id" className="text-xs text-gray-600 block mb-1">Bot App ID</label>
+            <input
+              id="teams-bot-app-id"
+              type="text"
+              className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
+              value={teamsForm.botAppId || teamsConfig?.botAppId || ''}
+              onChange={e => setTeamsForm(f => ({ ...f, botAppId: e.target.value }))}
+              placeholder="Azure App ID"
+            />
+          </div>
+          <div>
+            <label htmlFor="teams-bot-app-password" className="text-xs text-gray-600 block mb-1">Bot App Password</label>
+            <input
+              id="teams-bot-app-password"
+              type="password"
+              className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
+              value={teamsForm.botAppPassword || ''}
+              onChange={e => setTeamsForm(f => ({ ...f, botAppPassword: e.target.value }))}
+              placeholder="Client Secret"
+            />
+          </div>
+          <div>
+            <label htmlFor="teams-channel-id" className="text-xs text-gray-600 block mb-1">Channel ID</label>
+            <input
+              id="teams-channel-id"
+              type="text"
+              className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
+              value={teamsForm.channelId || teamsConfig?.channelId || ''}
+              onChange={e => setTeamsForm(f => ({ ...f, channelId: e.target.value }))}
+              placeholder="19:xxxx@thread.tacv2"
+            />
+          </div>
+          <div>
+            <label htmlFor="teams-service-url" className="text-xs text-gray-600 block mb-1">Service URL</label>
+            <input
+              id="teams-service-url"
+              type="text"
+              className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
+              value={teamsForm.serviceUrl || teamsConfig?.serviceUrl || ''}
+              onChange={e => setTeamsForm(f => ({ ...f, serviceUrl: e.target.value }))}
+              placeholder="https://smba.trafficmanager.net/..."
+            />
+          </div>
+          <div>
+            <label htmlFor="teams-tenant-id" className="text-xs text-gray-600 block mb-1">Tenant ID (optional)</label>
+            <input
+              id="teams-tenant-id"
+              type="text"
+              className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
+              value={teamsForm.tenantId || teamsConfig?.tenantId || ''}
+              onChange={e => setTeamsForm(f => ({ ...f, tenantId: e.target.value }))}
+              placeholder="Leave blank for single-tenant bots"
+            />
+          </div>
+          <div>
+            <label htmlFor="teams-owner-user-id" className="text-xs text-gray-600 block mb-1">Owner Teams User ID</label>
+            <input
+              id="teams-owner-user-id"
+              type="text"
+              className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
+              value={teamsForm.ownerTeamsUserId || teamsConfig?.ownerTeamsUserId || ''}
+              onChange={e => setTeamsForm(f => ({ ...f, ownerTeamsUserId: e.target.value }))}
+              placeholder="29:xxxx"
+            />
+          </div>
+          {teamsError && <p className="text-xs text-red-600">{teamsError}</p>}
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={isTeamsSaving}
+            onClick={() => saveTeams({
+              enabled: true,
+              botAppId: teamsForm.botAppId || teamsConfig?.botAppId,
+              botAppPassword: teamsForm.botAppPassword || teamsConfig?.botAppPassword,
+              channelId: teamsForm.channelId || teamsConfig?.channelId,
+              serviceUrl: teamsForm.serviceUrl || teamsConfig?.serviceUrl,
+              tenantId: teamsForm.tenantId || teamsConfig?.tenantId,
+              ownerTeamsUserId: teamsForm.ownerTeamsUserId || teamsConfig?.ownerTeamsUserId,
+            })}
+            className="text-xs"
+          >
+            {isTeamsSaving ? 'Saving...' : 'Save Teams'}
+          </Button>
+        </div>
+      </div>
     </>
   );
 }
