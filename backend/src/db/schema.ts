@@ -37,4 +37,13 @@ CREATE TABLE IF NOT EXISTS todos (
   updated_at TEXT    NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_todos_user ON todos(user_id);
+CREATE TABLE IF NOT EXISTS teams_threads (
+  id                        TEXT PRIMARY KEY,
+  session_id                TEXT NOT NULL UNIQUE REFERENCES sessions(id),
+  teams_thread_id           TEXT NOT NULL UNIQUE,
+  teams_channel_id          TEXT NOT NULL,
+  current_output_message_id TEXT,
+  created_at                TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_teams_threads_session ON teams_threads(session_id);
 `;

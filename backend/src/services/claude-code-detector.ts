@@ -7,7 +7,7 @@ import chokidar, { type FSWatcher } from 'chokidar';
 import { getSession, upsertSession, updateSessionStatus, getRepositories, getRepositoryByPath } from '../db/database.js';
 import { ptyRegistry } from './pty-registry.js';
 import { ClaudeSessionRegistry } from './claude-session-registry.js';
-import { OutputStore } from './output-store.js';
+import { OutputStore, outputStore } from './output-store.js';
 import { broadcast } from '../api/ws/event-dispatcher.js';
 import { parseClaudeJsonlLine, parseModel } from './claude-code-jsonl-parser.js';
 import { detectYoloModeFromPids } from './process-utils.js';
@@ -38,7 +38,7 @@ interface HookPayload {
 }
 
 export class ClaudeCodeDetector {
-  private outputStore = new OutputStore();
+  private outputStore = outputStore;
   private watchers = new Map<string, FSWatcher>();
   private filePositions = new Map<string, number>();
   private sequenceCounters = new Map<string, number>();

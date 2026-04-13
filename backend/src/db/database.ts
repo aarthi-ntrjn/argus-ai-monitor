@@ -3,7 +3,7 @@ import { join, dirname, normalize } from 'path';
 import { homedir } from 'os';
 import { mkdirSync } from 'fs';
 import { SCHEMA_SQL } from './schema.js';
-import type { Repository, Session, SessionOutput, ControlAction, TodoItem } from '../models/index.js';
+import type { Repository, Session, SessionOutput, ControlAction, TodoItem, TeamsThread } from '../models/index.js';
 
 const DB_PATH = process.env.ARGUS_DB_PATH ?? join(homedir(), '.argus', 'argus.db');
 
@@ -213,4 +213,27 @@ export function updateTodo(id: string, patch: { done?: boolean; text?: string },
 export function deleteTodo(id: string): boolean {
   const result = getDb().prepare('DELETE FROM todos WHERE id = ?').run(id);
   return result.changes > 0;
+}
+
+export function upsertTeamsThread(thread: TeamsThread): void {
+  getDb().prepare(`
+    INSERT OR REPLACE INTO teams_threads (id, session_id, teams_thread_id, teams_channel_id, current_output_message_id, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(thread.id, thread.sessionId, thread.teamsThreadId, thread.teamsChannelId, thread.currentOutputMessageId, thread.createdAt);
+}
+
+export function getTeamsThread(sessionId: string): TeamsThread | null {
+  return getDb().prepare(
+    'SELECT id, session_id as sessionId, teams_thread_id as teamsThreadId, teams_channel_id as teamsChannelId, current_output_message_id as currentOutputMessageId, created_at as createdAt FROM teams_threads WHERE session_id = ?'
+  ).get(sessionId) as TeamsThread | null;
+}
+
+export function getTeamsThreadByTeamsId(teamsThreadId: string): TeamsThread | null {
+  return getDb().prepare(
+    'SELECT id, session_id as sessionId, teams_thread_id as teamsThreadId, teams_channel_id as teamsChannelId, current_output_message_id as currentOutputMessageId, created_at as createdAt FROM teams_threads WHERE teams_thread_id = ?'
+  ).get(teamsThreadId) as TeamsThread | null;
+}
+
+export function updateTeamsThreadOutputMessageId(sessionId: string, messageId: string): void {
+  getDb().prepare('UPDATE teams_threads SET current_output_message_id = ? WHERE session_id = ?').run(messageId, sessionId);
 }

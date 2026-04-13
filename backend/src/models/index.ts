@@ -91,3 +91,22 @@ export interface PendingChoice {
   question: string;
   choices: string[];
 }
+
+export interface TeamsConfig {
+  enabled: boolean;
+  botAppId: string;
+  botAppPassword: string;
+  channelId: string;
+  serviceUrl: string;
+  tenantId?: string;
+  ownerTeamsUserId: string;
+}
+
+export interface TeamsThread {
+  id: string;
+  sessionId: string;
+  teamsThreadId: string;
+  teamsChannelId: string;
+  currentOutputMessageId: string | null;
+  createdAt: string;
+}

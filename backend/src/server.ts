@@ -20,6 +20,10 @@ import toolsRoutes from './api/routes/tools.js';
 import settingsRoutes from './api/routes/settings.js';
 import { SessionMonitor } from './services/session-monitor.js';
 import { startPruningJob } from './services/pruning-job.js';
+import { TeamsIntegrationService } from './services/teams-integration.js';
+import { TeamsApiClient } from './services/teams-api-client.js';
+import { TeamsMessageBuffer } from './services/teams-message-buffer.js';
+import { outputStore } from './services/output-store.js';
 import type { Session, Repository } from './models/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -125,8 +129,22 @@ export async function startServer() {
   await monitor.start();
   startPruningJob();
 
-  process.on('SIGTERM', async () => { monitor?.stop(); await app.close(); process.exit(0); });
-  process.on('SIGINT', async () => { monitor?.stop(); await app.close(); process.exit(0); });
+  const teamsApiClient = new TeamsApiClient();
+  const teamsBuffer = new TeamsMessageBuffer(1000, app.log);
+  const teamsService = new TeamsIntegrationService(teamsApiClient, teamsBuffer, app.log);
+
+  monitor.on('session.created', (session: Session) => {
+    teamsService.onSessionCreated(session).catch(err => app.log.error({ err }, 'teams.session.created.error'));
+  });
+  monitor.on('session.ended', (session: Session) => {
+    teamsService.onSessionEnded(session).catch(err => app.log.error({ err }, 'teams.session.ended.error'));
+  });
+  outputStore.addOutputListener((sessionId, outputs) => {
+    teamsService.onSessionOutput(sessionId, outputs);
+  });
+
+  process.on('SIGTERM', async () => { teamsService.stop(); monitor?.stop(); await app.close(); process.exit(0); });
+  process.on('SIGINT', async () => { teamsService.stop(); monitor?.stop(); await app.close(); process.exit(0); });
 
   await app.listen({ port: config.port, host: '127.0.0.1' });
   app.log.info({ port: config.port }, 'Argus server started');
