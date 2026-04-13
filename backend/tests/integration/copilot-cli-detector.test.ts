@@ -199,6 +199,31 @@ updated_at: ${new Date().toISOString()}
     expect(mockClaimForSession).not.toHaveBeenCalled();
   });
 
+  it('preserves user-message summary across subsequent scans (does not reset to workspace.yaml value)', async () => {
+    const userMessageSummary = 'fix the login bug';
+
+    // Second scan: process is running, existing session has a user-message summary
+    // set by readNewLines after the first scan.
+    mockPsList.mockResolvedValueOnce([{ pid: testPid, name: 'copilot', ppid: 1 }]);
+    mockGetSession.mockReturnValueOnce({
+      id: testSessionId,
+      launchMode: null,
+      pid: testPid,
+      hostPid: null,
+      pidSource: 'lockfile' as const,
+      status: 'active',
+      summary: userMessageSummary,
+    });
+    mockClaimForSession.mockReturnValueOnce(null); // no PTY
+
+    const detector = new CopilotCliDetector(testDir);
+    const sessions = await detector.scan();
+    const session = sessions.find((s) => s.id === testSessionId);
+
+    // Summary must be preserved from DB, not reset to workspace.yaml value ("Test session")
+    expect(session?.summary).toBe(userMessageSummary);
+  });
+
   it('preserves launchMode=pty without re-claiming when alreadyClaimed=true and WS is still live', async () => {
     mockGetSession.mockReturnValueOnce({
       id: testSessionId,

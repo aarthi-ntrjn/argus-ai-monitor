@@ -106,7 +106,7 @@ export class CopilotCliDetector {
       startedAt: toIso(workspace.created_at),
       endedAt: status === 'ended' ? toIso(workspace.updated_at) : null,
       lastActivityAt: toIso(workspace.updated_at),
-      summary: workspace.summary ?? null,
+      summary: existingSession?.summary ?? workspace.summary ?? null,
       expiresAt: null,
       model: this.extractModelFromEventsFile(join(dirPath, 'events.jsonl')),
       reconciled: true,
