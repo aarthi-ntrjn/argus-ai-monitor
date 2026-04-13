@@ -7,7 +7,6 @@ import { useSettings } from '../../hooks/useSettings';
 import SessionPromptBar from '../SessionPromptBar/SessionPromptBar';
 import SessionMetaRow from '../SessionMetaRow/SessionMetaRow';
 import { useKillSession } from '../../hooks/useKillSession';
-import { useFocusSession } from '../../hooks/useFocusSession';
 import { KillSessionDialog } from '../KillSessionDialog/KillSessionDialog';
 
 interface Props {
@@ -35,7 +34,6 @@ function SessionCard({ session, selected, onSelect }: Props) {
   });
 
   const kill = useKillSession();
-  const focusSession = useFocusSession();
 
   const items = lastOutput?.items ?? [];
   const previewItem =
@@ -56,7 +54,7 @@ function SessionCard({ session, selected, onSelect }: Props) {
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect?.(session.id); } }}
     >
       {/* Header row */}
-      <SessionMetaRow session={session} showLink onKill={kill.requestKill} killPending={kill.isPending} onFocus={focusSession.focus} focusPending={focusSession.isPending} />
+      <SessionMetaRow session={session} showLink onKill={kill.requestKill} killPending={kill.isPending} />
 
       {/* Summary / topic */}
       {pendingChoice !== null ? (

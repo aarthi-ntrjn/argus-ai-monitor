@@ -253,31 +253,3 @@ describe('SessionCard — hook-aware pending choice (T016)', () => {
     await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
   });
 });
-
-describe('SessionCard — focus button', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
-
-  it('shows Focus button for active sessions with a PID', () => {
-    renderCard(makeSession({ status: 'active', pid: 1234 }));
-    expect(screen.getByLabelText('Focus terminal')).toBeInTheDocument();
-  });
-
-  it('shows Focus button for active sessions without a PID (disabled)', () => {
-    renderCard(makeSession({ status: 'active', pid: null }));
-    const btn = screen.getByLabelText('Focus terminal');
-    expect(btn).toBeDisabled();
-  });
-
-  it('does not show Focus button for ended sessions', () => {
-    renderCard(makeSession({ status: 'ended', pid: 1234 }));
-    expect(screen.queryByLabelText('Focus terminal')).toBeNull();
-  });
-
-  it('calls focusSession API when Focus button is clicked', async () => {
-    vi.mocked(api.focusSession).mockResolvedValue({ focused: true, pid: 1234 });
-    renderCard(makeSession({ status: 'active', pid: 1234 }));
-    const btn = screen.getByLabelText('Focus terminal');
-    fireEvent.click(btn);
-    await waitFor(() => expect(api.focusSession).toHaveBeenCalledWith('test-session-id'));
-  });
-});

@@ -41,50 +41,6 @@ function getProcessCommandLine(pid: number): string | null {
   }
 }
 
-export type FocusResult =
-  | { focused: true; pid: number }
-  | { focused: false; error: 'PROCESS_NOT_FOUND' | 'FOCUS_NOT_SUPPORTED' | 'FOCUS_FAILED'; message: string };
-
-export function focusProcess(pid: number): FocusResult {
-  const os = platform();
-  try {
-    if (os === 'win32') {
-      // WScript.Shell.AppActivate is more reliable than SetForegroundWindow for
-      // bringing a terminal to the front, as it bypasses the foreground lock.
-      // Falls back to ShowWindow+SetForegroundWindow for minimized windows.
-      const result = execSync(
-        `powershell -NoProfile -Command "$wshell = New-Object -ComObject wscript.shell; $activated = $wshell.AppActivate(${pid}); if (-not $activated) { Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class WinApi { [DllImport(\\"user32.dll\\")] public static extern bool SetForegroundWindow(IntPtr hWnd); [DllImport(\\"user32.dll\\")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow); }'; $proc = Get-Process -Id ${pid} -ErrorAction Stop; $hwnd = $proc.MainWindowHandle; [WinApi]::ShowWindow($hwnd, 9); [WinApi]::SetForegroundWindow($hwnd) }; exit 0"`,
-        { encoding: 'utf-8', timeout: 5000 }
-      );
-      void result;
-      return { focused: true, pid };
-    } else if (os === 'darwin') {
-      execSync(
-        `osascript -e 'tell application "System Events" to set frontmost of (first process whose unix id is ${pid}) to true'`,
-        { encoding: 'utf-8', timeout: 5000 }
-      );
-      return { focused: true, pid };
-    } else {
-      try {
-        execSync(`wmctrl -ia $(wmctrl -lp | awk -v p=${pid} '$3==p{print $1;exit}')`, { encoding: 'utf-8', timeout: 5000 });
-        return { focused: true, pid };
-      } catch {
-        try {
-          execSync(`xdotool search --pid ${pid} windowfocus --sync`, { encoding: 'utf-8', timeout: 5000 });
-          return { focused: true, pid };
-        } catch {
-          return { focused: false, error: 'FOCUS_NOT_SUPPORTED', message: 'wmctrl and xdotool are not available on this system' };
-        }
-      }
-    }
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes('Cannot find a process') || msg.includes('No process') || msg.includes('not found')) {
-      return { focused: false, error: 'PROCESS_NOT_FOUND', message: `Process ${pid} not found` };
-    }
-    return { focused: false, error: 'FOCUS_FAILED', message: msg };
-  }
-}
 
 /**
  * Check yolo mode by inspecting multiple PIDs (pid and hostPid).

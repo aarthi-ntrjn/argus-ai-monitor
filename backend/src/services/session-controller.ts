@@ -4,27 +4,9 @@ import { getSession, insertControlAction, updateControlAction } from '../db/data
 import { broadcast } from '../api/ws/event-dispatcher.js';
 import { validatePidOwnership } from './pid-validator.js';
 import { ptyRegistry } from './pty-registry.js';
-import { focusProcess } from './process-utils.js';
 import type { ControlAction } from '../models/index.js';
 
 export class SessionController {
-  async focusSession(sessionId: string): Promise<{ focused: true; pid: number } | { focused: false; error: string; message: string }> {
-    const session = getSession(sessionId);
-    if (!session) {
-      throw Object.assign(new Error(`Session ${sessionId} not found`), { code: 'NOT_FOUND' });
-    }
-    if (session.status === 'ended' || session.status === 'completed') {
-      throw Object.assign(new Error('Session already ended'), { code: 'CONFLICT' });
-    }
-
-    const targetPid = session.hostPid ?? session.pid;
-    if (!targetPid) {
-      throw Object.assign(new Error('Session has no PID available'), { code: 'PID_NOT_SET' });
-    }
-
-    return focusProcess(targetPid);
-  }
-
   async stopSession(sessionId: string): Promise<ControlAction> {
     console.log(`[stopSession] requested sessionId=${sessionId}`);
     const session = getSession(sessionId);

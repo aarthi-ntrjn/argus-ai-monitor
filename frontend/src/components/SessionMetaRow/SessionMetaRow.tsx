@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Moon, Play, ShieldOff, ExternalLink, Plug, Eye, Power, Focus } from 'lucide-react';
+import { Moon, Play, ShieldOff, ExternalLink, Plug, Eye, Power } from 'lucide-react';
 import type { Session } from '../../types';
 import { isInactive } from '../../utils/sessionUtils';
 import { useSettings } from '../../hooks/useSettings';
@@ -11,8 +11,6 @@ interface Props {
   showLink?: boolean;
   onKill?: (sessionId: string) => void;
   killPending?: boolean;
-  onFocus?: (sessionId: string) => void;
-  focusPending?: boolean;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -44,12 +42,10 @@ function claudeShortId(id: string): string {
   return id.match(/[0-9a-f]{8}-[0-9a-f]{4}/)?.[0].slice(0, 8) ?? id.slice(0, 8);
 }
 
-export default function SessionMetaRow({ session, showLink = false, onKill, killPending = false, onFocus, focusPending = false }: Props) {
+export default function SessionMetaRow({ session, showLink = false, onKill, killPending = false }: Props) {
   const [settings] = useSettings();
   const thresholdMs = settings.restingThresholdMinutes * 60_000;
   const isKillable = onKill && session.pid != null && session.status !== 'ended' && session.status !== 'completed';
-  const isActive = session.status !== 'ended' && session.status !== 'completed';
-  const hasPid = session.pid != null;
 
   return (
     <div className="flex justify-between items-start">
@@ -102,17 +98,6 @@ export default function SessionMetaRow({ session, showLink = false, onKill, kill
             aria-label="Kill session"
           >
             <Power size={14} aria-hidden="true" />
-          </button>
-        )}
-        {onFocus && isActive && (
-          <button
-            onClick={e => { e.stopPropagation(); onFocus(session.id); }}
-            disabled={focusPending || !hasPid}
-            title={hasPid ? 'Bring terminal to foreground' : 'No PID available'}
-            aria-label="Focus terminal"
-            className="icon-btn text-gray-400 hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <Focus size={14} aria-hidden="true" />
           </button>
         )}
       </div>
