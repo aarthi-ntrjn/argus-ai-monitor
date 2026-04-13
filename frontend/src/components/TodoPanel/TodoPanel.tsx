@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useTodos, useCreateTodo, useUpdateTodoText, useToggleTodo, useDeleteTodo } from '../../hooks/useTodos';
+import ToggleIconButton from '../ToggleIconButton';
 
 type RowId = string;
 
@@ -156,39 +157,21 @@ export default function TodoPanel() {
         </button>
         {!collapsed && (
           <div className="flex items-center gap-1">
-            <button
-              onClick={() => setWrapText(v => !v)}
-              aria-label={wrapText ? 'Single line' : 'Wrap text'}
-              aria-pressed={wrapText}
-              title={wrapText ? 'Single line' : 'Wrap text'}
-              className={`p-1 rounded transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400${wrapText ? 'text-blue-600 hover:text-blue-800' : 'text-gray-500 hover:text-gray-700'}`}
-            >
+            <ToggleIconButton pressed={wrapText} onToggle={() => setWrapText(v => !v)} label={wrapText ? 'Single line' : 'Wrap text'}>
               <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h10a3 3 0 010 6h-3m3-6l2 2-2 2" />
               </svg>
-            </button>
-            <button
-              onClick={() => setShowTimestamps(v => !v)}
-              aria-label={showTimestamps ? 'Hide timestamps' : 'Show timestamps'}
-              aria-pressed={showTimestamps}
-              title={showTimestamps ? 'Hide timestamps' : 'Show timestamps'}
-              className={`p-1 rounded transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400${showTimestamps ? 'text-blue-600 hover:text-blue-800' : 'text-gray-500 hover:text-gray-700'}`}
-            >
+            </ToggleIconButton>
+            <ToggleIconButton pressed={showTimestamps} onToggle={() => setShowTimestamps(v => !v)} label={showTimestamps ? 'Hide timestamps' : 'Show timestamps'}>
               <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-            </button>
-            <button
-              onClick={() => setShowDone(v => !v)}
-              aria-label={showDone ? 'Hide completed' : 'Show completed'}
-              aria-pressed={showDone}
-              title={showDone ? 'Hide completed' : 'Show completed'}
-              className={`p-1 rounded transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400${showDone ? 'text-blue-600 hover:text-blue-800' : 'text-gray-500 hover:text-gray-700'}`}
-            >
+            </ToggleIconButton>
+            <ToggleIconButton pressed={showDone} onToggle={() => setShowDone(v => !v)} label={showDone ? 'Hide completed' : 'Show completed'}>
               <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-            </button>
+            </ToggleIconButton>
           </div>
         )}
       </div>
@@ -232,10 +215,10 @@ export default function TodoPanel() {
                       aria-checked={done}
                       aria-label={`Mark "${todo.text}" as ${done ? 'incomplete' : 'complete'}`}
                       onClick={() => toggleTodo.mutate({ id: todo.id, done: !done })}
-                      className={`h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:border-green-500 ${
+                      className={`h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:border-blue-400 focus-visible:bg-blue-100 ${
                         done
-                          ? 'bg-white border-green-500 text-green-500'
-                          : 'border-gray-300 bg-white hover:border-green-400'
+                          ? 'bg-white border-blue-400 text-blue-400'
+                          : 'border-gray-300 bg-white hover:border-blue-400'
                       }`}
                     >
                       {done && (

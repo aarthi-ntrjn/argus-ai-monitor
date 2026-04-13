@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { addRepository, removeRepository, scanFolder, queryClient } from '../services/api';
+import { useQueryClient } from '@tanstack/react-query';
+import { addRepository, removeRepository, scanFolder } from '../services/api';
 import type { Repository } from '../types';
 
 const SKIP_REMOVE_CONFIRM_KEY = 'argus:skipRemoveConfirm';
@@ -33,6 +34,7 @@ export interface RepositoryManagement {
 }
 
 export function useRepositoryManagement(): RepositoryManagement {
+  const queryClient = useQueryClient();
   const [addError, setAddError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [scanning, setScanning] = useState(false);

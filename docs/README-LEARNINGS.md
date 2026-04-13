@@ -257,3 +257,9 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 **Why it was missed**: The auto-dismiss dialog change (removing the result state) made it more obvious because the user lands on the dashboard immediately. Before that, the result summary screen gave enough time for `refetchInterval` (5s) to eventually refresh the sessions. The missing invalidation was always there but masked by the polling interval.
 **How to prevent**: When invalidating related queries after a mutation, audit all query keys that depend on the same data. Repository and session data are tightly coupled: any mutation that changes repositories should also invalidate sessions. Add a helper or constant for related query groups.
 **Fix summary**: Added `await queryClient.invalidateQueries({ queryKey: ['sessions'] })` after the existing `['repositories']` invalidation in `handleFolderSubmit()` (`frontend/src/hooks/useRepositoryManagement.ts`). Added regression test verifying both query keys are invalidated.
+
+### Additional root causes discovered
+
+**Wrong QueryClient instance**: `useRepositoryManagement.ts` imported `queryClient` from `services/api.ts`, which is a SEPARATE `QueryClient` instance from the one in `App.tsx`'s `<QueryClientProvider>`. All `invalidateQueries` calls targeted the wrong instance, so `useQuery` subscribers never received the invalidation. This is the same class of bug as T109 (useTodos). Fix: replaced `import { queryClient }` with `useQueryClient()` hook from `@tanstack/react-query`.
+
+**Missing refetchInterval**: T095 added `refetchInterval: 5000` to both queries in DashboardPage, but a later performance commit (`1ace4cd`) removed all polling intervals in favor of WebSocket-only updates. Without polling, the only data refresh mechanism was WebSocket events, which depend on the backend's 5-second scan cycle. Fix: re-added `refetchInterval: 5000` to both `useQuery` calls as a safety net.

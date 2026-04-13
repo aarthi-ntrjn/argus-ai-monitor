@@ -9,6 +9,7 @@ import { useOnboarding } from '../hooks/useOnboarding';
 import { useRepositoryManagement } from '../hooks/useRepositoryManagement';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { Button } from '../components/Button';
+import Badge from '../components/Badge';
 import { SettingsPanel } from '../components/SettingsPanel';
 import { RemoveConfirmDialog } from '../components/RemoveConfirmDialog';
 import SessionCard from '../components/SessionCard/SessionCard';
@@ -75,11 +76,13 @@ export default function DashboardPage() {
   const { data: repos = [], isLoading: reposLoading, isError: reposError } = useQuery({
     queryKey: ['repositories'],
     queryFn: getRepositories,
+    refetchInterval: 5000,
   });
 
   const { data: sessions = [], isLoading: sessionsLoading, isError: sessionsError } = useQuery({
     queryKey: ['sessions'],
     queryFn: () => getSessions(),
+    refetchInterval: 5000,
   });
 
   const sessionsByRepo = useMemo(() => {
@@ -156,9 +159,9 @@ export default function DashboardPage() {
             <div className="flex justify-between items-center">
               <h2 className="text-lg md:text-xl font-semibold text-gray-900">{repo.name}</h2>
               <div className="flex items-center gap-2">
-                <span className="bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded font-medium">
+                <Badge>
                   {repo.sessions.length} session{repo.sessions.length !== 1 ? 's' : ''}
-                </span>
+                </Badge>
                 <LaunchDropdown repoPath={repo.path} />
                 <button
                   onClick={(e) => {
