@@ -37,9 +37,7 @@ function SessionCard({ session, selected, onSelect }: Props) {
 
   const items = lastOutput?.items ?? [];
   const previewItem =
-    [...items].reverse().find((i: import('../../types').SessionOutput) => i.type === 'tool_result') ??
-    [...items].reverse().find((i: import('../../types').SessionOutput) => i.type === 'message') ??
-    items[items.length - 1] ??
+    [...items].reverse().find((i: import('../../types').SessionOutput) => i.type === 'message' && i.role === 'assistant') ??
     null;
   const previewContent = previewItem?.content?.trim() ?? null;
   const isTerminated = session.status === 'ended' || session.status === 'completed';
