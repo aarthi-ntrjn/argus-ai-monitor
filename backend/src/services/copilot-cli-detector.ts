@@ -158,6 +158,11 @@ export class CopilotCliDetector {
       console.log(`[CopilotDetector] ptyRegistry already has sessionId=${sessionId} — marking pty`);
       launchMode = 'pty';
       resolvedPidSource = 'pty_registry';
+      const parkedPid = ptyRegistry.getClaimedPid(sessionId);
+      if (parkedPid != null) {
+        resolvedPid = parkedPid;
+        console.log(`[CopilotDetector] using parked resolved pid=${parkedPid} for sessionId=${sessionId}`);
+      }
     } else if (isRunning && existingSession == null) {
       console.log(`[CopilotDetector] isRunning + not claimed — trying claimForSession sessionId=${sessionId} repoPath="${repo.path}"`);
       const claimed = ptyRegistry.claimForSession(sessionId, repo.path);

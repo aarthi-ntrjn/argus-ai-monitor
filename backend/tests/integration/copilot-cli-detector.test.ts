@@ -24,10 +24,12 @@ vi.mock('../../src/db/database.js', () => ({
 
 const mockHas = vi.hoisted(() => vi.fn().mockReturnValue(false));
 const mockClaimForSession = vi.hoisted(() => vi.fn().mockReturnValue(null));
+const mockGetClaimedPid = vi.hoisted(() => vi.fn().mockReturnValue(null));
 vi.mock('../../src/services/pty-registry.js', () => ({
   ptyRegistry: {
     claimForSession: mockClaimForSession,
     has: mockHas,
+    getClaimedPid: mockGetClaimedPid,
   },
 }));
 
