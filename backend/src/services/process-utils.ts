@@ -11,7 +11,7 @@ const YOLO_FLAGS: Record<SessionType, string> = {
  * Inspect a running process's command line to detect yolo mode flags.
  * Returns true/false if the process was found, null if the command line could not be read.
  */
-export function detectYoloMode(pid: number, type: SessionType): boolean | null {
+function detectYoloMode(pid: number, type: SessionType): boolean | null {
   try {
     const cmdLine = getProcessCommandLine(pid);
     if (!cmdLine) return null;

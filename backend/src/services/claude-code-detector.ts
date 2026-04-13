@@ -1,15 +1,11 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'fs';
-import { open as fsOpen, stat as fsStat } from 'fs/promises';
 import { join, dirname, normalize } from 'path';
 import { homedir } from 'os';
-
-import chokidar, { type FSWatcher } from 'chokidar';
-import { getSession, upsertSession, updateSessionStatus, getRepositories, getRepositoryByPath } from '../db/database.js';
+import { getSession, upsertSession, updateSessionStatus, getRepositories, getRepositoryByPath } from '../db/database.js';
 import { ptyRegistry } from './pty-registry.js';
 import { ClaudeSessionRegistry } from './claude-session-registry.js';
-import { OutputStore } from './output-store.js';
+import { ClaudeJsonlWatcher } from './claude-jsonl-watcher.js';
 import { broadcast } from '../api/ws/event-dispatcher.js';
-import { parseClaudeJsonlLine, parseModel } from './claude-code-jsonl-parser.js';
 import { detectYoloModeFromPids } from './process-utils.js';
 import type { Session, Repository, PendingChoice } from '../models/index.js';
 
@@ -38,15 +34,13 @@ interface HookPayload {
 }
 
 export class ClaudeCodeDetector {
-  private outputStore = new OutputStore();
-  private watchers = new Map<string, FSWatcher>();
-  private filePositions = new Map<string, number>();
-  private sequenceCounters = new Map<string, number>();
+  private jsonlWatcher = new ClaudeJsonlWatcher();
   private pendingChoices = new Map<string, PendingChoice>();
 
   getPendingChoice(sessionId: string): PendingChoice | null {
     return this.pendingChoices.get(sessionId) ?? null;
   }
+
   injectHooks(): void {
     try {
       mkdirSync(dirname(CLAUDE_SETTINGS_PATH), { recursive: true });
@@ -60,8 +54,6 @@ export class ClaudeCodeDetector {
       // Remove Argus hook entries whose (event, matcher) pair is no longer in HOOK_EVENTS.
       // Also delete any malformed keys (e.g. '[object Object]' from object-as-key coercion).
       for (const event of Object.keys(settings.hooks)) {
-        // A valid hook event key must be a non-empty string of word characters only.
-        // Malformed keys (like '[object Object]') are always removed.
         if (!/^\w+$/.test(event)) {
           delete settings.hooks[event];
           changed = true;
@@ -70,7 +62,7 @@ export class ClaudeCodeDetector {
         const before = settings.hooks[event];
         const after = before.filter((entry) => {
           const isArgusEntry = entry.hooks?.some((h) => h.command === HOOK_COMMAND);
-          if (!isArgusEntry) return true; // keep non-Argus entries
+          if (!isArgusEntry) return true;
           return HOOK_EVENTS.some((he) => he.event === event && he.matcher === entry.matcher);
         });
         if (after.length !== before.length) {
@@ -79,7 +71,6 @@ export class ClaudeCodeDetector {
         }
       }
 
-      // Add hooks for current HOOK_EVENTS (skipping any already present)
       for (const { event, matcher } of HOOK_EVENTS) {
         if (!this.hasHook(settings, event, matcher)) {
           if (!settings.hooks[event]) settings.hooks[event] = [];
@@ -121,24 +112,14 @@ export class ClaudeCodeDetector {
   }
 
   // Claude names project dirs by replacing path separators (:, \, /) with hyphens.
-  // e.g. C:\source\argus → C--source-argus
-  // Encoding forward is deterministic; decoding back is lossy (hyphens in names are ambiguous).
   static projectDirName(repoPath: string): string {
     return repoPath.replace(/[:\\/]/g, '-');
-  }
-
-  private claudeProjectDirName(repoPath: string): string {
-    return ClaudeCodeDetector.projectDirName(repoPath);
   }
 
   async scanExistingSessions(): Promise<void> {
     const projectsDir = join(homedir(), '.claude', 'projects');
     if (!existsSync(projectsDir)) return;
 
-    // Read the session registry to know which sessions are actually alive.
-    // Only JSONL sessions with a matching registry entry (or already active
-    // in the DB) should be activated. Sessions without a registry entry
-    // have already exited.
     const registry = new ClaudeSessionRegistry();
     const registryEntries = registry.scanEntries();
     const liveSessionIds = new Set(registryEntries.map(e => e.sessionId));
@@ -151,10 +132,10 @@ export class ClaudeCodeDetector {
       );
 
       for (const repo of getRepositories()) {
-        const expectedDirName = this.claudeProjectDirName(repo.path).toLowerCase();
+        const expectedDirName = ClaudeCodeDetector.projectDirName(repo.path).toLowerCase();
         if (!projectDirNames.has(expectedDirName)) continue;
 
-        const projectDir = join(projectsDir, this.claudeProjectDirName(repo.path));
+        const projectDir = join(projectsDir, ClaudeCodeDetector.projectDirName(repo.path));
 
         let jsonlEntries: Array<{ id: string; path: string; mtime: Date }>;
         try {
@@ -172,17 +153,12 @@ export class ClaudeCodeDetector {
         if (jsonlEntries.length === 0) continue;
 
         for (const entry of jsonlEntries.slice(0, 5)) {
-          // Only activate sessions that have a live registry entry (process running)
-          // or are already active in the DB (e.g., PTY-launched sessions)
           const existing = getSession(entry.id);
           if (existing?.status === 'active') {
-            // Already active, just ensure watcher is running
             await this.activateFoundSession(entry.id, repo, null);
           } else if (liveSessionIds.has(entry.id)) {
-            // Registry says this session is alive
             await this.activateFoundSession(entry.id, repo, null);
           }
-          // else: no registry entry = process has exited, skip
         }
       }
     } catch { /* ignore */ }
@@ -199,84 +175,91 @@ export class ClaudeCodeDetector {
     const existing = getSession(session_id);
     const now = new Date().toISOString();
 
-    // SessionEnd means the session is ending. Mark it ended immediately
-    // instead of waiting for the next 5s poll cycle.
     if (hook_event_name === 'SessionEnd') {
-      if (existing) {
-        updateSessionStatus(session_id, 'ended', now);
-        this.closeSessionWatcher(session_id);
-        broadcast({ type: 'session.ended', timestamp: now, data: { ...existing, status: 'ended', endedAt: now } as unknown as Record<string, unknown> });
-      }
-      return;
+      return this.handleSessionEnd(existing, session_id, now);
     }
-
-    // PreToolUse/AskUserQuestion: store pending choice and broadcast to frontend
     if (hook_event_name === 'PreToolUse' && payload.tool_name === 'AskUserQuestion') {
-      if (!existing) return; // Only act on known sessions
-      const toolInput = payload.tool_input ?? {};
-      const firstQ = Array.isArray(toolInput.questions) && toolInput.questions.length > 0
-        ? toolInput.questions[0] as Record<string, unknown>
-        : null;
-      const question = typeof toolInput.question === 'string'
-        ? toolInput.question
-        : typeof firstQ?.question === 'string' ? firstQ.question : '';
-      const rawOptions: unknown[] = Array.isArray(toolInput.choices)
-        ? toolInput.choices
-        : Array.isArray(firstQ?.options) ? firstQ.options as unknown[] : [];
-      const choices = rawOptions.map((c) => {
-        if (typeof c === 'string') return c;
-        if (c && typeof c === 'object' && typeof (c as Record<string, unknown>).label === 'string') {
-          return (c as Record<string, unknown>).label as string;
-        }
-        return null;
-      }).filter((c): c is string => c !== null);
-      this.pendingChoices.set(session_id, { question, choices });
-      broadcast({ type: 'session.pending_choice', timestamp: now, data: { sessionId: session_id, question, choices } });
-      return;
+      return this.handlePreAskQuestion(session_id, existing, payload, now);
     }
-
-    // PostToolUse/AskUserQuestion: clear pending choice and broadcast resolution
     if (hook_event_name === 'PostToolUse' && payload.tool_name === 'AskUserQuestion') {
-      if (!existing) return; // Only act on known sessions
-      this.pendingChoices.delete(session_id);
-      broadcast({ type: 'session.pending_choice.resolved', timestamp: now, data: { sessionId: session_id } });
-      return;
+      return this.handlePostAskQuestion(session_id, existing, now);
     }
 
-    // If this is the first hook for this claude session, check whether argus launch
-    // is waiting for it. If so, claim the PTY connection and create the session as
-    // launchMode='pty' — no separate powershell session, just the real claude session.
     if (!existing) {
       const claimed = normalizedCwd ? ptyRegistry.claimForSession(session_id, normalizedCwd) : null;
       if (claimed) {
-        const yoloMode = detectYoloModeFromPids(claimed.pid, claimed.hostPid, 'claude-code');
-        const session: Session = {
-          id: session_id,
-          repositoryId: repo.id,
-          type: 'claude-code',
-          launchMode: 'pty',
-          pid: claimed.pid,
-          hostPid: claimed.hostPid,
-          pidSource: 'pty_registry',
-          status: 'active',
-          startedAt: now,
-          endedAt: null,
-          lastActivityAt: now,
-          summary: null,
-          expiresAt: null,
-          model: null,
-          reconciled: true,
-          yoloMode,
-        };
-        upsertSession(session);
-        broadcast({ type: 'session.created', timestamp: now, data: session as unknown as Record<string, unknown> });
-        await this.watchJsonlFile(session_id, repo.path);
-        return;
+        return this.createPtySession(session_id, repo, claimed, now);
       }
     }
 
+    this.upsertAndBroadcastSession(session_id, repo, existing, now);
+    await this.jsonlWatcher.watchFile(session_id, repo.path);
+  }
+
+  private handleSessionEnd(existing: Session | null, sessionId: string, now: string): void {
+    if (!existing) return;
+    updateSessionStatus(sessionId, 'ended', now);
+    this.jsonlWatcher.closeWatcher(sessionId);
+    broadcast({ type: 'session.ended', timestamp: now, data: { ...existing, status: 'ended', endedAt: now } as unknown as Record<string, unknown> });
+  }
+
+  private handlePreAskQuestion(sessionId: string, existing: Session | null, payload: HookPayload, now: string): void {
+    if (!existing) return;
+    const toolInput = payload.tool_input ?? {};
+    const firstQ = Array.isArray(toolInput.questions) && toolInput.questions.length > 0
+      ? toolInput.questions[0] as Record<string, unknown>
+      : null;
+    const question = typeof toolInput.question === 'string'
+      ? toolInput.question
+      : typeof firstQ?.question === 'string' ? firstQ.question : '';
+    const rawOptions: unknown[] = Array.isArray(toolInput.choices)
+      ? toolInput.choices
+      : Array.isArray(firstQ?.options) ? firstQ.options as unknown[] : [];
+    const choices = rawOptions.map((c) => {
+      if (typeof c === 'string') return c;
+      if (c && typeof c === 'object' && typeof (c as Record<string, unknown>).label === 'string') {
+        return (c as Record<string, unknown>).label as string;
+      }
+      return null;
+    }).filter((c): c is string => c !== null);
+    this.pendingChoices.set(sessionId, { question, choices });
+    broadcast({ type: 'session.pending_choice', timestamp: now, data: { sessionId, question, choices } });
+  }
+
+  private handlePostAskQuestion(sessionId: string, existing: Session | null, now: string): void {
+    if (!existing) return;
+    this.pendingChoices.delete(sessionId);
+    broadcast({ type: 'session.pending_choice.resolved', timestamp: now, data: { sessionId } });
+  }
+
+  private async createPtySession(sessionId: string, repo: Repository, claimed: { pid: number; hostPid: number | null }, now: string): Promise<void> {
+    const yoloMode = detectYoloModeFromPids(claimed.pid, claimed.hostPid, 'claude-code');
+    const session: Session = {
+      id: sessionId,
+      repositoryId: repo.id,
+      type: 'claude-code',
+      launchMode: 'pty',
+      pid: claimed.pid,
+      hostPid: claimed.hostPid,
+      pidSource: 'pty_registry',
+      status: 'active',
+      startedAt: now,
+      endedAt: null,
+      lastActivityAt: now,
+      summary: null,
+      expiresAt: null,
+      model: null,
+      reconciled: true,
+      yoloMode,
+    };
+    upsertSession(session);
+    broadcast({ type: 'session.created', timestamp: now, data: session as unknown as Record<string, unknown> });
+    await this.jsonlWatcher.watchFile(sessionId, repo.path);
+  }
+
+  private upsertAndBroadcastSession(sessionId: string, repo: Repository, existing: Session | null, now: string): void {
     const session: Session = existing ?? {
-      id: session_id,
+      id: sessionId,
       repositoryId: repo.id,
       type: 'claude-code',
       launchMode: null,
@@ -293,18 +276,14 @@ export class ClaudeCodeDetector {
       reconciled: true,
       yoloMode: null,
     };
-
     session.status = 'active';
     session.lastActivityAt = now;
-
     upsertSession(session);
     broadcast({
       type: existing ? 'session.updated' : 'session.created',
       timestamp: now,
       data: session as unknown as Record<string, unknown>,
     });
-
-    await this.watchJsonlFile(session_id, repo.path);
   }
 
   private async activateFoundSession(sessionId: string, repo: Repository, claudePid: number | null): Promise<void> {
@@ -312,42 +291,19 @@ export class ClaudeCodeDetector {
     const existingSession = getSession(sessionId);
 
     if (!existingSession) {
-      // Check whether argus launch is pending for this repo — claim it if so.
       const claimed = ptyRegistry.claimForSession(sessionId, repo.path);
       if (claimed) {
         console.log(`[ClaudeDetector] session activated via PTY claim sessionId=${sessionId} hostPid=${claimed.hostPid} pid=${claimed.pid}`);
-        const yoloMode = detectYoloModeFromPids(claimed.pid, claimed.hostPid, 'claude-code');
-        const session: Session = {
-          id: sessionId,
-          repositoryId: repo.id,
-          type: 'claude-code',
-          launchMode: 'pty',
-          pid: claimed.pid,
-          hostPid: claimed.hostPid,
-          pidSource: 'pty_registry',
-          status: 'active',
-          startedAt: now,
-          endedAt: null,
-          lastActivityAt: now,
-          summary: null,
-          expiresAt: null,
-          model: null,
-          reconciled: true,
-          yoloMode,
-        };
-        upsertSession(session);
-        await this.watchJsonlFile(sessionId, repo.path);
+        await this.createPtySession(sessionId, repo, claimed, now);
         return;
       }
     }
 
     if (existingSession?.status === 'active') {
-      await this.watchJsonlFile(sessionId, repo.path);
+      await this.jsonlWatcher.watchFile(sessionId, repo.path);
       return;
     }
-    // Close any stale watcher from before the session was deleted, so
-    // watchJsonlFile re-reads the full JSONL from the beginning.
-    this.closeSessionWatcher(sessionId);
+    this.jsonlWatcher.closeWatcher(sessionId);
     const base: Session = existingSession ?? {
       id: sessionId,
       repositoryId: repo.id,
@@ -368,108 +324,14 @@ export class ClaudeCodeDetector {
     };
     console.log(`[ClaudeDetector] session activated sessionId=${sessionId} pid=${claudePid}`);
     upsertSession({ ...base, status: 'active', endedAt: null, lastActivityAt: now, pid: claudePid });
-    await this.watchJsonlFile(sessionId, repo.path);
-  }
-
-  private async watchJsonlFile(sessionId: string, repoPath: string): Promise<void> {
-    if (this.watchers.has(sessionId)) return;
-    const jsonlPath = join(
-      homedir(), '.claude', 'projects',
-      this.claudeProjectDirName(repoPath),
-      `${sessionId}.jsonl`,
-    );
-    if (!existsSync(jsonlPath)) return;
-
-    this.filePositions.set(sessionId, 0);
-    this.sequenceCounters.set(sessionId, 0);
-    await this.readNewJsonlLines(sessionId, jsonlPath);
-
-    const watcher = chokidar.watch(jsonlPath, { persistent: false, usePolling: false });
-    watcher.on('change', () => { this.readNewJsonlLines(sessionId, jsonlPath).catch(() => {}); });
-    this.watchers.set(sessionId, watcher);
-  }
-
-  private async readNewJsonlLines(sessionId: string, filePath: string): Promise<void> {
-    try {
-      const { size: currentSize } = await fsStat(filePath);
-      const lastPos = this.filePositions.get(sessionId) ?? 0;
-      if (currentSize <= lastPos) return;
-
-      const fh = await fsOpen(filePath, 'r');
-      const buffer = Buffer.alloc(currentSize - lastPos);
-      await fh.read(buffer, 0, buffer.length, lastPos);
-      await fh.close();
-      this.filePositions.set(sessionId, currentSize);
-
-      const lines = buffer.toString('utf-8').split('\n').filter(l => l.trim());
-      let seq = this.sequenceCounters.get(sessionId) ?? 0;
-      const outputs = [];
-      let needsModel = !(getSession(sessionId)?.model);
-
-      for (const line of lines) {
-        seq++;
-        const items = parseClaudeJsonlLine(line, sessionId, seq);
-        outputs.push(...items);
-
-        if (needsModel) {
-          const model = parseModel(line);
-          if (model) {
-            const existing = getSession(sessionId);
-            if (existing) {
-              console.log(`[ClaudeDetector] model detected sessionId=${sessionId} model=${model}`);
-              const updated = { ...existing, model };
-              upsertSession(updated);
-              broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: updated as unknown as Record<string, unknown> });
-            }
-            needsModel = false;
-          }
-        }
-      }
-
-      this.sequenceCounters.set(sessionId, seq);
-      if (outputs.length > 0) {
-        this.outputStore.insertOutput(sessionId, outputs);
-
-        // Update lastActivityAt from the JSONL watcher — replaces PreToolUse/PostToolUse hooks
-        const now = new Date().toISOString();
-        const active = getSession(sessionId);
-        if (active) {
-          const updated = { ...active, lastActivityAt: now };
-          upsertSession(updated);
-          broadcast({ type: 'session.updated', timestamp: now, data: updated as unknown as Record<string, unknown> });
-        }
-      }
-
-      // Update summary with the most recent user prompt in this batch
-      const lastUserMsg = [...outputs].reverse().find(o => o.role === 'user' && o.type === 'message');
-      if (lastUserMsg?.content) {
-        const existing = getSession(sessionId);
-        if (existing) {
-          const summary = lastUserMsg.content.slice(0, 120);
-          if (existing.summary !== summary) {
-            console.log(`[ClaudeDetector] summary updated sessionId=${sessionId}`);
-            const updated = { ...existing, summary };
-            upsertSession(updated);
-            broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: updated as unknown as Record<string, unknown> });
-          }
-        }
-      }
-    } catch { /* ignore */ }
+    await this.jsonlWatcher.watchFile(sessionId, repo.path);
   }
 
   closeSessionWatcher(sessionId: string): void {
-    this.watchers.get(sessionId)?.close().catch(() => { /* ignore */ });
-    this.watchers.delete(sessionId);
-    this.filePositions.delete(sessionId);
-    this.sequenceCounters.delete(sessionId);
+    this.jsonlWatcher.closeWatcher(sessionId);
   }
 
   stopWatchers(): void {
-    for (const watcher of this.watchers.values()) {
-      watcher.close().catch(() => { /* ignore */ });
-    }
-    this.watchers.clear();
-    this.filePositions.clear();
-    this.sequenceCounters.clear();
+    this.jsonlWatcher.stopAll();
   }
 }

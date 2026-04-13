@@ -9,7 +9,7 @@ import { getSessions, getSession, upsertSession, updateSessionStatus, getReposit
 import { broadcast } from '../api/ws/event-dispatcher.js';
 import { getCurrentBranch } from './repository-scanner.js';
 import { detectYoloModeFromPids } from './process-utils.js';
-import type { Session, Repository } from '../models/index.js';
+import type { Session, Repository, ClaudeSessionRegistryEntry } from '../models/index.js';
 
 export interface SessionMonitorEvents {
   'session.created': (session: Session) => void;
@@ -200,58 +200,62 @@ export class SessionMonitor extends EventEmitter {
 
     for (const entry of entries) {
       currentPids.add(entry.pid);
-
-      const existing = getSession(entry.sessionId);
-      if (existing) {
-        // Skip PID assignment if already claimed by PTY registry (PTY takes precedence)
-        if (existing.pidSource === 'pty_registry') continue;
-
-        const pidChanged = existing.pid !== entry.pid || existing.pidSource !== 'session_registry';
-        // Re-detect yolo mode if still unknown (null) — WMI may now have the process info
-        const yoloMode = existing.yoloMode !== null
-          ? existing.yoloMode
-          : detectYoloModeFromPids(entry.pid, null, 'claude-code');
-        const yoloResolved = existing.yoloMode === null && yoloMode !== null;
-
-        if (pidChanged || yoloResolved) {
-          console.log(`[ClaudeRegistry] pid assigned sessionId=${entry.sessionId} pid=${entry.pid} (was ${existing.pid}) yoloMode=${yoloMode}`);
-          const updated = { ...existing, pid: entry.pid, pidSource: 'session_registry' as const, yoloMode };
-          upsertSession(updated);
-          broadcast({ type: 'session.updated', timestamp: now, data: updated as unknown as Record<string, unknown> });
-        }
-      } else {
-        // Session not in DB yet. Check if cwd matches a registered repo.
-        const repo = getRepositoryByPath(entry.cwd);
-        if (!repo) continue; // Unregistered repo, ignore
-
-        console.log(`[ClaudeRegistry] session created sessionId=${entry.sessionId} pid=${entry.pid} cwd="${entry.cwd}"`);
-        const session: Session = {
-          id: entry.sessionId,
-          repositoryId: repo.id,
-          type: 'claude-code',
-          launchMode: null,
-          pid: entry.pid,
-          hostPid: null,
-          pidSource: 'session_registry',
-          status: 'active',
-          startedAt: new Date(entry.startedAt).toISOString(),
-          endedAt: null,
-          lastActivityAt: now,
-          summary: null,
-          expiresAt: null,
-          model: null,
-          reconciled: true,
-          yoloMode: entry.pid ? detectYoloModeFromPids(entry.pid, null, 'claude-code') : null,
-        };
-        upsertSession(session);
-        broadcast({ type: 'session.created', timestamp: now, data: session as unknown as Record<string, unknown> });
-      }
+      this.reconcileRegistryEntry(entry, now);
     }
 
-    // Detect disappeared registry files: PIDs we saw last cycle but not this cycle
+    this.endDisappearedSessions(currentPids, now);
+    this.previousRegistryPids = currentPids;
+  }
+
+  private reconcileRegistryEntry(entry: ClaudeSessionRegistryEntry, now: string): void {
+    const existing = getSession(entry.sessionId);
+    if (existing) {
+      if (existing.pidSource === 'pty_registry') return;
+      const pidChanged = existing.pid !== entry.pid || existing.pidSource !== 'session_registry';
+      const yoloMode = existing.yoloMode !== null
+        ? existing.yoloMode
+        : detectYoloModeFromPids(entry.pid, null, 'claude-code');
+      const yoloResolved = existing.yoloMode === null && yoloMode !== null;
+      if (pidChanged || yoloResolved) {
+        console.log(`[ClaudeRegistry] pid assigned sessionId=${entry.sessionId} pid=${entry.pid} (was ${existing.pid}) yoloMode=${yoloMode}`);
+        const updated = { ...existing, pid: entry.pid, pidSource: 'session_registry' as const, yoloMode };
+        upsertSession(updated);
+        broadcast({ type: 'session.updated', timestamp: now, data: updated as unknown as Record<string, unknown> });
+      }
+    } else {
+      this.createSessionFromRegistryEntry(entry, now);
+    }
+  }
+
+  private createSessionFromRegistryEntry(entry: ClaudeSessionRegistryEntry, now: string): void {
+    const repo = getRepositoryByPath(entry.cwd);
+    if (!repo) return;
+    console.log(`[ClaudeRegistry] session created sessionId=${entry.sessionId} pid=${entry.pid} cwd="${entry.cwd}"`);
+    const session: Session = {
+      id: entry.sessionId,
+      repositoryId: repo.id,
+      type: 'claude-code',
+      launchMode: null,
+      pid: entry.pid,
+      hostPid: null,
+      pidSource: 'session_registry',
+      status: 'active',
+      startedAt: new Date(entry.startedAt).toISOString(),
+      endedAt: null,
+      lastActivityAt: now,
+      summary: null,
+      expiresAt: null,
+      model: null,
+      reconciled: true,
+      yoloMode: entry.pid ? detectYoloModeFromPids(entry.pid, null, 'claude-code') : null,
+    };
+    upsertSession(session);
+    broadcast({ type: 'session.created', timestamp: now, data: session as unknown as Record<string, unknown> });
+  }
+
+  private endDisappearedSessions(currentPids: Set<number>, now: string): void {
     for (const oldPid of this.previousRegistryPids) {
       if (currentPids.has(oldPid)) continue;
-      // Find sessions that had this PID via session_registry and are still active
       const activeSessions = getSessions({ status: 'active', type: 'claude-code' });
       for (const session of activeSessions) {
         if (session.pid === oldPid && session.pidSource === 'session_registry') {
@@ -262,8 +266,6 @@ export class SessionMonitor extends EventEmitter {
         }
       }
     }
-
-    this.previousRegistryPids = currentPids;
   }
 
   private async runScan(): Promise<void> {
