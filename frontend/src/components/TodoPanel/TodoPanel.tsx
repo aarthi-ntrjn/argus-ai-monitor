@@ -121,7 +121,7 @@ export default function TodoPanel() {
 
   const [showDone, setShowDone] = useState(true);
   const [showTimestamps, setShowTimestamps] = useState(true);
-  const [wrapText, setWrapText] = useState(true);
+  const [wrapText, setWrapText] = useState(false);
 
   const reversedTodos = useMemo(
     () => [...todos].reverse().filter(todo => showDone || !todo.done),
