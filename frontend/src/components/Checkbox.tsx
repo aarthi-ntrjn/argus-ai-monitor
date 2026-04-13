@@ -1,35 +1,46 @@
-import { forwardRef, type InputHTMLAttributes } from 'react';
+import { type ChangeEvent } from 'react';
 
-interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
+interface CheckboxProps {
+  checked?: boolean;
+  onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
   label?: string;
+  className?: string;
+  'aria-label'?: string;
 }
 
-export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
-  ({ label, className = '', id, ...props }, ref) => {
-    const inputId = id ?? (label ? `cb-${label.replace(/\s+/g, '-').toLowerCase()}` : undefined);
+export function Checkbox({ checked = false, onChange, label, className = '', 'aria-label': ariaLabel }: CheckboxProps) {
+  const handleClick = () => {
+    if (!onChange) return;
+    const syntheticEvent = { target: { checked: !checked } } as ChangeEvent<HTMLInputElement>;
+    onChange(syntheticEvent);
+  };
 
-    const input = (
-      <input
-        ref={ref}
-        type="checkbox"
-        id={inputId}
-        className={`h-4 w-4 rounded-sm border border-gray-300 text-blue-400 cursor-pointer
-          focus:ring-1 focus:ring-blue-400 focus:ring-offset-0
-          checked:border-blue-400 checked:bg-blue-400
-          ${className}`}
-        {...props}
-      />
-    );
+  const checkbox = (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      aria-label={ariaLabel ?? label}
+      onClick={handleClick}
+      className={`h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center transition-colors cursor-pointer
+        focus-visible:outline-none focus-visible:border-blue-400 focus-visible:bg-blue-100
+        ${checked ? 'bg-white border-blue-400 text-blue-400' : 'border-gray-300 bg-white hover:border-blue-400'}
+        ${className}`}
+    >
+      {checked && (
+        <svg aria-hidden="true" viewBox="0 0 10 10" fill="none" className="h-2.5 w-2.5">
+          <path d="M1.5 5.5l2.5 2.5 4.5-5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
+    </button>
+  );
 
-    if (!label) return input;
+  if (!label) return checkbox;
 
-    return (
-      <label htmlFor={inputId} className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
-        {input}
-        {label}
-      </label>
-    );
-  },
-);
-
-Checkbox.displayName = 'Checkbox';
+  return (
+    <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none" onClick={e => e.preventDefault()}>
+      {checkbox}
+      <span onClick={handleClick}>{label}</span>
+    </label>
+  );
+}
