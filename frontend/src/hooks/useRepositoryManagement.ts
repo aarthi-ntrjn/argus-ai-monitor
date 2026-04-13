@@ -1,21 +1,13 @@
 import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { addRepository, removeRepository, scanFolder } from '../services/api';
+import { addRepository, removeRepository, scanFolder, queryClient } from '../services/api';
 import type { Repository } from '../types';
 
 const SKIP_REMOVE_CONFIRM_KEY = 'argus:skipRemoveConfirm';
 
-export interface ScanResult {
-  added: number;
-  failed: number;
-  total: number;
-}
-
 export interface RepositoryManagement {
   addError: string | null;
+  addInfo: string | null;
   adding: boolean;
-  scanning: boolean;
-  scanResult: ScanResult | null;
   showFolderInput: boolean;
   folderInputPath: string;
   removeConfirmId: string | null;
@@ -28,38 +20,29 @@ export interface RepositoryManagement {
   handleFolderSubmit: (repos: Repository[]) => Promise<void>;
   handleRemoveRepoById: (id: string) => Promise<void>;
   handleRemoveRepo: () => Promise<void>;
-  dismissDialog: () => void;
-  resetScanState: () => void;
+  cancelFolderInput: () => void;
   clearAddError: () => void;
+  clearAddInfo: () => void;
 }
 
 export function useRepositoryManagement(): RepositoryManagement {
-  const queryClient = useQueryClient();
   const [addError, setAddError] = useState<string | null>(null);
+  const [addInfo, setAddInfo] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
-  const [scanning, setScanning] = useState(false);
-  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [showFolderInput, setShowFolderInput] = useState(false);
   const [folderInputPath, setFolderInputPath] = useState('');
   const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
   const [skipConfirm, setSkipConfirmRaw] = useState(() => localStorage.getItem(SKIP_REMOVE_CONFIRM_KEY) === 'true');
 
-  const dismissDialog = () => {
-    setShowFolderInput(false);
-    setFolderInputPath('');
-    setScanResult(null);
-    setAddError(null);
-  };
-
-  const resetScanState = () => {
-    setAddError(null);
-    setScanResult(null);
+  const showInfo = (msg: string) => {
+    setAddInfo(msg);
+    setTimeout(() => setAddInfo(null), 5000);
   };
 
   const handleAddRepo = () => {
     setAddError(null);
-    setScanResult(null);
+    setAddInfo(null);
     setFolderInputPath('');
     setShowFolderInput(true);
   };
@@ -67,17 +50,16 @@ export function useRepositoryManagement(): RepositoryManagement {
   const handleFolderSubmit = async (repos: Repository[]) => {
     const folderPath = folderInputPath.trim();
     if (!folderPath) return;
+    setShowFolderInput(false);
     setAddError(null);
-    setScanResult(null);
-    setScanning(true);
+    setAddInfo(null);
     setAdding(true);
     try {
       const found = await scanFolder(folderPath);
       const registeredPaths = new Set(repos.map(r => r.path));
       const newRepos = found.filter(r => !registeredPaths.has(r.path));
       if (newRepos.length === 0) {
-        setScanResult({ added: 0, failed: 0, total: 0 });
-        setShowFolderInput(false);
+        showInfo('No new git repositories found in the specified folder.');
         return;
       }
       let added = 0;
@@ -91,14 +73,15 @@ export function useRepositoryManagement(): RepositoryManagement {
         }
       }
       await queryClient.invalidateQueries({ queryKey: ['repositories'] });
-      await queryClient.invalidateQueries({ queryKey: ['sessions'] });
-      setScanResult({ added, failed, total: newRepos.length });
-      setShowFolderInput(false);
+      if (failed === 0) {
+        showInfo(`Added ${added} repositor${added === 1 ? 'y' : 'ies'}.`);
+      } else {
+        setAddError(`Added ${added} of ${newRepos.length} repositories (${failed} failed).`);
+      }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to scan folder';
+      const msg = err instanceof Error ? err.message : 'Failed to add repository';
       setAddError(msg);
     } finally {
-      setScanning(false);
       setAdding(false);
     }
   };
@@ -122,9 +105,8 @@ export function useRepositoryManagement(): RepositoryManagement {
 
   return {
     addError,
+    addInfo,
     adding,
-    scanning,
-    scanResult,
     showFolderInput,
     folderInputPath,
     removeConfirmId,
@@ -137,8 +119,8 @@ export function useRepositoryManagement(): RepositoryManagement {
     handleFolderSubmit,
     handleRemoveRepoById,
     handleRemoveRepo: () => handleRemoveRepoById(removeConfirmId!),
-    dismissDialog,
-    resetScanState,
+    cancelFolderInput: () => { setShowFolderInput(false); setFolderInputPath(''); },
     clearAddError: () => setAddError(null),
+    clearAddInfo: () => setAddInfo(null),
   };
 }

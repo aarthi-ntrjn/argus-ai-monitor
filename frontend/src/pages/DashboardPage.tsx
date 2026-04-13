@@ -45,11 +45,11 @@ export default function DashboardPage() {
   const [catchUpRun, setCatchUpRun] = useState(false);
 
   const {
-    addError, adding, scanning, showFolderInput, folderInputPath,
+    addError, addInfo, adding, showFolderInput, folderInputPath,
     removeConfirmId, removing, skipConfirm,
     setFolderInputPath, setRemoveConfirmId, setSkipConfirm,
     handleAddRepo, handleFolderSubmit, handleRemoveRepoById, handleRemoveRepo,
-    dismissDialog, clearAddError,
+    cancelFolderInput, clearAddError, clearAddInfo,
   } = useRepositoryManagement();
 
   // Auto-launch for first-time users
@@ -276,7 +276,14 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {addError && !showFolderInput && (
+        {addInfo && (
+          <div role="status" aria-live="polite" className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-green-700 text-sm flex justify-between">
+            <span>{addInfo}</span>
+            <button onClick={clearAddInfo} aria-label="Dismiss notification" className="ml-4 font-bold">&times;</button>
+          </div>
+        )}
+
+        {addError && (
           <div role="alert" className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm flex justify-between">
             <span>{addError}</span>
             <button onClick={clearAddError} aria-label="Dismiss error" className="ml-4 font-bold">&times;</button>
@@ -333,39 +340,27 @@ export default function DashboardPage() {
       )}
 
       {showFolderInput && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="folder-dialog-title"
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-          onKeyDown={e => { if (e.key === 'Escape') dismissDialog(); }}
-        >
+        <div role="dialog" aria-modal="true" aria-labelledby="folder-dialog-title" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
             <h2 id="folder-dialog-title" className="text-lg font-semibold mb-1">Add Repositories</h2>
             <p className="text-gray-500 text-sm mb-4">Enter a root folder path to scan for git repositories.</p>
-            {addError && (
-              <div role="alert" className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
-                {addError}
-              </div>
-            )}
             <input
               autoFocus
               type="text"
               value={folderInputPath}
               onChange={e => setFolderInputPath(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !scanning) handleFolderSubmit(repos); if (e.key === 'Escape') dismissDialog(); }}
-              disabled={scanning}
+              onKeyDown={e => { if (e.key === 'Enter') handleFolderSubmit(repos); if (e.key === 'Escape') cancelFolderInput(); }}
               placeholder="e.g. C:\source or /home/user/projects"
               aria-label="Repository folder path"
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50"
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-blue-400"
             />
             <div className="flex justify-end gap-2 mt-4">
-              <Button variant="ghost" onClick={dismissDialog}>Cancel</Button>
+              <Button variant="ghost" onClick={cancelFolderInput}>Cancel</Button>
               <Button
                 onClick={() => handleFolderSubmit(repos)}
-                disabled={!folderInputPath.trim() || scanning}
+                disabled={!folderInputPath.trim()}
               >
-                {scanning ? 'Adding...' : 'Scan & Add'}
+                Scan &amp; Add
               </Button>
             </div>
           </div>

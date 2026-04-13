@@ -30,13 +30,13 @@ vi.mock('../hooks/useOnboarding', () => ({
 
 vi.mock('../hooks/useRepositoryManagement', () => ({
   useRepositoryManagement: vi.fn().mockReturnValue({
-    addError: null, adding: false, scanning: false, scanResult: null,
+    addError: null, addInfo: null, adding: false,
     showFolderInput: false, folderInputPath: '',
     removeConfirmId: null, removing: false, skipConfirm: false,
     setFolderInputPath: vi.fn(), setRemoveConfirmId: vi.fn(), setSkipConfirm: vi.fn(),
     handleAddRepo: vi.fn(), handleFolderSubmit: vi.fn(),
     handleRemoveRepoById: vi.fn(), handleRemoveRepo: vi.fn(),
-    dismissDialog: vi.fn(), resetScanState: vi.fn(), clearAddError: vi.fn(),
+    cancelFolderInput: vi.fn(), clearAddError: vi.fn(), clearAddInfo: vi.fn(),
   }),
 }));
 
