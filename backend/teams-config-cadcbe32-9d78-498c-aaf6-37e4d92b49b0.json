@@ -1,8 +1,0 @@
-{
-  "enabled": false,
-  "botAppId": "app-id",
-  "botAppPassword": "original-secret",
-  "channelId": "ch",
-  "serviceUrl": "https://smba.trafficmanager.net",
-  "ownerTeamsUserId": "owner"
-}
