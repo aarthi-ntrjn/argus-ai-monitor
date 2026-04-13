@@ -49,10 +49,14 @@ export function focusProcess(pid: number): FocusResult {
   const os = platform();
   try {
     if (os === 'win32') {
-      execSync(
-        `powershell -NoProfile -Command "Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class WinApi { [DllImport(\\"user32.dll\\")] public static extern bool SetForegroundWindow(IntPtr hWnd); }'; $proc = Get-Process -Id ${pid} -ErrorAction Stop; [WinApi]::SetForegroundWindow($proc.MainWindowHandle)"`,
+      // WScript.Shell.AppActivate is more reliable than SetForegroundWindow for
+      // bringing a terminal to the front, as it bypasses the foreground lock.
+      // Falls back to ShowWindow+SetForegroundWindow for minimized windows.
+      const result = execSync(
+        `powershell -NoProfile -Command "$wshell = New-Object -ComObject wscript.shell; $activated = $wshell.AppActivate(${pid}); if (-not $activated) { Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class WinApi { [DllImport(\\"user32.dll\\")] public static extern bool SetForegroundWindow(IntPtr hWnd); [DllImport(\\"user32.dll\\")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow); }'; $proc = Get-Process -Id ${pid} -ErrorAction Stop; $hwnd = $proc.MainWindowHandle; [WinApi]::ShowWindow($hwnd, 9); [WinApi]::SetForegroundWindow($hwnd) }; exit 0"`,
         { encoding: 'utf-8', timeout: 5000 }
       );
+      void result;
       return { focused: true, pid };
     } else if (os === 'darwin') {
       execSync(
