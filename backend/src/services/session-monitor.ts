@@ -211,7 +211,9 @@ export class SessionMonitor extends EventEmitter {
   private reconcileRegistryEntry(entry: ClaudeSessionRegistryEntry, now: string): void {
     const existing = getSession(entry.sessionId);
     if (existing) {
-      if (existing.pidSource === 'pty_registry') return;
+      // Skip if the PTY registry already resolved a real PID.
+      // If pid is null, the Windows resolver failed — allow the session registry to backfill it.
+      if (existing.pidSource === 'pty_registry' && existing.pid !== null) return;
       const pidChanged = existing.pid !== entry.pid || existing.pidSource !== 'session_registry';
       const yoloMode = existing.yoloMode !== null
         ? existing.yoloMode
