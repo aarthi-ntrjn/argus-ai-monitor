@@ -279,3 +279,14 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 **Why it was missed**: In the common desktop case the `TodoPanel` is always mounted while the dashboard is visible, so remount-triggered resets were not exercised. Mobile tab switching and panel hide/show are less frequently tested paths.
 **How to prevent**: Any UI toggle that controls a user preference (not ephemeral interaction state) should be initialised from `localStorage` and written back on change. The test suite should clear `localStorage` in a top-level `beforeEach` so that localStorage-backed state does not bleed between test cases.
 **Fix summary**: Initialised each of the three toggle states from `localStorage` (keys `argus.todo.showDone`, `argus.todo.showTimestamps`, `argus.todo.wrapText`) with `useEffect` writes on change, in `frontend/src/components/TodoPanel/TodoPanel.tsx`. Added `localStorage.clear()` to the global `beforeEach` in `TodoPanel.test.tsx` to prevent inter-test contamination.
+
+---
+
+## T118 — Kill session toggles output stream visibility
+
+**Date**: 2026-04-13
+**Symptom**: Clicking the "Kill session" button on a session card (or clicking Confirm/Cancel in the resulting dialog) unexpectedly toggled the inline output stream pane open or closed on the dashboard.
+**Root cause**: `KillSessionDialog` uses `createPortal` to render its backdrop and buttons to `document.body`, which correctly removes it from the DOM hierarchy. However, React's synthetic event system propagates events through the _virtual_ component tree, not the DOM tree. Since `KillSessionDialog` is a React child of `SessionCard`, any click inside the dialog bubbles up to `SessionCard`'s outer `div` click handler (`onClick={() => onSelect?.(session.id)}`), which calls `setSelectedSessionId` in `DashboardPage` and toggles the output pane. The kill button itself already called `e.stopPropagation()`, but the dialog's backdrop `onClick` did not.
+**Why it was missed**: The behaviour of React portal event bubbling is non-obvious. The DOM shows the dialog appended to `<body>`, so it is not visually a descendant of the card. Reviewers and tests did not exercise the click-propagation path through the React tree for portal content.
+**How to prevent**: Whenever a component uses `createPortal`, add `e.stopPropagation()` to the outermost rendered element's click handler. This contains portal clicks within the portal and prevents them from leaking into whichever React ancestor happens to render the portal component. Write a regression test that wraps the portal component in a div with a `parentClick` spy and asserts the spy is not called after user interactions inside the portal.
+**Fix summary**: Added `e.stopPropagation()` to the backdrop div's `onClick` handler in `frontend/src/components/KillSessionDialog/KillSessionDialog.tsx`.
