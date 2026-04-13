@@ -18,6 +18,7 @@ import todosRoutes from './api/routes/todos.js';
 import launcherRoutes from './api/routes/launcher.js';
 import toolsRoutes from './api/routes/tools.js';
 import settingsRoutes from './api/routes/settings.js';
+import teamsWebhookRoutes from './api/routes/teams-webhook.js';
 import { SessionMonitor } from './services/session-monitor.js';
 import { startPruningJob } from './services/pruning-job.js';
 import { TeamsIntegrationService } from './services/teams-integration.js';
@@ -95,6 +96,7 @@ export async function buildServer() {
   await app.register(launcherRoutes);
   await app.register(toolsRoutes);
   await app.register(settingsRoutes);
+  await app.register(teamsWebhookRoutes);
 
   app.register(async (fastify) => {
     fastify.get('/ws', { websocket: true }, (socket) => {
