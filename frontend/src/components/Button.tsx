@@ -11,7 +11,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const baseClasses = 'transition-colors focus-visible:outline-none focus-visible:ring-1';
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: 'bg-blue-500 text-white rounded hover:bg-blue-700 focus-visible:bg-blue-700 disabled:opacity-40 focus-visible:ring-blue-400',
+  primary: 'bg-blue-400 text-white rounded hover:bg-blue-700 focus-visible:bg-blue-700 disabled:opacity-40 focus-visible:ring-blue-400',
   danger: 'bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 focus-visible:ring-red-400',
   ghost: 'text-gray-600 hover:text-gray-800 disabled:opacity-50 focus-visible:ring-blue-400',
   outline: 'text-gray-600 border border-gray-300 rounded hover:bg-gray-50 focus-visible:ring-blue-400',
