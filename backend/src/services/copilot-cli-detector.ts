@@ -115,7 +115,7 @@ export class CopilotCliDetector {
 
   private resolvePtyLinkage(
     sessionId: string,
-    existingSession: Session | null,
+    existingSession: Session | null | undefined,
     repo: { path: string },
     pid: number | null,
     isRunning: boolean,

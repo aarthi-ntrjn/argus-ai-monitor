@@ -196,14 +196,14 @@ export class ClaudeCodeDetector {
     await this.jsonlWatcher.watchFile(session_id, repo.path);
   }
 
-  private handleSessionEnd(existing: Session | null, sessionId: string, now: string): void {
+  private handleSessionEnd(existing: Session | null | undefined, sessionId: string, now: string): void {
     if (!existing) return;
     updateSessionStatus(sessionId, 'ended', now);
     this.jsonlWatcher.closeWatcher(sessionId);
     broadcast({ type: 'session.ended', timestamp: now, data: { ...existing, status: 'ended', endedAt: now } as unknown as Record<string, unknown> });
   }
 
-  private handlePreAskQuestion(sessionId: string, existing: Session | null, payload: HookPayload, now: string): void {
+  private handlePreAskQuestion(sessionId: string, existing: Session | null | undefined, payload: HookPayload, now: string): void {
     if (!existing) return;
     const toolInput = payload.tool_input ?? {};
     const firstQ = Array.isArray(toolInput.questions) && toolInput.questions.length > 0
@@ -226,13 +226,13 @@ export class ClaudeCodeDetector {
     broadcast({ type: 'session.pending_choice', timestamp: now, data: { sessionId, question, choices } });
   }
 
-  private handlePostAskQuestion(sessionId: string, existing: Session | null, now: string): void {
+  private handlePostAskQuestion(sessionId: string, existing: Session | null | undefined, now: string): void {
     if (!existing) return;
     this.pendingChoices.delete(sessionId);
     broadcast({ type: 'session.pending_choice.resolved', timestamp: now, data: { sessionId } });
   }
 
-  private async createPtySession(sessionId: string, repo: Repository, claimed: { pid: number; hostPid: number | null }, now: string): Promise<void> {
+  private async createPtySession(sessionId: string, repo: Repository, claimed: { pid: number | null; hostPid: number }, now: string): Promise<void> {
     const yoloMode = detectYoloModeFromPids(claimed.pid, claimed.hostPid, 'claude-code');
     const session: Session = {
       id: sessionId,
@@ -257,7 +257,7 @@ export class ClaudeCodeDetector {
     await this.jsonlWatcher.watchFile(sessionId, repo.path);
   }
 
-  private upsertAndBroadcastSession(sessionId: string, repo: Repository, existing: Session | null, now: string): void {
+  private upsertAndBroadcastSession(sessionId: string, repo: Repository, existing: Session | null | undefined, now: string): void {
     const session: Session = existing ?? {
       id: sessionId,
       repositoryId: repo.id,
