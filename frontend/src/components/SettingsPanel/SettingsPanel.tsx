@@ -133,7 +133,7 @@ export function SettingsPanel({ settings, onToggle, onUpdateThreshold, onRestart
               onClick={handleReset}
               aria-label="Reset resting threshold to default"
               title="Reset to default (20 min, max 60 min)"
-              className="text-gray-400 hover:text-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded-sm"
+              className="text-gray-500 hover:text-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded-sm"
             >
               <RotateCcw size={12} aria-hidden="true" />
             </button>
