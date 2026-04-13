@@ -3,7 +3,8 @@
  *
  * Before the fix, all process.stdin.push() calls for a prompt happened synchronously
  * in a single event-loop tick. The Copilot CLI PTY dropped or merged the events.
- * The fix adds KEYSTROKE_DELAY_MS between each character's key-down/key-up pair.
+ * The fix adds KEYSTROKE_DELAY_MS after every single push via pushStdin(), so each
+ * event is delivered in its own event-loop tick mimicking real keystroke timing.
  *
  * These tests replicate the exact injection logic from launch.ts so they fail if
  * the delay is removed and pass with the async implementation.
@@ -32,15 +33,25 @@ function* win32InputEvents(ch: string): Generator<Buffer> {
   yield Buffer.from(`\x1b[${vk};${sc};${uc};0;0;1_`); // key-up
 }
 
+// Mirrors pushStdin in launch.ts: push then delay.
+const makePushStdin = (push: (buf: Buffer) => void) =>
+  (buf: Buffer): Promise<void> => {
+    push(buf);
+    return new Promise<void>((resolve) => setTimeout(resolve, KEYSTROKE_DELAY_MS));
+  };
+
 async function injectWin32Prompt(prompt: string, push: (buf: Buffer) => void): Promise<void> {
-  const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-  push(Buffer.from('\x1b[I')); // focus-in
+  const pushStdin = makePushStdin(push);
+  await pushStdin(Buffer.from('\x1b[I')); // focus-in
   for (const ch of prompt) {
-    for (const buf of win32InputEvents(ch)) push(buf);
-    await delay(KEYSTROKE_DELAY_MS);
+    for (const buf of win32InputEvents(ch)) {
+      await pushStdin(buf);
+    }
   }
-  for (const buf of win32InputEvents('\r')) push(buf);
-  push(Buffer.from('\x1b[O')); // focus-out
+  for (const buf of win32InputEvents('\r')) {
+    await pushStdin(buf);
+  }
+  await pushStdin(Buffer.from('\x1b[O')); // focus-out
 }
 
 // ---- end replicated logic ----
@@ -49,39 +60,31 @@ describe('copilot-cli Win32 keystroke injection', () => {
   it('win32InputEvents emits key-down then key-up buffer for a character', () => {
     const bufs = [...win32InputEvents('a')];
     expect(bufs).toHaveLength(2);
-    // key-down: Kd=1
-    expect(bufs[0].toString()).toBe('\x1b[65;30;97;1;0;1_');
-    // key-up: Kd=0
-    expect(bufs[1].toString()).toBe('\x1b[65;30;97;0;0;1_');
+    expect(bufs[0].toString()).toBe('\x1b[65;30;97;1;0;1_'); // key-down
+    expect(bufs[1].toString()).toBe('\x1b[65;30;97;0;0;1_'); // key-up
   });
 
-  it('spaces character pushes across event-loop ticks rather than all at once', async () => {
+  it('only the first push (focus-in) is synchronous — the rest are gated behind delays', async () => {
     vi.useFakeTimers();
     try {
-      const ticks: number[] = [];
-      let tick = 0;
-      const push = (_buf: Buffer) => ticks.push(tick);
+      const pushed: string[] = [];
+      const push = (buf: Buffer) => pushed.push(buf.toString());
 
-      const promise = injectWin32Prompt('ab', push);
+      const promise = injectWin32Prompt('a', push);
 
-      // Immediately after calling: focus-in (1) + 'a' key-down + key-up (2) = 3 pushes.
-      // 'b' must NOT have been pushed yet — it is behind a KEYSTROKE_DELAY_MS await.
-      expect(ticks.length).toBe(3);
-      expect(ticks.every((t) => t === 0)).toBe(true);
+      // Synchronous portion: only focus-in has been pushed.
+      // If there were no delays, all 6 events would be here already.
+      expect(pushed.length).toBe(1);
+      expect(pushed[0]).toBe('\x1b[I');
 
-      // Advance past the first delay — 'b' key events should now be pushed.
-      tick = 1;
-      await vi.advanceTimersByTimeAsync(KEYSTROKE_DELAY_MS);
-      expect(ticks.length).toBe(5); // + b-down + b-up
-      expect(ticks.slice(3)).toEqual([1, 1]);
-
-      // Advance past the second delay — enter + focus-out should be pushed.
-      tick = 2;
-      await vi.advanceTimersByTimeAsync(KEYSTROKE_DELAY_MS);
+      // Drain all sequential timers so the promise resolves.
+      await vi.runAllTimersAsync();
       await promise;
-      // enter-down + enter-up + focus-out = 3 more → total 8
-      expect(ticks.length).toBe(8);
-      expect(ticks.slice(5)).toEqual([2, 2, 2]);
+
+      // For prompt 'a': focus-in, a-down, a-up, enter-down, enter-up, focus-out = 6 events.
+      expect(pushed.length).toBe(6);
+      expect(pushed[0]).toBe('\x1b[I');                    // focus-in
+      expect(pushed[pushed.length - 1]).toBe('\x1b[O');    // focus-out
     } finally {
       vi.useRealTimers();
     }

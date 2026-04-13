@@ -145,6 +145,14 @@ function* win32InputEvents(ch: string): Generator<Buffer> {
 // tick and the PTY drops or merges them.
 const KEYSTROKE_DELAY_MS = 10;
 
+// Push a buffer to stdin then wait KEYSTROKE_DELAY_MS before returning.
+// Every Win32 input event goes through this so the PTY sees a natural
+// inter-event gap and does not drop or merge simultaneous arrivals.
+const pushStdin = (buf: Buffer): Promise<void> => {
+  process.stdin.push(buf);
+  return new Promise<void>((resolve) => setTimeout(resolve, KEYSTROKE_DELAY_MS));
+};
+
 // When Argus sends a prompt, write it to the PTY.
 // For copilot-cli, encode as Win32 input sequences to match real keystrokes.
 // For other session types, write directly to the PTY.
@@ -152,19 +160,17 @@ client.onSendPrompt(async (actionId: string, prompt: string) => {
   log(`onSendPrompt actionId=${actionId} promptLen=${prompt.length}`);
   try {
     if (sessionType === 'copilot-cli') {
-      const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
       log(`win32 focus-in`);
-      process.stdin.push(Buffer.from('\x1b[I'));
+      await pushStdin(Buffer.from('\x1b[I'));
       for (const ch of prompt) {
         for (const buf of win32InputEvents(ch)) {
-          process.stdin.push(buf);
+          await pushStdin(buf);
         }
-        await delay(KEYSTROKE_DELAY_MS);
       }
       for (const buf of win32InputEvents('\r')) {
-        process.stdin.push(buf);
+        await pushStdin(buf);
       }
-      process.stdin.push(Buffer.from('\x1b[O'));
+      await pushStdin(Buffer.from('\x1b[O'));
     } else {
       pty.write(prompt + '\r');
     }
