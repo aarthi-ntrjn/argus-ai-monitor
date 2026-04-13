@@ -83,17 +83,18 @@ A team lead who only uses Microsoft Teams (not Argus directly) can browse all ac
 ### Functional Requirements
 
 - **FR-001**: System MUST automatically create a Microsoft Teams thread in the configured channel when a new CLI session starts in Argus.
-- **FR-002**: System MUST stream all session output to the corresponding Teams thread in near real-time.
+- **FR-002**: System MUST stream session output to the corresponding Teams thread by periodically updating a single rolling-window message, keeping the thread readable without flooding it with replies.
 - **FR-003**: System MUST accept free-text replies from the session owner in a Teams thread and forward them to the active CLI session as input.
-- **FR-004**: System MUST reject command replies from any Teams user who is not the session owner, and post a notice in the thread explaining this.
+- **FR-004**: System MUST reject command replies from any Teams user whose Teams user ID does not match the session owner's stored Teams user ID, and post a notice in the thread explaining this.
 - **FR-005**: System MUST update the Teams thread when a session ends, indicating the final status (completed, failed, or killed).
-- **FR-006**: System MUST allow Teams integration to be configured via the Argus settings UI, including bot token and target channel details.
+- **FR-006**: System MUST allow Teams integration to be configured via the Argus settings UI, including a Teams OAuth authentication step that captures and stores the authenticating user's Teams user ID, plus target channel details.
 - **FR-007**: System MUST validate Teams credentials on save and display a clear success or error status in the settings UI.
 - **FR-008**: System MUST allow Teams integration to be disabled, after which no new session threads are created.
 - **FR-009**: System MUST batch or throttle outgoing messages to the Teams API to avoid exceeding rate limits.
-- **FR-010**: System MUST buffer session output during temporary Teams connectivity loss and deliver it when connectivity is restored.
+- **FR-010**: System MUST buffer up to 1000 session output messages per session during temporary Teams connectivity loss, deliver them when connectivity is restored, and log a warning in Argus when the buffer cap is reached and oldest messages are discarded.
 - **FR-011**: System MUST include session metadata (session name, owner identity, start time) in the opening message of each Teams thread.
 - **FR-012**: System MUST reuse an existing Teams thread for a session if Argus reconnects after a restart (matched by session ID).
+- **FR-013**: System MUST log all Teams-originated commands in the Argus session history alongside UI-originated commands, with the source identified as "Teams".
 
 ### Key Entities
 
@@ -115,11 +116,25 @@ A team lead who only uses Microsoft Teams (not Argus directly) can browse all ac
 - **SC-006**: Teams configuration can be completed in under 2 minutes by a user following the settings UI.
 - **SC-007**: Rate-limiting behaviour keeps Argus within Teams API quotas for up to 10 concurrently active sessions without dropping messages.
 
+## Clarifications
+
+### Session 2026-04-13
+
+- Q: How should session output appear in the Teams thread? → A: Output is batched into a single message that is periodically updated/replaced (rolling window), rather than posting each chunk as a new reply.
+
+- Q: Should commands sent via Teams be logged in Argus? → A: Yes; Teams-originated commands are logged in Argus session history alongside UI-originated commands, with the source marked as "Teams".
+
+- Q: When Teams is unreachable, how long or how much should Argus buffer? → A: Buffer up to 1000 messages per session; once the cap is reached, discard the oldest messages and log a warning in Argus. Buffered messages are delivered when connectivity is restored.
+
+- Q: Should every CLI session automatically get a Teams thread, or can users choose? → A: All sessions automatically get a Teams thread when integration is enabled; no per-session opt-in.
+
+- Q: How should Argus verify that a Teams reply comes from the session owner? → A: When a user authenticates Argus with Teams during settings setup, their Teams user ID is captured and stored. Sessions started by that user are associated with that Teams user ID. Incoming replies are verified by comparing the sender's Teams user ID (from the Teams event payload) to the stored owner Teams user ID.
+
 ## Assumptions
 
 - Users have an existing Microsoft Teams workspace and the ability to register a bot application in Azure Active Directory.
 - The Teams bot must be added to the target channel by a Teams administrator before Argus can post to it.
-- Session owner identity is determined by the Argus user who initiated the session; Argus does not attempt to match Teams users to Argus users by email or other attributes.
+- Session owner identity is determined by the Teams user ID captured when the Argus user authenticates with Teams during settings setup. Sessions started by that user are associated with their stored Teams user ID.
 - Each Argus instance is configured with a single Teams channel; multi-channel routing per session is out of scope for v1.
 - The Teams integration is optional and disabled by default; no existing sessions or Argus behaviour is affected when the integration is not configured.
 - High-frequency output throttling preserves all content but may introduce a slight delay in delivery to Teams during burst periods.
