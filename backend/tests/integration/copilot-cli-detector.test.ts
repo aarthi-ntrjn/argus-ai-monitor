@@ -20,6 +20,13 @@ vi.mock('../../src/db/database.js', () => ({
   },
   getSession: mockGetSession,
   upsertSession: vi.fn(),
+  deleteSessionOutput: vi.fn(),
+  insertOutput: vi.fn(),
+}));
+
+const mockBroadcast = vi.hoisted(() => vi.fn());
+vi.mock('../../src/api/ws/event-dispatcher.js', () => ({
+  broadcast: mockBroadcast,
 }));
 
 const mockHas = vi.hoisted(() => vi.fn().mockReturnValue(false));
@@ -37,6 +44,14 @@ vi.mock('../../src/services/pty-registry.js', () => ({
 // Default: no running processes (testPid 99999 is not running).
 const mockPsList = vi.hoisted(() => vi.fn(async () => []));
 vi.mock('ps-list', () => ({ default: mockPsList }));
+
+// Mock chokidar to prevent unhandled rejections from its internal fs watcher
+// setup in test environments that lack full FSEvents support.
+vi.mock('chokidar', () => ({
+  default: {
+    watch: () => ({ on: () => {}, close: () => {} }),
+  },
+}));
 
 import { CopilotCliDetector } from '../../src/services/copilot-cli-detector.js';
 
@@ -71,6 +86,7 @@ updated_at: ${new Date().toISOString()}
     mockHas.mockClear();
     mockGetSession.mockClear();
     mockPsList.mockClear();
+    mockBroadcast.mockClear();
     mockPsList.mockResolvedValue([]); // default: no running processes
   });
 
@@ -222,6 +238,58 @@ updated_at: ${new Date().toISOString()}
 
     // Summary must be preserved from DB, not reset to workspace.yaml value ("Test session")
     expect(session?.summary).toBe(userMessageSummary);
+  });
+
+  it('broadcasts session.updated when summary is updated from a user.message event in events.jsonl', async () => {
+    const eventsFile = join(sessionDir, 'events.jsonl');
+    writeFileSync(eventsFile, JSON.stringify({
+      type: 'user.message',
+      timestamp: new Date().toISOString(),
+      data: { content: 'fix the login bug' },
+    }) + '\n');
+
+    // Session must appear running so watchEventsFile is invoked
+    mockPsList.mockResolvedValueOnce([{ pid: testPid, name: 'copilot', ppid: 1 }]);
+    mockClaimForSession.mockReturnValueOnce(null);
+    // Existing session has no summary yet
+    mockGetSession.mockReturnValue({
+      id: testSessionId, launchMode: null, pid: testPid, hostPid: null,
+      pidSource: 'lockfile' as const, status: 'active', summary: null, model: null,
+    });
+
+    const detector = new CopilotCliDetector(testDir);
+    await detector.scan();
+
+    const summaryBroadcast = mockBroadcast.mock.calls.find(
+      ([evt]) => evt.type === 'session.updated' && (evt.data as { summary?: string }).summary === 'fix the login bug'
+    );
+    expect(summaryBroadcast).toBeDefined();
+  });
+
+  it('broadcasts session.updated when model is detected from events.jsonl', async () => {
+    const eventsFile = join(sessionDir, 'events.jsonl');
+    writeFileSync(eventsFile, JSON.stringify({
+      type: 'assistant.message',
+      timestamp: new Date().toISOString(),
+      model: 'claude-opus-4-5',
+      data: { content: 'Hello' },
+    }) + '\n');
+
+    mockPsList.mockResolvedValueOnce([{ pid: testPid, name: 'copilot', ppid: 1 }]);
+    mockClaimForSession.mockReturnValueOnce(null);
+    // Existing session has no model yet
+    mockGetSession.mockReturnValue({
+      id: testSessionId, launchMode: null, pid: testPid, hostPid: null,
+      pidSource: 'lockfile' as const, status: 'active', summary: null, model: null,
+    });
+
+    const detector = new CopilotCliDetector(testDir);
+    await detector.scan();
+
+    const modelBroadcast = mockBroadcast.mock.calls.find(
+      ([evt]) => evt.type === 'session.updated' && (evt.data as { model?: string }).model === 'claude-opus-4-5'
+    );
+    expect(modelBroadcast).toBeDefined();
   });
 
   it('preserves launchMode=pty without re-claiming when alreadyClaimed=true and WS is still live', async () => {

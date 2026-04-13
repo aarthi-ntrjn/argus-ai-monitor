@@ -73,13 +73,11 @@ export default function DashboardPage() {
   const { data: repos = [], isLoading: reposLoading, isError: reposError } = useQuery({
     queryKey: ['repositories'],
     queryFn: getRepositories,
-    refetchInterval: 5000,
   });
 
   const { data: sessions = [], isLoading: sessionsLoading, isError: sessionsError } = useQuery({
     queryKey: ['sessions'],
     queryFn: () => getSessions(),
-    refetchInterval: 5000,
   });
 
   const sessionsByRepo = useMemo(() => {

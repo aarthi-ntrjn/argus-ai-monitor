@@ -6,6 +6,7 @@ import psList from 'ps-list';
 import { randomUUID } from 'crypto';
 import chokidar, { type FSWatcher } from 'chokidar';
 import { upsertSession, getRepositoryByPath, deleteSessionOutput, getSession } from '../db/database.js';
+import { broadcast } from '../api/ws/event-dispatcher.js';
 import { ptyRegistry } from './pty-registry.js';
 import { OutputStore } from './output-store.js';
 import { parseJsonlLine, parseModelFromEvent } from './events-parser.js';
@@ -240,7 +241,11 @@ export class CopilotCliDetector {
 
       if (detectedModel && !getSession(sessionId)?.model) {
         const existing = getSession(sessionId);
-        if (existing) upsertSession({ ...existing, model: detectedModel });
+        if (existing) {
+          const updated = { ...existing, model: detectedModel };
+          upsertSession(updated);
+          broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: updated as unknown as Record<string, unknown> });
+        }
       }
 
       // Update summary with the most recent user prompt in this batch
@@ -252,6 +257,7 @@ export class CopilotCliDetector {
           if (existing.summary !== summary) {
             const updated = { ...existing, summary };
             upsertSession(updated);
+            broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: updated as unknown as Record<string, unknown> });
           }
         }
       }
