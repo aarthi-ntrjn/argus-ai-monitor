@@ -1,10 +1,10 @@
 /**
- * Regression tests for T116/T117: Win32 keystroke injection is used for all session
- * types (copilot-cli and claude-code). pty.write() is unreliable for interactive
- * prompts (e.g. AskUserQuestion) because the PTY may be in raw/char mode.
+ * Regression tests for T116: copilot-cli send-prompt keystroke injection must be async.
  *
- * Every push goes through pushStdin() which adds KEYSTROKE_DELAY_MS so events
- * arrive one per event-loop tick rather than all at once.
+ * For copilot-cli, all pushes go through pushStdin() which adds KEYSTROKE_DELAY_MS so
+ * events arrive one per event-loop tick rather than all at once.
+ * For claude-code, pty.write() is used instead (claude-code reads from the PTY master,
+ * not from process.stdin).
  */
 import { describe, it, expect, vi } from 'vitest';
 
