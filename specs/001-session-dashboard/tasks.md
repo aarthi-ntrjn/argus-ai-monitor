@@ -427,7 +427,7 @@ Each phase checkpoint delivers independently demonstrable value:
 
 ### Addendum: Bug — TODO toggle button state not preserved on remount
 
-- [ ] T117 Fix `frontend/src/components/TodoPanel/TodoPanel.tsx`: the three header toggle states (`showDone`, `showTimestamps`, `wrapText`) are plain `useState` with hardcoded defaults (`true`, `true`, `false`). They reset on every remount — e.g. switching mobile tabs away from the tasks tab and back, or toggling the Todo panel visibility in settings. Fix: initialise each state by reading from `localStorage` (keys `argus.todo.showDone`, `argus.todo.showTimestamps`, `argus.todo.wrapText`), falling back to the current defaults when the key is absent. Add a `useEffect` for each state that writes the new value back to `localStorage` whenever it changes.
+- [X] T117 Fix `frontend/src/components/TodoPanel/TodoPanel.tsx`: the three header toggle states (`showDone`, `showTimestamps`, `wrapText`) are plain `useState` with hardcoded defaults (`true`, `true`, `false`). They reset on every remount — e.g. switching mobile tabs away from the tasks tab and back, or toggling the Todo panel visibility in settings. Fix: initialise each state by reading from `localStorage` (keys `argus.todo.showDone`, `argus.todo.showTimestamps`, `argus.todo.wrapText`), falling back to the current defaults when the key is absent. Add a `useEffect` for each state that writes the new value back to `localStorage` whenever it changes.
 
 ### Addendum: Bug — conversation history not shown when adding a repository with an active session
 
