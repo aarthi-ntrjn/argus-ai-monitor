@@ -268,3 +268,14 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 - Any `setQueryData` updater that can receive `undefined` as `old` should either create a valid seed entry or be documented as an intentional no-op. Never silently discard an event by returning `old` without checking.
 - When a new entity is broadcast via WS (`session.created`) and its associated data immediately follows (`session.output.batch`), assume the second event may arrive before the first has been processed by React. Design cache updaters to be order-independent.
 **Fix summary**: Changed `if (!old) return old` to seed the cache in both `['session-output', sessionId]` and `['session-output-last', sessionId]` updaters inside `applyOutputBatchEvent` in `frontend/src/services/socket.ts`, so the batch always populates the cache regardless of whether the component has mounted yet.
+
+---
+
+## T117 — TODO toggle button state not preserved on remount
+
+**Date**: 2026-04-13
+**Symptom**: After switching mobile tabs away from the Tasks tab and back, or after toggling the Todo panel visibility in Settings, the three header toggle buttons (Hide completed, Show timestamps, Wrap text) reset to their default states, losing any changes the user had made.
+**Root cause**: `showDone`, `showTimestamps`, and `wrapText` in `frontend/src/components/TodoPanel/TodoPanel.tsx` were plain `useState` calls with hardcoded defaults (`true`, `true`, `false`). Nothing persisted these values across component unmount/remount cycles.
+**Why it was missed**: In the common desktop case the `TodoPanel` is always mounted while the dashboard is visible, so remount-triggered resets were not exercised. Mobile tab switching and panel hide/show are less frequently tested paths.
+**How to prevent**: Any UI toggle that controls a user preference (not ephemeral interaction state) should be initialised from `localStorage` and written back on change. The test suite should clear `localStorage` in a top-level `beforeEach` so that localStorage-backed state does not bleed between test cases.
+**Fix summary**: Initialised each of the three toggle states from `localStorage` (keys `argus.todo.showDone`, `argus.todo.showTimestamps`, `argus.todo.wrapText`) with `useEffect` writes on change, in `frontend/src/components/TodoPanel/TodoPanel.tsx`. Added `localStorage.clear()` to the global `beforeEach` in `TodoPanel.test.tsx` to prevent inter-test contamination.
