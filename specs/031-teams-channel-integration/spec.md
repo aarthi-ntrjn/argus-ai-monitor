@@ -2,7 +2,7 @@
 
 **Feature Branch**: `031-teams-channel-integration`
 **Created**: 2026-04-13
-**Status**: Clarified
+**Status**: Revised
 **Input**: User description: "Add the ability to connect Argus to the Teams Channel. The goal is to be able to remotely monitor and command CLI sessions. Each channel thread / post is a session."
 
 ## User Scenarios & Testing *(mandatory)*
@@ -41,16 +41,16 @@ The session owner wants to guide or intervene in a running CLI session without s
 
 ### User Story 3 - Configure Teams Integration in Argus Settings (Priority: P2)
 
-An Argus administrator wants to connect Argus to their Microsoft Teams workspace. They navigate to the Argus settings UI, enter their Teams bot token and target channel details, save, and verify the connection is active.
+An Argus user wants to connect Argus to their Microsoft Teams workspace without needing IT admin involvement or Azure infrastructure. They navigate to the Argus settings UI, enter their Azure AD App ID and Tenant ID, click "Authenticate", complete a Device Code Flow sign-in in their browser (one time), save, and verify the connection is active.
 
 **Why this priority**: Without configuration, no integration is possible. This is a prerequisite for P1 stories but is lower in isolation because the configuration is done once, not continuously.
 
-**Independent Test**: Open Argus settings, enter Teams credentials, save, and verify the connection status indicator shows "Connected."
+**Independent Test**: Open Argus settings, enter Azure AD App ID and Tenant ID, click "Authenticate", complete browser sign-in, and verify the connection status indicator shows "Connected."
 
 **Acceptance Scenarios**:
 
-1. **Given** the Argus settings page, **When** the user enters valid Teams bot credentials and channel details and saves, **Then** Argus connects to Teams and displays a "Connected" status.
-2. **Given** invalid or expired credentials are entered, **When** the user saves, **Then** an error message is displayed explaining the connection failure.
+1. **Given** the Argus settings page, **When** the user enters a valid Azure AD App ID and Tenant ID, clicks "Authenticate", completes Device Code Flow sign-in, and saves, **Then** Argus connects to Teams via Microsoft Graph API and displays a "Connected" status.
+2. **Given** invalid app credentials or a sign-in that is not completed, **When** the user saves, **Then** an error message is displayed explaining the connection failure.
 3. **Given** a working Teams connection, **When** the user clears or removes the credentials, **Then** the integration is disabled and no new threads are created for future sessions.
 
 ---
@@ -84,11 +84,11 @@ A team lead who only uses Microsoft Teams (not Argus directly) can browse all ac
 
 - **FR-001**: System MUST automatically create a Microsoft Teams thread in the configured channel when a new CLI session starts in Argus.
 - **FR-002**: System MUST stream session output to the corresponding Teams thread by periodically updating a single rolling-window message, keeping the thread readable without flooding it with replies.
-- **FR-003**: System MUST accept free-text replies from the session owner in a Teams thread and forward them to the active CLI session as input.
+- **FR-003**: System MUST accept free-text replies from the session owner in a Teams thread and forward them to the active CLI session as input. Replies are detected by polling the Teams channel using Microsoft Graph API delta queries at a configurable interval (default: 10 seconds).
 - **FR-004**: System MUST reject command replies from any Teams user whose Teams user ID does not match the session owner's stored Teams user ID, and post a notice in the thread explaining this.
 - **FR-005**: System MUST update the Teams thread when a session ends, indicating the final status (completed, failed, or killed).
-- **FR-006**: System MUST allow Teams integration to be configured via the Argus settings UI, including a Teams OAuth authentication step that captures and stores the authenticating user's Teams user ID, plus target channel details.
-- **FR-007**: System MUST validate Teams credentials on save and display a clear success or error status in the settings UI.
+- **FR-006**: System MUST allow Teams integration to be configured via the Argus settings UI. Configuration requires an Azure AD App ID, Tenant ID, and target channel details. Authentication is completed via Microsoft Graph API Device Code Flow, which stores an OAuth refresh token — no bot registration, public endpoint, or admin consent is required.
+- **FR-007**: System MUST validate the Teams connection on save by attempting a Microsoft Graph API call and display a clear success or error status in the settings UI.
 - **FR-008**: System MUST allow Teams integration to be disabled, after which no new session threads are created.
 - **FR-009**: System MUST batch or throttle outgoing messages to the Teams API to avoid exceeding rate limits.
 - **FR-010**: System MUST buffer up to 1000 session output messages per session during temporary Teams connectivity loss, deliver them when connectivity is restored, and log a warning in Argus when the buffer cap is reached and oldest messages are discarded.
@@ -98,22 +98,22 @@ A team lead who only uses Microsoft Teams (not Argus directly) can browse all ac
 
 ### Key Entities
 
-- **Teams Connection**: The configured link between Argus and a Microsoft Teams workspace. Has a bot token, target channel identifier, and connection status.
-- **Session Thread**: A Microsoft Teams thread that represents one CLI session. Linked to a session ID, records the owner identity, and serves as the two-way communication channel.
-- **Session Owner**: The Argus user who started the CLI session. Only they are authorised to send commands via the Teams thread.
-- **Outbound Message**: A unit of session output sent from Argus to a Teams thread. May be batched for rate-limiting purposes.
-- **Inbound Command**: A reply posted in a Teams thread by the session owner that is forwarded to the CLI session as input.
+- **Teams Connection**: The configured link between Argus and a Microsoft Teams workspace. Holds an Azure AD App ID, Tenant ID, target channel identifier, and an OAuth refresh token obtained via Device Code Flow. No bot registration or public webhook endpoint required.
+- **Session Thread**: A Microsoft Teams channel thread that represents one CLI session. Linked to a session ID, records the owner identity, and serves as the two-way communication channel.
+- **Session Owner**: The Argus user who authenticated Argus with Teams during settings setup. Their Microsoft identity (AAD Object ID) is captured at auth time and used to verify incoming reply authorship. Only the session owner may send commands via the Teams thread.
+- **Outbound Message**: A unit of session output sent from Argus to a Teams thread via Microsoft Graph API. May be batched for rate-limiting purposes.
+- **Inbound Command**: A reply posted in a Teams thread by the session owner, detected by Graph API delta polling and forwarded to the CLI session as input.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
 - **SC-001**: Session output appears in the Teams thread within 5 seconds of being produced by the CLI session.
-- **SC-002**: Commands sent as thread replies are delivered to the CLI session within 5 seconds of being posted in Teams.
+- **SC-002**: Commands sent as thread replies are detected and delivered to the CLI session within 15 seconds of being posted in Teams (reflects Graph API delta polling interval of 10 seconds).
 - **SC-003**: 100% of session output is delivered to Teams with no data loss when Teams is available, and no data loss after a connectivity gap is resolved.
 - **SC-004**: A new Teams thread is created within 10 seconds of a CLI session starting in Argus.
 - **SC-005**: Unauthorised command attempts (from non-owners) result in a Teams notice within 5 seconds and are never forwarded to the session.
-- **SC-006**: Teams configuration can be completed in under 2 minutes by a user following the settings UI.
+- **SC-006**: Teams configuration can be completed in under 5 minutes by a user following the settings UI, including the Device Code Flow browser authentication step.
 - **SC-007**: Rate-limiting behaviour keeps Argus within Teams API quotas for up to 10 concurrently active sessions without dropping messages.
 
 ## Clarifications
@@ -128,14 +128,20 @@ A team lead who only uses Microsoft Teams (not Argus directly) can browse all ac
 
 - Q: Should every CLI session automatically get a Teams thread, or can users choose? → A: All sessions automatically get a Teams thread when integration is enabled; no per-session opt-in.
 
-- Q: How should Argus verify that a Teams reply comes from the session owner? → A: When a user authenticates Argus with Teams during settings setup, their Teams user ID is captured and stored. Sessions started by that user are associated with that Teams user ID. Incoming replies are verified by comparing the sender's Teams user ID (from the Teams event payload) to the stored owner Teams user ID.
+- Q: How should Argus verify that a Teams reply comes from the session owner? → A: When a user authenticates Argus with Teams during settings setup, their Teams user ID (AAD Object ID) is captured and stored. Sessions started by that user are associated with that Teams user ID. Incoming replies are verified by comparing the sender's Teams user ID to the stored owner Teams user ID.
+
+### Session 2026-04-13 (Architecture Revision)
+
+- Q: The original spec assumed Azure Bot Framework (bot registration, App Secret, public webhook endpoint via ngrok). Is there a lighter-weight option? → A: Yes. Replace the Bot Framework approach entirely with Microsoft Graph API using Delegated Auth (Device Code Flow). This eliminates the need for an Azure Bot resource, App Secret management, and a public webhook endpoint. Inbound commands are detected via Graph API delta polling (every 10 seconds) instead of push webhooks. The only setup required is a self-service Azure AD app registration (no IT admin, no admin consent for delegated scopes). The tradeoff is command delivery latency increases from near-instant to up to 15 seconds — acceptable for a developer tool. All FRs, SCs, and Key Entities updated accordingly.
 
 ## Assumptions
 
-- Users have an existing Microsoft Teams workspace and the ability to register a bot application in Azure Active Directory.
-- The Teams bot must be added to the target channel by a Teams administrator before Argus can post to it.
-- Session owner identity is determined by the Teams user ID captured when the Argus user authenticates with Teams during settings setup. Sessions started by that user are associated with their stored Teams user ID.
+- Users have an existing Microsoft Teams workspace and access to the Azure portal to register an Azure AD application (self-service, no IT admin required for standard dev/work tenants).
+- The Azure AD app registration requires the following delegated Microsoft Graph API permissions: `ChannelMessage.Send`, `ChannelMessage.Read.All`, `User.Read`. These can be granted by the user themselves without admin consent in most tenants.
+- The bot must be a member of the target Teams channel. For standard channels, any channel member can add Argus; private channels may require owner approval.
+- Session owner identity is determined by the AAD Object ID of the user who completes the Device Code Flow authentication in Argus settings. Sessions started after authentication are associated with that user's Teams identity.
 - Each Argus instance is configured with a single Teams channel; multi-channel routing per session is out of scope for v1.
 - The Teams integration is optional and disabled by default; no existing sessions or Argus behaviour is affected when the integration is not configured.
 - High-frequency output throttling preserves all content but may introduce a slight delay in delivery to Teams during burst periods.
 - Mobile Teams client support is in scope via the standard Teams thread experience (no custom mobile UI required).
+- No public webhook endpoint or ngrok tunnel is required; inbound command detection uses Graph API delta polling.
