@@ -247,9 +247,18 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 - When wiring up a backend polling loop, check end-to-end: does the frontend also have a matching poll? Trace the full data path from server update → DB → API → React Query → UI.
 **Fix summary**: Added `refetchInterval: 5000` to both `useQuery` calls (repositories and sessions) in `DashboardPage.tsx`. Also updated the `repository-scanner.js` vitest mock to properly export `getCurrentBranch`, fixing a silent mock gap where `refreshRepositoryBranches()` errors were being swallowed by the catch block.
 
+## T116 — copilot-cli send-prompt keystrokes inconsistent
+
+**Date**: 2026-04-13
+**Symptom**: Sending a prompt to a Copilot CLI PTY session via Argus worked unreliably. Adding log statements to the delivery path made it work consistently, suggesting a timing dependency.
+**Root cause**: `launch.ts` `onSendPrompt` pushed all Win32 input sequences for every character synchronously in a single event-loop tick. The Copilot CLI PTY read the events and dropped or merged them when they all arrived at once. Log statements introduced implicit I/O overhead that happened to space out the pushes enough for the PTY to process them individually.
+**Why it was missed**: The delivery function was tested with single-character prompts or short strings where the race was not reliably reproducible. The log-lines-help clue was not recognised as a timing signal.
+**How to prevent**: When injecting input into a PTY as individual "keystroke" events, always add an inter-character delay. Real keyboard input is never instantaneous; PTY readers are optimised for a stream with natural inter-key gaps. A synchronous burst of events should be treated as a red flag.
+**Fix summary**: Made the `onSendPrompt` callback in `launch.ts` async and added `await delay(KEYSTROKE_DELAY_MS)` (10 ms) after each character's key-down/key-up pair. Updated `PromptCallback` type in `argus-launch-client.ts` to allow `Promise<void>` return.
+
 ---
 
-## T116 — Conversation history not shown when adding a repository with an active session
+## T116 (master) — Conversation history not shown when adding a repository with an active session
 
 **Date**: 2026-04-13
 **Symptom**: After adding a repository that already had an active Claude Code session, the session card showed "Waiting for output..." and the output pane was empty, even though the conversation had been happening for some time.

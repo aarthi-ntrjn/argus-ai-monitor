@@ -9,6 +9,7 @@ import { getSessions, getSession, upsertSession, updateSessionStatus, getReposit
 import { broadcast } from '../api/ws/event-dispatcher.js';
 import { getCurrentBranch } from './repository-scanner.js';
 import { detectYoloModeFromPids } from './process-utils.js';
+import { SessionTypes } from '../models/index.js';
 import type { Session, Repository, ClaudeSessionRegistryEntry } from '../models/index.js';
 
 export interface SessionMonitorEvents {
@@ -88,11 +89,11 @@ export class SessionMonitor extends EventEmitter {
 
       for (const session of sessions) {
         // Look up the registry PID using the correct registry for this session type
-        const registryPid = session.type === 'claude-code'
+        const registryPid = session.type === SessionTypes.CLAUDE_CODE
           ? claudeRegistryBySessionId.get(session.id) ?? null
           : copilotLockEntries.get(session.id) ?? null;
 
-        const registryLabel = session.type === 'claude-code'
+        const registryLabel = session.type === SessionTypes.CLAUDE_CODE
           ? 'Claude session registry'
           : 'Copilot lock file';
 
@@ -126,7 +127,7 @@ export class SessionMonitor extends EventEmitter {
 
   private async reconcileClaudeCodeSessions(): Promise<void> {
     try {
-      const liveSessions = getSessions({ status: 'active', type: 'claude-code' });
+      const liveSessions = getSessions({ status: 'active', type: SessionTypes.CLAUDE_CODE });
       if (liveSessions.length === 0) return;
 
       const processes = await psList();

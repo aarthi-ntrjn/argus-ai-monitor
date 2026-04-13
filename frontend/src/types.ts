@@ -1,4 +1,16 @@
 export type SessionType = 'copilot-cli' | 'claude-code';
+
+export const SessionTypes = {
+  CLAUDE_CODE: 'claude-code' as const,
+  COPILOT_CLI: 'copilot-cli' as const,
+} as const;
+
+export type ToolCommand = 'claude' | 'copilot';
+
+export const ToolCommands = {
+  CLAUDE: 'claude' as const,
+  COPILOT: 'copilot' as const,
+} as const;
 export type SessionLaunchMode = 'pty' | 'detected';
 export type SessionStatus = 'active' | 'idle' | 'waiting' | 'error' | 'completed' | 'ended';
 export type PidSource = 'session_registry' | 'pty_registry' | 'lockfile';

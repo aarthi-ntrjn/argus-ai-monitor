@@ -10,6 +10,8 @@ import { ptyRegistry } from './pty-registry.js';
 import { OutputStore } from './output-store.js';
 import { parseJsonlLine, parseModelFromEvent } from './events-parser.js';
 import { detectYoloModeFromPids } from './process-utils.js';
+import { isAiToolProcess } from './pid-validator.js';
+import { SessionTypes } from '../models/index.js';
 import type { Session, PidSource } from '../models/index.js';
 
 const DEFAULT_SESSION_DIR = join(homedir(), '.copilot', 'session-state');
@@ -48,7 +50,14 @@ export class CopilotCliDetector {
   private async getRunningPids(): Promise<Set<number>> {
     try {
       const processes = await psList();
-      return new Set(processes.map((p) => p.pid));
+      // Only include Copilot processes. If a lock-file PID is reused by an
+      // unrelated process after the session ends, it must not be treated as
+      // a live Copilot session.
+      return new Set(
+        processes
+          .filter((p) => isAiToolProcess(p.name, SessionTypes.COPILOT_CLI))
+          .map((p) => p.pid)
+      );
     } catch {
       return new Set();
     }
@@ -84,11 +93,11 @@ export class CopilotCliDetector {
     const { launchMode, resolvedPid, resolvedHostPid, resolvedPidSource } =
       this.resolvePtyLinkage(sessionId, existingSession, repo, pid, isRunning);
 
-    const yoloMode = detectYoloModeFromPids(resolvedPid, resolvedHostPid, 'copilot-cli');
+    const yoloMode = detectYoloModeFromPids(resolvedPid, resolvedHostPid, SessionTypes.COPILOT_CLI);
     const session: Session = {
       id: sessionId,
       repositoryId: repo.id,
-      type: 'copilot-cli',
+      type: SessionTypes.COPILOT_CLI,
       launchMode,
       pid: resolvedPid,
       hostPid: resolvedHostPid,

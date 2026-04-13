@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { isInactive, INACTIVE_THRESHOLD_MS, detectPendingChoice } from '../utils/sessionUtils';
+import { SessionTypes } from '../types';
 import type { Session, SessionOutput } from '../types';
 
 function session(overrides: Partial<Session> = {}): Session {
   return {
     id: 'test-id',
     repositoryId: 'repo-1',
-    type: 'claude-code',
+    type: SessionTypes.CLAUDE_CODE,
     launchMode: null,
     pid: null,
     pidSource: null,

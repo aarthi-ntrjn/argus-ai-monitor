@@ -90,7 +90,7 @@ updated_at: ${new Date().toISOString()}
 
   it('sets launchMode=pty when ptyRegistry has a pending connection for the same cwd', async () => {
     // Session must be running — only active sessions may claim a pending launcher WS
-    mockPsList.mockResolvedValueOnce([{ pid: testPid, name: 'test', ppid: 1 }]);
+    mockPsList.mockResolvedValueOnce([{ pid: testPid, name: 'copilot', ppid: 1 }]);
     // Simulate Windows: pid is null until update_pid resolves it; hostPid is the wrapper
     mockClaimForSession.mockReturnValueOnce({ pid: null, hostPid: 12345 });
 
@@ -121,7 +121,7 @@ updated_at: ${new Date().toISOString()}
 
   it('sets launchMode=null when no pending PTY connection exists for a running session', async () => {
     // isRunning = true so claimForSession IS called, but no pending WS is registered
-    mockPsList.mockResolvedValueOnce([{ pid: testPid, name: 'test', ppid: 1 }]);
+    mockPsList.mockResolvedValueOnce([{ pid: testPid, name: 'copilot', ppid: 1 }]);
     mockClaimForSession.mockReturnValueOnce(null);
 
     const detector = new CopilotCliDetector(testDir);
@@ -134,7 +134,7 @@ updated_at: ${new Date().toISOString()}
 
   it('re-claims a new pending WS when alreadyClaimed=true, WS disconnected, and process still running (Argus restart)', async () => {
     // Make testPid appear running so the re-link path is exercised
-    mockPsList.mockResolvedValueOnce([{ pid: testPid, name: 'test', ppid: 1 }]);
+    mockPsList.mockResolvedValueOnce([{ pid: testPid, name: 'copilot', ppid: 1 }]);
     // Simulate: DB has launchMode:'pty' but in-memory WS is gone (Argus restarted)
     mockGetSession.mockReturnValueOnce({
       id: testSessionId,
@@ -183,7 +183,7 @@ updated_at: ${new Date().toISOString()}
 
   it('sets launchMode=pty when ptyRegistry already has the session (workspace_id claimed before scan)', async () => {
     // Simulate: workspace_id message arrived before this scan, session is in connections
-    mockPsList.mockResolvedValueOnce([{ pid: testPid, name: 'test', ppid: 1 }]);
+    mockPsList.mockResolvedValueOnce([{ pid: testPid, name: 'copilot', ppid: 1 }]);
     mockHas.mockReturnValueOnce(true); // ptyRegistry.has(sessionId) = true
     // getSession returns undefined (first scan) — session not in DB yet
     mockGetSession.mockReturnValueOnce(undefined);

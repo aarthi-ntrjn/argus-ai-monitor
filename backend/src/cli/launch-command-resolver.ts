@@ -1,3 +1,4 @@
+import { SessionTypes, ToolCommands } from '../models/index.js';
 import type { SessionType } from '../models/index.js';
 
 export interface LaunchCommand {
@@ -13,15 +14,15 @@ export function resolveLaunchCommand(args: string[]): LaunchCommand {
 
   const [cmd, ...cmdArgs] = args;
 
-  if (cmd === 'claude') {
-    return { sessionType: 'claude-code', cmd, cmdArgs };
+  if (cmd === ToolCommands.CLAUDE) {
+    return { sessionType: SessionTypes.CLAUDE_CODE, cmd, cmdArgs };
   }
 
   // GitHub Copilot CLI (standalone)
-  if (cmd === 'copilot') {
-    return { sessionType: 'copilot-cli', cmd, cmdArgs };
+  if (cmd === ToolCommands.COPILOT) {
+    return { sessionType: SessionTypes.COPILOT_CLI, cmd, cmdArgs };
   }
 
   // Default: assume claude-code for unknown commands
-  return { sessionType: 'claude-code', cmd, cmdArgs };
+  return { sessionType: SessionTypes.CLAUDE_CODE, cmd, cmdArgs };
 }

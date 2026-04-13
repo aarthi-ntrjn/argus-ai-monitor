@@ -9,7 +9,7 @@ interface RegisterInfo {
   cwd: string;
 }
 
-type PromptCallback = (actionId: string, prompt: string) => void;
+type PromptCallback = (actionId: string, prompt: string) => void | Promise<void>;
 
 export class ArgusLaunchClient {
   private ws!: WebSocket;
