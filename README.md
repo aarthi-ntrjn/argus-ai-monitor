@@ -188,6 +188,7 @@ Click the **gear icon** (top-right) to open Settings.
 | Hide ended sessions                | On       | Hides sessions with status `completed` or `ended`                                  |
 | Hide repos with no active sessions | Off      | Hides repo cards that have no sessions with status `active`, `waiting`, or `error` |
 | Hide inactive sessions             | Off      | Hides sessions with no output in the last N minutes (see Resting threshold below)  |
+| Hide To Do panel                   | Off      | Removes the To Do panel from the dashboard entirely                                 |
 | Resting after (minutes)            | 20       | Minutes of inactivity before a session is shown as **resting**. Valid range: 1 to 60. Click **Reset** to restore the default. |
 
 These settings are saved in your browser (`localStorage`) and restored on every load.

@@ -64,6 +64,15 @@ specs/[###-feature-name]/
 
 **Constitution**: `.specify/memory/constitution.md` uses normative language (MUST/SHOULD) and is **never modified during feature work**.
 
+## Shared UI Components
+
+Always reuse the shared components in `frontend/src/components/` instead of writing inline HTML elements. Never create a raw `<button>` or `<input type="checkbox">` when a shared component exists:
+
+- **`Button`**: Use for all buttons. Supports `variant` (primary, danger, ghost, outline) and `size` (sm, md).
+- **`Checkbox`**: Use for all checkboxes. Supports an optional `label` prop. Styled to match the TodoPanel checkbox appearance.
+
+If a new UI pattern repeats across two or more locations, extract it into a shared component before duplicating.
+
 ## Scripts
 
 All automation is PowerShell (`.ps1`) under `.specify/scripts/powershell/`. VS Code (and Claude's tool execution) auto-approves these scripts.

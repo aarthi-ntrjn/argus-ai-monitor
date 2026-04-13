@@ -4,6 +4,7 @@ import { getSessionOutput } from '../../services/api';
 import type { Session } from '../../types';
 import { useSettings } from '../../hooks/useSettings';
 import SessionDetail from '../SessionDetail/SessionDetail';
+import { Button } from '../Button';
 
 interface Props {
   session: Session;
@@ -46,19 +47,20 @@ export default function OutputPane({ session, onClose, className, 'data-tour-id'
       <div className="flex items-center justify-between px-3 py-2 bg-white border-b border-gray-200">
         <span className="text-xs font-medium text-gray-600 truncate">Session <span className="font-mono text-[10px] text-gray-500">{session.id}</span></span>
         <div className="flex items-center gap-2">
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={toggleMode}
             aria-label={displayMode === 'focused' ? 'Focused' : 'Verbose'}
             title={displayMode === 'focused' ? 'Switch to verbose mode' : 'Switch to focused mode'}
-            className="inline-flex items-center text-xs px-2 py-0.5 rounded font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400"
           >
             {displayMode === 'focused' ? 'Focused' : 'Verbose'}
-          </button>
+          </Button>
           {onClose && (
             <button
               onClick={onClose}
               aria-label="Close output pane"
-              className="text-gray-500 hover:text-gray-700 transition-colors p-1 rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400"
+              className="icon-btn text-gray-500 hover:text-blue-600"
             >
               <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -69,7 +71,7 @@ export default function OutputPane({ session, onClose, className, 'data-tour-id'
       </div>
       <div className="flex-1 overflow-y-auto rounded-b-lg">
         {isError ? (
-          <p className="p-6 text-center text-sm text-red-400">Failed to load output. Is the server running?</p>
+          <p className="p-6 text-center text-sm text-red-600">Failed to load output. Is the server running?</p>
         ) : (
           <>
             <SessionDetail sessionId={session.id} items={data?.items ?? []} dark displayMode={displayMode} className="max-h-none pb-0" />

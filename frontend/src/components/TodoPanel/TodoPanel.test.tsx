@@ -151,10 +151,10 @@ describe('TodoPanel', () => {
       mockUseTodos.mockReturnValue({ data: [baseTodos[0]], isLoading: false, isError: false } as unknown as ReturnType<typeof useTodos>);
       renderPanel();
       const input = screen.getByRole('textbox', { name: /edit task: First task/i });
-      expect(input).toHaveStyle({ whiteSpace: 'nowrap' });
+      expect(input).not.toHaveStyle({ whiteSpace: 'nowrap' });
       const toggle = screen.getByTitle(/wrap text|single line/i);
       await userEvent.click(toggle);
-      expect(input).not.toHaveStyle({ whiteSpace: 'nowrap' });
+      expect(input).toHaveStyle({ whiteSpace: 'nowrap' });
     });
   });
 

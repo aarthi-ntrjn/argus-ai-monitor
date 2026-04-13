@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRef, useState, useEffect, useMemo } from 'react';
+import { Plus } from 'lucide-react';
 import LaunchDropdown from '../components/LaunchDropdown/LaunchDropdown';
 import { useNavigate } from 'react-router-dom';
 import { getSessions, getRepositories } from '../services/api';
@@ -8,6 +9,8 @@ import { useSettings } from '../hooks/useSettings';
 import { useOnboarding } from '../hooks/useOnboarding';
 import { useRepositoryManagement } from '../hooks/useRepositoryManagement';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { Button } from '../components/Button';
+import Badge from '../components/Badge';
 import { SettingsPanel } from '../components/SettingsPanel';
 import { RemoveConfirmDialog } from '../components/RemoveConfirmDialog';
 import SessionCard from '../components/SessionCard/SessionCard';
@@ -74,11 +77,13 @@ export default function DashboardPage() {
   const { data: repos = [], isLoading: reposLoading, isError: reposError } = useQuery({
     queryKey: ['repositories'],
     queryFn: getRepositories,
+    refetchInterval: 5000,
   });
 
   const { data: sessions = [], isLoading: sessionsLoading, isError: sessionsError } = useQuery({
     queryKey: ['sessions'],
     queryFn: () => getSessions(),
+    refetchInterval: 5000,
   });
 
   const sessionsByRepo = useMemo(() => {
@@ -155,9 +160,9 @@ export default function DashboardPage() {
             <div className="flex justify-between items-center">
               <h2 className="text-lg md:text-xl font-semibold text-gray-900">{repo.name}</h2>
               <div className="flex items-center gap-2">
-                <span className="bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded font-medium">
+                <Badge>
                   {repo.sessions.length} session{repo.sessions.length !== 1 ? 's' : ''}
-                </span>
+                </Badge>
                 <LaunchDropdown repoPath={repo.path} />
                 <button
                   onClick={(e) => {
@@ -171,7 +176,7 @@ export default function DashboardPage() {
                   }}
                   aria-label={`Remove repository ${repo.name}`}
                   title="Remove repository"
-                  className="text-gray-500 hover:text-red-500 transition-colors p-2 rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-400"
+                  className="icon-btn text-gray-500 hover:text-red-500"
                 >
                   <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -241,7 +246,7 @@ export default function DashboardPage() {
                 aria-expanded={settingsOpen}
                 aria-haspopup="true"
                 title="Settings"
-                className="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400"
+                className="icon-btn rounded-md text-gray-500 hover:text-blue-600"
               >
                 <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -262,28 +267,30 @@ export default function DashboardPage() {
                 />
               )}
             </div>
-            <button
+            <Button
+              variant="outline"
               data-tour-id="dashboard-add-repo"
               onClick={handleAddRepo}
               disabled={adding}
-              className="bg-blue-600 text-white text-xs px-3 py-1.5 rounded hover:bg-blue-700 disabled:opacity-40 transition-colors"
+              className="inline-flex items-center gap-1"
             >
+              <Plus size={11} aria-hidden="true" />
               {adding ? 'Adding...' : 'Add Repository'}
-            </button>
+            </Button>
           </div>
         </div>
 
         {addInfo && (
           <div role="status" aria-live="polite" className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-green-700 text-sm flex justify-between">
             <span>{addInfo}</span>
-            <button onClick={clearAddInfo} aria-label="Dismiss notification" className="ml-4 font-bold">×</button>
+            <button onClick={clearAddInfo} aria-label="Dismiss notification" className="icon-btn ml-2">&times;</button>
           </div>
         )}
 
         {addError && (
           <div role="alert" className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm flex justify-between">
             <span>{addError}</span>
-            <button onClick={clearAddError} aria-label="Dismiss error" className="ml-4 font-bold">×</button>
+            <button onClick={clearAddError} aria-label="Dismiss error" className="icon-btn ml-2">&times;</button>
           </div>
         )}
 
@@ -293,7 +300,7 @@ export default function DashboardPage() {
             {activeMobileTab === 'sessions' ? (
               reposWithSessions.length === 0 ? emptyState : repoList
             ) : (
-              <TodoPanel />
+              !settings.hideTodoPanel && <TodoPanel />
             )}
           </div>
         ) : (
@@ -301,31 +308,37 @@ export default function DashboardPage() {
           reposWithSessions.length === 0 ? (
             <div className="flex gap-6 items-start">
               <div className="flex-1">{emptyState}</div>
-              <div className="w-[400px] shrink-0 sticky top-8">
-                <TodoPanel />
-              </div>
+              {!settings.hideTodoPanel && (
+                <div className="w-[400px] shrink-0 sticky top-8">
+                  <TodoPanel />
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex gap-6 items-start">
               <div className="flex-1 min-w-0">
                 {repoList}
               </div>
-              <div className={`${selectedSessionId ? 'w-[640px]' : 'w-[400px]'} shrink-0 sticky top-8 flex flex-col gap-4${selectedSessionId ? '' : ' h-auto'}`} style={selectedSessionId ? { height: 'calc(100vh - 9rem)' } : undefined}>
-                {selectedSessionId && (() => {
-                  const selectedSession = sessions.find(s => s.id === selectedSessionId);
-                  return selectedSession ? (
-                    <div className="flex-[3] min-h-0">
-                      <OutputPane
-                        session={selectedSession}
-                        onClose={() => setSelectedSessionId(null)}
-                      />
+              {(!settings.hideTodoPanel || selectedSessionId) && (
+                <div className={`${selectedSessionId ? 'w-[640px]' : 'w-[400px]'} shrink-0 sticky top-8 flex flex-col gap-4${selectedSessionId ? '' : ' h-auto'}`} style={selectedSessionId ? { height: 'calc(100vh - 9rem)' } : undefined}>
+                  {selectedSessionId && (() => {
+                    const selectedSession = sessions.find(s => s.id === selectedSessionId);
+                    return selectedSession ? (
+                      <div className={settings.hideTodoPanel ? 'flex-1 min-h-0' : 'flex-[3] min-h-0'}>
+                        <OutputPane
+                          session={selectedSession}
+                          onClose={() => setSelectedSessionId(null)}
+                        />
+                      </div>
+                    ) : null;
+                  })()}
+                  {!settings.hideTodoPanel && (
+                    <div className={selectedSessionId ? 'flex-[2] min-h-0 overflow-hidden' : 'flex-1'}>
+                      <TodoPanel />
                     </div>
-                  ) : null;
-                })()}
-                <div className={selectedSessionId ? 'flex-[2] min-h-0 overflow-hidden' : 'flex-1'}>
-                  <TodoPanel />
+                  )}
                 </div>
-              </div>
+              )}
             </div>
           )
         )}
@@ -337,9 +350,9 @@ export default function DashboardPage() {
       )}
 
       {showFolderInput && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div role="dialog" aria-modal="true" aria-labelledby="folder-dialog-title" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <h2 className="text-lg font-semibold mb-1">Add Repositories</h2>
+            <h2 id="folder-dialog-title" className="text-lg font-semibold mb-1">Add Repositories</h2>
             <p className="text-gray-500 text-sm mb-4">Enter a root folder path to scan for git repositories.</p>
             <input
               autoFocus
@@ -348,17 +361,17 @@ export default function DashboardPage() {
               onChange={e => setFolderInputPath(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleFolderSubmit(repos); if (e.key === 'Escape') cancelFolderInput(); }}
               placeholder="e.g. C:\source or /home/user/projects"
+              aria-label="Repository folder path"
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-blue-400"
             />
             <div className="flex justify-end gap-2 mt-4">
-              <button onClick={cancelFolderInput} className="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
-              <button
+              <Button variant="ghost" onClick={cancelFolderInput}>Cancel</Button>
+              <Button
                 onClick={() => handleFolderSubmit(repos)}
                 disabled={!folderInputPath.trim()}
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-40"
               >
                 Scan &amp; Add
-              </button>
+              </Button>
             </div>
           </div>
         </div>

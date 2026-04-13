@@ -1,4 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
+import { Button } from './Button';
+import { Checkbox } from './Checkbox';
 
 interface RemoveConfirmDialogProps {
   repoName: string | undefined;
@@ -33,31 +35,27 @@ export function RemoveConfirmDialog({ repoName, removing, skipConfirm, onSkipCon
           This will also delete all associated sessions and output history.
         </p>
         <div className="flex items-center justify-between mt-4">
-          <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={skipConfirm}
-              onChange={e => onSkipConfirmChange(e.target.checked)}
-              className="rounded"
-            />
-            Don't ask again
-          </label>
+          <Checkbox
+            label="Don't ask again"
+            checked={skipConfirm}
+            onChange={e => onSkipConfirmChange(e.target.checked)}
+          />
           <div className="flex gap-2">
-            <button
+            <Button
               ref={cancelRef}
+              variant="ghost"
               onClick={onCancel}
               disabled={removing}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400 rounded-sm"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="danger"
               onClick={onConfirm}
               disabled={removing}
-              className="bg-red-600 text-white px-4 py-2 rounded-sm hover:bg-red-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-400"
             >
               {removing ? 'Removing...' : 'Remove'}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

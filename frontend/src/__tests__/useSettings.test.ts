@@ -17,6 +17,7 @@ describe('useSettings', () => {
       hideInactiveSessions: false,
       outputDisplayMode: 'focused',
       restingThresholdMinutes: 20,
+      hideTodoPanel: false,
     });
   });
 
@@ -40,6 +41,7 @@ describe('useSettings', () => {
       hideInactiveSessions: false,
       outputDisplayMode: 'focused',
       restingThresholdMinutes: 20,
+      hideTodoPanel: false,
     });
   });
 

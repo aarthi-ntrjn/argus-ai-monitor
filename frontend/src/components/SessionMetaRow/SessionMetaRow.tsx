@@ -4,6 +4,7 @@ import type { Session } from '../../types';
 import { isInactive } from '../../utils/sessionUtils';
 import { useSettings } from '../../hooks/useSettings';
 import SessionTypeIcon from '../SessionTypeIcon/SessionTypeIcon';
+import Badge from '../Badge';
 
 interface Props {
   session: Session;
@@ -49,10 +50,9 @@ export default function SessionMetaRow({ session, showLink = false, onKill, kill
   return (
     <div className="flex justify-between items-start">
       <div className="flex flex-wrap gap-2 items-center">
-        <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded font-medium ${TYPE_COLORS[session.type] ?? 'bg-gray-100'}`}>
-          <SessionTypeIcon type={session.type} size={13} />
+        <Badge colorClass={TYPE_COLORS[session.type] ?? 'bg-gray-100'} icon={<SessionTypeIcon type={session.type} size={13} />}>
           {session.type}
-        </span>
+        </Badge>
         <span className="text-[10px] text-gray-500 font-mono">
           {[
             session.model,
@@ -63,43 +63,41 @@ export default function SessionMetaRow({ session, showLink = false, onKill, kill
       </div>
       <div className="flex items-center gap-2 shrink-0">
         {isInactive(session, thresholdMs) ? (
-          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded font-medium bg-amber-100 text-amber-700">
-            <Moon size={10} />resting
-          </span>
+          <Badge colorClass="bg-amber-100 text-amber-700" icon={<Moon size={10} aria-hidden="true" />}>resting</Badge>
         ) : (
-          <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded font-medium ${STATUS_COLORS[session.status] ?? 'bg-gray-100'}`}>
-            {session.status === 'active' && <Play size={10} />}
+          <Badge
+            colorClass={STATUS_COLORS[session.status] ?? 'bg-gray-100'}
+            icon={session.status === 'active' ? <Play size={10} aria-hidden="true" /> : undefined}
+          >
             {session.status === 'active' ? 'running' : session.status}
-          </span>
+          </Badge>
         )}
         {session.launchMode === 'pty' ? (
-          <span className="inline-flex items-center gap-0.5 text-xs px-2 py-0.5 rounded font-medium bg-green-100 text-green-800" title="Started via argus launch: prompt injection enabled"><Plug size={10} />connected</span>
+          <Badge colorClass="bg-green-100 text-green-800" icon={<Plug size={10} aria-hidden="true" />} title="Started via argus launch: prompt injection enabled">connected</Badge>
         ) : (
-          <span className="inline-flex items-center gap-0.5 text-xs px-2 py-0.5 rounded font-medium bg-gray-100 text-gray-500" title="Detected session: start with argus launch to enable prompts"><Eye size={10} />read-only</span>
+          <Badge icon={<Eye size={10} aria-hidden="true" />} title="Detected session: start with argus launch to enable prompts">read-only</Badge>
         )}
         {session.yoloMode === true && (
-          <span className="inline-flex items-center gap-0.5 text-xs px-2 py-0.5 rounded font-medium bg-red-100 text-red-700" title="Session launched with auto-approve (yolo mode)">
-            <ShieldOff size={10} />yolo
-          </span>
+          <Badge colorClass="bg-red-100 text-red-700" icon={<ShieldOff size={10} aria-hidden="true" />} title="Session launched with auto-approve (yolo mode)">yolo</Badge>
         )}
         {showLink && (
           <Link
             to={`/sessions/${session.id}`}
             onClick={e => e.stopPropagation()}
-            className="text-gray-500 hover:text-blue-600 transition-colors"
+            className="icon-btn text-gray-500 hover:text-blue-600"
             aria-label="View details"
           >
-            <ExternalLink size={14} />
+            <ExternalLink size={14} aria-hidden="true" />
           </Link>
         )}
         {isKillable && (
           <button
             onClick={e => { e.stopPropagation(); onKill(session.id); }}
             disabled={killPending}
-            className="text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="icon-btn text-gray-400 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Kill session"
           >
-            <Power size={14} />
+            <Power size={14} aria-hidden="true" />
           </button>
         )}
       </div>

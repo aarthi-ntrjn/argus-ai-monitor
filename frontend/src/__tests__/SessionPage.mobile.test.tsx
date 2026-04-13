@@ -48,6 +48,6 @@ describe('SessionPage — mobile layout', () => {
   it('back button has a large touch target (py-2)', async () => {
     renderSessionPage();
     const backBtn = await screen.findByRole('button', { name: /back/i });
-    expect(backBtn.className).toMatch(/py-2/);
+    expect(backBtn.className).toMatch(/icon-btn/);
   });
 });

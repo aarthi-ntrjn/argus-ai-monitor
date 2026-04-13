@@ -36,6 +36,14 @@ describe('useRepositoryManagement — folder input flow', () => {
     expect(result.current.folderInputPath).toBe('');
   });
 
+  it('cancelFolderInput hides the dialog', () => {
+    const { result } = renderHook(() => useRepositoryManagement());
+    act(() => { result.current.handleAddRepo(); });
+    expect(result.current.showFolderInput).toBe(true);
+    act(() => { result.current.cancelFolderInput(); });
+    expect(result.current.showFolderInput).toBe(false);
+  });
+
   it('handleFolderSubmit does nothing when folderInputPath is blank', async () => {
     const { result } = renderHook(() => useRepositoryManagement());
     await act(async () => { await result.current.handleFolderSubmit(REPOS); });
@@ -50,7 +58,7 @@ describe('useRepositoryManagement — folder input flow', () => {
     expect(mockScanFolder).toHaveBeenCalledWith('C:\source');
   });
 
-  it('handleFolderSubmit hides the folder input after scanning', async () => {
+  it('handleFolderSubmit closes dialog immediately on submit', async () => {
     mockScanFolder.mockResolvedValue([]);
     const { result } = renderHook(() => useRepositoryManagement());
     act(() => {
@@ -62,12 +70,12 @@ describe('useRepositoryManagement — folder input flow', () => {
     expect(result.current.showFolderInput).toBe(false);
   });
 
-  it('shows info when no new repos are found', async () => {
+  it('sets addInfo when no new repos are found', async () => {
     mockScanFolder.mockResolvedValue([{ path: 'C:\source\existing', name: 'existing' }]);
     const { result } = renderHook(() => useRepositoryManagement());
     act(() => { result.current.setFolderInputPath('C:\source'); });
     await act(async () => { await result.current.handleFolderSubmit(REPOS); });
-    expect(result.current.addInfo).toMatch(/No new git repositories/);
+    expect(result.current.addInfo).toBe('No new git repositories found in the specified folder.');
     expect(mockAddRepository).not.toHaveBeenCalled();
   });
 
@@ -81,7 +89,7 @@ describe('useRepositoryManagement — folder input flow', () => {
     act(() => { result.current.setFolderInputPath('C:\source'); });
     await act(async () => { await result.current.handleFolderSubmit(REPOS); });
     expect(mockAddRepository).toHaveBeenCalledTimes(2);
-    expect(result.current.addInfo).toMatch(/Added 2 repositories/);
+    expect(result.current.addInfo).toBe('Added 2 repositories.');
     expect(result.current.addError).toBeNull();
   });
 
@@ -107,7 +115,7 @@ describe('useRepositoryManagement — folder input flow', () => {
     expect(result.current.adding).toBe(false);
   });
 
-  it('reports partial failure when some addRepository calls fail', async () => {
+  it('sets addError with partial failure message when some addRepository calls fail', async () => {
     mockScanFolder.mockResolvedValue([
       { path: 'C:\source\ok', name: 'ok' },
       { path: 'C:\source\bad', name: 'bad' },
@@ -118,6 +126,27 @@ describe('useRepositoryManagement — folder input flow', () => {
     const { result } = renderHook(() => useRepositoryManagement());
     act(() => { result.current.setFolderInputPath('C:\source'); });
     await act(async () => { await result.current.handleFolderSubmit(REPOS); });
-    expect(result.current.addError).toMatch(/1 of 2/);
+    expect(result.current.addError).toBe('Added 1 of 2 repositories (1 failed).');
+  });
+
+  it('invalidates repositories query after successful add', async () => {
+    mockScanFolder.mockResolvedValue([
+      { path: 'C:\source\new-repo', name: 'new-repo' },
+    ]);
+    mockAddRepository.mockResolvedValue({});
+    const { result } = renderHook(() => useRepositoryManagement());
+    act(() => { result.current.setFolderInputPath('C:\source'); });
+    await act(async () => { await result.current.handleFolderSubmit(REPOS); });
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['repositories'] });
+  });
+
+  it('clearAddInfo clears addInfo', async () => {
+    mockScanFolder.mockResolvedValue([]);
+    const { result } = renderHook(() => useRepositoryManagement());
+    act(() => { result.current.setFolderInputPath('C:\source'); });
+    await act(async () => { await result.current.handleFolderSubmit(REPOS); });
+    expect(result.current.addInfo).not.toBeNull();
+    act(() => { result.current.clearAddInfo(); });
+    expect(result.current.addInfo).toBeNull();
   });
 });

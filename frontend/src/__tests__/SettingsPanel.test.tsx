@@ -22,6 +22,7 @@ const allOff: DashboardSettings = {
   hideInactiveSessions: false,
   outputDisplayMode: 'focused',
   restingThresholdMinutes: 20,
+  hideTodoPanel: false,
 };
 
 const allOn: DashboardSettings = {
@@ -30,6 +31,7 @@ const allOn: DashboardSettings = {
   hideInactiveSessions: true,
   outputDisplayMode: 'focused',
   restingThresholdMinutes: 20,
+  hideTodoPanel: true,
 };
 
 describe('SettingsPanel', () => {

@@ -51,7 +51,7 @@ function SessionCard({ session, selected, onSelect }: Props) {
       tabIndex={0}
       aria-pressed={selected}
       aria-label={`Session ${session.id.slice(0, 8)} — ${session.status}. Press Enter to ${selected ? 'close' : 'view'} output.`}
-      className={`border rounded-md p-4 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400 ${selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'} ${isInactive(session, thresholdMs) && !selected ? 'opacity-75' : ''}`}
+      className={`interactive-card p-4 ${selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-400 hover:bg-blue-50'} ${isInactive(session, thresholdMs) && !selected ? 'opacity-75' : ''}`}
       onClick={() => onSelect?.(session.id)}
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect?.(session.id); } }}
     >
@@ -70,7 +70,7 @@ function SessionCard({ session, selected, onSelect }: Props) {
           )}
         </p>
       ) : (
-        <p className={`text-sm mt-2 truncate ${session.summary ? 'text-gray-600' : 'text-gray-400 italic'}`}>
+        <p className={`text-sm mt-2 truncate ${session.summary ? 'text-gray-600' : 'text-gray-500 italic'}`}>
           {session.summary || 'Nothing sent yet'}
         </p>
       )}
