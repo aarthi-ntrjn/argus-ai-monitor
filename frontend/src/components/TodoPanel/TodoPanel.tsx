@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useTodos, useCreateTodo, useUpdateTodoText, useToggleTodo, useDeleteTodo } from '../../hooks/useTodos';
 import ToggleIconButton from '../ToggleIconButton';
+import { Checkbox } from '../Checkbox';
 
 type RowId = string;
 
@@ -187,24 +188,11 @@ export default function TodoPanel() {
                 const done = todo.done;
                 return (
                   <li key={todo.id} className="group flex items-center gap-2 px-4 py-[3px]">
-                    <button
-                      type="button"
-                      role="checkbox"
-                      aria-checked={done}
+                    <Checkbox
+                      checked={done}
+                      onChange={() => toggleTodo.mutate({ id: todo.id, done: !done })}
                       aria-label={`Mark "${todo.text}" as ${done ? 'incomplete' : 'complete'}`}
-                      onClick={() => toggleTodo.mutate({ id: todo.id, done: !done })}
-                      className={`h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:border-blue-400 focus-visible:bg-blue-100 ${
-                        done
-                          ? 'bg-white border-blue-400 text-blue-400'
-                          : 'border-gray-300 bg-white hover:border-blue-400'
-                      }`}
-                    >
-                      {done && (
-                        <svg aria-hidden="true" viewBox="0 0 10 10" fill="none" className="h-2.5 w-2.5">
-                          <path d="M1.5 5.5l2.5 2.5 4.5-5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      )}
-                    </button>
+                    />
                     <textarea
                       ref={(el) => {
                         todoRefsMap.current.set(todo.id, el);

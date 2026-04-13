@@ -283,14 +283,14 @@ export default function DashboardPage() {
         {addInfo && (
           <div role="status" aria-live="polite" className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-green-700 text-sm flex justify-between">
             <span>{addInfo}</span>
-            <button onClick={clearAddInfo} aria-label="Dismiss notification" className="ml-4 font-bold">&times;</button>
+            <button onClick={clearAddInfo} aria-label="Dismiss notification" className="icon-btn ml-2">&times;</button>
           </div>
         )}
 
         {addError && (
           <div role="alert" className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm flex justify-between">
             <span>{addError}</span>
-            <button onClick={clearAddError} aria-label="Dismiss error" className="ml-4 font-bold">&times;</button>
+            <button onClick={clearAddError} aria-label="Dismiss error" className="icon-btn ml-2">&times;</button>
           </div>
         )}
 
