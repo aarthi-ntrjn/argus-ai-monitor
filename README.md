@@ -51,7 +51,7 @@ Each card is a live snapshot of a session:
 - **Elapsed time** representing how long since the session start
 - **Drill in link**: displays a larger view of the session.
 - **Current prompt**: the most recent question you asked, shown below the badges and updated live as the conversation progresses
-- **Last output preview**: up to 2 lines of the most recent tool result or message
+- **Last output preview**: up to 2 lines of the most recent AI reply
 - **Send prompt input and button**: (only in live sessions) Type a prompt and send to the CLI session from Argus.
 
 ### Session Output
