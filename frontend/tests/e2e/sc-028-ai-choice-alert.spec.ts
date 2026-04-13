@@ -60,6 +60,14 @@ async function stubDashboard(
       dashboardTour: { status: 'completed', completedAt: '2024-01-01T00:00:00.000Z', skippedAt: null, seenRepoSteps: true },
       sessionHints: { dismissed: [] },
     }));
+    // Explicitly show ended sessions so tests that stub ended sessions can find them
+    localStorage.setItem('argus:settings', JSON.stringify({
+      hideEndedSessions: false,
+      hideReposWithNoActiveSessions: false,
+      hideInactiveSessions: false,
+      outputDisplayMode: 'focused',
+      restingThresholdMinutes: 20,
+    }));
   });
   await page.route('**/api/v1/repositories', route =>
     route.fulfill({ contentType: 'application/json', body: JSON.stringify([REPO]) })
