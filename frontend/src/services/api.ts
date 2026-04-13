@@ -86,6 +86,10 @@ export async function sendPrompt(id: string, prompt: string): Promise<ControlAct
   return apiFetch<ControlAction>(`/sessions/${id}/send`, { method: 'POST', body: JSON.stringify({ prompt }) });
 }
 
+export async function focusSession(id: string): Promise<{ focused: boolean; pid?: number; error?: string; message?: string }> {
+  return apiFetch<{ focused: boolean; pid?: number; error?: string; message?: string }>(`/sessions/${id}/focus`, { method: 'POST' });
+}
+
 export async function getTodos(): Promise<TodoItem[]> {
   return apiFetch<TodoItem[]>('/todos');
 }

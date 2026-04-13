@@ -9,8 +9,8 @@
 
 **Purpose**: No new infrastructure is needed; this feature extends the existing monorepo structure. The only shared work is adding the `remoteUrl` column to the DB and updating the `Repository` type used by both features.
 
-- [ ] T001 [P] [US1] Write unit tests for `getRemoteUrl()` and `buildGitHubCompareUrl()` in `backend/tests/unit/repository-scanner.test.ts` (tests must FAIL before implementation)
-- [ ] T002 [P] [US2] Write contract tests for `POST /api/v1/sessions/:id/focus` in `backend/tests/contract/sessions-focus.test.ts` (tests must FAIL before implementation)
+- [x] T001 [P] [US1] Write unit tests for `getRemoteUrl()` and `buildGitHubCompareUrl()` in `backend/tests/unit/repository-scanner.test.ts` (tests must FAIL before implementation)
+- [x] T002 [P] [US2] Write contract tests for `POST /api/v1/sessions/:id/focus` in `backend/tests/contract/sessions-focus.test.ts` (tests must FAIL before implementation)
 
 ---
 

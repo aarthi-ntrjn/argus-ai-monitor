@@ -73,6 +73,31 @@ const sessionsRoutes: FastifyPluginAsync = async (app) => {
   );
 
 
+  app.post<{ Params: { id: string } }>(
+    '/api/v1/sessions/:id/focus',
+    async (req, reply) => {
+      try {
+        const result = await sessionController.focusSession(req.params.id);
+        if (result.focused) {
+          return reply.status(200).send(result);
+        }
+        if (result.error === 'PROCESS_NOT_FOUND') {
+          return reply.status(422).send({ error: result.error, message: result.message, requestId: req.id });
+        }
+        if (result.error === 'FOCUS_NOT_SUPPORTED') {
+          return reply.status(501).send({ error: result.error, message: result.message, requestId: req.id });
+        }
+        return reply.status(500).send({ error: result.error, message: result.message, requestId: req.id });
+      } catch (err: unknown) {
+        const e = err as { code?: string; message?: string };
+        if (e.code === 'NOT_FOUND') return reply.status(404).send({ error: 'NOT_FOUND', message: e.message, requestId: req.id });
+        if (e.code === 'CONFLICT') return reply.status(409).send({ error: 'CONFLICT', message: e.message, requestId: req.id });
+        if (e.code === 'PID_NOT_SET') return reply.status(422).send({ error: 'PID_NOT_SET', message: e.message, requestId: req.id });
+        throw err;
+      }
+    }
+  );
+
   // Dismiss a session: mark it as ended without killing the process.
   // Used for read-only sessions or sessions whose process is already gone.
   app.post<{ Params: { id: string } }>(

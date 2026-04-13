@@ -71,7 +71,7 @@ function ensureRepository(cwd: string): Repository {
   if (existing) return existing;
   const id = randomUUID();
   const now = new Date().toISOString();
-  const repo = { id, path: cwd, name: basename(cwd), source: 'ui' as const, addedAt: now, lastScannedAt: null, branch: null };
+  const repo = { id, path: cwd, name: basename(cwd), source: 'ui' as const, addedAt: now, lastScannedAt: null, branch: null, remoteUrl: null };
   insertRepository(repo);
   return repo;
 }

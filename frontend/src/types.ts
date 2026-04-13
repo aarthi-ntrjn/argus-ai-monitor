@@ -17,6 +17,7 @@ export interface Repository {
   addedAt: string;
   lastScannedAt: string | null;
   branch: string | null;
+  remoteUrl?: string | null;
 }
 
 export interface Session {

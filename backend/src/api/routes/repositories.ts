@@ -12,7 +12,7 @@ import {
 } from '../../db/database.js';
 import { broadcast } from '../ws/event-dispatcher.js';
 import { ClaudeCodeDetector } from '../../services/claude-code-detector.js';
-import { getCurrentBranch } from '../../services/repository-scanner.js';
+import { getCurrentBranch, getRemoteUrl } from '../../services/repository-scanner.js';
 
 const repositoriesRoutes: FastifyPluginAsync = async (app) => {
   app.get('/api/v1/repositories', async (_req, reply) => {
@@ -39,6 +39,7 @@ const repositoriesRoutes: FastifyPluginAsync = async (app) => {
       addedAt: new Date().toISOString(),
       lastScannedAt: null,
       branch: await getCurrentBranch(repoPath),
+      remoteUrl: await getRemoteUrl(repoPath),
     };
     insertRepository(repo);
 
