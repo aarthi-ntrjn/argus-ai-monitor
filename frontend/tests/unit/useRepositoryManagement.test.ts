@@ -50,7 +50,7 @@ describe('useRepositoryManagement — folder input flow', () => {
     expect(mockScanFolder).toHaveBeenCalledWith('C:\source');
   });
 
-  it('handleFolderSubmit hides the folder input after scanning', async () => {
+  it('handleFolderSubmit keeps the dialog open after scanning', async () => {
     mockScanFolder.mockResolvedValue([]);
     const { result } = renderHook(() => useRepositoryManagement());
     act(() => {
@@ -59,19 +59,20 @@ describe('useRepositoryManagement — folder input flow', () => {
     });
     expect(result.current.showFolderInput).toBe(true);
     await act(async () => { await result.current.handleFolderSubmit(REPOS); });
-    expect(result.current.showFolderInput).toBe(false);
+    expect(result.current.showFolderInput).toBe(true);
+    expect(result.current.scanResult).toEqual({ added: 0, failed: 0, total: 0 });
   });
 
-  it('shows info when no new repos are found', async () => {
+  it('sets scanResult when no new repos are found', async () => {
     mockScanFolder.mockResolvedValue([{ path: 'C:\source\existing', name: 'existing' }]);
     const { result } = renderHook(() => useRepositoryManagement());
     act(() => { result.current.setFolderInputPath('C:\source'); });
     await act(async () => { await result.current.handleFolderSubmit(REPOS); });
-    expect(result.current.addInfo).toMatch(/No new git repositories/);
+    expect(result.current.scanResult).toEqual({ added: 0, failed: 0, total: 0 });
     expect(mockAddRepository).not.toHaveBeenCalled();
   });
 
-  it('calls addRepository for each new repo and shows success info', async () => {
+  it('calls addRepository for each new repo and populates scanResult', async () => {
     mockScanFolder.mockResolvedValue([
       { path: 'C:\source\new-a', name: 'new-a' },
       { path: 'C:\source\new-b', name: 'new-b' },
@@ -81,7 +82,7 @@ describe('useRepositoryManagement — folder input flow', () => {
     act(() => { result.current.setFolderInputPath('C:\source'); });
     await act(async () => { await result.current.handleFolderSubmit(REPOS); });
     expect(mockAddRepository).toHaveBeenCalledTimes(2);
-    expect(result.current.addInfo).toMatch(/Added 2 repositories/);
+    expect(result.current.scanResult).toEqual({ added: 2, failed: 0, total: 2 });
     expect(result.current.addError).toBeNull();
   });
 
@@ -107,7 +108,7 @@ describe('useRepositoryManagement — folder input flow', () => {
     expect(result.current.adding).toBe(false);
   });
 
-  it('reports partial failure when some addRepository calls fail', async () => {
+  it('reports partial failure in scanResult when some addRepository calls fail', async () => {
     mockScanFolder.mockResolvedValue([
       { path: 'C:\source\ok', name: 'ok' },
       { path: 'C:\source\bad', name: 'bad' },
@@ -118,6 +119,7 @@ describe('useRepositoryManagement — folder input flow', () => {
     const { result } = renderHook(() => useRepositoryManagement());
     act(() => { result.current.setFolderInputPath('C:\source'); });
     await act(async () => { await result.current.handleFolderSubmit(REPOS); });
-    expect(result.current.addError).toMatch(/1 of 2/);
+    expect(result.current.scanResult).toEqual({ added: 1, failed: 1, total: 2 });
+    expect(result.current.addError).toBeNull();
   });
 });

@@ -43,11 +43,11 @@ export default function DashboardPage() {
   const [catchUpRun, setCatchUpRun] = useState(false);
 
   const {
-    addError, addInfo, adding, showFolderInput, folderInputPath,
+    addError, adding, scanning, scanResult, showFolderInput, folderInputPath,
     removeConfirmId, removing, skipConfirm,
     setFolderInputPath, setRemoveConfirmId, setSkipConfirm,
     handleAddRepo, handleFolderSubmit, handleRemoveRepoById, handleRemoveRepo,
-    cancelFolderInput, clearAddError, clearAddInfo,
+    dismissDialog, resetScanState, clearAddError,
   } = useRepositoryManagement();
 
   // Auto-launch for first-time users
@@ -273,17 +273,10 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {addInfo && (
-          <div role="status" aria-live="polite" className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-green-700 text-sm flex justify-between">
-            <span>{addInfo}</span>
-            <button onClick={clearAddInfo} aria-label="Dismiss notification" className="ml-4 font-bold">×</button>
-          </div>
-        )}
-
-        {addError && (
+        {addError && !showFolderInput && (
           <div role="alert" className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm flex justify-between">
             <span>{addError}</span>
-            <button onClick={clearAddError} aria-label="Dismiss error" className="ml-4 font-bold">×</button>
+            <button onClick={clearAddError} aria-label="Dismiss error" className="ml-4 font-bold">&times;</button>
           </div>
         )}
 
@@ -337,30 +330,95 @@ export default function DashboardPage() {
       )}
 
       {showFolderInput && (
-        <div role="dialog" aria-modal="true" aria-labelledby="folder-dialog-title" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="folder-dialog-title"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          onKeyDown={e => { if (e.key === 'Escape' && !scanning) dismissDialog(); }}
+        >
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
             <h2 id="folder-dialog-title" className="text-lg font-semibold mb-1">Add Repositories</h2>
-            <p className="text-gray-500 text-sm mb-4">Enter a root folder path to scan for git repositories.</p>
-            <input
-              autoFocus
-              type="text"
-              value={folderInputPath}
-              onChange={e => setFolderInputPath(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleFolderSubmit(repos); if (e.key === 'Escape') cancelFolderInput(); }}
-              placeholder="e.g. C:\source or /home/user/projects"
-              aria-label="Repository folder path"
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-blue-400"
-            />
-            <div className="flex justify-end gap-2 mt-4">
-              <button onClick={cancelFolderInput} className="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
-              <button
-                onClick={() => handleFolderSubmit(repos)}
-                disabled={!folderInputPath.trim()}
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-40"
-              >
-                Scan &amp; Add
-              </button>
-            </div>
+
+            {scanning ? (
+              <div role="status" aria-live="polite" className="py-8 flex flex-col items-center gap-3">
+                <svg className="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                <p className="text-sm text-gray-600">Scanning for repositories...</p>
+              </div>
+            ) : scanResult ? (
+              <div className="py-6 flex flex-col items-center gap-3">
+                {scanResult.added > 0 ? (
+                  <svg className="h-10 w-10 text-green-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                ) : (
+                  <svg className="h-10 w-10 text-yellow-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )}
+                <p className="text-sm font-medium text-gray-800">
+                  {scanResult.added === 0 && scanResult.failed === 0
+                    ? 'No new repositories found.'
+                    : `Added ${scanResult.added} repositor${scanResult.added === 1 ? 'y' : 'ies'}.`}
+                </p>
+                {scanResult.failed > 0 && (
+                  <p className="text-sm text-red-600">
+                    {scanResult.failed} repositor{scanResult.failed === 1 ? 'y' : 'ies'} failed to add.
+                  </p>
+                )}
+                <div className="flex justify-end w-full mt-4">
+                  <button
+                    onClick={dismissDialog}
+                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            ) : addError ? (
+              <div className="py-4 flex flex-col items-center gap-3">
+                <svg className="h-10 w-10 text-red-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p role="alert" className="text-sm text-red-700 text-center">{addError}</p>
+                <div className="flex justify-end gap-2 w-full mt-4">
+                  <button onClick={dismissDialog} className="px-4 py-2 text-gray-600 hover:text-gray-800">Close</button>
+                  <button
+                    onClick={resetScanState}
+                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="text-gray-500 text-sm mb-4">Enter a root folder path to scan for git repositories.</p>
+                <input
+                  autoFocus
+                  type="text"
+                  value={folderInputPath}
+                  onChange={e => setFolderInputPath(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleFolderSubmit(repos); if (e.key === 'Escape') dismissDialog(); }}
+                  placeholder="e.g. C:\source or /home/user/projects"
+                  aria-label="Repository folder path"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-blue-400"
+                />
+                <div className="flex justify-end gap-2 mt-4">
+                  <button onClick={dismissDialog} className="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+                  <button
+                    onClick={() => handleFolderSubmit(repos)}
+                    disabled={!folderInputPath.trim()}
+                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-40"
+                  >
+                    Scan &amp; Add
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

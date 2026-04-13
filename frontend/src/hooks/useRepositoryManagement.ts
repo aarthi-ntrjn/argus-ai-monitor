@@ -4,10 +4,17 @@ import type { Repository } from '../types';
 
 const SKIP_REMOVE_CONFIRM_KEY = 'argus:skipRemoveConfirm';
 
+export interface ScanResult {
+  added: number;
+  failed: number;
+  total: number;
+}
+
 export interface RepositoryManagement {
   addError: string | null;
-  addInfo: string | null;
   adding: boolean;
+  scanning: boolean;
+  scanResult: ScanResult | null;
   showFolderInput: boolean;
   folderInputPath: string;
   removeConfirmId: string | null;
@@ -20,29 +27,37 @@ export interface RepositoryManagement {
   handleFolderSubmit: (repos: Repository[]) => Promise<void>;
   handleRemoveRepoById: (id: string) => Promise<void>;
   handleRemoveRepo: () => Promise<void>;
-  cancelFolderInput: () => void;
+  dismissDialog: () => void;
+  resetScanState: () => void;
   clearAddError: () => void;
-  clearAddInfo: () => void;
 }
 
 export function useRepositoryManagement(): RepositoryManagement {
   const [addError, setAddError] = useState<string | null>(null);
-  const [addInfo, setAddInfo] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [showFolderInput, setShowFolderInput] = useState(false);
   const [folderInputPath, setFolderInputPath] = useState('');
   const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
   const [skipConfirm, setSkipConfirmRaw] = useState(() => localStorage.getItem(SKIP_REMOVE_CONFIRM_KEY) === 'true');
 
-  const showInfo = (msg: string) => {
-    setAddInfo(msg);
-    setTimeout(() => setAddInfo(null), 5000);
+  const dismissDialog = () => {
+    setShowFolderInput(false);
+    setFolderInputPath('');
+    setScanResult(null);
+    setAddError(null);
+  };
+
+  const resetScanState = () => {
+    setAddError(null);
+    setScanResult(null);
   };
 
   const handleAddRepo = () => {
     setAddError(null);
-    setAddInfo(null);
+    setScanResult(null);
     setFolderInputPath('');
     setShowFolderInput(true);
   };
@@ -50,16 +65,16 @@ export function useRepositoryManagement(): RepositoryManagement {
   const handleFolderSubmit = async (repos: Repository[]) => {
     const folderPath = folderInputPath.trim();
     if (!folderPath) return;
-    setShowFolderInput(false);
     setAddError(null);
-    setAddInfo(null);
+    setScanResult(null);
+    setScanning(true);
     setAdding(true);
     try {
       const found = await scanFolder(folderPath);
       const registeredPaths = new Set(repos.map(r => r.path));
       const newRepos = found.filter(r => !registeredPaths.has(r.path));
       if (newRepos.length === 0) {
-        showInfo('No new git repositories found in the specified folder.');
+        setScanResult({ added: 0, failed: 0, total: 0 });
         return;
       }
       let added = 0;
@@ -73,15 +88,12 @@ export function useRepositoryManagement(): RepositoryManagement {
         }
       }
       await queryClient.invalidateQueries({ queryKey: ['repositories'] });
-      if (failed === 0) {
-        showInfo(`Added ${added} repositor${added === 1 ? 'y' : 'ies'}.`);
-      } else {
-        setAddError(`Added ${added} of ${newRepos.length} repositories (${failed} failed).`);
-      }
+      setScanResult({ added, failed, total: newRepos.length });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to add repository';
+      const msg = err instanceof Error ? err.message : 'Failed to scan folder';
       setAddError(msg);
     } finally {
+      setScanning(false);
       setAdding(false);
     }
   };
@@ -105,8 +117,9 @@ export function useRepositoryManagement(): RepositoryManagement {
 
   return {
     addError,
-    addInfo,
     adding,
+    scanning,
+    scanResult,
     showFolderInput,
     folderInputPath,
     removeConfirmId,
@@ -119,8 +132,8 @@ export function useRepositoryManagement(): RepositoryManagement {
     handleFolderSubmit,
     handleRemoveRepoById,
     handleRemoveRepo: () => handleRemoveRepoById(removeConfirmId!),
-    cancelFolderInput: () => { setShowFolderInput(false); setFolderInputPath(''); },
+    dismissDialog,
+    resetScanState,
     clearAddError: () => setAddError(null),
-    clearAddInfo: () => setAddInfo(null),
   };
 }
