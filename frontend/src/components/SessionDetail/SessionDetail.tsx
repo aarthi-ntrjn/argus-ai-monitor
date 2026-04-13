@@ -143,7 +143,7 @@ export default function SessionDetail({ items, dark = false, className, displayM
           <button
             aria-label="Show details"
             onClick={() => toggleExpand(item.id)}
-            className={`text-xs underline shrink-0 ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+            className={`text-xs underline shrink-0 ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`}
           >
             show details
           </button>
@@ -167,7 +167,7 @@ export default function SessionDetail({ items, dark = false, className, displayM
           <button
             aria-label="Show more"
             onClick={() => expandFull(item.id)}
-            className={`block text-xs underline mt-1 ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+            className={`block text-xs underline mt-1 ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`}
           >
             show more
           </button>
@@ -176,7 +176,7 @@ export default function SessionDetail({ items, dark = false, className, displayM
           <button
             aria-label="Hide details"
             onClick={() => toggleExpand(item.id)}
-            className={`block text-xs underline mt-1 ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+            className={`block text-xs underline mt-1 ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`}
           >
             hide
           </button>
@@ -240,7 +240,7 @@ export default function SessionDetail({ items, dark = false, className, displayM
                             <button
                               aria-label={pairExpanded ? 'Hide result' : 'Show result'}
                               onClick={() => toggleExpand(`pair-${toolUse.id}`)}
-                              className={`text-xs underline shrink-0 ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+                              className={`text-xs underline shrink-0 ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`}
                             >
                               {pairExpanded ? 'hide result' : 'show result'}
                             </button>
@@ -284,7 +284,7 @@ export default function SessionDetail({ items, dark = false, className, displayM
                   <button
                     aria-label={isExpanded ? 'Hide result' : 'Show result'}
                     onClick={() => toggleExpand(toolUse.id)}
-                    className={`text-xs underline shrink-0 ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+                    className={`text-xs underline shrink-0 ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`}
                   >
                     {isExpanded ? 'hide result' : 'show result'}
                   </button>

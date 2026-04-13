@@ -64,22 +64,22 @@ export default function SessionMetaRow({ session, showLink = false, onKill, kill
       <div className="flex items-center gap-2 shrink-0">
         {isInactive(session, thresholdMs) ? (
           <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded font-medium bg-amber-100 text-amber-700">
-            <Moon size={10} />resting
+            <Moon size={10} aria-hidden="true" />resting
           </span>
         ) : (
           <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded font-medium ${STATUS_COLORS[session.status] ?? 'bg-gray-100'}`}>
-            {session.status === 'active' && <Play size={10} />}
+            {session.status === 'active' && <Play size={10} aria-hidden="true" />}
             {session.status === 'active' ? 'running' : session.status}
           </span>
         )}
         {session.launchMode === 'pty' ? (
-          <span className="inline-flex items-center gap-0.5 text-xs px-2 py-0.5 rounded font-medium bg-green-100 text-green-800" title="Started via argus launch: prompt injection enabled"><Plug size={10} />connected</span>
+          <span className="inline-flex items-center gap-0.5 text-xs px-2 py-0.5 rounded font-medium bg-green-100 text-green-800" title="Started via argus launch: prompt injection enabled"><Plug size={10} aria-hidden="true" />connected</span>
         ) : (
-          <span className="inline-flex items-center gap-0.5 text-xs px-2 py-0.5 rounded font-medium bg-gray-100 text-gray-500" title="Detected session: start with argus launch to enable prompts"><Eye size={10} />read-only</span>
+          <span className="inline-flex items-center gap-0.5 text-xs px-2 py-0.5 rounded font-medium bg-gray-100 text-gray-500" title="Detected session: start with argus launch to enable prompts"><Eye size={10} aria-hidden="true" />read-only</span>
         )}
         {session.yoloMode === true && (
           <span className="inline-flex items-center gap-0.5 text-xs px-2 py-0.5 rounded font-medium bg-red-100 text-red-700" title="Session launched with auto-approve (yolo mode)">
-            <ShieldOff size={10} />yolo
+            <ShieldOff size={10} aria-hidden="true" />yolo
           </span>
         )}
         {showLink && (
@@ -89,7 +89,7 @@ export default function SessionMetaRow({ session, showLink = false, onKill, kill
             className="text-gray-500 hover:text-blue-600 transition-colors"
             aria-label="View details"
           >
-            <ExternalLink size={14} />
+            <ExternalLink size={14} aria-hidden="true" />
           </Link>
         )}
         {isKillable && (
@@ -99,7 +99,7 @@ export default function SessionMetaRow({ session, showLink = false, onKill, kill
             className="text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Kill session"
           >
-            <Power size={14} />
+            <Power size={14} aria-hidden="true" />
           </button>
         )}
       </div>

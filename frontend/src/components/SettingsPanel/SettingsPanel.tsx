@@ -134,7 +134,7 @@ export function SettingsPanel({ settings, onToggle, onUpdateThreshold, onRestart
               title="Reset to default (20 min, max 60 min)"
               className="text-gray-400 hover:text-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded-sm"
             >
-              <RotateCcw size={12} />
+              <RotateCcw size={12} aria-hidden="true" />
             </button>
           </div>
           {thresholdError && (

@@ -70,7 +70,7 @@ function SessionCard({ session, selected, onSelect }: Props) {
           )}
         </p>
       ) : (
-        <p className={`text-sm mt-2 truncate ${session.summary ? 'text-gray-600' : 'text-gray-400 italic'}`}>
+        <p className={`text-sm mt-2 truncate ${session.summary ? 'text-gray-600' : 'text-gray-500 italic'}`}>
           {session.summary || 'Nothing sent yet'}
         </p>
       )}

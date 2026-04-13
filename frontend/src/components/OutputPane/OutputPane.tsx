@@ -69,7 +69,7 @@ export default function OutputPane({ session, onClose, className, 'data-tour-id'
       </div>
       <div className="flex-1 overflow-y-auto rounded-b-lg">
         {isError ? (
-          <p className="p-6 text-center text-sm text-red-400">Failed to load output. Is the server running?</p>
+          <p className="p-6 text-center text-sm text-red-600">Failed to load output. Is the server running?</p>
         ) : (
           <>
             <SessionDetail sessionId={session.id} items={data?.items ?? []} dark displayMode={displayMode} className="max-h-none pb-0" />

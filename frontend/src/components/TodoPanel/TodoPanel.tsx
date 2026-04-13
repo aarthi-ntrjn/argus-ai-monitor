@@ -151,7 +151,7 @@ export default function TodoPanel() {
           </svg>
           To Do or Not To Do
           {collapsed && todos.length > 0 && (
-            <span className="ml-1 text-xs font-normal text-gray-400">({todos.length})</span>
+            <span className="ml-1 text-xs font-normal text-gray-500">({todos.length})</span>
           )}
         </button>
         {!collapsed && (
@@ -218,7 +218,7 @@ export default function TodoPanel() {
           <div className="px-4 py-6 text-center text-sm text-gray-500">Loading…</div>
         )}
         {isError && (
-          <div className="px-4 py-6 text-center text-sm text-red-500">Failed to load todos.</div>
+          <div className="px-4 py-6 text-center text-sm text-red-600">Failed to load todos.</div>
         )}
         {!isLoading && !isError && todos.length > 0 && (
           <ul className="divide-y divide-gray-50 py-1">
@@ -282,7 +282,7 @@ export default function TodoPanel() {
                         aria-label={`Delete "${todo.text}"`}
                         className="absolute right-0 top-1/2 -translate-y-1/2 h-3.5 w-3.5 flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus-within/del:opacity-100 text-gray-500 hover:text-red-500 transition-opacity focus:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400 rounded-sm"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                       </button>

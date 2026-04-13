@@ -80,7 +80,7 @@ export default function SessionPromptBar({ session }: Props) {
           {sending ? '…' : '↵'}
         </button>
       </div>
-      {error && <p className="text-xs text-red-500 mt-0.5">{error}</p>}
+      {error && <p role="alert" className="text-xs text-red-600 mt-0.5">{error}</p>}
     </div>
   );
 }
