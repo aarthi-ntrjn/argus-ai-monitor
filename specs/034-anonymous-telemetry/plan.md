@@ -84,6 +84,22 @@ frontend/
 
 ## Implementation Phases
 
+### Phase 0: Maintainer Setup (Manual, Prerequisite)
+
+**Goal**: Have a working PostHog project and ingest API key before any code is shipped.
+
+**Tasks**:
+
+1. Sign up at posthog.com and create a new project named "Argus".
+2. Copy the project API key (starts with `phc_`).
+3. Set the ingest URL: `https://app.posthog.com/capture/` (or EU: `https://eu.posthog.com/capture/`).
+4. Add the API key and URL as build-time constants/env vars in the repo (document in `.env.example` as `TELEMETRY_URL` and `TELEMETRY_API_KEY`).
+5. Verify the ingest endpoint accepts a test POST and the event appears in the PostHog Live Events view.
+
+**Blocks**: Phase 1 code can be written without this, but telemetry will be a no-op until the key is set.
+
+---
+
 ### Phase 1: Backend Core (Telemetry Service + Config)
 
 **Goal**: Installation ID generation, preference storage, event dispatch capability. No instrumentation yet.

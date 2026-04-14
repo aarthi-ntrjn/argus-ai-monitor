@@ -82,10 +82,21 @@ Both fields are added to `ALLOWED_KEYS` in the settings route so the frontend ca
 
 ---
 
-## Decision 6: External Collector Endpoint
+## Decision 6: External Collector — PostHog
 
-**Decision**: The collector is a simple HTTP service (e.g., a serverless function) that accepts `POST` with a JSON body of shape `{ installationId, type, appVersion, timestamp }` and returns `200 OK`. No authentication on the ingest endpoint — the installation ID provides sufficient de-duplication without identifying users.
+**Decision**: Use PostHog Cloud as the telemetry collector. Ingest URL: `https://app.posthog.com/capture/` (or `https://eu.posthog.com/capture/` for EU data residency). Events are sent as HTTP POST with JSON body matching PostHog's capture API: `{ api_key, distinct_id, event, properties, timestamp }`.
 
-**Rationale**: The collector implementation is out of scope for this feature (per spec Assumptions). The contract defined here is what the Argus backend will POST. The collector can be any HTTP service that accepts the payload.
+**Mapping to spec payload**:
+- `distinct_id` = `installationId`
+- `event` = event type string (e.g. `session_started`)
+- `properties` = `{ appVersion, sessionType? }`
+- `timestamp` = UTC ISO 8601 string
 
-**Telemetry endpoint URL** is set via the build-time constant `VITE_TELEMETRY_URL` (for frontend build) and `TELEMETRY_URL` environment variable (for backend), with a compile-time default pointing at the maintainer's ingest URL. If the variable is absent or empty, telemetry is silently disabled.
+**Rationale**: PostHog's free tier covers 1M events/month with no credit card required. It provides a built-in dashboard (aggregations, funnels, retention) at zero additional cost, accepts plain HTTP POST with no SDK, and has an EU-hosted option for data residency. Chosen over Cloudflare Worker + D1 (no dashboard) and Tinybird ($49/mo minimum paid tier).
+
+**Alternatives considered**:
+- Cloudflare Worker + D1: full data ownership but no dashboard; higher setup cost.
+- Tinybird: good ingest API but $49/mo minimum paid tier is disproportionate for this scale.
+- Custom serverless function: maximum control but requires building query/dashboard tooling separately.
+
+**Prerequisite**: Maintainer must create a PostHog project and set `TELEMETRY_URL` and `TELEMETRY_API_KEY` build-time constants before telemetry is live. See Phase 0 in plan.md.
