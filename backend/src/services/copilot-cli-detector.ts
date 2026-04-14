@@ -100,8 +100,6 @@ export class CopilotCliDetector {
       // unrelated process after the session ends, it must not be treated as
       // a live Copilot session.
       const matched = processes.filter((p) => isAiToolProcess(p.name, SessionTypes.COPILOT_CLI));
-      const names = [...new Set(matched.map((p) => p.name))];
-      if (names.length > 0) console.log(`[CopilotDetector] matched process names: ${names.join(', ')}`);
       return new Set(matched.map((p) => p.pid));
     } catch {
       return new Set();
