@@ -351,6 +351,7 @@ export class SessionMonitor extends EventEmitter {
         if (age >= INACTIVE_THRESHOLD_MS) {
           if (!this.restingNotifiedSessions.has(session.id)) {
             this.restingNotifiedSessions.add(session.id);
+            console.log(`[SessionMonitor] resting transition sessionId=${session.id} lastActivityAt=${session.lastActivityAt} ageMin=${Math.round(age / 60000)}`);
             broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: session as unknown as Record<string, unknown> });
           }
         } else {
