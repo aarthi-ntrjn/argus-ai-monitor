@@ -43,6 +43,20 @@ function getProcessCommandLine(pid: number): string | null {
 
 
 /**
+ * Lightweight liveness check using signal 0.
+ * EPERM means the process exists but we lack permission (still alive).
+ * ESRCH means the process does not exist.
+ */
+export function isPidRunning(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return (e as NodeJS.ErrnoException).code === 'EPERM';
+  }
+}
+
+/**
  * Check yolo mode by inspecting multiple PIDs (pid and hostPid).
  * Returns true if any process has the yolo flag, false if a process was found but has no flag,
  * or null if no process command line could be read (process not ready or WMI unavailable).

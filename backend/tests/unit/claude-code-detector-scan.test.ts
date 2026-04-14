@@ -11,6 +11,17 @@ vi.mock('ps-list', () => ({
   default: vi.fn(async () => mockPsListResult),
 }));
 
+// isPidRunning is called by scanExistingSessions to verify registry entries are live.
+// Default: all PIDs are considered live (registry entries are trusted in tests).
+let mockIsPidRunningResult = true;
+vi.mock('../../src/services/process-utils.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/services/process-utils.js')>();
+  return {
+    ...actual,
+    isPidRunning: vi.fn(() => mockIsPidRunningResult),
+  };
+});
+
 const FAKE_REPO_PATH = 'C:\\testproject';
 // Claude dir naming: replace :, \, / with hyphens → 'C--testproject'
 const FAKE_DIR_NAME = FAKE_REPO_PATH.replace(/[:\\/]/g, '-');
@@ -64,8 +75,9 @@ describe('ClaudeCodeDetector.scanExistingSessions', () => {
     process.env.ARGUS_DB_PATH = join(tmpdir(), `argus-claude-scan-test-${randomUUID()}.db`);
     vi.resetModules();
 
-    // Reset to default: Claude is running, mtime is recent
+    // Reset to default: Claude is running, mtime is recent, PIDs are live
     mockPsListResult = [{ pid: 4242, name: 'claude', cmd: 'claude' }];
+    mockIsPidRunningResult = true;
     mockMtime = new Date();
     fakeJsonlFiles = ['test-session-abc123.jsonl'];
     fakeRegistryEntries = { 'test-session-abc123': { pid: 4242, sessionId: 'test-session-abc123', cwd: FAKE_REPO_PATH } };

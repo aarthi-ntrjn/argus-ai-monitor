@@ -25,6 +25,14 @@ vi.mock('ps-list', () => ({
   default: vi.fn(async () => mockPsListResult),
 }));
 
+// Mock process-utils so isPidRunning is driven by the same mockPsListResult array.
+// reconcileClaudeCodeSessions uses isPidRunning directly (not ps-list).
+const mockIsPidRunning = vi.hoisted(() => vi.fn((_pid: number) => false));
+vi.mock('../../src/services/process-utils.js', () => ({
+  isPidRunning: mockIsPidRunning,
+  detectYoloModeFromPids: vi.fn().mockReturnValue(null),
+}));
+
 // Mock config to avoid reading real watch dirs
 vi.mock('../../src/config/config-loader.js', () => ({
   loadConfig: () => ({
@@ -258,6 +266,8 @@ describe('SessionMonitor.reconcileClaudeCodeSessions — active/ended logic', ()
     vi.resetModules();
     mockPsListResult = [{ pid: 9999, name: 'some-process', cmd: 'some-process' }];
     mockGetCurrentBranchResult = null;
+    mockIsPidRunning.mockReset();
+    mockIsPidRunning.mockImplementation((pid: number) => mockPsListResult.some(p => p.pid === pid));
 
     const db = await import('../../src/db/database.js');
     closeDb = db.closeDb;

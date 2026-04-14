@@ -12,6 +12,16 @@ vi.mock('ps-list', () => ({
   default: vi.fn(async () => []),
 }));
 
+// isPidRunning is called by scanExistingSessions to verify registry entries are live.
+// Default: all registry PIDs are considered live.
+vi.mock('../../src/services/process-utils.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/services/process-utils.js')>();
+  return {
+    ...actual,
+    isPidRunning: vi.fn(() => true),
+  };
+});
+
 const FAKE_REPO_PATH = 'C:\\pidtestproject';
 const FAKE_DIR_NAME = FAKE_REPO_PATH.replace(/[:\\/]/g, '-');
 

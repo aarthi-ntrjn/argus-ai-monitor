@@ -6,7 +6,7 @@ import { ptyRegistry } from './pty-registry.js';
 import { ClaudeSessionRegistry } from './claude-session-registry.js';
 import { ClaudeJsonlWatcher } from './claude-jsonl-watcher.js';
 import { broadcast } from '../api/ws/event-dispatcher.js';
-import { detectYoloModeFromPids } from './process-utils.js';
+import { detectYoloModeFromPids, isPidRunning } from './process-utils.js';
 import type { Session, Repository, PendingChoice } from '../models/index.js';
 
 const CLAUDE_SETTINGS_PATH = join(homedir(), '.claude', 'settings.json');
@@ -32,6 +32,7 @@ interface HookPayload {
   tool_result?: unknown;
   [key: string]: unknown;
 }
+
 export class ClaudeCodeDetector {
   private jsonlWatcher = new ClaudeJsonlWatcher();
   private pendingChoices = new Map<string, PendingChoice>();
@@ -116,51 +117,20 @@ export class ClaudeCodeDetector {
   }
 
   async scanExistingSessions(): Promise<void> {
-    const projectsDir = join(homedir(), '.claude', 'projects');
-    if (!existsSync(projectsDir)) return;
-
     const registry = new ClaudeSessionRegistry();
     const registryEntries = registry.scanEntries();
-    const liveSessionIds = new Set(registryEntries.map(e => e.sessionId));
 
-    try {
-      const projectDirNames = new Set(
-        readdirSync(projectsDir, { withFileTypes: true })
-          .filter(e => e.isDirectory())
-          .map(e => e.name.toLowerCase())
-      );
+    for (const entry of registryEntries) {
+      const isLive = isPidRunning(entry.pid);
+      if (!isLive) continue;
 
-      for (const repo of getRepositories()) {
-        const expectedDirName = ClaudeCodeDetector.projectDirName(repo.path).toLowerCase();
-        if (!projectDirNames.has(expectedDirName)) continue;
+      const normalizedCwd = normalize(entry.cwd.trimEnd().replace(/[/\\]+$/, ''));
+      const repo = getRepositoryByPath(normalizedCwd);
+      if (!repo) continue;
 
-        const projectDir = join(projectsDir, ClaudeCodeDetector.projectDirName(repo.path));
+      await this.activateFoundSession(entry.sessionId, repo, null);
+    }
 
-        let jsonlEntries: Array<{ id: string; path: string; mtime: Date }>;
-        try {
-          jsonlEntries = readdirSync(projectDir)
-            .filter(f => f.endsWith('.jsonl'))
-            .map(f => {
-              const fp = join(projectDir, f);
-              return { id: f.slice(0, -6), path: fp, mtime: statSync(fp).mtime };
-            })
-            .sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
-        } catch {
-          continue;
-        }
-
-        if (jsonlEntries.length === 0) continue;
-
-        for (const entry of jsonlEntries.slice(0, 5)) {
-          const existing = getSession(entry.id);
-          if (existing?.status === 'active') {
-            await this.activateFoundSession(entry.id, repo, null);
-          } else if (liveSessionIds.has(entry.id)) {
-            await this.activateFoundSession(entry.id, repo, null);
-          }
-        }
-      }
-    } catch { /* ignore */ }
   }
 
   async handleHookPayload(payload: HookPayload): Promise<void> {

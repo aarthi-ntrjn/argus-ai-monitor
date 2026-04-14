@@ -2,7 +2,6 @@ import { readdirSync, existsSync, readFileSync, openSync, readSync, closeSync, s
 import { join, normalize } from 'path';
 import { homedir } from 'os';
 import { load as yamlLoad } from 'js-yaml';
-import psList from 'ps-list';
 import { randomUUID } from 'crypto';
 import chokidar, { type FSWatcher } from 'chokidar';
 import { upsertSession, getRepositoryByPath, deleteSessionOutput, getSession } from '../db/database.js';
@@ -10,8 +9,7 @@ import { broadcast } from '../api/ws/event-dispatcher.js';
 import { ptyRegistry } from './pty-registry.js';
 import { OutputStore } from './output-store.js';
 import { parseJsonlLine, parseModelFromEvent } from './events-parser.js';
-import { detectYoloModeFromPids } from './process-utils.js';
-import { isAiToolProcess } from './pid-validator.js';
+import { detectYoloModeFromPids, isPidRunning } from './process-utils.js';
 import { SessionTypes } from '../models/index.js';
 import type { Session, PidSource } from '../models/index.js';
 
@@ -30,52 +28,70 @@ export class CopilotCliDetector {
   private filePositions = new Map<string, number>();
   private sequenceCounters = new Map<string, number>();
   private outputStore = new OutputStore();
+  private lastScanTime = 0;
+  // Dirs known to have an active session last scan — must be rechecked even if mtime unchanged.
+  private activeDirPaths = new Set<string>();
 
   constructor(private sessionStateDir: string = DEFAULT_SESSION_DIR) {}
 
-  async scan(): Promise<Session[]> {
+  async scan(force = false): Promise<Session[]> {
     if (!existsSync(this.sessionStateDir)) return [];
     const t0 = Date.now();
-    console.log(`[CopilotDetector] scan start`);
 
-    const runningPids = await this.getRunningPids();
-    const t1 = Date.now();
-    console.log(`[CopilotDetector] psList done — ${runningPids.size} copilot pid(s) running — ${t1 - t0}ms`);
+    // Collect dirs to process:
+    // 1. Dirs modified since last scan — may contain new sessions.
+    //    When force=true (triggered by repo add) skip the mtime filter so we catch
+    //    sessions whose dir predates the last scan (e.g. after a repo remove+re-add).
+    // 2. Dirs that had an active session last scan — detect if they have ended.
+    const dirsToProcess = new Set<string>();
+    let totalDirs = 0;
 
-    const sessions: Session[] = [];
-    let dirCount = 0;
     try {
       const entries = readdirSync(this.sessionStateDir, { withFileTypes: true });
       for (const entry of entries) {
         if (!entry.isDirectory()) continue;
-        dirCount++;
-        const session = await this.processSessionDir(join(this.sessionStateDir, entry.name), runningPids);
-        if (session) sessions.push(session);
+        totalDirs++;
+        const dirPath = join(this.sessionStateDir, entry.name);
+
+        if (this.activeDirPaths.has(dirPath)) {
+          dirsToProcess.add(dirPath);
+          continue;
+        }
+
+        if (force) {
+          dirsToProcess.add(dirPath);
+          continue;
+        }
+
+        try {
+          if (statSync(dirPath).mtimeMs > this.lastScanTime) dirsToProcess.add(dirPath);
+        } catch { /* ignore */ }
       }
     } catch { /* ignore */ }
 
-    const t2 = Date.now();
-    console.log(`[CopilotDetector] scan done — ${dirCount} dir(s), ${sessions.length} session(s) — dirs: ${t2 - t1}ms — total: ${t2 - t0}ms`);
+    const sessions: Session[] = [];
+    const newActiveDirPaths = new Set<string>();
+
+    for (const dirPath of dirsToProcess) {
+      const tDir = Date.now();
+      const session = await this.processSessionDir(dirPath);
+      const dirMs = Date.now() - tDir;
+      if (dirMs > 50) {
+        console.log(`[CopilotDetector] slow dir (${dirMs}ms): ${dirPath}`);
+      }
+      if (session) {
+        sessions.push(session);
+        if (session.status === 'active') newActiveDirPaths.add(dirPath);
+      }
+    }
+
+    this.activeDirPaths = newActiveDirPaths;
+    this.lastScanTime = t0;
+
     return sessions;
   }
 
-  private async getRunningPids(): Promise<Set<number>> {
-    try {
-      const processes = await psList();
-      // Only include Copilot processes. If a lock-file PID is reused by an
-      // unrelated process after the session ends, it must not be treated as
-      // a live Copilot session.
-      return new Set(
-        processes
-          .filter((p) => isAiToolProcess(p.name, SessionTypes.COPILOT_CLI))
-          .map((p) => p.pid)
-      );
-    } catch {
-      return new Set();
-    }
-  }
-
-  private async processSessionDir(dirPath: string, runningPids: Set<number>): Promise<Session | null> {
+  private async processSessionDir(dirPath: string): Promise<Session | null> {
     const workspaceFile = join(dirPath, 'workspace.yaml');
     if (!existsSync(workspaceFile)) return null;
 
@@ -86,7 +102,7 @@ export class CopilotCliDetector {
 
     const lockFile = this.findLockFile(dirPath);
     const pid = lockFile ? this.extractPid(lockFile) : null;
-    const isRunning = pid !== null && runningPids.has(pid);
+    const isRunning = pid !== null && isPidRunning(pid);
 
     const sessionId = workspace.id ?? randomUUID();
     const existingSession = getSession(sessionId);
@@ -105,7 +121,9 @@ export class CopilotCliDetector {
     const { launchMode, resolvedPid, resolvedHostPid, resolvedPidSource } =
       this.resolvePtyLinkage(sessionId, existingSession, repo, pid, isRunning);
 
-    const yoloMode = detectYoloModeFromPids(resolvedPid, resolvedHostPid, SessionTypes.COPILOT_CLI);
+    const yoloMode = existingSession?.yoloMode != null
+      ? existingSession.yoloMode
+      : isRunning ? detectYoloModeFromPids(resolvedPid, resolvedHostPid, SessionTypes.COPILOT_CLI) : null;
     const session: Session = {
       id: sessionId,
       repositoryId: repo.id,
@@ -120,7 +138,7 @@ export class CopilotCliDetector {
       lastActivityAt: toIso(workspace.updated_at),
       summary: existingSession?.summary ?? workspace.summary ?? null,
       expiresAt: null,
-      model: this.extractModelFromEventsFile(join(dirPath, 'events.jsonl')),
+      model: existingSession?.model ?? null,
       reconciled: true,
       yoloMode,
     };
@@ -201,29 +219,18 @@ export class CopilotCliDetector {
     const eventsFile = join(dirPath, 'events.jsonl');
     if (!existsSync(eventsFile)) return;
 
-    // Clear any stale output (may be raw JSON from before parser fix) and reload from scratch
+    const TAIL_BYTES = 16 * 1024; // ~20-50 recent events; avoids reading huge historical files
+    const fileSize = statSync(eventsFile).size;
+
     deleteSessionOutput(sessionId);
-    this.filePositions.set(sessionId, 0);
+    this.filePositions.set(sessionId, Math.max(0, fileSize - TAIL_BYTES));
     this.sequenceCounters.set(sessionId, 0);
 
-    // Load all historical lines immediately before starting the watcher
     this.readNewLines(sessionId, eventsFile);
 
     const watcher = chokidar.watch(eventsFile, { persistent: false, usePolling: false });
     watcher.on('change', () => this.readNewLines(sessionId, eventsFile));
     this.watchers.set(sessionId, watcher);
-  }
-
-  private extractModelFromEventsFile(filePath: string): string | null {
-    if (!existsSync(filePath)) return null;
-    try {
-      const lines = readFileSync(filePath, 'utf-8').split('\n');
-      for (const line of lines) {
-        const model = parseModelFromEvent(line);
-        if (model) return model;
-      }
-    } catch { /* ignore */ }
-    return null;
   }
 
   private readNewLines(sessionId: string, filePath: string): void {

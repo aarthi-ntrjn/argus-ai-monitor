@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { addRepository, removeRepository, scanFolder, queryClient } from '../services/api';
+import { useQueryClient } from '@tanstack/react-query';
+import { addRepository, removeRepository, scanFolder } from '../services/api';
 import type { Repository } from '../types';
 
 const SKIP_REMOVE_CONFIRM_KEY = 'argus:skipRemoveConfirm';
@@ -26,6 +27,7 @@ export interface RepositoryManagement {
 }
 
 export function useRepositoryManagement(): RepositoryManagement {
+  const queryClient = useQueryClient();
   const [addError, setAddError] = useState<string | null>(null);
   const [addInfo, setAddInfo] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -66,13 +68,13 @@ export function useRepositoryManagement(): RepositoryManagement {
       let failed = 0;
       for (const repo of newRepos) {
         try {
-          await addRepository(repo.path);
+          const newRepo = await addRepository(repo.path);
+          queryClient.setQueryData<Repository[]>(['repositories'], (old = []) => [newRepo, ...old]);
           added++;
         } catch {
           failed++;
         }
       }
-      await queryClient.invalidateQueries({ queryKey: ['repositories'] });
       if (failed === 0) {
         showInfo(`Added ${added} repositor${added === 1 ? 'y' : 'ies'}.`);
       } else {
@@ -90,8 +92,7 @@ export function useRepositoryManagement(): RepositoryManagement {
     setRemoving(true);
     try {
       await removeRepository(id);
-      await queryClient.invalidateQueries({ queryKey: ['repositories'] });
-      await queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      queryClient.setQueryData<Repository[]>(['repositories'], (old = []) => old.filter(r => r.id !== id));
     } finally {
       setRemoving(false);
       setRemoveConfirmId(null);

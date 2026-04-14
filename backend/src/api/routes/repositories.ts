@@ -37,6 +37,14 @@ const repositoriesRoutes: FastifyPluginAsync = async (app) => {
     const existing = getRepositoryByPath(repoPath);
     if (existing) return reply.status(409).send({ error: 'DUPLICATE', message: 'Repository already registered', repository: existing, requestId: req.id });
 
+    const tRepo = Date.now();
+    const t1 = Date.now();
+    const branch = await getCurrentBranch(repoPath);
+    console.log(`[Repositories] getCurrentBranch — ${Date.now() - t1}ms`);
+    const t2 = Date.now();
+    const remoteUrl = await getRemoteUrl(repoPath);
+    console.log(`[Repositories] getRemoteUrl — ${Date.now() - t2}ms`);
+
     const repo = {
       id: randomUUID(),
       path: repoPath,
@@ -44,17 +52,19 @@ const repositoriesRoutes: FastifyPluginAsync = async (app) => {
       source: 'ui' as const,
       addedAt: new Date().toISOString(),
       lastScannedAt: null,
-      branch: await getCurrentBranch(repoPath),
-      remoteUrl: await getRemoteUrl(repoPath),
+      branch,
+      remoteUrl,
     };
     insertRepository(repo);
 
     // Re-inject Claude hooks in case they were removed when the last repo was deleted
+    const tHooks = Date.now();
     new ClaudeCodeDetector().injectHooks();
+    console.log(`[Repositories] injectHooks — ${Date.now() - tHooks}ms`);
 
     broadcast({ type: 'repository.added', timestamp: new Date().toISOString(), data: repo as unknown as Record<string, unknown> });
+    console.log(`[Repositories] POST handler total before triggers — ${Date.now() - tRepo}ms`);
     _monitor?.triggerScan();
-    console.log(`[Repositories] triggerCopilotScan fired for path="${repoPath}"`);
     _monitor?.triggerCopilotScan();
     return reply.status(201).send(repo);
   });
