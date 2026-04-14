@@ -27,6 +27,38 @@ export async function getCurrentBranch(repoPath: string): Promise<string | null>
   }
 }
 
+export async function getRemoteUrl(repoPath: string): Promise<string | null> {
+  try {
+    const { stdout } = await execAsync('git remote get-url origin', { cwd: repoPath });
+    return stdout.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+const DEFAULT_BRANCHES = new Set(['master', 'main']);
+
+export function buildGitHubCompareUrl(remoteUrl: string | null | undefined, branch: string | null | undefined): string | null {
+  if (!remoteUrl || !branch) return null;
+
+  let baseUrl: string | null = null;
+
+  if (remoteUrl.startsWith('https://github.com/')) {
+    baseUrl = remoteUrl.replace(/\.git$/, '');
+  } else if (remoteUrl.startsWith('git@github.com:')) {
+    const path = remoteUrl.slice('git@github.com:'.length).replace(/\.git$/, '');
+    baseUrl = `https://github.com/${path}`;
+  }
+
+  if (!baseUrl) return null;
+
+  if (DEFAULT_BRANCHES.has(branch)) {
+    return `${baseUrl}/compare`;
+  }
+  const defaultBase = 'master';
+  return `${baseUrl}/compare/${defaultBase}...${branch}`;
+}
+
 export class RepositoryScanner {
   constructor(private watchDirectories: string[]) {}
 
@@ -63,6 +95,11 @@ export class RepositoryScanner {
     const existing = getRepositoryByPath(repoPath);
     if (existing) return existing;
 
+    const [branch, remoteUrl] = await Promise.all([
+      getCurrentBranch(repoPath),
+      getRemoteUrl(repoPath),
+    ]);
+
     const repo: Repository = {
       id: randomUUID(),
       path: repoPath,
@@ -70,7 +107,8 @@ export class RepositoryScanner {
       source,
       addedAt: new Date().toISOString(),
       lastScannedAt: new Date().toISOString(),
-      branch: await getCurrentBranch(repoPath),
+      branch,
+      remoteUrl,
     };
     insertRepository(repo);
     broadcast({ type: 'repository.added', timestamp: new Date().toISOString(), data: repo as unknown as Record<string, unknown> });

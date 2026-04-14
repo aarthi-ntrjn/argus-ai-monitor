@@ -1,7 +1,8 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useTodos, useCreateTodo, useUpdateTodoText, useToggleTodo, useDeleteTodo } from '../../hooks/useTodos';
 import ToggleIconButton from '../ToggleIconButton';
 import { Checkbox } from '../Checkbox';
+import type { TodoItem } from '../../types';
 
 type RowId = string;
 
@@ -23,6 +24,75 @@ function formatRelativeTime(iso: string): string {
   const days = Math.floor(hrs / 24);
   if (days < 7) return `${days}d`;
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+interface TodoRowProps {
+  todo: TodoItem;
+  index: number;
+  reversedTodos: TodoItem[];
+  wrapText: boolean;
+  showTimestamps: boolean;
+  todoRefsMap: React.MutableRefObject<Map<string, HTMLTextAreaElement | null>>;
+  onBlur: (id: string, value: string) => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>, id: string, index: number, reversedTodos?: TodoItem[]) => void;
+  onDelete: (id: string) => void;
+  onToggle: (id: string, done: boolean) => void;
+}
+
+function TodoRow({ todo, index, reversedTodos, wrapText, showTimestamps, todoRefsMap, onBlur, onKeyDown, onDelete, onToggle }: TodoRowProps) {
+  const { done } = todo;
+  return (
+    <li key={todo.id} className="group flex items-center gap-2 px-4 py-[3px]">
+      <Checkbox
+        checked={done}
+        onChange={() => onToggle(todo.id, done)}
+        aria-label={`Mark "${todo.text}" as ${done ? 'incomplete' : 'complete'}`}
+      />
+      <textarea
+        ref={(el) => {
+          todoRefsMap.current.set(todo.id, el);
+          if (el && wrapText) {
+            el.style.height = 'auto';
+            el.style.height = el.scrollHeight + 'px';
+          } else if (el) {
+            el.style.height = '1.25rem';
+          }
+        }}
+        defaultValue={todo.text}
+        onBlur={e => onBlur(todo.id, e.target.value)}
+        onKeyDown={e => onKeyDown(e, todo.id, index + 1, reversedTodos)}
+        onInput={e => {
+          if (wrapText) {
+            const el = e.currentTarget;
+            el.style.height = 'auto';
+            el.style.height = el.scrollHeight + 'px';
+          }
+        }}
+        aria-label={`Edit task: ${todo.text}`}
+        rows={1}
+        className={`flex-1 min-w-0 text-sm bg-transparent border-none outline-none focus:ring-1 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-white rounded resize-none leading-snug ${done ? 'line-through text-gray-500' : 'text-gray-700'}`}
+        style={wrapText ? { overflow: 'hidden' } : { height: '1.25rem', overflow: 'hidden', whiteSpace: 'nowrap' }}
+      />
+      <div className="relative shrink-0 group/del">
+        {showTimestamps ? (
+          <span className="block text-xs text-gray-500 whitespace-nowrap group-hover:opacity-0 group-focus-within/del:opacity-0 transition-opacity">
+            {formatRelativeTime(todo.createdAt)}
+          </span>
+        ) : (
+          <span className="block w-3.5 h-3.5 opacity-0" />
+        )}
+        <button
+          onClick={() => onDelete(todo.id)}
+          aria-label={`Delete "${todo.text}"`}
+          className="absolute right-0 top-1/2 -translate-y-1/2 h-3.5 w-3.5 flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus-within/del:opacity-100 text-gray-500 hover:text-red-500 transition-opacity focus:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400 rounded-sm"
+        >
+          <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </button>
+      </div>
+    </li>
+  );
 }
 
 export default function TodoPanel() {
@@ -49,9 +119,22 @@ export default function TodoPanel() {
     }
   }, [addRowId]);
 
-  const [showDone, setShowDone] = useState(true);
-  const [showTimestamps, setShowTimestamps] = useState(true);
-  const [wrapText, setWrapText] = useState(true);
+  const [showDone, setShowDone] = useState(() => {
+    const v = localStorage.getItem('argus.todo.showDone');
+    return v === null ? true : v === 'true';
+  });
+  const [showTimestamps, setShowTimestamps] = useState(() => {
+    const v = localStorage.getItem('argus.todo.showTimestamps');
+    return v === null ? true : v === 'true';
+  });
+  const [wrapText, setWrapText] = useState(() => {
+    const v = localStorage.getItem('argus.todo.wrapText');
+    return v === null ? false : v === 'true';
+  });
+
+  useEffect(() => { localStorage.setItem('argus.todo.showDone', String(showDone)); }, [showDone]);
+  useEffect(() => { localStorage.setItem('argus.todo.showTimestamps', String(showTimestamps)); }, [showTimestamps]);
+  useEffect(() => { localStorage.setItem('argus.todo.wrapText', String(wrapText)); }, [wrapText]);
 
   const reversedTodos = useMemo(
     () => [...todos].reverse().filter(todo => showDone || !todo.done),
@@ -184,61 +267,21 @@ export default function TodoPanel() {
         )}
         {!isLoading && !isError && todos.length > 0 && (
           <ul className="divide-y divide-gray-50 py-1">
-            {reversedTodos.map((todo, index) => {
-                const done = todo.done;
-                return (
-                  <li key={todo.id} className="group flex items-center gap-2 px-4 py-[3px]">
-                    <Checkbox
-                      checked={done}
-                      onChange={() => toggleTodo.mutate({ id: todo.id, done: !done })}
-                      aria-label={`Mark "${todo.text}" as ${done ? 'incomplete' : 'complete'}`}
-                    />
-                    <textarea
-                      ref={(el) => {
-                        todoRefsMap.current.set(todo.id, el);
-                        if (el && wrapText) {
-                          el.style.height = 'auto';
-                          el.style.height = el.scrollHeight + 'px';
-                        } else if (el) {
-                          el.style.height = '1.25rem';
-                        }
-                      }}
-                      defaultValue={todo.text}
-                      onBlur={e => handleBlur(todo.id, e.target.value)}
-                      onKeyDown={e => handleKeyDown(e, todo.id, index + 1, reversedTodos)}
-                      onInput={e => {
-                        if (wrapText) {
-                          const el = e.currentTarget;
-                          el.style.height = 'auto';
-                          el.style.height = el.scrollHeight + 'px';
-                        }
-                      }}
-                      aria-label={`Edit task: ${todo.text}`}
-                      rows={1}
-                      className={`flex-1 min-w-0 text-sm bg-transparent border-none outline-none focus:ring-1 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-white rounded resize-none leading-snug ${done ? 'line-through text-gray-500' : 'text-gray-700'}`}
-                      style={wrapText ? { overflow: 'hidden' } : { height: '1.25rem', overflow: 'hidden', whiteSpace: 'nowrap' }}
-                    />
-                    <div className="relative shrink-0 group/del">
-                      {showTimestamps ? (
-                        <span className="block text-xs text-gray-500 whitespace-nowrap group-hover:opacity-0 group-focus-within/del:opacity-0 transition-opacity">
-                          {formatRelativeTime(todo.createdAt)}
-                        </span>
-                      ) : (
-                        <span className="block w-3.5 h-3.5 opacity-0" />
-                      )}
-                      <button
-                        onClick={() => deleteTodo.mutate(todo.id)}
-                        aria-label={`Delete "${todo.text}"`}
-                        className="absolute right-0 top-1/2 -translate-y-1/2 h-3.5 w-3.5 flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus-within/del:opacity-100 text-gray-500 hover:text-red-500 transition-opacity focus:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400 rounded-sm"
-                      >
-                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  </li>
-                );
-            })}
+            {reversedTodos.map((todo, index) => (
+              <TodoRow
+                key={todo.id}
+                todo={todo}
+                index={index}
+                reversedTodos={reversedTodos}
+                wrapText={wrapText}
+                showTimestamps={showTimestamps}
+                todoRefsMap={todoRefsMap}
+                onBlur={handleBlur}
+                onKeyDown={handleKeyDown}
+                onDelete={(id) => deleteTodo.mutate(id)}
+                onToggle={(id, done) => toggleTodo.mutate({ id, done: !done })}
+              />
+            ))}
           </ul>
         )}
       </div>

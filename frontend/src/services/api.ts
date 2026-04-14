@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
-import type { Repository, Session, SessionOutput, ControlAction, TodoItem, ArgusConfig } from '../types';
+import type { Repository, Session, SessionOutput, ControlAction, TodoItem, ArgusConfig, ToolCommand } from '../types';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -117,7 +117,7 @@ export async function getAvailableTools(): Promise<AvailableTools> {
   return apiFetch<AvailableTools>('/tools');
 }
 
-export async function launchInTerminal(tool: 'claude' | 'copilot', repoPath?: string): Promise<void> {
+export async function launchInTerminal(tool: ToolCommand, repoPath?: string): Promise<void> {
   await apiFetch<void>('/sessions/launch-terminal', {
     method: 'POST',
     body: JSON.stringify({ tool, repoPath }),

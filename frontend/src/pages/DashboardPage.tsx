@@ -1,19 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { Plus } from 'lucide-react';
-import LaunchDropdown from '../components/LaunchDropdown/LaunchDropdown';
 import { useNavigate } from 'react-router-dom';
 import { getSessions, getRepositories } from '../services/api';
-import type { Repository, Session } from '../types';
 import { useSettings } from '../hooks/useSettings';
 import { useOnboarding } from '../hooks/useOnboarding';
 import { useRepositoryManagement } from '../hooks/useRepositoryManagement';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { Button } from '../components/Button';
-import Badge from '../components/Badge';
 import { SettingsPanel } from '../components/SettingsPanel';
 import { RemoveConfirmDialog } from '../components/RemoveConfirmDialog';
-import SessionCard from '../components/SessionCard/SessionCard';
 import OutputPane from '../components/OutputPane/OutputPane';
 import ArgusLogo from '../components/ArgusLogo';
 import TodoPanel from '../components/TodoPanel/TodoPanel';
@@ -21,10 +17,10 @@ import MobileNav from '../components/MobileNav/MobileNav';
 import { isInactive } from '../utils/sessionUtils';
 import { OnboardingTour } from '../components/Onboarding';
 import { buildDashboardTourSteps, REPO_CATCH_UP_STEPS } from '../config/dashboardTourSteps';
-
-interface RepoWithSessions extends Repository {
-  sessions: Session[];
-}
+import RepoCard from '../components/RepoCard/RepoCard';
+import type { RepoWithSessions } from '../components/RepoCard/RepoCard';
+import FolderInputDialog from '../components/FolderInputDialog/FolderInputDialog';
+import type { Session } from '../types';
 
 const ENDED_STATUSES = new Set(['completed', 'ended']);
 const ACTIVE_STATUSES = new Set(['active', 'waiting', 'error']);
@@ -77,13 +73,11 @@ export default function DashboardPage() {
   const { data: repos = [], isLoading: reposLoading, isError: reposError } = useQuery({
     queryKey: ['repositories'],
     queryFn: getRepositories,
-    refetchInterval: 5000,
   });
 
   const { data: sessions = [], isLoading: sessionsLoading, isError: sessionsError } = useQuery({
     queryKey: ['sessions'],
     queryFn: () => getSessions(),
-    refetchInterval: 5000,
   });
 
   const sessionsByRepo = useMemo(() => {
@@ -155,59 +149,17 @@ export default function DashboardPage() {
   const repoList = (
     <div className="space-y-6">
       {reposWithSessions.map((repo) => (
-        <div key={repo.id} data-tour-id="dashboard-repo-card" className="bg-white rounded-lg shadow p-4 md:p-6">
-          <div className="mb-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg md:text-xl font-semibold text-gray-900">{repo.name}</h2>
-              <div className="flex items-center gap-2">
-                <Badge>
-                  {repo.sessions.length} session{repo.sessions.length !== 1 ? 's' : ''}
-                </Badge>
-                <LaunchDropdown repoPath={repo.path} />
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    if (skipConfirm) {
-                      handleRemoveRepoById(repo.id);
-                    } else {
-                      setRemoveConfirmId(repo.id);
-                    }
-                  }}
-                  aria-label={`Remove repository ${repo.name}`}
-                  title="Remove repository"
-                  className="icon-btn text-gray-500 hover:text-red-500"
-                >
-                  <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <p className="text-xs text-gray-500 font-mono truncate max-w-full">{repo.path}</p>
-              {repo.branch && (
-                <span className="inline-flex items-center gap-1 text-xs font-mono text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">⎇ {repo.branch}</span>
-              )}
-            </div>
-          </div>
-          {repo.sessions.length === 0 ? (
-            <p className="text-gray-500 text-sm">
-              {settings.hideEndedSessions ? 'No active sessions' : 'No sessions'}
-            </p>
-          ) : (
-            <div data-tour-id="dashboard-session-card" className="space-y-2">
-              {repo.sessions.map((session) => (
-                <SessionCard
-                  key={session.id}
-                  session={session}
-                  selected={!isMobile && selectedSessionId === session.id}
-                  onSelect={handleSessionSelect}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+        <RepoCard
+          key={repo.id}
+          repo={repo}
+          skipConfirm={skipConfirm}
+          selectedSessionId={selectedSessionId}
+          isMobile={isMobile}
+          hideEndedSessions={settings.hideEndedSessions}
+          onRemoveById={handleRemoveRepoById}
+          onSetRemoveConfirm={setRemoveConfirmId}
+          onSelectSession={handleSessionSelect}
+        />
       ))}
     </div>
   );
@@ -350,31 +302,12 @@ export default function DashboardPage() {
       )}
 
       {showFolderInput && (
-        <div role="dialog" aria-modal="true" aria-labelledby="folder-dialog-title" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <h2 id="folder-dialog-title" className="text-lg font-semibold mb-1">Add Repositories</h2>
-            <p className="text-gray-500 text-sm mb-4">Enter a root folder path to scan for git repositories.</p>
-            <input
-              autoFocus
-              type="text"
-              value={folderInputPath}
-              onChange={e => setFolderInputPath(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleFolderSubmit(repos); if (e.key === 'Escape') cancelFolderInput(); }}
-              placeholder="e.g. C:\source or /home/user/projects"
-              aria-label="Repository folder path"
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-blue-400"
-            />
-            <div className="flex justify-end gap-2 mt-4">
-              <Button variant="ghost" onClick={cancelFolderInput}>Cancel</Button>
-              <Button
-                onClick={() => handleFolderSubmit(repos)}
-                disabled={!folderInputPath.trim()}
-              >
-                Scan &amp; Add
-              </Button>
-            </div>
-          </div>
-        </div>
+        <FolderInputDialog
+          folderInputPath={folderInputPath}
+          onPathChange={setFolderInputPath}
+          onSubmit={() => handleFolderSubmit(repos)}
+          onCancel={cancelFolderInput}
+        />
       )}
 
       {removeConfirmId && (

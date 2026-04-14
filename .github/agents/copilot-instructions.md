@@ -16,10 +16,10 @@ Auto-generated from all feature plans. Last updated: 2026-04-13
 - TypeScript 5.x, React 18 + React, Tailwind CSS, Vitest, Playwright (026-configurable-resting)
 - `localStorage` via the existing `useSettings` hook (`argus:settings` key) (026-configurable-resting)
 - N/A (reads from existing session output query cache; no new persistence) (028-ai-choice-alert)
-- TypeScript 5, Node.js >=22 (backend); React 18 + TypeScript 5 (frontend) + Fastify 5, better-sqlite3, Vitest; Microsoft Bot Framework REST API (via native `fetch`) for outbound messages; Bot Framework activity schema for inbound webhook events (031-teams-channel-integration)
-- SQLite (better-sqlite3) — new `teams_threads` table; Teams credentials stored in `~/.argus/teams-config.json` (separate from general config to isolate secrets) (031-teams-channel-integration)
-- TypeScript (Node.js 18+) + `@azure/msal-node` (Device Code Flow + token refresh), `node-fetch` / native fetch (Graph API calls) (031-teams-channel-integration)
-- SQLite via better-sqlite3 (existing); `~/.argus/teams-config.json` (OAuth tokens, config) (031-teams-channel-integration)
+- TypeScript 5, Node.js >=22 (backend); React 18 + TypeScript 5 (frontend) + Fastify 5, better-sqlite3, Vitest; Microsoft Graph API (via native `fetch`) + `@azure/msal-node` (Device Code Flow + token refresh) (031-teams-channel-integration)
+- SQLite (better-sqlite3) — new `teams_threads` table with `delta_link`; Teams credentials stored in `~/.argus/teams-config.json` (031-teams-channel-integration)
+- TypeScript (Node.js 20 backend, React 18 frontend) + Fastify, better-sqlite3, React Query, Tailwind CSS, Vite (032-repo-compare-session-focus)
+- SQLite via better-sqlite3; runtime migration pattern (ALTER TABLE IF NOT EXISTS column) (032-repo-compare-session-focus)
 
 - TypeScript 5.9 (frontend + backend) + Fastify 5.x (backend), React 18 + TailwindCSS 3 + React Query (frontend), better-sqlite3 (storage), pino (logging), vitest + Playwright (testing) (014-engineer-todo-list)
 
@@ -40,8 +40,8 @@ npm test; npm run lint
 TypeScript 5.9 (frontend + backend): Follow standard conventions
 
 ## Recent Changes
-- 031-teams-channel-integration: Added TypeScript (Node.js 18+) + `@azure/msal-node` (Device Code Flow + token refresh), `node-fetch` / native fetch (Graph API calls)
-- 031-teams-channel-integration: Added TypeScript 5, Node.js >=22 (backend); React 18 + TypeScript 5 (frontend) + Fastify 5, better-sqlite3, Vitest; Microsoft Bot Framework REST API (via native `fetch`) for outbound messages; Bot Framework activity schema for inbound webhook events
+- 031-teams-channel-integration: Added Microsoft Graph API + `@azure/msal-node` Device Code Flow for Teams integration (replaces Bot Framework)
+- 032-repo-compare-session-focus: Added TypeScript (Node.js 20 backend, React 18 frontend) + Fastify, better-sqlite3, React Query, Tailwind CSS, Vite
 - 028-ai-choice-alert: Added TypeScript 5.x, React 18 + React, Tailwind CSS, Vitest, Playwright
 
 

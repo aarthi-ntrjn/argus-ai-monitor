@@ -12,7 +12,13 @@ import {
 } from '../../db/database.js';
 import { broadcast } from '../ws/event-dispatcher.js';
 import { ClaudeCodeDetector } from '../../services/claude-code-detector.js';
-import { getCurrentBranch } from '../../services/repository-scanner.js';
+import { getCurrentBranch, getRemoteUrl } from '../../services/repository-scanner.js';
+
+let _monitor: { triggerScan(): void; triggerCopilotScan(): void } | null = null;
+
+export function setMonitor(monitor: { triggerScan(): void; triggerCopilotScan(): void }): void {
+  _monitor = monitor;
+}
 
 const repositoriesRoutes: FastifyPluginAsync = async (app) => {
   app.get('/api/v1/repositories', async (_req, reply) => {
@@ -39,6 +45,7 @@ const repositoriesRoutes: FastifyPluginAsync = async (app) => {
       addedAt: new Date().toISOString(),
       lastScannedAt: null,
       branch: await getCurrentBranch(repoPath),
+      remoteUrl: await getRemoteUrl(repoPath),
     };
     insertRepository(repo);
 
@@ -46,6 +53,9 @@ const repositoriesRoutes: FastifyPluginAsync = async (app) => {
     new ClaudeCodeDetector().injectHooks();
 
     broadcast({ type: 'repository.added', timestamp: new Date().toISOString(), data: repo as unknown as Record<string, unknown> });
+    _monitor?.triggerScan();
+    console.log(`[Repositories] triggerCopilotScan fired for path="${repoPath}"`);
+    _monitor?.triggerCopilotScan();
     return reply.status(201).send(repo);
   });
 

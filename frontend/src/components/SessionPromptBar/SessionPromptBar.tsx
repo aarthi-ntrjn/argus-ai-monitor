@@ -26,7 +26,7 @@ export default function SessionPromptBar({ session }: Props) {
       setError(err instanceof Error ? err.message : 'Failed to send');
     } finally {
       setSending(false);
-      inputRef.current?.focus();
+      setTimeout(() => inputRef.current?.focus(), 0);
     }
   };
 

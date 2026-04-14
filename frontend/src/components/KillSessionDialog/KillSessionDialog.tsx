@@ -30,7 +30,7 @@ export function KillSessionDialog({
       aria-modal="true"
       aria-labelledby="kill-dialog-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-      onClick={(e) => { if (e.target === e.currentTarget && !isPending) onCancel(); }}
+      onClick={(e) => { e.stopPropagation(); if (e.target === e.currentTarget && !isPending) onCancel(); }}
     >
       <div className="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 p-5">
         {isPending ? (

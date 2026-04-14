@@ -28,6 +28,10 @@ export class PtyRegistry {
   // Reverse map so close handlers can look up the claimed session ID by temp UUID
   private tempToClaimedId = new Map<string, string>();
 
+  // Stores the resolved tool PID for a claimed session even before the DB session exists.
+  // Set by updateClaimedPid when update_pid arrives before the session row is inserted.
+  private claimedPids = new Map<string, number>();
+
   private pending = new Map<string, PendingPrompt>();
 
   // Called when the launcher WebSocket connects and sends its register message.
@@ -93,6 +97,18 @@ export class PtyRegistry {
     return this.tempToClaimedId.get(tempId);
   }
 
+  // Stores the resolved tool PID for an already-claimed session.
+  // Called when update_pid arrives but the DB session row doesn't exist yet.
+  updateClaimedPid(sessionId: string, pid: number): void {
+    console.log(`[PtyRegistry] updateClaimedPid sessionId=${sessionId} pid=${pid}`);
+    this.claimedPids.set(sessionId, pid);
+  }
+
+  // Returns the resolved tool PID stored by updateClaimedPid, or null if not yet available.
+  getClaimedPid(sessionId: string): number | null {
+    return this.claimedPids.get(sessionId) ?? null;
+  }
+
   // Clean up a pending connection that never got claimed (e.g. claude crashed before first hook).
   unregisterPending(repoPath: string, tempId: string): void {
     console.log(`[PtyRegistry] unregisterPending tempId=${tempId} repoPath="${repoPath}"`);
@@ -103,6 +119,7 @@ export class PtyRegistry {
   unregister(sessionId: string): void {
     console.log(`[PtyRegistry] unregister sessionId=${sessionId}`);
     this.connections.delete(sessionId);
+    this.claimedPids.delete(sessionId);
   }
 
   has(sessionId: string): boolean {

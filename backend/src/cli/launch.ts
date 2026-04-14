@@ -107,7 +107,7 @@ process.stdout.on('resize', () => {
 
 // Connect to Argus backend
 log(`connecting to Argus WebSocket ws://127.0.0.1:7411/launcher`);
-const client = new ArgusLaunchClient('ws://127.0.0.1:7411/launcher');
+const client = new ArgusLaunchClient('ws://127.0.0.1:7411/launcher', log);
 // On Windows the real tool PID is unknown until the process tree walk resolves it.
 // On non-Windows pty.pid is already the tool directly (no shell wrapper).
 log(`registering session: sessionId=${sessionId} hostPid=${pty.pid} pid=${isWin ? null : pty.pid} sessionType=${sessionType}`);
@@ -140,31 +140,40 @@ function* win32InputEvents(ch: string): Generator<Buffer> {
   yield Buffer.from(`\x1b[${vk};${sc};${uc};0;0;1_`); // key up
 }
 
-// When Argus sends a prompt, write it to the PTY.
-// For copilot-cli, encode as Win32 input sequences to match real keystrokes.
-// For other session types, write directly to the PTY.
-client.onSendPrompt((actionId: string, prompt: string) => {
+// Delay between Win32 keystroke pairs so Copilot CLI can process each character
+// before the next arrives. Without this, all pushes land in a single event-loop
+// tick and the PTY drops or merges them.
+const KEYSTROKE_DELAY_MS = 10;
+
+// Push a buffer to stdin then wait KEYSTROKE_DELAY_MS before returning.
+// Every Win32 input event goes through this so the PTY sees a natural
+// inter-event gap and does not drop or merge simultaneous arrivals.
+const pushStdin = (buf: Buffer): Promise<void> => {
+  process.stdin.push(buf);
+  return new Promise<void>((resolve) => setTimeout(resolve, KEYSTROKE_DELAY_MS));
+};
+
+// When Argus sends a prompt, encode it as Win32 input sequences and push to stdin.
+// Both claude-code and copilot-cli read input via the Windows Console API, so
+// process.stdin.push() with Win32 sequences is the correct delivery path for both.
+// pty.write() does not work for interactive prompts (e.g. AskUserQuestion in
+// claude-code) because the PTY may be in raw/char mode waiting for a single keystroke.
+client.onSendPrompt(async (actionId: string, prompt: string) => {
   log(`onSendPrompt actionId=${actionId} promptLen=${prompt.length}`);
   try {
-    if (sessionType === 'copilot-cli') {
-      log(`win32 focus-in`);
-      process.stdin.push(Buffer.from('\x1b[I'));
-      for (const ch of prompt) {
-        for (const buf of win32InputEvents(ch)) {
-          // log(`win32 push ch=${JSON.stringify(ch)} seq=${buf.toString()}`);
-          process.stdin.push(buf);
-        }
+    log(`win32 focus-in`);
+    await pushStdin(Buffer.from('\x1b[I'));
+    for (const ch of prompt) {
+      for (const buf of win32InputEvents(ch)) {
+        await pushStdin(buf);
       }
-      for (const buf of win32InputEvents('\r')) {
-        // log(`win32 enter seq=${buf.toString()}`);
-        process.stdin.push(buf);
-      }
-      process.stdin.push(Buffer.from('\x1b[O'));
-    } else {
-      pty.write(prompt + '\r');
     }
+    for (const buf of win32InputEvents('\r')) {
+      await pushStdin(buf);
+    }
+    await pushStdin(Buffer.from('\x1b[O'));
+    // pty.write(prompt + '\r'); // does not reach claude-code when PTY is in raw/char mode
     client.ackDelivered(actionId);
-    // log(`ackDelivered actionId=${actionId}`);
   } catch (err) {
     log(`prompt delivery failed: ${err}`);
     client.ackFailed(actionId, err instanceof Error ? err.message : 'prompt delivery failed');

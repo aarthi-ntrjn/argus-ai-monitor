@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
 import { loadConfig } from './config/config-loader.js';
 import { addClient, removeClient, broadcast } from './api/ws/event-dispatcher.js';
-import repositoriesRoutes from './api/routes/repositories.js';
+import repositoriesRoutes, { setMonitor } from './api/routes/repositories.js';
 import sessionsRoutes from './api/routes/sessions.js';
 import hooksRoutes, { setClaudeDetector } from './api/routes/hooks.js';
 import healthRoutes from './api/routes/health.js';
@@ -118,6 +118,7 @@ export async function startServer() {
   monitor = new SessionMonitor();
   const claudeDetector = monitor.getClaudeCodeDetector();
   setClaudeDetector(claudeDetector);
+  setMonitor(monitor);
 
   monitor.on('session.created', (session: Session) => {
     broadcast({ type: 'session.created', timestamp: new Date().toISOString(), data: session as unknown as Record<string, unknown> });

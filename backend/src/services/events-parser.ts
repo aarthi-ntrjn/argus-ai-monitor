@@ -109,6 +109,7 @@ export function parseJsonlLine(line: string, sessionId: string, sequenceNumber: 
       toolCallId: typeof event.data?.toolCallId === 'string' ? event.data.toolCallId : null,
       role,
       sequenceNumber,
+      isMeta: event.isMeta === true ? true : undefined,
     };
   } catch {
     return null;

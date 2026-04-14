@@ -14,9 +14,9 @@ $ARGUMENTS
 /retrospective [path1 path2 ...] -- pattern description
 ```
 
-- **Paths** (required, before `--`): one or more repository paths or glob patterns, space-separated. Paths may use `*` as a wildcard suffix (e.g., `c:\source\github\artynuts\argus*` matches argus, argus2, argus3). Both Windows-style backslashes and forward slashes are accepted.
-- **`--` separator**: separates paths from the pattern.
-- **Pattern** (required, after `--`): the behavioral pattern to search for.
+- **Paths** (optional, before `--`): one or more repository paths or glob patterns, space-separated. Paths may use `*` as a wildcard suffix (e.g., `c:\source\github\artynuts\argus*` matches argus, argus2, argus3). Both Windows-style backslashes and forward slashes are accepted.
+- **`--` separator**: required when paths are provided; separates paths from the pattern.
+- **Pattern** (required, after `--` or the entire argument when no paths given): the behavioral pattern to search for.
 
 Examples:
 
@@ -24,9 +24,12 @@ Examples:
 /retrospective c:\source\github\artynuts\argus -- find AI cycles
 /retrospective c:\source\github\artynuts\argus* -- user corrections
 /retrospective c:\source\github\artynuts\argus c:\source\github\foo\bar -- decision reversals
+/retrospective find AI cycles
 ```
 
-You **MUST** have both paths and a pattern. Do not proceed if either is missing — ask the user to provide them.
+You **MUST** have a pattern. Do not proceed if the pattern is empty — ask the user to describe what to search for.
+
+If no paths are provided, default to the `cwd` of the current session (the project you are currently running in).
 
 ## What This Skill Does
 
@@ -49,9 +52,10 @@ Supported built-in pattern categories (infer from the user's description):
 
 Split `$ARGUMENTS` on ` -- ` (space-dash-dash-space):
 
-- If the ` -- ` separator is missing, or the path list is empty, or the pattern is empty: stop immediately and ask the user to provide both. Do not guess or default.
+- If a ` -- ` separator is present: everything before it is the path list, everything after is the pattern.
+- If no separator: the entire argument is the pattern; use the current project directory as the scope.
 
-From the path list (everything before ` -- `), extract individual paths by splitting on whitespace. Each path may end with `*` as a glob wildcard.
+From the path list, extract individual paths by splitting on whitespace. Each path may end with `*` as a glob wildcard.
 
 Then determine:
 
@@ -66,7 +70,7 @@ If the pattern is ambiguous, make a reasonable assumption and state it before pr
 
 ### Convert repository paths to Claude directory names
 
-Claude Code stores per-project session files under `~/.claude/projects/`. The subdirectory name for a project is derived from its absolute path by replacing every `:` and `\` (or `/`) with `-`.
+Claude Code stores per-project session files under `~/.claude/projects/`. The subdirectory name for a project is derived from its absolute path by replacing every `:` and `\` (or `/`) with `-`.get he 
 
 Examples:
 - `C:\source\github\artynuts\argus` becomes `C--source-github-artynuts-argus`

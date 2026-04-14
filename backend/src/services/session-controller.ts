@@ -24,7 +24,7 @@ export class SessionController {
     }
 
     console.log(`[stopSession] validating PID ownership sessionId=${sessionId} pid=${session.pid} type=${session.type}`);
-    const validation = await validatePidOwnership(session.pid, session.type as 'claude-code' | 'copilot-cli');
+    const validation = await validatePidOwnership(session.pid, session.type);
     if (!validation.valid) {
       const code = validation.reason === 'process_not_ai_tool' ? 'PID_NOT_AI_TOOL' : 'PID_NOT_FOUND';
       const message = validation.reason === 'process_not_ai_tool'
@@ -151,7 +151,7 @@ export class SessionController {
       throw Object.assign(new Error('Session has no PID on record'), { code: 'PID_NOT_SET' });
     }
 
-    const validation = await validatePidOwnership(session.pid, session.type as 'claude-code' | 'copilot-cli');
+    const validation = await validatePidOwnership(session.pid, session.type);
     if (!validation.valid) {
       const code = validation.reason === 'process_not_ai_tool' ? 'PID_NOT_AI_TOOL' : 'PID_NOT_FOUND';
       const message = validation.reason === 'process_not_ai_tool'

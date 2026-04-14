@@ -96,6 +96,23 @@ describe('SessionPromptBar — input and send', () => {
   });
 });
 
+describe('SessionPromptBar — focus restoration', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSendPrompt.mockResolvedValue({} as any);
+  });
+
+  it('refocuses the input after a successful send', async () => {
+    render(<SessionPromptBar session={SESSION} />);
+    const input = screen.getByPlaceholderText('Send a prompt…');
+    await userEvent.type(input, 'hello');
+    await userEvent.click(screen.getByRole('button', { name: '↵' }));
+    // Wait for the input to clear (send completed) then check focus
+    await waitFor(() => expect(input).toHaveValue(''));
+    await waitFor(() => expect(document.activeElement).toBe(input));
+  });
+});
+
 describe('SessionPromptBar — read-only mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();

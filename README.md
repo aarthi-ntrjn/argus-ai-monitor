@@ -51,8 +51,9 @@ Each card is a live snapshot of a session:
 - **Elapsed time** representing how long since the session start
 - **Drill in link**: displays a larger view of the session.
 - **Current prompt**: the most recent question you asked, shown below the badges and updated live as the conversation progresses
-- **Last output preview**: up to 2 lines of the most recent tool result or message
+- **Last output preview**: up to 2 lines of the most recent AI reply
 - **Send prompt input and button**: (only in live sessions) Type a prompt and send to the CLI session from Argus.
+- **Focus button** (crosshair icon): brings the originating terminal window to the foreground. Shown for all active sessions; disabled when no PID is known.
 
 ### Session Output
 
@@ -98,6 +99,12 @@ Every session card and the session detail page have a **kill button** (■ icon)
 2. A confirmation dialog appears showing the session type and ID prefix.
 3. Click **Kill Session** to terminate the process, or **Cancel** to dismiss.
 4. If the kill fails (session already ended, not found, or a network error), the error message is shown in the dialog so you can retry or dismiss.
+
+### Focusing a Terminal Window
+
+Each active session card has a **Focus** button (crosshair icon) next to the kill button. Clicking it brings the originating CLI terminal window to the foreground so you can type directly without hunting for the window.
+
+The button is shown for all active sessions and is disabled (greyed out) when Argus has no PID on record for that session. It works on Windows (SetForegroundWindow), macOS (osascript), and Linux (wmctrl or xdotool).
 
 ### Starting a Session with Prompt Control
 
@@ -152,6 +159,8 @@ Click **Add Repository**, type or paste a root folder path (e.g. `C:\source` or 
 <img src="docs/images/argus-addrepo.png" alt="Add Repository Dialog" height="300">
 
 Argus scans that folder recursively for git repos and registers all new ones in one go. Already-registered repos are skipped automatically.
+
+Each repo card shows the current branch name and, when the remote is a GitHub repository, a **compare link icon** (external link) next to the branch badge. Clicking it opens the GitHub compare page for that branch against master in a new tab. On the default branch (master or main), the link opens the repository's compare page directly.
 
 ## To Tackle
 

@@ -161,6 +161,41 @@ describe('SessionCard — ATTENTION NEEDED alert', () => {
   });
 });
 
+describe('SessionCard — last output preview', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('shows assistant message content in the preview', async () => {
+    renderCard(makeSession(), [
+      makeOutput({ type: 'message', role: 'assistant', content: 'Here is my reply', sequenceNumber: 1 }),
+    ]);
+    await waitFor(() => expect(screen.getByText('Here is my reply')).toBeInTheDocument());
+  });
+
+  it('does not show tool_result content in the preview', async () => {
+    renderCard(makeSession(), [
+      makeOutput({ type: 'tool_result', role: null, content: 'some tool output', sequenceNumber: 1 }),
+    ]);
+    await waitFor(() => expect(screen.queryByText('some tool output')).not.toBeInTheDocument());
+  });
+
+  it('does not show user message content in the preview', async () => {
+    renderCard(makeSession(), [
+      makeOutput({ type: 'message', role: 'user', content: 'user prompt text', sequenceNumber: 1 }),
+    ]);
+    await waitFor(() => expect(screen.queryByText('user prompt text')).not.toBeInTheDocument());
+  });
+
+  it('shows most recent assistant message when mixed output types are present', async () => {
+    renderCard(makeSession(), [
+      makeOutput({ type: 'message', role: 'assistant', content: 'first reply', sequenceNumber: 1 }),
+      makeOutput({ type: 'tool_result', role: null, content: 'tool output', sequenceNumber: 2 }),
+      makeOutput({ type: 'message', role: 'assistant', content: 'second reply', sequenceNumber: 3 }),
+    ]);
+    await waitFor(() => expect(screen.getByText('second reply')).toBeInTheDocument());
+    expect(screen.queryByText('tool output')).not.toBeInTheDocument();
+  });
+});
+
 describe('SessionCard — hook-aware pending choice (T016)', () => {
   beforeEach(() => { vi.clearAllMocks(); });
 

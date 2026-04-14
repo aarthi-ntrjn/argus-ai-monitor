@@ -6,10 +6,13 @@ import psList from 'ps-list';
 import { randomUUID } from 'crypto';
 import chokidar, { type FSWatcher } from 'chokidar';
 import { upsertSession, getRepositoryByPath, deleteSessionOutput, getSession } from '../db/database.js';
+import { broadcast } from '../api/ws/event-dispatcher.js';
 import { ptyRegistry } from './pty-registry.js';
 import { OutputStore } from './output-store.js';
 import { parseJsonlLine, parseModelFromEvent } from './events-parser.js';
 import { detectYoloModeFromPids } from './process-utils.js';
+import { isAiToolProcess } from './pid-validator.js';
+import { SessionTypes } from '../models/index.js';
 import type { Session, PidSource } from '../models/index.js';
 
 const DEFAULT_SESSION_DIR = join(homedir(), '.copilot', 'session-state');
@@ -32,23 +35,41 @@ export class CopilotCliDetector {
 
   async scan(): Promise<Session[]> {
     if (!existsSync(this.sessionStateDir)) return [];
+    const t0 = Date.now();
+    console.log(`[CopilotDetector] scan start`);
+
     const runningPids = await this.getRunningPids();
+    const t1 = Date.now();
+    console.log(`[CopilotDetector] psList done — ${runningPids.size} copilot pid(s) running — ${t1 - t0}ms`);
+
     const sessions: Session[] = [];
+    let dirCount = 0;
     try {
       const entries = readdirSync(this.sessionStateDir, { withFileTypes: true });
       for (const entry of entries) {
         if (!entry.isDirectory()) continue;
+        dirCount++;
         const session = await this.processSessionDir(join(this.sessionStateDir, entry.name), runningPids);
         if (session) sessions.push(session);
       }
     } catch { /* ignore */ }
+
+    const t2 = Date.now();
+    console.log(`[CopilotDetector] scan done — ${dirCount} dir(s), ${sessions.length} session(s) — dirs: ${t2 - t1}ms — total: ${t2 - t0}ms`);
     return sessions;
   }
 
   private async getRunningPids(): Promise<Set<number>> {
     try {
       const processes = await psList();
-      return new Set(processes.map((p) => p.pid));
+      // Only include Copilot processes. If a lock-file PID is reused by an
+      // unrelated process after the session ends, it must not be treated as
+      // a live Copilot session.
+      return new Set(
+        processes
+          .filter((p) => isAiToolProcess(p.name, SessionTypes.COPILOT_CLI))
+          .map((p) => p.pid)
+      );
     } catch {
       return new Set();
     }
@@ -78,29 +99,65 @@ export class CopilotCliDetector {
     if (!repo) return null;
 
     const status = isRunning ? 'active' : 'ended';
-
     const toIso = (val: string | Date | undefined): string =>
       val ? (val instanceof Date ? val.toISOString() : val) : new Date().toISOString();
 
-    // Check if this session was already claimed as a PTY session on a previous scan
+    const { launchMode, resolvedPid, resolvedHostPid, resolvedPidSource } =
+      this.resolvePtyLinkage(sessionId, existingSession, repo, pid, isRunning);
+
+    const yoloMode = detectYoloModeFromPids(resolvedPid, resolvedHostPid, SessionTypes.COPILOT_CLI);
+    const session: Session = {
+      id: sessionId,
+      repositoryId: repo.id,
+      type: SessionTypes.COPILOT_CLI,
+      launchMode,
+      pid: resolvedPid,
+      hostPid: resolvedHostPid,
+      pidSource: resolvedPidSource,
+      status,
+      startedAt: toIso(workspace.created_at),
+      endedAt: status === 'ended' ? toIso(workspace.updated_at) : null,
+      lastActivityAt: toIso(workspace.updated_at),
+      summary: existingSession?.summary ?? workspace.summary ?? null,
+      expiresAt: null,
+      model: this.extractModelFromEventsFile(join(dirPath, 'events.jsonl')),
+      reconciled: true,
+      yoloMode,
+    };
+
+    upsertSession(session);
+    if (!existingSession) {
+      console.log(`[CopilotDetector] broadcasting session.created sessionId=${sessionId}`);
+      broadcast({ type: 'session.created', timestamp: new Date().toISOString(), data: session as unknown as Record<string, unknown> });
+    }
+
+    if (isRunning) {
+      this.watchEventsFile(sessionId, dirPath);
+    }
+
+    return session;
+  }
+
+  private resolvePtyLinkage(
+    sessionId: string,
+    existingSession: Session | null | undefined,
+    repo: { path: string },
+    pid: number | null,
+    isRunning: boolean,
+  ): { launchMode: 'pty' | null; resolvedPid: number | null; resolvedHostPid: number | null; resolvedPidSource: PidSource | null } {
     const alreadyClaimed = existingSession?.launchMode === 'pty';
+    const registryHas = ptyRegistry.has(sessionId);
 
     let launchMode: 'pty' | null = null;
     let resolvedPid = pid;
     let resolvedHostPid: number | null = existingSession?.hostPid ?? null;
     let resolvedPidSource: PidSource | null = pid != null ? 'lockfile' : null;
 
-    const registryHas = ptyRegistry.has(sessionId);
-
     if (alreadyClaimed) {
-      // Preserve launchMode:'pty' as a historical record — this session was launched via argus launch
       launchMode = 'pty';
-      resolvedPid = existingSession.pid;
-      resolvedHostPid = existingSession.hostPid;
-      resolvedPidSource = existingSession.pidSource;
-      // If the WS is gone but the process is still running (e.g. Argus restarted), try to
-      // re-link to a freshly reconnected launcher WS. If that also fails, keep the existing
-      // pid/pidSource — the launcher will reconnect within 2s and the next scan will claim it.
+      resolvedPid = existingSession!.pid;
+      resolvedHostPid = existingSession!.hostPid;
+      resolvedPidSource = existingSession!.pidSource;
       if (!registryHas && isRunning) {
         console.log(`[CopilotDetector] alreadyClaimed + WS gone + isRunning — attempting re-link sessionId=${sessionId}`);
         const claimed = ptyRegistry.claimForSession(sessionId, repo.path);
@@ -114,17 +171,15 @@ export class CopilotCliDetector {
         }
       }
     } else if (registryHas) {
-      // workspace_id message already claimed this session before the scan ran
       console.log(`[CopilotDetector] ptyRegistry already has sessionId=${sessionId} — marking pty`);
       launchMode = 'pty';
       resolvedPidSource = 'pty_registry';
+      const parkedPid = ptyRegistry.getClaimedPid(sessionId);
+      if (parkedPid != null) {
+        resolvedPid = parkedPid;
+        console.log(`[CopilotDetector] using parked resolved pid=${parkedPid} for sessionId=${sessionId}`);
+      }
     } else if (isRunning && existingSession == null) {
-      // Fallback: try claiming via repoPath (workspace_id message not yet received).
-      // Only attempt for sessions we have never seen before. Once in the DB, either
-      // hostPid is set and launchMode=pty (handled by alreadyClaimed above), or
-      // hostPid is null and launchMode=null (read-only — no PTY will ever arrive).
-      // Non-running (ended) sessions must not steal a pending launcher WS that belongs
-      // to the new active session for the same cwd.
       console.log(`[CopilotDetector] isRunning + not claimed — trying claimForSession sessionId=${sessionId} repoPath="${repo.path}"`);
       const claimed = ptyRegistry.claimForSession(sessionId, repo.path);
       if (claimed) {
@@ -138,33 +193,7 @@ export class CopilotCliDetector {
       }
     }
 
-    const yoloMode = detectYoloModeFromPids(resolvedPid, resolvedHostPid, 'copilot-cli');
-    const session: Session = {
-      id: sessionId,
-      repositoryId: repo.id,
-      type: 'copilot-cli',
-      launchMode,
-      pid: resolvedPid,
-      hostPid: resolvedHostPid,
-      pidSource: resolvedPidSource,
-      status,
-      startedAt: toIso(workspace.created_at),
-      endedAt: status === 'ended' ? toIso(workspace.updated_at) : null,
-      lastActivityAt: toIso(workspace.updated_at),
-      summary: workspace.summary ?? null,
-      expiresAt: null,
-      model: this.extractModelFromEventsFile(join(dirPath, 'events.jsonl')),
-      reconciled: true,
-      yoloMode,
-    };
-
-    upsertSession(session);
-
-    if (isRunning) {
-      this.watchEventsFile(sessionId, dirPath);
-    }
-
-    return session;
+    return { launchMode, resolvedPid, resolvedHostPid, resolvedPidSource };
   }
 
   private watchEventsFile(sessionId: string, dirPath: string): void {
@@ -227,11 +256,15 @@ export class CopilotCliDetector {
 
       if (detectedModel && !getSession(sessionId)?.model) {
         const existing = getSession(sessionId);
-        if (existing) upsertSession({ ...existing, model: detectedModel });
+        if (existing) {
+          const updated = { ...existing, model: detectedModel };
+          upsertSession(updated);
+          broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: updated as unknown as Record<string, unknown> });
+        }
       }
 
       // Update summary with the most recent user prompt in this batch
-      const lastUserMsg = [...outputs].reverse().find(o => o.role === 'user' && o.type === 'message');
+      const lastUserMsg = [...outputs].reverse().find(o => o.role === 'user' && o.type === 'message' && !o.isMeta);
       if (lastUserMsg?.content) {
         const existing = getSession(sessionId);
         if (existing) {
@@ -239,6 +272,7 @@ export class CopilotCliDetector {
           if (existing.summary !== summary) {
             const updated = { ...existing, summary };
             upsertSession(updated);
+            broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: updated as unknown as Record<string, unknown> });
           }
         }
       }
