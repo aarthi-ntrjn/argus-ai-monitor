@@ -4,6 +4,7 @@ import { getSession, insertControlAction, updateControlAction } from '../db/data
 import { broadcast } from '../api/ws/event-dispatcher.js';
 import { validatePidOwnership } from './pid-validator.js';
 import { ptyRegistry } from './pty-registry.js';
+import { telemetryService } from './telemetry-service.js';
 import type { ControlAction } from '../models/index.js';
 
 export class SessionController {
@@ -54,6 +55,7 @@ export class SessionController {
       updateControlAction(action.id, 'completed', completed.completedAt, null);
       this.broadcastAction(completed);
       console.log(`[stopSession] COMPLETED actionId=${action.id} sessionId=${sessionId} pid=${session.pid}`);
+      telemetryService.sendEvent('session_stopped');
       return completed;
     } catch (err) {
       const failed = { ...action, status: 'failed' as const, completedAt: new Date().toISOString(), result: String(err) };
@@ -124,6 +126,7 @@ export class SessionController {
       .then(() => {
         const now = new Date().toISOString();
         console.log(`[sendPrompt] DELIVERED actionId=${action.id} sessionId=${sessionId}`);
+        telemetryService.sendEvent('prompt_sent');
         updateControlAction(action.id, 'completed', now, null);
         this.broadcastAction({ ...action, status: 'completed', completedAt: now });
       })

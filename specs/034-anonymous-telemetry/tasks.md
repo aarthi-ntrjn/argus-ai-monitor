@@ -61,11 +61,11 @@
 
 **Independent test**: Start Argus, start a session, send a prompt, stop it — verify PostHog Live Events (or intercepted network calls in tests) shows `app_started`, `session_started`, `prompt_sent`, `session_stopped`, `session_ended`.
 
-- [ ] T011 Instrument `app_started` in `backend/src/server.ts` — call `telemetryService.sendEvent('app_started')` after `await app.ready()`
-- [ ] T012 [P] Instrument `session_started` in `backend/src/services/session-monitor.ts` — call `telemetryService.sendEvent('session_started', { sessionType: session.type })` when a new session row is first inserted
-- [ ] T013 [P] Instrument `session_ended` in `backend/src/services/session-monitor.ts` — call `telemetryService.sendEvent('session_ended')` when session status transitions to `ended` or `completed`
-- [ ] T014 [P] Instrument `prompt_sent` in `backend/src/services/session-controller.ts` — call `telemetryService.sendEvent('prompt_sent')` after a `send_prompt` action is dispatched
-- [ ] T015 [P] Instrument `session_stopped` in `backend/src/services/session-controller.ts` — call `telemetryService.sendEvent('session_stopped')` after a `stop` action completes
+- [x] T011 Instrument `app_started` in `backend/src/server.ts` — call `telemetryService.sendEvent('app_started')` after `await app.ready()`
+- [x] T012 [P] Instrument `session_started` in `backend/src/services/session-monitor.ts` — call `telemetryService.sendEvent('session_started', { sessionType: session.type })` when a new session row is first inserted
+- [x] T013 [P] Instrument `session_ended` in `backend/src/services/session-monitor.ts` — call `telemetryService.sendEvent('session_ended')` when session status transitions to `ended` or `completed`
+- [x] T014 [P] Instrument `prompt_sent` in `backend/src/services/session-controller.ts` — call `telemetryService.sendEvent('prompt_sent')` after a `send_prompt` action is dispatched
+- [x] T015 [P] Instrument `session_stopped` in `backend/src/services/session-controller.ts` — call `telemetryService.sendEvent('session_stopped')` after a `stop` action completes
 
 ---
 
