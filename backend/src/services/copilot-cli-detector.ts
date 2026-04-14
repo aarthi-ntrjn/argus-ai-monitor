@@ -39,7 +39,6 @@ export class CopilotCliDetector {
   async scan(force = false): Promise<Session[]> {
     if (!existsSync(this.sessionStateDir)) return [];
     const t0 = Date.now();
-    console.log(`[CopilotDetector] scan start${force ? ' (forced)' : ''}`);
 
     const runningPids = await this.getRunningPids();
     const t1 = Date.now();
@@ -91,7 +90,7 @@ export class CopilotCliDetector {
     this.lastScanTime = t0;
 
     const t2 = Date.now();
-    console.log(`[CopilotDetector] scan done — ${totalDirs} total, ${dirsToProcess.size} processed, ${totalDirs - dirsToProcess.size} skipped, ${sessions.length} session(s) — psList: ${t1 - t0}ms, dirs: ${t2 - t1}ms, total: ${t2 - t0}ms`);
+    console.log(`[CopilotDetector] scan done${force ? ' (forced)' : ''} — ${totalDirs} total, ${dirsToProcess.size} processed, ${totalDirs - dirsToProcess.size} skipped, ${sessions.length} session(s) — psList: ${t1 - t0}ms, dirs: ${t2 - t1}ms, total: ${t2 - t0}ms`);
     return sessions;
   }
 
@@ -140,7 +139,9 @@ export class CopilotCliDetector {
     const { launchMode, resolvedPid, resolvedHostPid, resolvedPidSource } =
       this.resolvePtyLinkage(sessionId, existingSession, repo, pid, isRunning);
 
-    const yoloMode = detectYoloModeFromPids(resolvedPid, resolvedHostPid, SessionTypes.COPILOT_CLI);
+    const yoloMode = existingSession?.yoloMode != null
+      ? existingSession.yoloMode
+      : detectYoloModeFromPids(resolvedPid, resolvedHostPid, SessionTypes.COPILOT_CLI);
     const session: Session = {
       id: sessionId,
       repositoryId: repo.id,
