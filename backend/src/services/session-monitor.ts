@@ -8,7 +8,7 @@ import { loadConfig } from '../config/config-loader.js';
 import { getSessions, getSession, upsertSession, updateSessionStatus, getRepositories, getRepositoryByPath, updateRepositoryBranch } from '../db/database.js';
 import { broadcast } from '../api/ws/event-dispatcher.js';
 import { getCurrentBranch } from './repository-scanner.js';
-import { detectYoloModeFromPids } from './process-utils.js';
+import { detectYoloModeFromPids, isPidRunning } from './process-utils.js';
 import { isAiToolProcess } from './pid-validator.js';
 import { SessionTypes } from '../models/index.js';
 import type { Session, Repository, ClaudeSessionRegistryEntry } from '../models/index.js';
@@ -130,17 +130,11 @@ export class SessionMonitor extends EventEmitter {
     }
   }
 
-  private async reconcileClaudeCodeSessions(): Promise<void> {
+  private reconcileClaudeCodeSessions(): void {
     try {
       const liveSessions = getSessions({ status: 'active', type: SessionTypes.CLAUDE_CODE });
       if (liveSessions.length === 0) return;
 
-      const processes = await psList();
-      const runningPids = new Set(
-        processes
-          .filter((p) => isAiToolProcess(p.name, SessionTypes.CLAUDE_CODE))
-          .map((p) => p.pid)
-      );
       const repos = getRepositories();
       const now = new Date().toISOString();
 
@@ -154,8 +148,7 @@ export class SessionMonitor extends EventEmitter {
           continue;
         }
 
-        // Check if the process is still running
-        if (session.pid != null && !runningPids.has(session.pid)) {
+        if (session.pid != null && !isPidRunning(session.pid)) {
           console.log(`[ClaudeReconcile] session ended — process gone sessionId=${session.id} pid=${session.pid}`);
           updateSessionStatus(session.id, 'ended', now);
           this.claudeDetector.closeSessionWatcher(session.id);
@@ -304,7 +297,7 @@ export class SessionMonitor extends EventEmitter {
       await this.claudeDetector.scanExistingSessions();
       console.log(`[SessionMonitor] claudeDetector.scanExistingSessions — ${Date.now() - t}ms`);
       t = Date.now();
-      await this.reconcileClaudeCodeSessions();
+      this.reconcileClaudeCodeSessions();
       console.log(`[SessionMonitor] reconcileClaudeCodeSessions — ${Date.now() - t}ms`);
       t = Date.now();
       const sessions = await this.cliDetector.scan();
