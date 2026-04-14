@@ -45,10 +45,11 @@ export class CopilotCliDetector {
     const t1 = Date.now();
     console.log(`[CopilotDetector] psList done — ${runningPids.size} copilot pid(s) running — ${t1 - t0}ms`);
 
-    const sessions: Session[] = [];
+    // Collect dirs to process:
+    // 1. Dirs modified since last scan — may contain new sessions.
+    // 2. Dirs that had an active session last scan — detect if they have ended.
+    const dirsToProcess = new Set<string>();
     let totalDirs = 0;
-    let skippedDirs = 0;
-    const newActiveDirPaths = new Set<string>();
 
     try {
       const entries = readdirSync(this.sessionStateDir, { withFileTypes: true });
@@ -57,38 +58,33 @@ export class CopilotCliDetector {
         totalDirs++;
         const dirPath = join(this.sessionStateDir, entry.name);
 
-        // Pre-filter: find lock file (cheap readdirSync) before touching workspace.yaml.
-        const lockFile = this.findLockFile(dirPath);
-        const pid = lockFile ? this.extractPid(lockFile) : null;
-        const isRunning = pid !== null && runningPids.has(pid);
-
-        // Skip dirs that are not running, were not active last scan, and haven't changed
-        // since last scan. This avoids reading workspace.yaml for stale ended sessions.
-        if (!isRunning && !this.activeDirPaths.has(dirPath)) {
-          try {
-            if (statSync(dirPath).mtimeMs <= this.lastScanTime) {
-              skippedDirs++;
-              continue;
-            }
-          } catch {
-            skippedDirs++;
-            continue;
-          }
+        if (this.activeDirPaths.has(dirPath)) {
+          dirsToProcess.add(dirPath);
+          continue;
         }
 
-        const session = await this.processSessionDir(dirPath, pid, isRunning);
-        if (session) {
-          sessions.push(session);
-          if (session.status === 'active') newActiveDirPaths.add(dirPath);
-        }
+        try {
+          if (statSync(dirPath).mtimeMs > this.lastScanTime) dirsToProcess.add(dirPath);
+        } catch { /* ignore */ }
       }
     } catch { /* ignore */ }
+
+    const sessions: Session[] = [];
+    const newActiveDirPaths = new Set<string>();
+
+    for (const dirPath of dirsToProcess) {
+      const session = await this.processSessionDir(dirPath, runningPids);
+      if (session) {
+        sessions.push(session);
+        if (session.status === 'active') newActiveDirPaths.add(dirPath);
+      }
+    }
 
     this.activeDirPaths = newActiveDirPaths;
     this.lastScanTime = t0;
 
     const t2 = Date.now();
-    console.log(`[CopilotDetector] scan done — ${totalDirs} total, ${totalDirs - skippedDirs} processed, ${skippedDirs} skipped, ${sessions.length} session(s) — psList: ${t1 - t0}ms, dirs: ${t2 - t1}ms, total: ${t2 - t0}ms`);
+    console.log(`[CopilotDetector] scan done — ${totalDirs} total, ${dirsToProcess.size} processed, ${totalDirs - dirsToProcess.size} skipped, ${sessions.length} session(s) — psList: ${t1 - t0}ms, dirs: ${t2 - t1}ms, total: ${t2 - t0}ms`);
     return sessions;
   }
 
@@ -108,7 +104,7 @@ export class CopilotCliDetector {
     }
   }
 
-  private async processSessionDir(dirPath: string, pid: number | null, isRunning: boolean): Promise<Session | null> {
+  private async processSessionDir(dirPath: string, runningPids: Set<number>): Promise<Session | null> {
     const workspaceFile = join(dirPath, 'workspace.yaml');
     if (!existsSync(workspaceFile)) return null;
 
@@ -116,6 +112,10 @@ export class CopilotCliDetector {
     try {
       workspace = yamlLoad(readFileSync(workspaceFile, 'utf-8')) as WorkspaceYaml;
     } catch { return null; }
+
+    const lockFile = this.findLockFile(dirPath);
+    const pid = lockFile ? this.extractPid(lockFile) : null;
+    const isRunning = pid !== null && runningPids.has(pid);
 
     const sessionId = workspace.id ?? randomUUID();
     const existingSession = getSession(sessionId);
