@@ -304,7 +304,7 @@ export class SessionMonitor extends EventEmitter {
       await this.claudeDetector.scanExistingSessions();
       this.reconcileClaudeCodeSessions();
       const sessions = await this.cliDetector.scan();
-      logger.info(`[SessionMonitor] runScan total — ${Date.now() - tRun}ms`);
+      logger.verbose(`[SessionMonitor] runScan total — ${Date.now() - tRun}ms`);
       const currentScanIds = new Set<string>(sessions.map((s) => s.id));
 
       // Detect sessions that were active but are no longer returned (process exited + dir cleaned up)
