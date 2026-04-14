@@ -20,7 +20,10 @@ export class TeamsIntegrationService {
   private isConfigured(config: Partial<TeamsConfig> & { enabled: boolean }): config is TeamsConfig {
     return config.enabled === true &&
       Boolean(config.botAppId) &&
-      Boolean(config.botAppSecret);
+      Boolean(config.tenantId) &&
+      Boolean(config.teamId) &&
+      Boolean(config.channelId) &&
+      Boolean(config.ownerAadObjectId);
   }
 
   async onSessionCreated(session: Session): Promise<void> {

@@ -235,31 +235,31 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
               placeholder="Azure Directory (Tenant) ID"
             />
           </div>
-          <p className="text-xs text-gray-500 font-medium mt-1">Authentication (use secret or certificate):</p>
+          <p className="text-xs text-gray-500 font-medium mt-1">Authentication (leave blank to use device code flow on first run):</p>
           <div>
-            <label htmlFor="teams-bot-app-secret" className="text-xs text-gray-600 block mb-1">Bot App Secret</label>
+            <label htmlFor="teams-bot-app-secret" className="text-xs text-gray-600 block mb-1">Bot App Secret <span className="text-gray-400">(optional)</span></label>
             <input
               id="teams-bot-app-secret"
               type="password"
               className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
               value={teamsForm.botAppSecret || (teamsConfig?.botAppSecret === '***' ? '' : teamsConfig?.botAppSecret ?? '')}
               onChange={e => setTeamsForm(f => ({ ...f, botAppSecret: e.target.value }))}
-              placeholder="Client secret value (if not using certificate)"
+              placeholder="Client secret (if not using certificate or device code)"
             />
           </div>
           <div>
-            <label htmlFor="teams-bot-cert-path" className="text-xs text-gray-600 block mb-1">Certificate Path</label>
+            <label htmlFor="teams-bot-cert-path" className="text-xs text-gray-600 block mb-1">Certificate Path <span className="text-gray-400">(optional)</span></label>
             <input
               id="teams-bot-cert-path"
               type="text"
               className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
               value={teamsForm.botCertPath || teamsConfig?.botCertPath || ''}
               onChange={e => setTeamsForm(f => ({ ...f, botCertPath: e.target.value }))}
-              placeholder="Path to PEM private key file (if not using secret)"
+              placeholder="Path to PEM private key file (if not using secret or device code)"
             />
           </div>
           <div>
-            <label htmlFor="teams-bot-cert-thumbprint" className="text-xs text-gray-600 block mb-1">Certificate Thumbprint</label>
+            <label htmlFor="teams-bot-cert-thumbprint" className="text-xs text-gray-600 block mb-1">Certificate Thumbprint <span className="text-gray-400">(optional)</span></label>
             <input
               id="teams-bot-cert-thumbprint"
               type="text"
