@@ -89,7 +89,7 @@ export class CopilotCliDetector {
     this.lastScanTime = t0;
 
     const t2 = Date.now();
-    console.log(`[CopilotDetector] scan done${force ? ' (forced)' : ''} — ${totalDirs} total, ${dirsToProcess.size} processed, ${totalDirs - dirsToProcess.size} skipped, ${sessions.length} session(s) — psList: ${t1 - t0}ms, dirs: ${t2 - t1}ms, total: ${t2 - t0}ms`);
+    console.log(`[CopilotDetector] scan done${force ? ' (forced)' : ''} — ${totalDirs} total, ${dirsToProcess.size} processed, ${totalDirs - dirsToProcess.size} skipped, ${sessions.length} session(s) — ${t2 - t0}ms`);
     return sessions;
   }
 
