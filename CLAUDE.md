@@ -64,6 +64,22 @@ specs/[###-feature-name]/
 
 **Constitution**: `.specify/memory/constitution.md` uses normative language (MUST/SHOULD) and is **never modified during feature work**.
 
+## Performance Rules for the Scan Cycle
+
+The scan cycle runs on a tight loop. Any code that touches it must follow these rules proactively. Do not wait for the user to report slowness.
+
+**Process liveness checks**: Never call `psList()` or spawn a PowerShell `Get-CimInstance` just to check if a process is alive. Use `isPidRunning(pid)` from `process-utils.ts` (it uses `process.kill(pid, 0)` which is near-zero cost).
+
+**Skip expensive work for dead sessions**: Before calling `detectYoloModeFromPids` or any PowerShell-backed operation, check `isRunning` first. If the session has ended, skip it entirely.
+
+**Parallelize independent async operations**: Never use a sequential `for...of await` loop when the iterations are independent. Use `Promise.all` instead (e.g., `refreshRepositoryBranches`).
+
+**Tail-read large files**: When scanning log or event files (e.g., `events.jsonl`), read only the tail (last 16KB or ~20 lines). Never read the entire file on every scan cycle.
+
+**Avoid redundant reads**: If a code path already reads a file (e.g., `watchEventsFile` via `readNewLines`), do not add a second read of the same file for the same purpose (e.g., `extractModelFromEventsFile` was redundant and was removed).
+
+**Audit new scanning code before committing**: When writing or modifying any method called from `runScan`, explicitly ask: Does this spawn a process? Does this read a file from position 0? Does it loop sequentially over sessions? Fix those before committing.
+
 ## Shared UI Components
 
 Always reuse the shared components in `frontend/src/components/` instead of writing inline HTML elements. Never create a raw `<button>` or `<input type="checkbox">` when a shared component exists:
