@@ -219,12 +219,13 @@ export class CopilotCliDetector {
     const eventsFile = join(dirPath, 'events.jsonl');
     if (!existsSync(eventsFile)) return;
 
-    // Clear any stale output (may be raw JSON from before parser fix) and reload from scratch
+    const TAIL_BYTES = 16 * 1024; // ~20-50 recent events; avoids reading huge historical files
+    const fileSize = statSync(eventsFile).size;
+
     deleteSessionOutput(sessionId);
-    this.filePositions.set(sessionId, 0);
+    this.filePositions.set(sessionId, Math.max(0, fileSize - TAIL_BYTES));
     this.sequenceCounters.set(sessionId, 0);
 
-    // Load all historical lines immediately before starting the watcher
     this.readNewLines(sessionId, eventsFile);
 
     const watcher = chokidar.watch(eventsFile, { persistent: false, usePolling: false });
