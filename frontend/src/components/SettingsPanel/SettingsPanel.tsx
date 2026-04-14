@@ -162,6 +162,18 @@ export function SettingsPanel({ settings, onToggle, onUpdateThreshold, onRestart
           </label>
         </div>
 
+        <div className="mt-2 pt-2 border-t border-gray-100">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Privacy</p>
+          <div className="py-1">
+            <Checkbox
+              label="Send anonymous usage telemetry"
+              aria-label="Send anonymous usage telemetry"
+              checked={argusSettings?.telemetryEnabled ?? true}
+              onChange={e => patchSetting({ telemetryEnabled: e.target.checked })}
+            />
+          </div>
+        </div>
+
         {onRestartTour && (
           <div className="mt-2 pt-2 border-t border-gray-100 flex flex-col gap-1">
             <Button

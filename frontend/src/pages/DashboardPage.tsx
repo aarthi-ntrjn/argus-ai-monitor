@@ -9,6 +9,8 @@ import { useRepositoryManagement } from '../hooks/useRepositoryManagement';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { Button } from '../components/Button';
 import { SettingsPanel } from '../components/SettingsPanel';
+import { TelemetryBanner } from '../components/TelemetryBanner';
+import { useArgusSettings } from '../hooks/useArgusSettings';
 import { RemoveConfirmDialog } from '../components/RemoveConfirmDialog';
 import OutputPane from '../components/OutputPane/OutputPane';
 import ArgusLogo from '../components/ArgusLogo';
@@ -37,9 +39,14 @@ export default function DashboardPage() {
   const settingsRef = useRef<HTMLDivElement>(null);
 
   const [settings, updateSetting] = useSettings();
+  const { settings: argusSettings, patchSetting } = useArgusSettings();
   const { tourStatus, seenRepoSteps, startTour, skipTour, completeTour, markRepoStepsSeen, resetOnboarding } = useOnboarding();
   const [tourRun, setTourRun] = useState(false);
   const [catchUpRun, setCatchUpRun] = useState(false);
+
+  const handleTelemetryDismiss = (enabled: boolean) => {
+    patchSetting({ telemetryEnabled: enabled, telemetryPromptSeen: true });
+  };
 
   const {
     addError, addInfo, adding, showFolderInput, folderInputPath,
@@ -233,6 +240,10 @@ export default function DashboardPage() {
             </Button>
           </div>
         </div>
+
+        {argusSettings?.telemetryPromptSeen === false && (
+          <TelemetryBanner onDismiss={handleTelemetryDismiss} />
+        )}
 
         {addInfo && (
           <div role="status" aria-live="polite" className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-green-700 text-sm flex justify-between">

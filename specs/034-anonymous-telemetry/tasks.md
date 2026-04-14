@@ -75,20 +75,20 @@
 
 **Independent test**: Fresh config (no `telemetryPromptSeen`): banner appears. Dismiss with toggle off: no subsequent events. Settings panel shows toggle reflecting current state.
 
-- [ ] T016 Create `frontend/src/components/TelemetryBanner/TelemetryBanner.tsx`:
+- [x] T016 Create `frontend/src/components/TelemetryBanner/TelemetryBanner.tsx`:
   - Non-blocking banner (not a modal) shown when `telemetryPromptSeen === false`
   - Contains a `<Checkbox>` toggle (default checked = enabled) and a `<Button variant="primary" size="sm">Got it</Button>`
   - On dismiss: calls `PATCH /api/v1/settings { telemetryEnabled: <choice>, telemetryPromptSeen: true }` then hides
 
-- [ ] T017 Create `frontend/src/components/TelemetryBanner/index.ts` — re-export `TelemetryBanner`
+- [x] T017 Create `frontend/src/components/TelemetryBanner/index.ts` — re-export `TelemetryBanner`
 
-- [ ] T018 Mount `<TelemetryBanner>` in `frontend/src/pages/DashboardPage.tsx` — render when `argusSettings?.telemetryPromptSeen === false`
+- [x] T018 Mount `<TelemetryBanner>` in `frontend/src/pages/DashboardPage.tsx` — render when `argusSettings?.telemetryPromptSeen === false`
 
-- [ ] T019 Add telemetry section to `frontend/src/components/SettingsPanel/SettingsPanel.tsx`:
+- [x] T019 Add telemetry section to `frontend/src/components/SettingsPanel/SettingsPanel.tsx`:
   - New section below existing toggles with heading "Privacy"
   - `<Checkbox label="Send anonymous usage telemetry" checked={argusSettings?.telemetryEnabled ?? true} onChange={...}>` calling `patchSetting({ telemetryEnabled })`
 
-- [ ] T020 Call relay endpoint for `compare_view_opened` — in `frontend/src/components/RepoCard/RepoCard.tsx`, call `POST /api/v1/telemetry/event { type: 'compare_view_opened' }` when the compare link is clicked (only if `telemetryEnabled`)
+- [x] T020 Call relay endpoint for `compare_view_opened` — in `frontend/src/components/RepoCard/RepoCard.tsx`, call `POST /api/v1/telemetry/event { type: 'compare_view_opened' }` when the compare link is clicked (only if `telemetryEnabled`)
 
 ---
 
@@ -98,7 +98,7 @@
 
 **Independent test**: Set `TELEMETRY_URL` to an unreachable address; run Argus through all event types; confirm zero errors in UI and all operations complete normally.
 
-- [ ] T021 Add resilience tests to `backend/tests/unit/telemetry-service.test.ts`:
+- [x] T021 Add resilience tests to `backend/tests/unit/telemetry-service.test.ts`:
   - `sendEvent()` with a non-routable URL completes without throwing (timeout behaviour)
   - `sendEvent()` with a URL that returns 500 does not throw
   - Calling `sendEvent()` 100 times in rapid succession does not block or accumulate memory
@@ -109,6 +109,6 @@
 
 **Goal**: Satisfy §X Definition of Done and §XI Documentation.
 
-- [ ] T022 Update `README.md` — add "Telemetry" section: what events are collected, how to disable (`telemetryEnabled: false` in settings or banner), and that no PII is collected
-- [ ] T023 [P] Run full backend test suite (`npm run test --workspace=backend`) — all tests pass
-- [ ] T024 [P] Run frontend build (`npm run build --workspace=frontend`) — build succeeds with no TypeScript errors
+- [x] T022 Update `README.md` — add "Telemetry" section: what events are collected, how to disable (`telemetryEnabled: false` in settings or banner), and that no PII is collected
+- [x] T023 [P] Run full backend test suite (`npm run test --workspace=backend`) — all tests pass
+- [x] T024 [P] Run frontend build (`npm run build --workspace=frontend`) — build succeeds with no TypeScript errors

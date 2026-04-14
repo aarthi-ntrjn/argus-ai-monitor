@@ -1,5 +1,7 @@
 import type { Repository, Session } from '../../types';
 import { buildGitHubCompareUrl } from '../../utils/repoUtils';
+import { postTelemetryEvent } from '../../services/api';
+import { useArgusSettings } from '../../hooks/useArgusSettings';
 import Badge from '../Badge';
 import LaunchDropdown from '../LaunchDropdown/LaunchDropdown';
 import SessionCard from '../SessionCard/SessionCard';
@@ -23,6 +25,8 @@ export default function RepoCard({
   repo, skipConfirm, selectedSessionId, isMobile, hideEndedSessions,
   onRemoveById, onSetRemoveConfirm, onSelectSession,
 }: RepoCardProps) {
+  const { settings: argusSettings } = useArgusSettings();
+
   return (
     <div data-tour-id="dashboard-repo-card" className="bg-white rounded-lg shadow p-4 md:p-6">
       <div className="mb-4">
@@ -68,7 +72,7 @@ export default function RepoCard({
               title="View diff on GitHub"
               aria-label="View diff on GitHub"
               className="inline-flex items-center text-gray-400 hover:text-gray-700"
-              onClick={e => e.stopPropagation()}
+              onClick={e => { e.stopPropagation(); if (argusSettings?.telemetryEnabled !== false) postTelemetryEvent('compare_view_opened'); }}
             >
               <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />

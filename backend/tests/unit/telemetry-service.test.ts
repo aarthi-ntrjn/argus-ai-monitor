@@ -101,4 +101,31 @@ describe('TelemetryService', () => {
       expect(payload.properties?.sessionType).toBe('claude-code');
     });
   });
+
+  describe('resilience', () => {
+    it('completes without throwing when URL is non-routable (simulated via rejected fetch)', async () => {
+      vi.spyOn(globalThis, 'fetch').mockRejectedValue(Object.assign(new Error('ECONNREFUSED'), { name: 'AbortError' }));
+      expect(() => service.sendEvent('app_started')).not.toThrow();
+      // Allow microtasks to flush
+      await new Promise(resolve => setTimeout(resolve, 10));
+    });
+
+    it('does not throw when the endpoint returns 500', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 500 }));
+      expect(() => service.sendEvent('app_started')).not.toThrow();
+      await new Promise(resolve => setTimeout(resolve, 10));
+    });
+
+    it('calling sendEvent 100 times in rapid succession does not throw or block', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 200 }));
+      const start = Date.now();
+      for (let i = 0; i < 100; i++) {
+        service.sendEvent('app_started');
+      }
+      const elapsed = Date.now() - start;
+      expect(elapsed).toBeLessThan(200);
+      // Allow promises to settle
+      await new Promise(resolve => setTimeout(resolve, 50));
+    });
+  });
 });
