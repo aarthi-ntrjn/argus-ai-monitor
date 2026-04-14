@@ -26,6 +26,8 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
   const [teamsForm, setTeamsForm] = useState({
     botAppId: '',
     botAppSecret: '',
+    botCertPath: '',
+    botCertThumbprint: '',
     tenantId: '',
     teamId: '',
     channelId: '',
@@ -223,17 +225,6 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
             />
           </div>
           <div>
-            <label htmlFor="teams-bot-app-secret" className="text-xs text-gray-600 block mb-1">Bot App Secret</label>
-            <input
-              id="teams-bot-app-secret"
-              type="password"
-              className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
-              value={teamsForm.botAppSecret || (teamsConfig?.botAppSecret === '***' ? '' : teamsConfig?.botAppSecret ?? '')}
-              onChange={e => setTeamsForm(f => ({ ...f, botAppSecret: e.target.value }))}
-              placeholder="Client secret value"
-            />
-          </div>
-          <div>
             <label htmlFor="teams-tenant-id" className="text-xs text-gray-600 block mb-1">Tenant ID</label>
             <input
               id="teams-tenant-id"
@@ -242,6 +233,40 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
               value={teamsForm.tenantId || teamsConfig?.tenantId || ''}
               onChange={e => setTeamsForm(f => ({ ...f, tenantId: e.target.value }))}
               placeholder="Azure Directory (Tenant) ID"
+            />
+          </div>
+          <p className="text-xs text-gray-500 font-medium mt-1">Authentication (use secret or certificate):</p>
+          <div>
+            <label htmlFor="teams-bot-app-secret" className="text-xs text-gray-600 block mb-1">Bot App Secret</label>
+            <input
+              id="teams-bot-app-secret"
+              type="password"
+              className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
+              value={teamsForm.botAppSecret || (teamsConfig?.botAppSecret === '***' ? '' : teamsConfig?.botAppSecret ?? '')}
+              onChange={e => setTeamsForm(f => ({ ...f, botAppSecret: e.target.value }))}
+              placeholder="Client secret value (if not using certificate)"
+            />
+          </div>
+          <div>
+            <label htmlFor="teams-bot-cert-path" className="text-xs text-gray-600 block mb-1">Certificate Path</label>
+            <input
+              id="teams-bot-cert-path"
+              type="text"
+              className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
+              value={teamsForm.botCertPath || teamsConfig?.botCertPath || ''}
+              onChange={e => setTeamsForm(f => ({ ...f, botCertPath: e.target.value }))}
+              placeholder="Path to PEM private key file (if not using secret)"
+            />
+          </div>
+          <div>
+            <label htmlFor="teams-bot-cert-thumbprint" className="text-xs text-gray-600 block mb-1">Certificate Thumbprint</label>
+            <input
+              id="teams-bot-cert-thumbprint"
+              type="text"
+              className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
+              value={teamsForm.botCertThumbprint || teamsConfig?.botCertThumbprint || ''}
+              onChange={e => setTeamsForm(f => ({ ...f, botCertThumbprint: e.target.value }))}
+              placeholder="SHA-1 thumbprint hex (from Azure Portal)"
             />
           </div>
           <div>
@@ -291,6 +316,8 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
               enabled: true,
               botAppId: teamsForm.botAppId || teamsConfig?.botAppId,
               botAppSecret: teamsForm.botAppSecret || teamsConfig?.botAppSecret,
+              botCertPath: teamsForm.botCertPath || teamsConfig?.botCertPath,
+              botCertThumbprint: teamsForm.botCertThumbprint || teamsConfig?.botCertThumbprint,
               tenantId: teamsForm.tenantId || teamsConfig?.tenantId,
               teamId: teamsForm.teamId || teamsConfig?.teamId,
               channelId: teamsForm.channelId || teamsConfig?.channelId,

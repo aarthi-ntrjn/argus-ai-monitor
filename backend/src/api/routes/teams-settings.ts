@@ -3,15 +3,19 @@ import { loadTeamsConfig, saveTeamsConfig, maskTeamsConfig } from '../../config/
 import { TeamsBotAuthService } from '../../services/teams-bot-auth-service.js';
 import type { TeamsConfig } from '../../models/index.js';
 
-const REQUIRED_WHEN_ENABLED: (keyof TeamsConfig)[] = ['botAppId', 'botAppSecret', 'tenantId', 'teamId', 'channelId'];
+const REQUIRED_WHEN_ENABLED: (keyof TeamsConfig)[] = ['botAppId', 'tenantId', 'teamId', 'channelId'];
 
 export const _auth = { botAuthService: new TeamsBotAuthService() };
 
 type ConnectionStatus = 'connected' | 'disconnected' | 'error' | 'unconfigured';
 
+function hasAuthMethod(config: Partial<TeamsConfig>): boolean {
+  return !!(config.botAppSecret || (config.botCertPath && config.botCertThumbprint));
+}
+
 async function checkConnectionStatus(config: Partial<TeamsConfig> & { enabled: boolean }): Promise<ConnectionStatus> {
   if (!config.enabled) return 'disconnected';
-  if (!config.botAppId || !config.botAppSecret || !config.tenantId) return 'unconfigured';
+  if (!config.botAppId || !config.tenantId || !hasAuthMethod(config)) return 'unconfigured';
   try {
     await _auth.botAuthService.getAccessToken(config as TeamsConfig);
     return 'connected';
@@ -46,10 +50,13 @@ const teamsSettingsRoutes: FastifyPluginAsync = async (app) => {
           return reply.status(400).send({ error: 'TEAMS_CONFIG_INVALID', message: `${field} is required when enabling Teams integration.`, requestId: req.id });
         }
       }
+      if (!hasAuthMethod(updated)) {
+        return reply.status(400).send({ error: 'TEAMS_CONFIG_INVALID', message: 'Provide either botAppSecret or both botCertPath and botCertThumbprint.', requestId: req.id });
+      }
       try {
         await _auth.botAuthService.getAccessToken(updated as TeamsConfig);
       } catch {
-        return reply.status(422).send({ error: 'TEAMS_BOT_AUTH_FAILED', message: 'Could not authenticate with the bot credentials. Check botAppId, botAppSecret, and tenantId.', requestId: req.id });
+        return reply.status(422).send({ error: 'TEAMS_BOT_AUTH_FAILED', message: 'Could not authenticate with the bot credentials. Check botAppId, credentials, and tenantId.', requestId: req.id });
       }
     }
 
