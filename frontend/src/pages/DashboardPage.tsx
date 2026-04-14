@@ -222,7 +222,7 @@ export default function DashboardPage() {
                 />
               )}
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col items-end gap-1">
               <Button
                 variant="outline"
                 data-tour-id="dashboard-add-repo"
@@ -236,9 +236,9 @@ export default function DashboardPage() {
               <span
                 role="status"
                 aria-live="polite"
-                className={`inline-flex items-center gap-1 text-sm text-green-600 transition-opacity duration-500 ${addInfo ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                className={`inline-flex items-center gap-1 text-xs text-green-600 transition-opacity duration-500 ${addInfo ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
               >
-                <Check size={13} aria-hidden="true" />
+                <Check size={11} aria-hidden="true" />
                 {infoSnapshot}
               </span>
             </div>
