@@ -2,7 +2,7 @@
 
 **Feature Branch**: `031-teams-channel-integration`
 **Created**: 2026-04-13
-**Status**: Revised
+**Status**: Clarified
 **Input**: User description: "Add the ability to connect Argus to the Teams Channel. The goal is to be able to remotely monitor and command CLI sessions. Each channel thread / post is a session."
 
 ## User Scenarios & Testing *(mandatory)*

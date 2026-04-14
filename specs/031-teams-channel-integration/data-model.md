@@ -1,52 +1,53 @@
-# Data Model: Microsoft Teams Channel Integration
+# Data Model: Microsoft Teams Channel Integration (Graph API)
 
-**Branch**: `031-teams-channel-integration` | **Date**: 2026-04-13
+**Branch**: `031-teams-channel-integration` | **Date**: 2026-04-14
+**Revision**: Updated for Graph API approach (replaces Bot Framework model of 2026-04-13).
 
 ## Entities
 
 ### TeamsConfig
 
-Stored in `~/.argus/teams-config.json`. Contains all configuration needed to connect Argus to Teams.
+Stored in `~/.argus/teams-config.json`. Contains all credentials and config needed to connect Argus to Teams via Microsoft Graph API.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | enabled | boolean | yes | Whether the integration is active |
-| botAppId | string | yes (when enabled) | Azure Bot registration Application (client) ID |
-| botAppPassword | string | yes (when enabled) | Azure Bot client secret / app password |
+| clientId | string | yes (when enabled) | Azure AD Application (client) ID for the self-registered app |
+| tenantId | string | yes (when enabled) | Azure AD Tenant ID |
+| teamId | string | yes (when enabled) | Microsoft Teams team ID (the team containing the target channel) |
 | channelId | string | yes (when enabled) | Teams channel ID to post session threads into |
-| serviceUrl | string | yes (when enabled) | Bot Framework service URL (e.g. `https://smba.trafficmanager.net/emea/`) |
-| tenantId | string | no | Azure AD tenant ID (optional; used for token audience validation) |
-| ownerTeamsUserId | string | yes (when enabled) | Teams AAD Object ID of the session owner; used to authorise inbound commands |
+| ownerUserId | string | yes (when enabled) | AAD Object ID of the authenticating user — captured automatically during Device Code Flow via `GET /me` |
+| refreshToken | string | yes (when enabled) | OAuth2 refresh token obtained after Device Code Flow; used to acquire access tokens at runtime. Masked as `"***"` in all API responses. |
 
 **Validation rules**:
-- `botAppId` must be a non-empty string when `enabled` is true.
-- `botAppPassword` must be a non-empty string when `enabled` is true.
-- `channelId` must be a non-empty string when `enabled` is true.
-- `serviceUrl` must be a valid HTTPS URL when `enabled` is true.
-- `ownerTeamsUserId` must be a non-empty string when `enabled` is true.
+- All required fields must be non-empty strings when `enabled` is true.
+- `clientId` and `tenantId` must be non-empty GUIDs when `enabled` is true.
+- `refreshToken` must be present and non-empty when `enabled` is true (set after Device Code Flow completes).
+- `ownerUserId` must be present (set automatically after Device Code Flow — not user-editable).
 
 ---
 
 ### TeamsThread
 
-Persisted in SQLite. Links an Argus session to its corresponding Teams thread.
+Persisted in SQLite. Links an Argus session to its corresponding Teams channel thread and tracks delta polling state.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | id | TEXT (UUID) | yes | Primary key |
 | session_id | TEXT (FK → sessions.id) | yes | The Argus session this thread represents |
-| teams_thread_id | TEXT | yes | The Teams conversation/thread ID (from Bot Framework activity) |
+| teams_thread_id | TEXT | yes | The Graph API message ID of the root thread post |
 | teams_channel_id | TEXT | yes | The Teams channel ID where the thread lives |
-| current_output_message_id | TEXT | null | Teams message ID of the current rolling output message (updated in place) |
+| current_output_message_id | TEXT | null | Graph message ID of the current rolling output reply (updated in place) |
+| delta_link | TEXT | null | Graph API delta link for polling replies. Null until first poll. |
 | created_at | TEXT (ISO 8601) | yes | When the thread was created |
 
 **Uniqueness**: `session_id` is unique — one thread per session. `teams_thread_id` is unique.
 
 **State transitions**:
 - Created when a session starts and integration is enabled.
-- `current_output_message_id` is null initially; set after the first output message is posted.
-- Updated with new `current_output_message_id` when a rolling message is replaced.
-- Not deleted when a session ends (thread persists for reference).
+- `current_output_message_id` is null initially; set after first output reply is posted.
+- `delta_link` is null initially; set after first delta poll call.
+- Not deleted when a session ends (thread persists for reference; polling stops).
 
 ---
 
@@ -57,8 +58,8 @@ Per-session circular buffer for outbound messages queued during Teams connectivi
 | Field | Type | Description |
 |-------|------|-------------|
 | sessionId | string | Owning session ID |
-| entries | MessageEntry[] | Ordered queue of buffered message content strings |
-| maxSize | number | Cap = 1000 entries per session |
+| entries | string[] | Ordered queue of buffered content strings |
+| maxSize | number | Cap: 1000 entries per session |
 | droppedCount | number | Running count of dropped entries since last flush |
 
 ---
@@ -67,6 +68,8 @@ Per-session circular buffer for outbound messages queued during Teams connectivi
 
 **File**: `backend/src/db/migrations/003-teams-threads.sql`
 
+The existing table gains a `delta_link` column (added as a runtime migration in `database.ts` to handle existing databases):
+
 ```sql
 CREATE TABLE IF NOT EXISTS teams_threads (
   id                        TEXT PRIMARY KEY,
@@ -74,27 +77,30 @@ CREATE TABLE IF NOT EXISTS teams_threads (
   teams_thread_id           TEXT NOT NULL UNIQUE,
   teams_channel_id          TEXT NOT NULL,
   current_output_message_id TEXT,
+  delta_link                TEXT,
   created_at                TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_teams_threads_session ON teams_threads(session_id);
 ```
 
+Runtime migration (in `database.ts`): `ALTER TABLE teams_threads ADD COLUMN delta_link TEXT` if not present.
+
 ---
 
 ## TypeScript Types
 
-Added to `backend/src/models/index.ts`:
+Updated in `backend/src/models/index.ts`:
 
 ```typescript
 export interface TeamsConfig {
   enabled: boolean;
-  botAppId: string;
-  botAppPassword: string;
+  clientId: string;
+  tenantId: string;
+  teamId: string;
   channelId: string;
-  serviceUrl: string;
-  tenantId?: string;
-  ownerTeamsUserId: string;
+  ownerUserId: string;
+  refreshToken: string;
 }
 
 export interface TeamsThread {
@@ -103,6 +109,7 @@ export interface TeamsThread {
   teamsThreadId: string;
   teamsChannelId: string;
   currentOutputMessageId: string | null;
+  deltaLink: string | null;
   createdAt: string;
 }
 ```
@@ -113,8 +120,12 @@ export interface TeamsThread {
 
 ```
 sessions 1──────0..1 teams_threads
-                        └── teamsThreadId → (external: Teams conversation ID)
+                        ├── teamsThreadId → Graph message ID (root post)
+                        └── deltaLink     → Graph delta URL for reply polling
 
 TeamsConfig (file)
-  └── ownerTeamsUserId → verified against activity.from.id in inbound events
+  ├── clientId / tenantId → used by MSAL to acquire tokens
+  ├── ownerUserId         → compared against reply sender ID in polling
+  └── refreshToken        → stored by MSAL, used for silent token refresh
 ```
+
