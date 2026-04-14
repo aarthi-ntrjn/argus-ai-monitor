@@ -4,7 +4,7 @@ import type { Session, SessionOutput, TeamsConfig } from '../models/index.js';
 import { loadTeamsConfig } from '../config/teams-config-loader.js';
 import { getTeamsThread, upsertTeamsThread, updateTeamsThreadOutputMessageId } from '../db/database.js';
 import type { TeamsGraphClient } from './teams-graph-client.js';
-import type { TeamsMsalService } from './teams-msal-service.js';
+import type { TeamsBotAuthService } from './teams-bot-auth-service.js';
 import type { TeamsMessageBuffer } from './teams-message-buffer.js';
 
 export class TeamsIntegrationService {
@@ -12,15 +12,15 @@ export class TeamsIntegrationService {
 
   constructor(
     private readonly graphClient: TeamsGraphClient,
-    private readonly msalService: TeamsMsalService,
+    private readonly botAuthService: TeamsBotAuthService,
     private readonly buffer: TeamsMessageBuffer,
     private readonly logger: Logger,
   ) {}
 
   private isConfigured(config: Partial<TeamsConfig> & { enabled: boolean }): config is TeamsConfig {
     return config.enabled === true &&
-      Boolean(config.clientId) &&
-      Boolean(config.refreshToken);
+      Boolean(config.botAppId) &&
+      Boolean(config.botAppSecret);
   }
 
   async onSessionCreated(session: Session): Promise<void> {
@@ -34,9 +34,9 @@ export class TeamsIntegrationService {
       return;
     }
 
-    const openingText = this._formatOpeningMessage(session, config.ownerUserId);
+    const openingText = this._formatOpeningMessage(session, config.ownerAadObjectId);
     try {
-      const accessToken = await this.msalService.getAccessToken(config);
+      const accessToken = await this.botAuthService.getAccessToken(config);
       const { messageId: threadId } = await this.graphClient.createThreadPost(config.teamId, config.channelId, accessToken, openingText);
       upsertTeamsThread({
         id: randomUUID(),
@@ -74,7 +74,7 @@ export class TeamsIntegrationService {
     const endedAt = session.endedAt ?? new Date().toISOString();
     const statusMsg = `<b>Session Ended</b><br>Type: ${session.type}<br>Session ID: ${session.id}<br>Status: <b>${session.status}</b><br>Ended: ${endedAt}`;
     try {
-      const accessToken = await this.msalService.getAccessToken(config);
+      const accessToken = await this.botAuthService.getAccessToken(config);
       await this.graphClient.postReply(config.teamId, config.channelId, thread.teamsThreadId, accessToken, statusMsg);
       this.logger.info({ sessionId: session.id, status: session.status }, 'teams.session.ended');
     } catch (err) {
@@ -106,7 +106,7 @@ export class TeamsIntegrationService {
     const thread = getTeamsThread(sessionId);
     if (!thread) return;
     try {
-      const accessToken = await this.msalService.getAccessToken(config);
+      const accessToken = await this.botAuthService.getAccessToken(config);
       if (thread.currentOutputMessageId) {
         await this.graphClient.updateReply(config.teamId, config.channelId, thread.teamsThreadId, thread.currentOutputMessageId, accessToken, text);
       } else {
@@ -119,13 +119,13 @@ export class TeamsIntegrationService {
     }
   }
 
-  _formatOpeningMessage(session: Session, ownerUserId: string): string {
+  _formatOpeningMessage(session: Session, ownerAadObjectId: string): string {
     return [
       `<b>Argus Session Started</b>`,
       `Session ID: ${session.id}`,
       `Type: ${session.type}`,
       `Started: ${session.startedAt}`,
-      `Owner: ${ownerUserId}`,
+      `Owner: ${ownerAadObjectId}`,
     ].join('<br>');
   }
 }

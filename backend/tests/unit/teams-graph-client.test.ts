@@ -75,40 +75,5 @@ describe('TeamsGraphClient', () => {
       );
     });
   });
-
-  describe('pollReplies', () => {
-    it('uses deltaLink on subsequent calls', async () => {
-      const deltaUrl = 'https://graph.microsoft.com/v1.0/delta?token=xyz';
-      mockFetch.mockReturnValue(okJson({
-        value: [{ id: 'r1', from: { user: { id: 'u1', displayName: 'User' } }, body: { content: 'cmd' }, createdDateTime: '2024-01-01T00:00:00Z' }],
-        '@odata.deltaLink': deltaUrl,
-      }));
-      const result = await client.pollReplies('team-1', 'channel-1', 'thread-1', 'token-abc', 'https://old-delta-link');
-      expect(mockFetch).toHaveBeenCalledWith('https://old-delta-link', expect.any(Object));
-      expect(result.nextDeltaLink).toBe(deltaUrl);
-      expect(result.replies).toHaveLength(1);
-    });
-
-    it('constructs initial delta URL when no deltaLink provided', async () => {
-      mockFetch.mockReturnValue(okJson({ value: [], '@odata.deltaLink': 'https://delta-link-new' }));
-      await client.pollReplies('team-1', 'channel-1', 'thread-1', 'token-abc');
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/replies/delta'),
-        expect.any(Object),
-      );
-    });
-
-    it('throws TeamsGraphError on non-2xx', async () => {
-      mockFetch.mockReturnValue(errResponse(429, 'Rate limited'));
-      await expect(client.pollReplies('t', 'c', 'tid', 'tok')).rejects.toThrow(TeamsGraphError);
-    });
-  });
-
-  describe('getMe', () => {
-    it('returns id and displayName', async () => {
-      mockFetch.mockReturnValue(okJson({ id: 'user-id-123', displayName: 'Ada Lovelace' }));
-      const result = await client.getMe('token-abc');
-      expect(result).toEqual({ id: 'user-id-123', displayName: 'Ada Lovelace' });
-    });
-  });
 });
+

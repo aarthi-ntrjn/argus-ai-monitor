@@ -7,13 +7,6 @@ export class TeamsGraphError extends Error {
   }
 }
 
-export interface GraphReply {
-  id: string;
-  from: { user: { id: string; displayName: string } };
-  body: { content: string };
-  createdDateTime: string;
-}
-
 async function graphFetch(url: string, accessToken: string, options?: RequestInit): Promise<Response> {
   const res = await fetch(url, {
     ...options,
@@ -58,17 +51,5 @@ export class TeamsGraphClient {
       body: JSON.stringify({ body: { contentType: 'html', content: `<pre>${text}</pre>` } }),
     });
   }
-
-  async pollReplies(teamId: string, channelId: string, threadId: string, accessToken: string, deltaLink?: string | null): Promise<{ replies: GraphReply[]; nextDeltaLink: string }> {
-    const url = deltaLink ?? `${GRAPH_BASE}/teams/${encodeURIComponent(teamId)}/channels/${encodeURIComponent(channelId)}/messages/${encodeURIComponent(threadId)}/replies/delta`;
-    const res = await graphFetch(url, accessToken);
-    const data = await res.json() as { value: GraphReply[]; '@odata.deltaLink'?: string; '@odata.nextLink'?: string };
-    const nextDeltaLink = data['@odata.deltaLink'] ?? data['@odata.nextLink'] ?? url;
-    return { replies: data.value ?? [], nextDeltaLink };
-  }
-
-  async getMe(accessToken: string): Promise<{ id: string; displayName: string }> {
-    const res = await graphFetch(`${GRAPH_BASE}/me`, accessToken);
-    return res.json() as Promise<{ id: string; displayName: string }>;
-  }
 }
+

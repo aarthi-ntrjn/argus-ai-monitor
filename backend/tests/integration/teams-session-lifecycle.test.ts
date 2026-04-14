@@ -21,13 +21,9 @@ const mockGraphClient = {
   createThreadPost: vi.fn(),
   postReply: vi.fn(),
   updateReply: vi.fn(),
-  pollReplies: vi.fn(),
-  getMe: vi.fn(),
 };
 
-const mockMsalService = {
-  initiateDeviceCodeFlow: vi.fn(),
-  pollDeviceCodeFlow: vi.fn(),
+const mockBotAuthService = {
   getAccessToken: vi.fn(),
 };
 
@@ -54,12 +50,12 @@ const session: Session = {
 
 const config = {
   enabled: true,
-  clientId: 'client-id',
+  botAppId: 'bot-app-id',
+  botAppSecret: 'bot-app-secret',
   tenantId: 'tenant-id',
   teamId: 'team-id',
   channelId: 'channel-id',
-  ownerUserId: 'owner-id',
-  refreshToken: 'refresh-token',
+  ownerAadObjectId: 'owner-aad-object-id',
 };
 
 describe('TeamsIntegrationService - session lifecycle', () => {
@@ -70,10 +66,10 @@ describe('TeamsIntegrationService - session lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     buffer = new TeamsMessageBuffer();
-    service = new TeamsIntegrationService(mockGraphClient as any, mockMsalService as any, buffer, mockLogger);
+    service = new TeamsIntegrationService(mockGraphClient as any, mockBotAuthService as any, buffer, mockLogger);
 
     vi.mocked(loadTeamsConfig).mockReturnValue(config);
-    mockMsalService.getAccessToken.mockResolvedValue('access-token');
+    mockBotAuthService.getAccessToken.mockResolvedValue('access-token');
     storedThread = null;
     vi.mocked(getTeamsThread).mockImplementation(() => storedThread);
     vi.mocked(upsertTeamsThread).mockImplementation((t) => { storedThread = t; });
@@ -116,3 +112,4 @@ describe('TeamsIntegrationService - session lifecycle', () => {
     service.stop();
   });
 });
+

@@ -193,6 +193,13 @@ export function insertControlAction(action: ControlAction): void {
     action.status, action.createdAt, action.completedAt, action.result, action.source ?? null);
 }
 
+export function getControlActions(sessionId: string): ControlAction[] {
+  const rows = getDb().prepare(
+    'SELECT id, session_id as sessionId, type, payload, status, created_at as createdAt, completed_at as completedAt, result, source FROM control_actions WHERE session_id = ? ORDER BY created_at ASC'
+  ).all(sessionId) as Array<Omit<ControlAction, 'payload'> & { payload: string | null }>;
+  return rows.map(r => ({ ...r, payload: r.payload ? JSON.parse(r.payload) : null }));
+}
+
 export function updateControlAction(id: string, status: string, completedAt: string | null, result: string | null): void {
   getDb().prepare(
     'UPDATE control_actions SET status = ?, completed_at = ?, result = ? WHERE id = ?'

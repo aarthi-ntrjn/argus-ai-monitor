@@ -21,13 +21,9 @@ const mockGraphClient = {
   createThreadPost: vi.fn(),
   postReply: vi.fn(),
   updateReply: vi.fn(),
-  pollReplies: vi.fn(),
-  getMe: vi.fn(),
 };
 
-const mockMsalService = {
-  initiateDeviceCodeFlow: vi.fn(),
-  pollDeviceCodeFlow: vi.fn(),
+const mockBotAuthService = {
   getAccessToken: vi.fn(),
 };
 
@@ -59,12 +55,12 @@ const baseSession: Session = {
 
 const enabledConfig = {
   enabled: true,
-  clientId: 'client-id',
+  botAppId: 'bot-app-id',
+  botAppSecret: 'bot-app-secret',
   tenantId: 'tenant-id',
   teamId: 'team-id',
   channelId: 'channel-id',
-  ownerUserId: 'owner-teams-id',
-  refreshToken: 'refresh-token',
+  ownerAadObjectId: 'owner-aad-object-id',
 };
 
 describe('TeamsIntegrationService', () => {
@@ -74,14 +70,14 @@ describe('TeamsIntegrationService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     buffer = new TeamsMessageBuffer();
-    service = new TeamsIntegrationService(mockGraphClient as any, mockMsalService as any, buffer, mockLogger);
+    service = new TeamsIntegrationService(mockGraphClient as any, mockBotAuthService as any, buffer, mockLogger);
   });
 
   describe('onSessionCreated', () => {
     it('creates thread and upserts TeamsThread when enabled', async () => {
       vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
       vi.mocked(getTeamsThread).mockReturnValue(null);
-      mockMsalService.getAccessToken.mockResolvedValue('access-token');
+      mockBotAuthService.getAccessToken.mockResolvedValue('access-token');
       mockGraphClient.createThreadPost.mockResolvedValue({ messageId: 'thread-1' });
 
       await service.onSessionCreated(baseSession);
@@ -143,7 +139,7 @@ describe('TeamsIntegrationService', () => {
         deltaLink: null,
         createdAt: '2024-01-01T00:00:00.000Z',
       });
-      mockMsalService.getAccessToken.mockResolvedValue('access-token');
+      mockBotAuthService.getAccessToken.mockResolvedValue('access-token');
       mockGraphClient.postReply.mockResolvedValue({ messageId: 'end-msg' });
 
       await service.onSessionEnded({ ...baseSession, status: 'completed' });
@@ -155,10 +151,10 @@ describe('TeamsIntegrationService', () => {
   });
 
   describe('opening message format', () => {
-    it('includes session ID, type, startedAt, ownerUserId', async () => {
+    it('includes session ID, type, startedAt, ownerAadObjectId', async () => {
       vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
       vi.mocked(getTeamsThread).mockReturnValue(null);
-      mockMsalService.getAccessToken.mockResolvedValue('access-token');
+      mockBotAuthService.getAccessToken.mockResolvedValue('access-token');
       mockGraphClient.createThreadPost.mockResolvedValue({ messageId: 'thread-1' });
 
       await service.onSessionCreated(baseSession);
@@ -167,7 +163,7 @@ describe('TeamsIntegrationService', () => {
       expect(callText).toContain(baseSession.id);
       expect(callText).toContain(baseSession.type);
       expect(callText).toContain(baseSession.startedAt);
-      expect(callText).toContain(enabledConfig.ownerUserId);
+      expect(callText).toContain(enabledConfig.ownerAadObjectId);
       service.stop();
     });
   });
@@ -184,7 +180,7 @@ describe('TeamsIntegrationService', () => {
         deltaLink: null,
         createdAt: '2024-01-01T00:00:00.000Z',
       });
-      mockMsalService.getAccessToken.mockResolvedValue('access-token');
+      mockBotAuthService.getAccessToken.mockResolvedValue('access-token');
       mockGraphClient.postReply.mockResolvedValue({ messageId: 'end-msg' });
 
       await service.onSessionEnded({ ...baseSession, status: 'completed' });
@@ -194,3 +190,4 @@ describe('TeamsIntegrationService', () => {
     });
   });
 });
+

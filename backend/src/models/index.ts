@@ -110,12 +110,12 @@ export interface PendingChoice {
 
 export interface TeamsConfig {
   enabled: boolean;
-  clientId: string;
+  botAppId: string;
+  botAppSecret: string;
   tenantId: string;
   teamId: string;
   channelId: string;
-  ownerUserId: string;
-  refreshToken: string;
+  ownerAadObjectId: string;
 }
 
 export interface TeamsThread {

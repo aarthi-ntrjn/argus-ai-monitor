@@ -11,8 +11,6 @@ vi.mock('../services/api', () => ({
   patchArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false, yoloMode: false }),
   getTeamsSettings: vi.fn().mockResolvedValue({ enabled: false, connectionStatus: 'unconfigured' }),
   patchTeamsSettings: vi.fn().mockResolvedValue({ enabled: false, connectionStatus: 'unconfigured' }),
-  initiateDeviceCodeFlow: vi.fn(),
-  pollDeviceCodeFlow: vi.fn(),
 }));
 
 function renderWithQuery(ui: React.ReactElement) {
@@ -25,7 +23,6 @@ const baseSettings: DashboardSettings = {
   hideReposWithNoActiveSessions: false,
   hideInactiveSessions: false,
   outputDisplayMode: 'focused',
-  restingThresholdMinutes: 20,
   hideTodoPanel: false,
 };
 
@@ -54,12 +51,12 @@ describe('SettingsPanel - Teams integration section', () => {
   it('shows connected status when config is connected', async () => {
     vi.mocked(api.getTeamsSettings).mockResolvedValue({
       enabled: true,
-      clientId: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+      botAppId: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+      botAppSecret: '***',
       tenantId: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
       teamId: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
       channelId: '19:xxxx@thread.tacv2',
-      ownerUserId: 'owner-id',
-      refreshToken: '***',
+      ownerAadObjectId: 'owner-aad-id',
       connectionStatus: 'connected',
     });
     renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
@@ -68,29 +65,36 @@ describe('SettingsPanel - Teams integration section', () => {
     });
   });
 
-  it('renders Client ID input field', async () => {
+  it('renders Bot App ID input field', async () => {
     renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
     await waitFor(() => {
-      expect(screen.getByLabelText(/client id/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/bot app id/i)).toBeInTheDocument();
+    });
+  });
+
+  it('renders Owner AAD Object ID input field', async () => {
+    renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
+    await waitFor(() => {
+      expect(screen.getByLabelText(/owner aad object id/i)).toBeInTheDocument();
     });
   });
 
   it('calls patchTeamsSettings when Save is clicked', async () => {
     vi.mocked(api.patchTeamsSettings).mockResolvedValue({
       enabled: true,
-      clientId: 'test-client-id',
+      botAppId: 'test-bot-app-id',
+      botAppSecret: '***',
       tenantId: 'test-tenant-id',
       teamId: 'test-team-id',
       channelId: '19:xxxx@thread.tacv2',
-      ownerUserId: 'owner-id',
-      refreshToken: '***',
+      ownerAadObjectId: 'owner-aad-id',
       connectionStatus: 'connected',
     });
     renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
-    await waitFor(() => screen.getByLabelText(/client id/i));
-    const clientIdInput = screen.getByLabelText(/client id/i);
-    await userEvent.clear(clientIdInput);
-    await userEvent.type(clientIdInput, 'test-client-id');
+    await waitFor(() => screen.getByLabelText(/bot app id/i));
+    const botAppIdInput = screen.getByLabelText(/bot app id/i);
+    await userEvent.clear(botAppIdInput);
+    await userEvent.type(botAppIdInput, 'test-bot-app-id');
     await userEvent.click(screen.getByRole('button', { name: /save teams settings/i }));
     expect(api.patchTeamsSettings).toHaveBeenCalled();
   });
@@ -98,10 +102,11 @@ describe('SettingsPanel - Teams integration section', () => {
   it('shows error message when save fails', async () => {
     vi.mocked(api.patchTeamsSettings).mockRejectedValue(new Error('Connection failed'));
     renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
-    await waitFor(() => screen.getByLabelText(/client id/i));
+    await waitFor(() => screen.getByLabelText(/bot app id/i));
     await userEvent.click(screen.getByRole('button', { name: /save teams settings/i }));
     await waitFor(() => {
       expect(screen.getByText(/connection failed/i)).toBeInTheDocument();
     });
   });
 });
+
