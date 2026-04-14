@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRef, useState, useEffect, useMemo } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getSessions, getRepositories } from '../services/api';
 import { useSettings } from '../hooks/useSettings';
@@ -46,8 +46,11 @@ export default function DashboardPage() {
     removeConfirmId, removing, skipConfirm,
     setFolderInputPath, setRemoveConfirmId, setSkipConfirm,
     handleAddRepo, handleFolderSubmit, handleRemoveRepoById, handleRemoveRepo,
-    cancelFolderInput, clearAddError, clearAddInfo,
+    cancelFolderInput, clearAddError,
   } = useRepositoryManagement();
+
+  const [infoSnapshot, setInfoSnapshot] = useState<string | null>(null);
+  useEffect(() => { if (addInfo) setInfoSnapshot(addInfo); }, [addInfo]);
 
   // Auto-launch for first-time users
   useEffect(() => {
@@ -219,25 +222,28 @@ export default function DashboardPage() {
                 />
               )}
             </div>
-            <Button
-              variant="outline"
-              data-tour-id="dashboard-add-repo"
-              onClick={handleAddRepo}
-              disabled={adding}
-              className="inline-flex items-center gap-1"
-            >
-              <Plus size={11} aria-hidden="true" />
-              {adding ? 'Adding...' : 'Add Repository'}
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                data-tour-id="dashboard-add-repo"
+                onClick={handleAddRepo}
+                disabled={adding}
+                className="inline-flex items-center gap-1"
+              >
+                <Plus size={11} aria-hidden="true" />
+                {adding ? 'Adding...' : 'Add Repository'}
+              </Button>
+              <span
+                role="status"
+                aria-live="polite"
+                className={`inline-flex items-center gap-1 text-sm text-green-600 transition-opacity duration-500 ${addInfo ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+              >
+                <Check size={13} aria-hidden="true" />
+                {infoSnapshot}
+              </span>
+            </div>
           </div>
         </div>
-
-        {addInfo && (
-          <div role="status" aria-live="polite" className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-green-700 text-sm flex justify-between">
-            <span>{addInfo}</span>
-            <button onClick={clearAddInfo} aria-label="Dismiss notification" className="icon-btn ml-2">&times;</button>
-          </div>
-        )}
 
         {addError && (
           <div role="alert" className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm flex justify-between">
