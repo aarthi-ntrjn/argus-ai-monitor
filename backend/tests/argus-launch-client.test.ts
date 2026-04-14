@@ -204,6 +204,39 @@ describe('ArgusLaunchClient', () => {
     expect(sent.every((m: { type: string }) => m.type !== 'workspace_id')).toBe(true);
   });
 
+  it('register replay on reconnect carries the resolved pid when updatePid was called while WS was open', async () => {
+    vi.useFakeTimers();
+    try {
+      const client = new ArgusLaunchClient('ws://127.0.0.1:7411/launcher');
+      const firstWs = MockWebSocket.mock.results[0].value;
+      firstWs.readyState = 1;
+
+      // Initial register with pid: null (Windows — pid resolved later via update_pid)
+      const registerInfo = { sessionId: 'abc', hostPid: 9000, pid: null, sessionType: 'copilot-cli' as const, cwd: '/tmp' };
+      client.setRegisterInfo(registerInfo);
+
+      // updatePid called while WS is open — sends update_pid immediately
+      client.updatePid(9999);
+      expect(firstWs.send).toHaveBeenCalledWith(JSON.stringify({ type: 'update_pid', pid: 9999 }));
+
+      // Backend restarts: WS closes unexpectedly, client reconnects
+      firstWs.emit('close');
+      vi.advanceTimersByTime(2100);
+
+      const secondWs = MockWebSocket.mock.results[1].value;
+      const openHandler = secondWs.on.mock.calls.find((c: string[]) => c[0] === 'open')?.[1];
+      openHandler();
+
+      // register replay must include the resolved pid (9999), not the original null
+      const sent = secondWs.send.mock.calls.map((c: string[]) => JSON.parse(c[0]));
+      const registerMsg = sent.find((m: { type: string }) => m.type === 'register');
+      expect(registerMsg).toBeDefined();
+      expect(registerMsg.pid).toBe(9999);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('notifySessionEnded sets isClosing flag and prevents reconnect after intentional shutdown', async () => {
     vi.useFakeTimers();
     try {

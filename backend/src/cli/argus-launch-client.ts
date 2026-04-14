@@ -60,14 +60,15 @@ export class ArgusLaunchClient {
   }
 
   updatePid(pid: number): void {
+    // Always keep registerInfo in sync so the register replay on reconnect carries the correct pid.
+    if (this.registerInfo) {
+      this.registerInfo = { ...this.registerInfo, pid };
+    }
     const wsState = this.ws.readyState;
     const isOpen = wsState === WebSocket.OPEN;
     this.log(`updatePid pid=${pid} ws.readyState=${wsState} (${isOpen ? 'OPEN' : 'NOT_OPEN'})`);
     if (!isOpen) {
-      this.log(`updatePid: ws not open, parking pid=${pid} in registerInfo for replay on open`);
-      if (this.registerInfo) {
-        this.registerInfo = { ...this.registerInfo, pid };
-      }
+      this.log(`updatePid: ws not open, parking pid=${pid} for replay on open`);
       this.pendingPid = pid;
       return;
     }
