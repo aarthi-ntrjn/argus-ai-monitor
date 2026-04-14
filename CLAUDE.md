@@ -92,12 +92,21 @@ The scan cycle runs on a tight loop. Any code that touches it must follow these 
 
 ## Shared UI Components
 
-Always reuse the shared components in `frontend/src/components/` instead of writing inline HTML elements. Never create a raw `<button>` or `<input type="checkbox">` when a shared component exists:
+Always reuse shared components and CSS classes from `frontend/src/components/` and `frontend/src/index.css`. Before writing any interactive element, check if a shared component covers it. Never reach for a raw HTML element when a shared abstraction exists.
 
-- **`Button`**: Use for all buttons. Supports `variant` (primary, danger, ghost, outline) and `size` (sm, md).
-- **`Checkbox`**: Use for all checkboxes. Supports an optional `label` prop. Styled to match the TodoPanel checkbox appearance.
+**Components:**
 
-If a new UI pattern repeats across two or more locations, extract it into a shared component before duplicating.
+- **`Button`**: Use for every visible-text button. Supports `variant` (primary, danger, ghost, outline) and `size` (sm, md). Never write a raw `<button>` with Tailwind color/border classes to replicate a variant.
+- **`Badge`**: Use for every status/label chip (small colored spans with `text-xs px-2 py-0.5 rounded font-medium`). Never inline badge styling.
+- **`Checkbox`**: Use for every checkbox. Accepts an optional `label` prop. Never write `<input type="checkbox">` or `<button role="checkbox">` outside the Checkbox component itself.
+- **`ToggleIconButton`**: Use for icon-only buttons that have an active/inactive color state based on a boolean. Never write a `<button>` that conditionally applies `text-blue-600` vs `text-gray-500` on an icon.
+
+**CSS component classes (defined in `index.css`):**
+
+- **`icon-btn`**: Add to every icon-only button (SVG or single character, no text label). Remove redundant inline classes it already covers (`rounded-sm`, `transition-colors`, `focus-visible:ring-*`).
+- **`interactive-card`**: Add to every `<div>` with `role="button"` or `tabIndex={0}` + `onClick` + border/rounded/cursor styling. Remove redundant inline classes it covers.
+
+**Rule**: If a new UI pattern appears in two or more places, extract it into a shared component before the second use. Do not duplicate Tailwind class combinations that already have a named abstraction.
 
 ## Scripts
 
