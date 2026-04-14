@@ -44,6 +44,7 @@ export class SessionController {
       createdAt: new Date().toISOString(),
       completedAt: null,
       result: null,
+      source: null,
     };
     insertControlAction(action);
     this.broadcastAction(action);
@@ -84,6 +85,7 @@ export class SessionController {
         createdAt: new Date().toISOString(),
         completedAt: new Date().toISOString(),
         result: 'Prompt delivery requires starting this session via argus launch',
+        source: null,
       };
       insertControlAction(action);
       this.broadcastAction(action);
@@ -100,6 +102,7 @@ export class SessionController {
         createdAt: new Date().toISOString(),
         completedAt: new Date().toISOString(),
         result: 'Session launcher is not connected to Argus',
+        source: null,
       };
       insertControlAction(action);
       this.broadcastAction(action);
@@ -115,6 +118,7 @@ export class SessionController {
       createdAt: new Date().toISOString(),
       completedAt: null,
       result: null,
+      source: null,
     };
     insertControlAction(action);
     this.broadcastAction(action);
@@ -165,6 +169,7 @@ export class SessionController {
       createdAt: new Date().toISOString(),
       completedAt: null,
       result: null,
+      source: null,
     };
     insertControlAction(action);
     this.broadcastAction(action);

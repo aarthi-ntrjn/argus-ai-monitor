@@ -43,15 +43,19 @@ export function getDb(): Database.Database {
     }
     const yoloColInfo = (db.pragma('table_info(sessions)') as Array<{ name: string; notnull: number }>)
       .find(c => c.name === 'yolo_mode');
-    if (!yoloColInfo) {
+    if (!sessionCols.includes('yolo_mode')) {
       db.exec('ALTER TABLE sessions ADD COLUMN yolo_mode INTEGER DEFAULT NULL');
-    } else if (yoloColInfo.notnull === 1) {
-      // Migrate from NOT NULL DEFAULT 0 to nullable — preserve existing true values
+    } else if (yoloColInfo && yoloColInfo.notnull === 1) {
+      // Migrate from NOT NULL DEFAULT 0 to nullable -- preserve existing true values
       db.exec('ALTER TABLE sessions ADD COLUMN yolo_mode_new INTEGER DEFAULT NULL');
       db.exec('UPDATE sessions SET yolo_mode_new = 1 WHERE yolo_mode = 1');
       db.exec('ALTER TABLE sessions DROP COLUMN yolo_mode');
       db.exec('ALTER TABLE sessions RENAME COLUMN yolo_mode_new TO yolo_mode');
     }
+    const teamsCols = (db.pragma('table_info(teams_threads)') as Array<{ name: string }>).map(c => c.name);
+    if (!teamsCols.includes('delta_link')) db.exec('ALTER TABLE teams_threads ADD COLUMN delta_link TEXT');
+    const controlCols = (db.pragma('table_info(control_actions)') as Array<{ name: string }>).map(c => c.name);
+    if (!controlCols.includes('source')) db.exec('ALTER TABLE control_actions ADD COLUMN source TEXT');
   }
   return db;
 }
@@ -175,9 +179,9 @@ export function insertOutput(output: SessionOutput): void {
 
 export function insertControlAction(action: ControlAction): void {
   getDb().prepare(
-    'INSERT INTO control_actions (id, session_id, type, payload, status, created_at, completed_at, result) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO control_actions (id, session_id, type, payload, status, created_at, completed_at, result, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
   ).run(action.id, action.sessionId, action.type, action.payload ? JSON.stringify(action.payload) : null,
-    action.status, action.createdAt, action.completedAt, action.result);
+    action.status, action.createdAt, action.completedAt, action.result, action.source ?? null);
 }
 
 export function updateControlAction(id: string, status: string, completedAt: string | null, result: string | null): void {
@@ -217,23 +221,27 @@ export function deleteTodo(id: string): boolean {
 
 export function upsertTeamsThread(thread: TeamsThread): void {
   getDb().prepare(`
-    INSERT OR REPLACE INTO teams_threads (id, session_id, teams_thread_id, teams_channel_id, current_output_message_id, created_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(thread.id, thread.sessionId, thread.teamsThreadId, thread.teamsChannelId, thread.currentOutputMessageId, thread.createdAt);
+    INSERT OR REPLACE INTO teams_threads (id, session_id, teams_thread_id, teams_channel_id, current_output_message_id, delta_link, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(thread.id, thread.sessionId, thread.teamsThreadId, thread.teamsChannelId, thread.currentOutputMessageId, thread.deltaLink ?? null, thread.createdAt);
 }
 
 export function getTeamsThread(sessionId: string): TeamsThread | null {
   return getDb().prepare(
-    'SELECT id, session_id as sessionId, teams_thread_id as teamsThreadId, teams_channel_id as teamsChannelId, current_output_message_id as currentOutputMessageId, created_at as createdAt FROM teams_threads WHERE session_id = ?'
+    'SELECT id, session_id as sessionId, teams_thread_id as teamsThreadId, teams_channel_id as teamsChannelId, current_output_message_id as currentOutputMessageId, delta_link as deltaLink, created_at as createdAt FROM teams_threads WHERE session_id = ?'
   ).get(sessionId) as TeamsThread | null;
 }
 
 export function getTeamsThreadByTeamsId(teamsThreadId: string): TeamsThread | null {
   return getDb().prepare(
-    'SELECT id, session_id as sessionId, teams_thread_id as teamsThreadId, teams_channel_id as teamsChannelId, current_output_message_id as currentOutputMessageId, created_at as createdAt FROM teams_threads WHERE teams_thread_id = ?'
+    'SELECT id, session_id as sessionId, teams_thread_id as teamsThreadId, teams_channel_id as teamsChannelId, current_output_message_id as currentOutputMessageId, delta_link as deltaLink, created_at as createdAt FROM teams_threads WHERE teams_thread_id = ?'
   ).get(teamsThreadId) as TeamsThread | null;
 }
 
 export function updateTeamsThreadOutputMessageId(sessionId: string, messageId: string): void {
   getDb().prepare('UPDATE teams_threads SET current_output_message_id = ? WHERE session_id = ?').run(messageId, sessionId);
+}
+
+export function updateTeamsThreadDeltaLink(sessionId: string, deltaLink: string): void {
+  getDb().prepare('UPDATE teams_threads SET delta_link = ? WHERE session_id = ?').run(deltaLink, sessionId);
 }

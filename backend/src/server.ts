@@ -18,12 +18,14 @@ import todosRoutes from './api/routes/todos.js';
 import launcherRoutes from './api/routes/launcher.js';
 import toolsRoutes from './api/routes/tools.js';
 import settingsRoutes from './api/routes/settings.js';
-import teamsWebhookRoutes from './api/routes/teams-webhook.js';
+import teamsAuthRoutes from './api/routes/teams-auth.js';
 import teamsSettingsRoutes from './api/routes/teams-settings.js';
 import { SessionMonitor } from './services/session-monitor.js';
 import { startPruningJob } from './services/pruning-job.js';
 import { TeamsIntegrationService } from './services/teams-integration.js';
-import { TeamsApiClient } from './services/teams-api-client.js';
+import { TeamsGraphClient } from './services/teams-graph-client.js';
+import { TeamsMsalService } from './services/teams-msal-service.js';
+import { TeamsPollingService } from './services/teams-polling-service.js';
 import { TeamsMessageBuffer } from './services/teams-message-buffer.js';
 import { outputStore } from './services/output-store.js';
 import type { Session, Repository } from './models/index.js';
@@ -97,7 +99,7 @@ export async function buildServer() {
   await app.register(launcherRoutes);
   await app.register(toolsRoutes);
   await app.register(settingsRoutes);
-  await app.register(teamsWebhookRoutes);
+  await app.register(teamsAuthRoutes);
   await app.register(teamsSettingsRoutes);
 
   app.register(async (fastify) => {
@@ -133,9 +135,12 @@ export async function startServer() {
   await monitor.start();
   startPruningJob();
 
-  const teamsApiClient = new TeamsApiClient();
+  const teamsGraphClient = new TeamsGraphClient();
+  const teamsMsalService = new TeamsMsalService();
   const teamsBuffer = new TeamsMessageBuffer(1000, app.log as any);
-  const teamsService = new TeamsIntegrationService(teamsApiClient, teamsBuffer, app.log as any);
+  const teamsService = new TeamsIntegrationService(teamsGraphClient, teamsMsalService, teamsBuffer, app.log as any);
+  const teamsPollingService = new TeamsPollingService(teamsGraphClient, teamsMsalService, app.log as any);
+  teamsPollingService.start();
 
   monitor.on('session.created', (session: Session) => {
     teamsService.onSessionCreated(session).catch(err => app.log.error({ err }, 'teams.session.created.error'));
@@ -147,8 +152,8 @@ export async function startServer() {
     teamsService.onSessionOutput(sessionId, outputs);
   });
 
-  process.on('SIGTERM', async () => { teamsService.stop(); monitor?.stop(); await app.close(); process.exit(0); });
-  process.on('SIGINT', async () => { teamsService.stop(); monitor?.stop(); await app.close(); process.exit(0); });
+  process.on('SIGTERM', async () => { teamsService.stop(); teamsPollingService.stop(); monitor?.stop(); await app.close(); process.exit(0); });
+  process.on('SIGINT', async () => { teamsService.stop(); teamsPollingService.stop(); monitor?.stop(); await app.close(); process.exit(0); });
 
   await app.listen({ port: config.port, host: '127.0.0.1' });
   app.log.info({ port: config.port }, 'Argus server started');

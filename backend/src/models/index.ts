@@ -67,6 +67,7 @@ export interface ControlAction {
   createdAt: string;
   completedAt: string | null;
   result: string | null;
+  source: string | null;
 }
 
 export interface TodoItem {
@@ -94,12 +95,12 @@ export interface PendingChoice {
 
 export interface TeamsConfig {
   enabled: boolean;
-  botAppId: string;
-  botAppPassword: string;
+  clientId: string;
+  tenantId: string;
+  teamId: string;
   channelId: string;
-  serviceUrl: string;
-  tenantId?: string;
-  ownerTeamsUserId: string;
+  ownerUserId: string;
+  refreshToken: string;
 }
 
 export interface TeamsThread {
@@ -108,5 +109,6 @@ export interface TeamsThread {
   teamsThreadId: string;
   teamsChannelId: string;
   currentOutputMessageId: string | null;
+  deltaLink: string | null;
   createdAt: string;
 }

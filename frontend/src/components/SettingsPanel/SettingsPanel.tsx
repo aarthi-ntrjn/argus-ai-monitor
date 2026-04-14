@@ -20,17 +20,15 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({ settings, onToggle, onUpdateThreshold, onRestartTour }: SettingsPanelProps) {
   const { settings: argusSettings, patchSetting } = useArgusSettings();
-  const { config: teamsConfig, isSaving: isTeamsSaving, error: teamsError, save: saveTeams } = useTeamsSettings();
+  const { config: teamsConfig, isSaving: isTeamsSaving, error: teamsError, save: saveTeams, startAuth, authState, deviceCodeInfo } = useTeamsSettings();
   const [showYoloWarning, setShowYoloWarning] = useState(false);
   const [thresholdInput, setThresholdInput] = useState(String(settings.restingThresholdMinutes ?? DEFAULT_THRESHOLD));
   const [thresholdError, setThresholdError] = useState<string | null>(null);
   const [teamsForm, setTeamsForm] = useState({
-    botAppId: '',
-    botAppPassword: '',
-    channelId: '',
-    serviceUrl: '',
+    clientId: '',
     tenantId: '',
-    ownerTeamsUserId: '',
+    teamId: '',
+    channelId: '',
   });
 
   const handleYoloChange = (checked: boolean) => {
@@ -194,37 +192,55 @@ export function SettingsPanel({ settings, onToggle, onUpdateThreshold, onRestart
       <div className="mt-3 pt-3 border-t border-gray-100">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium text-gray-700">Microsoft Teams</span>
-          {teamsConfig && (
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-              teamsConfig.connectionStatus === 'connected' ? 'bg-green-100 text-green-700' :
-              teamsConfig.connectionStatus === 'error' ? 'bg-red-100 text-red-700' :
-              'bg-gray-100 text-gray-600'
-            }`}>
-              {teamsConfig.connectionStatus}
-            </span>
-          )}
+          <div className="flex items-center gap-1">
+            {teamsConfig && (
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                teamsConfig.connectionStatus === 'connected' ? 'bg-green-100 text-green-700' :
+                teamsConfig.connectionStatus === 'error' ? 'bg-red-100 text-red-700' :
+                'bg-gray-100 text-gray-600'
+              }`}>
+                {teamsConfig.connectionStatus}
+              </span>
+            )}
+            {authState === 'authenticated' && (
+              <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-100 text-blue-700">
+                authenticated
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex flex-col gap-2">
           <div>
-            <label htmlFor="teams-bot-app-id" className="text-xs text-gray-600 block mb-1">Bot App ID</label>
+            <label htmlFor="teams-client-id" className="text-xs text-gray-600 block mb-1">Client ID</label>
             <input
-              id="teams-bot-app-id"
+              id="teams-client-id"
               type="text"
               className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
-              value={teamsForm.botAppId || teamsConfig?.botAppId || ''}
-              onChange={e => setTeamsForm(f => ({ ...f, botAppId: e.target.value }))}
-              placeholder="Azure App ID"
+              value={teamsForm.clientId || teamsConfig?.clientId || ''}
+              onChange={e => setTeamsForm(f => ({ ...f, clientId: e.target.value }))}
+              placeholder="Azure App (Client) ID"
             />
           </div>
           <div>
-            <label htmlFor="teams-bot-app-password" className="text-xs text-gray-600 block mb-1">Bot App Password</label>
+            <label htmlFor="teams-tenant-id" className="text-xs text-gray-600 block mb-1">Tenant ID</label>
             <input
-              id="teams-bot-app-password"
-              type="password"
+              id="teams-tenant-id"
+              type="text"
               className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
-              value={teamsForm.botAppPassword || ''}
-              onChange={e => setTeamsForm(f => ({ ...f, botAppPassword: e.target.value }))}
-              placeholder="Client Secret"
+              value={teamsForm.tenantId || teamsConfig?.tenantId || ''}
+              onChange={e => setTeamsForm(f => ({ ...f, tenantId: e.target.value }))}
+              placeholder="Azure Directory (Tenant) ID"
+            />
+          </div>
+          <div>
+            <label htmlFor="teams-team-id" className="text-xs text-gray-600 block mb-1">Team ID</label>
+            <input
+              id="teams-team-id"
+              type="text"
+              className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
+              value={teamsForm.teamId || teamsConfig?.teamId || ''}
+              onChange={e => setTeamsForm(f => ({ ...f, teamId: e.target.value }))}
+              placeholder="Team (Group) ID"
             />
           </div>
           <div>
@@ -238,39 +254,32 @@ export function SettingsPanel({ settings, onToggle, onUpdateThreshold, onRestart
               placeholder="19:xxxx@thread.tacv2"
             />
           </div>
-          <div>
-            <label htmlFor="teams-service-url" className="text-xs text-gray-600 block mb-1">Service URL</label>
-            <input
-              id="teams-service-url"
-              type="text"
-              className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
-              value={teamsForm.serviceUrl || teamsConfig?.serviceUrl || ''}
-              onChange={e => setTeamsForm(f => ({ ...f, serviceUrl: e.target.value }))}
-              placeholder="https://smba.trafficmanager.net/..."
-            />
-          </div>
-          <div>
-            <label htmlFor="teams-tenant-id" className="text-xs text-gray-600 block mb-1">Tenant ID (optional)</label>
-            <input
-              id="teams-tenant-id"
-              type="text"
-              className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
-              value={teamsForm.tenantId || teamsConfig?.tenantId || ''}
-              onChange={e => setTeamsForm(f => ({ ...f, tenantId: e.target.value }))}
-              placeholder="Leave blank for single-tenant bots"
-            />
-          </div>
-          <div>
-            <label htmlFor="teams-owner-user-id" className="text-xs text-gray-600 block mb-1">Owner Teams User ID</label>
-            <input
-              id="teams-owner-user-id"
-              type="text"
-              className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
-              value={teamsForm.ownerTeamsUserId || teamsConfig?.ownerTeamsUserId || ''}
-              onChange={e => setTeamsForm(f => ({ ...f, ownerTeamsUserId: e.target.value }))}
-              placeholder="29:xxxx"
-            />
-          </div>
+          {authState === 'idle' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const clientId = teamsForm.clientId || teamsConfig?.clientId || '';
+                const tenantId = teamsForm.tenantId || teamsConfig?.tenantId || '';
+                if (clientId && tenantId) startAuth(clientId, tenantId);
+              }}
+              className="text-xs"
+            >
+              Authenticate with Microsoft
+            </Button>
+          )}
+          {authState === 'device-code-pending' && deviceCodeInfo && (
+            <div className="bg-blue-50 border border-blue-200 rounded p-2 text-xs">
+              <p className="font-medium text-blue-800 mb-1">Device code authentication</p>
+              <p className="text-blue-700 mb-1">
+                Go to <a href={deviceCodeInfo.verificationUrl} target="_blank" rel="noreferrer" className="underline">{deviceCodeInfo.verificationUrl}</a>
+              </p>
+              <p className="text-blue-700">
+                Enter code: <span className="font-mono font-bold text-blue-900">{deviceCodeInfo.userCode}</span>
+              </p>
+              <p className="text-blue-600 mt-1 text-xs">Waiting for authentication...</p>
+            </div>
+          )}
           {teamsError && <p className="text-xs text-red-600">{teamsError}</p>}
           <Button
             variant="ghost"
@@ -278,16 +287,16 @@ export function SettingsPanel({ settings, onToggle, onUpdateThreshold, onRestart
             disabled={isTeamsSaving}
             onClick={() => saveTeams({
               enabled: true,
-              botAppId: teamsForm.botAppId || teamsConfig?.botAppId,
-              botAppPassword: teamsForm.botAppPassword || teamsConfig?.botAppPassword,
-              channelId: teamsForm.channelId || teamsConfig?.channelId,
-              serviceUrl: teamsForm.serviceUrl || teamsConfig?.serviceUrl,
+              clientId: teamsForm.clientId || teamsConfig?.clientId,
               tenantId: teamsForm.tenantId || teamsConfig?.tenantId,
-              ownerTeamsUserId: teamsForm.ownerTeamsUserId || teamsConfig?.ownerTeamsUserId,
+              teamId: teamsForm.teamId || teamsConfig?.teamId,
+              channelId: teamsForm.channelId || teamsConfig?.channelId,
+              refreshToken: teamsConfig?.refreshToken,
+              ownerUserId: teamsConfig?.ownerUserId,
             })}
             className="text-xs"
           >
-            {isTeamsSaving ? 'Saving...' : 'Save Teams'}
+            {isTeamsSaving ? 'Saving...' : 'Save Teams Settings'}
           </Button>
         </div>
       </div>

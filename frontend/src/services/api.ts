@@ -134,14 +134,26 @@ export async function patchArgusSettings(patch: Partial<ArgusConfig>): Promise<A
 
 export interface TeamsSettings {
   enabled: boolean;
-  botAppId?: string;
-  botAppPassword?: string;
-  channelId?: string;
-  serviceUrl?: string;
+  clientId?: string;
   tenantId?: string;
-  ownerTeamsUserId?: string;
+  teamId?: string;
+  channelId?: string;
+  ownerUserId?: string;
+  refreshToken?: string;
   connectionStatus: 'connected' | 'disconnected' | 'error' | 'unconfigured';
 }
+
+export interface DeviceCodeInfo {
+  userCode: string;
+  verificationUrl: string;
+  expiresIn: number;
+  message: string;
+}
+
+export type DeviceCodeResult =
+  | { status: 'pending' }
+  | { status: 'completed'; ownerUserId: string; displayName: string }
+  | { status: 'expired'; message: string };
 
 export async function getTeamsSettings(): Promise<TeamsSettings> {
   return apiFetch<TeamsSettings>('/settings/teams');
@@ -151,5 +163,19 @@ export async function patchTeamsSettings(patch: Partial<TeamsSettings>): Promise
   return apiFetch<TeamsSettings>('/settings/teams', {
     method: 'PATCH',
     body: JSON.stringify(patch),
+  });
+}
+
+export async function initiateDeviceCodeFlow(clientId: string, tenantId: string): Promise<DeviceCodeInfo> {
+  return apiFetch<DeviceCodeInfo>('/settings/teams/auth/device-code', {
+    method: 'POST',
+    body: JSON.stringify({ clientId, tenantId }),
+  });
+}
+
+export async function pollDeviceCodeFlow(clientId: string, tenantId: string): Promise<DeviceCodeResult> {
+  return apiFetch<DeviceCodeResult>('/settings/teams/auth/poll', {
+    method: 'POST',
+    body: JSON.stringify({ clientId, tenantId }),
   });
 }

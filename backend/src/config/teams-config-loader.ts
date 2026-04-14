@@ -25,6 +25,6 @@ export function saveTeamsConfig(config: Partial<TeamsConfig>): void {
 }
 
 export function maskTeamsConfig(config: Partial<TeamsConfig>): Partial<TeamsConfig> {
-  if (!config.botAppPassword) return config;
-  return { ...config, botAppPassword: '***' };
+  if (!config.refreshToken) return config;
+  return { ...config, refreshToken: '***' };
 }

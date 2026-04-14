@@ -38,7 +38,11 @@ const healthRoutes: FastifyPluginAsync = async (app) => {
     } catch { /* use default */ }
 
     const teamsConfig = loadTeamsConfig();
-    const teams = { enabled: teamsConfig.enabled, status: teamsConfig.enabled ? 'configured' : 'unconfigured' };
+    const teamsAuthenticated = teamsConfig.enabled && Boolean((teamsConfig as any).refreshToken);
+    const teams = {
+      enabled: teamsConfig.enabled,
+      status: teamsConfig.enabled ? (teamsAuthenticated ? 'authenticated' : 'configured') : 'unconfigured',
+    };
     return reply.send({ status: 'ok', version, uptime: process.uptime(), teams });
   });
 };

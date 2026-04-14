@@ -11,6 +11,8 @@ vi.mock('../services/api', () => ({
   patchArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false, yoloMode: false }),
   getTeamsSettings: vi.fn().mockResolvedValue({ enabled: false, connectionStatus: 'unconfigured' }),
   patchTeamsSettings: vi.fn().mockResolvedValue({ enabled: false, connectionStatus: 'unconfigured' }),
+  initiateDeviceCodeFlow: vi.fn(),
+  pollDeviceCodeFlow: vi.fn(),
 }));
 
 function renderWithQuery(ui: React.ReactElement) {
@@ -52,11 +54,12 @@ describe('SettingsPanel - Teams integration section', () => {
   it('shows connected status when config is connected', async () => {
     vi.mocked(api.getTeamsSettings).mockResolvedValue({
       enabled: true,
-      botAppId: 'app-id',
-      botAppPassword: '***',
-      channelId: 'ch',
-      serviceUrl: 'https://smba.trafficmanager.net',
-      ownerTeamsUserId: 'owner',
+      clientId: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+      tenantId: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+      teamId: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+      channelId: '19:xxxx@thread.tacv2',
+      ownerUserId: 'owner-id',
+      refreshToken: '***',
       connectionStatus: 'connected',
     });
     renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
@@ -65,37 +68,38 @@ describe('SettingsPanel - Teams integration section', () => {
     });
   });
 
-  it('renders Bot App ID input field', async () => {
+  it('renders Client ID input field', async () => {
     renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
     await waitFor(() => {
-      expect(screen.getByLabelText(/bot app id/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/client id/i)).toBeInTheDocument();
     });
   });
 
   it('calls patchTeamsSettings when Save is clicked', async () => {
     vi.mocked(api.patchTeamsSettings).mockResolvedValue({
       enabled: true,
-      botAppId: 'test-id',
-      botAppPassword: '***',
-      channelId: 'ch',
-      serviceUrl: 'https://smba.trafficmanager.net',
-      ownerTeamsUserId: 'owner',
+      clientId: 'test-client-id',
+      tenantId: 'test-tenant-id',
+      teamId: 'test-team-id',
+      channelId: '19:xxxx@thread.tacv2',
+      ownerUserId: 'owner-id',
+      refreshToken: '***',
       connectionStatus: 'connected',
     });
     renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
-    await waitFor(() => screen.getByLabelText(/bot app id/i));
-    const botAppIdInput = screen.getByLabelText(/bot app id/i);
-    await userEvent.clear(botAppIdInput);
-    await userEvent.type(botAppIdInput, 'test-id');
-    await userEvent.click(screen.getByRole('button', { name: /save teams/i }));
+    await waitFor(() => screen.getByLabelText(/client id/i));
+    const clientIdInput = screen.getByLabelText(/client id/i);
+    await userEvent.clear(clientIdInput);
+    await userEvent.type(clientIdInput, 'test-client-id');
+    await userEvent.click(screen.getByRole('button', { name: /save teams settings/i }));
     expect(api.patchTeamsSettings).toHaveBeenCalled();
   });
 
   it('shows error message when save fails', async () => {
     vi.mocked(api.patchTeamsSettings).mockRejectedValue(new Error('Connection failed'));
     renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
-    await waitFor(() => screen.getByLabelText(/bot app id/i));
-    await userEvent.click(screen.getByRole('button', { name: /save teams/i }));
+    await waitFor(() => screen.getByLabelText(/client id/i));
+    await userEvent.click(screen.getByRole('button', { name: /save teams settings/i }));
     await waitFor(() => {
       expect(screen.getByText(/connection failed/i)).toBeInTheDocument();
     });

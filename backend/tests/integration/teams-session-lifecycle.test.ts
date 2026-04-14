@@ -17,13 +17,18 @@ import { getTeamsThread, upsertTeamsThread, updateTeamsThreadOutputMessageId } f
 import { loadTeamsConfig } from '../../src/config/teams-config-loader.js';
 import type { Session, SessionOutput } from '../../src/models/index.js';
 
-const mockApiClient = {
-  createThread: vi.fn(),
-  updateMessage: vi.fn(),
+const mockGraphClient = {
+  createThreadPost: vi.fn(),
   postReply: vi.fn(),
-  getToken: vi.fn(),
-  validateConnection: vi.fn(),
-  clearTokenCache: vi.fn(),
+  updateReply: vi.fn(),
+  pollReplies: vi.fn(),
+  getMe: vi.fn(),
+};
+
+const mockMsalService = {
+  initiateDeviceCodeFlow: vi.fn(),
+  pollDeviceCodeFlow: vi.fn(),
+  getAccessToken: vi.fn(),
 };
 
 const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as any;
@@ -49,11 +54,12 @@ const session: Session = {
 
 const config = {
   enabled: true,
-  botAppId: 'app-id',
-  botAppPassword: 'secret',
-  channelId: 'ch',
-  serviceUrl: 'https://smba.trafficmanager.net',
-  ownerTeamsUserId: 'owner',
+  clientId: 'client-id',
+  tenantId: 'tenant-id',
+  teamId: 'team-id',
+  channelId: 'channel-id',
+  ownerUserId: 'owner-id',
+  refreshToken: 'refresh-token',
 };
 
 describe('TeamsIntegrationService - session lifecycle', () => {
@@ -64,23 +70,24 @@ describe('TeamsIntegrationService - session lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     buffer = new TeamsMessageBuffer();
-    service = new TeamsIntegrationService(mockApiClient as any, buffer, mockLogger);
+    service = new TeamsIntegrationService(mockGraphClient as any, mockMsalService as any, buffer, mockLogger);
 
     vi.mocked(loadTeamsConfig).mockReturnValue(config);
+    mockMsalService.getAccessToken.mockResolvedValue('access-token');
     storedThread = null;
     vi.mocked(getTeamsThread).mockImplementation(() => storedThread);
     vi.mocked(upsertTeamsThread).mockImplementation((t) => { storedThread = t; });
     vi.mocked(updateTeamsThreadOutputMessageId).mockImplementation((_, msgId) => {
       if (storedThread) storedThread.currentOutputMessageId = msgId;
     });
-    mockApiClient.createThread.mockResolvedValue({ threadId: 'teams-thread', messageId: 'opening-msg' });
-    mockApiClient.postReply.mockResolvedValue({ messageId: 'reply-msg' });
-    mockApiClient.updateMessage.mockResolvedValue(undefined);
+    mockGraphClient.createThreadPost.mockResolvedValue({ messageId: 'teams-thread' });
+    mockGraphClient.postReply.mockResolvedValue({ messageId: 'reply-msg' });
+    mockGraphClient.updateReply.mockResolvedValue(undefined);
   });
 
   it('full lifecycle: created -> output -> flush -> ended', async () => {
     await service.onSessionCreated(session);
-    expect(mockApiClient.createThread).toHaveBeenCalledOnce();
+    expect(mockGraphClient.createThreadPost).toHaveBeenCalledOnce();
     expect(upsertTeamsThread).toHaveBeenCalledOnce();
 
     const outputs: SessionOutput[] = [
@@ -92,20 +99,20 @@ describe('TeamsIntegrationService - session lifecycle', () => {
 
     // Manually flush
     await (service as any)._flush(session.id, config);
-    expect(mockApiClient.postReply).toHaveBeenCalled();
+    expect(mockGraphClient.postReply).toHaveBeenCalled();
 
     await service.onSessionEnded({ ...session, status: 'completed' });
     // postReply called again for ended message
-    expect(mockApiClient.postReply).toHaveBeenCalledTimes(2);
+    expect(mockGraphClient.postReply).toHaveBeenCalledTimes(2);
     service.stop();
   });
 
   it('reconnect: second onSessionCreated reuses existing thread', async () => {
     await service.onSessionCreated(session);
-    expect(mockApiClient.createThread).toHaveBeenCalledOnce();
+    expect(mockGraphClient.createThreadPost).toHaveBeenCalledOnce();
 
     await service.onSessionCreated(session);
-    expect(mockApiClient.createThread).toHaveBeenCalledOnce(); // still 1
+    expect(mockGraphClient.createThreadPost).toHaveBeenCalledOnce(); // still 1
     service.stop();
   });
 });
