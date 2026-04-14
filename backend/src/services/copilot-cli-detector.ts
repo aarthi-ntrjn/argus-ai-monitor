@@ -144,10 +144,6 @@ export class CopilotCliDetector {
     };
 
     upsertSession(session);
-    if (!existingSession) {
-      console.log(`[CopilotDetector] broadcasting session.created sessionId=${sessionId}`);
-      broadcast({ type: 'session.created', timestamp: new Date().toISOString(), data: session as unknown as Record<string, unknown> });
-    }
 
     if (isRunning) {
       this.watchEventsFile(sessionId, dirPath);
