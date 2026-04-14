@@ -153,12 +153,6 @@ export class SessionMonitor extends EventEmitter {
           updateSessionStatus(session.id, 'ended', now);
           this.claudeDetector.closeSessionWatcher(session.id);
           this.emit('session.ended', { ...session, status: 'ended', endedAt: now });
-        } else if (session.pid == null && session.hostPid != null && !isPidRunning(session.hostPid)) {
-          // pid is null (Windows PTY before update_pid resolved) — fall back to hostPid liveness check.
-          console.log(`[ClaudeReconcile] session ended — host process gone sessionId=${session.id} hostPid=${session.hostPid}`);
-          updateSessionStatus(session.id, 'ended', now);
-          this.claudeDetector.closeSessionWatcher(session.id);
-          this.emit('session.ended', { ...session, status: 'ended', endedAt: now });
         }
       }
     } catch { /* ignore — liveness check is best-effort */ }
