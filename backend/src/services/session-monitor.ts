@@ -21,6 +21,9 @@ export interface SessionMonitorEvents {
   'repository.removed': (repo: Repository) => void;
 }
 
+// Must match INACTIVE_THRESHOLD_MS in frontend/src/utils/sessionUtils.ts
+const INACTIVE_THRESHOLD_MS = 20 * 60 * 1000;
+
 export class SessionMonitor extends EventEmitter {
   private scanner: RepositoryScanner;
   private cliDetector: CopilotCliDetector;
@@ -33,6 +36,8 @@ export class SessionMonitor extends EventEmitter {
   private previousRegistryPids = new Set<number>();
   // Track last-emitted state per session to suppress no-op session.updated events
   private lastEmittedSessions = new Map<string, string>();
+  // Track sessions for which we have already broadcast the resting transition
+  private restingNotifiedSessions = new Set<string>();
 
   constructor() {
     super();
@@ -278,6 +283,7 @@ export class SessionMonitor extends EventEmitter {
           console.log(`[ClaudeRegistry] session ended — registry file gone sessionId=${session.id} pid=${oldPid}`);
           updateSessionStatus(session.id, 'ended', now);
           this.claudeDetector.closeSessionWatcher(session.id);
+          this.restingNotifiedSessions.delete(session.id);
           this.emit('session.ended', { ...session, status: 'ended', endedAt: now });
         }
       }
@@ -305,6 +311,7 @@ export class SessionMonitor extends EventEmitter {
           this.emit('session.ended', endedSession);
           this.activeSessionMap.delete(id);
           this.lastEmittedSessions.delete(id);
+          this.restingNotifiedSessions.delete(id);
         }
       }
 
@@ -327,9 +334,28 @@ export class SessionMonitor extends EventEmitter {
             this.emit('session.ended', session);
             this.activeSessionMap.delete(session.id);
             this.lastEmittedSessions.delete(session.id);
+            this.restingNotifiedSessions.delete(session.id);
           }
         } else if (session.status === 'active') {
           this.activeSessionMap.set(session.id, session);
+        }
+      }
+
+      // Broadcast a session.updated for any active session that just crossed the resting
+      // threshold, so already-connected clients flip the badge without a page refresh.
+      // Fires once per session; resets if the session becomes active again.
+      const now = Date.now();
+      for (const session of getSessions({ status: 'active' })) {
+        if (!session.lastActivityAt) continue;
+        const age = now - new Date(session.lastActivityAt).getTime();
+        if (age >= INACTIVE_THRESHOLD_MS) {
+          if (!this.restingNotifiedSessions.has(session.id)) {
+            this.restingNotifiedSessions.add(session.id);
+            broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: session as unknown as Record<string, unknown> });
+          }
+        } else {
+          // Session has recent activity — reset so we broadcast again next time it goes resting
+          this.restingNotifiedSessions.delete(session.id);
         }
       }
     } catch (err) {
