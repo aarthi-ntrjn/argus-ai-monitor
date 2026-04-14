@@ -25,6 +25,14 @@ vi.mock('ps-list', () => ({
   default: vi.fn(async () => mockPsListResult),
 }));
 
+// Mock process-utils so isPidRunning is driven by the same mockPsListResult array.
+// reconcileClaudeCodeSessions uses isPidRunning directly (not ps-list).
+const mockIsPidRunning = vi.hoisted(() => vi.fn((_pid: number) => false));
+vi.mock('../../src/services/process-utils.js', () => ({
+  isPidRunning: mockIsPidRunning,
+  detectYoloModeFromPids: vi.fn().mockReturnValue(null),
+}));
+
 // Mock config to avoid reading real watch dirs
 vi.mock('../../src/config/config-loader.js', () => ({
   loadConfig: () => ({
@@ -258,6 +266,8 @@ describe('SessionMonitor.reconcileClaudeCodeSessions — active/ended logic', ()
     vi.resetModules();
     mockPsListResult = [{ pid: 9999, name: 'some-process', cmd: 'some-process' }];
     mockGetCurrentBranchResult = null;
+    mockIsPidRunning.mockReset();
+    mockIsPidRunning.mockImplementation((pid: number) => mockPsListResult.some(p => p.pid === pid));
 
     const db = await import('../../src/db/database.js');
     closeDb = db.closeDb;
@@ -280,7 +290,7 @@ describe('SessionMonitor.reconcileClaudeCodeSessions — active/ended logic', ()
   // T005: alive PID → stays active
   it('T005: should stay active when PID is alive', async () => {
     const id = `t005-${randomUUID()}`;
-    mockPsListResult = [{ pid: 9999, name: 'other' }, { pid: 12345, name: 'node', cmd: 'claude' }];
+    mockPsListResult = [{ pid: 9999, name: 'other' }, { pid: 12345, name: 'claude' }];
     upsertSession(baseSession(id, 'active', 12345));
 
     const monitor = new SessionMonitor();
@@ -308,7 +318,7 @@ describe('SessionMonitor.reconcileClaudeCodeSessions — active/ended logic', ()
   // T008: fresh PID alive → active (no change)
   it('T008: should leave active session unchanged when PID is alive', async () => {
     const id = `t008-${randomUUID()}`;
-    mockPsListResult = [{ pid: 9999, name: 'other' }, { pid: 33333, name: 'node' }];
+    mockPsListResult = [{ pid: 9999, name: 'other' }, { pid: 33333, name: 'claude' }];
     upsertSession(baseSession(id, 'active', 33333));
 
     const monitor = new SessionMonitor();
@@ -322,7 +332,7 @@ describe('SessionMonitor.reconcileClaudeCodeSessions — active/ended logic', ()
   // T009: PID alive → session stays active
   it('T009: should keep session active when PID is alive', async () => {
     const id = `t009-${randomUUID()}`;
-    mockPsListResult = [{ pid: 9999, name: 'other' }, { pid: 44444, name: 'node' }];
+    mockPsListResult = [{ pid: 9999, name: 'other' }, { pid: 44444, name: 'claude' }];
     upsertSession(baseSession(id, 'active', 44444));
 
     const monitor = new SessionMonitor();
@@ -350,7 +360,7 @@ describe('SessionMonitor.reconcileClaudeCodeSessions — active/ended logic', ()
   // T012: startup reconcileStaleSessions — idle session + alive PID → active (reconciliation promotes to active)
   it('T012: startup sweep should mark idle session as active when PID is still alive', async () => {
     const id = `t012-${randomUUID()}`;
-    mockPsListResult = [{ pid: 9999, name: 'other' }, { pid: 77777, name: 'node' }];
+    mockPsListResult = [{ pid: 9999, name: 'other' }, { pid: 77777, name: 'claude' }];
     upsertSession(baseSession(id, 'idle', 77777));
 
     const monitor = new SessionMonitor();
