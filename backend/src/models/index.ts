@@ -100,6 +100,7 @@ export interface ArgusConfig {
   outputRetentionMbPerSession: number;
   autoRegisterRepos: boolean;
   yoloMode: boolean;
+  restingThresholdMinutes: number;
 }
 
 export interface PendingChoice {

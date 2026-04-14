@@ -272,6 +272,14 @@ export class ClaudeCodeDetector {
       await this.jsonlWatcher.watchFile(sessionId, repo.path);
       return;
     }
+
+    // Don't re-activate a PTY session whose launcher has already disconnected.
+    // When the terminal closes, the WS close handler calls ptyRegistry.unregister(),
+    // so has() being false means the launcher is gone and the session should stay ended.
+    if (existingSession?.launchMode === 'pty' && !ptyRegistry.has(sessionId)) {
+      console.log(`[ClaudeDetector] skipping re-activation — PTY launcher gone sessionId=${sessionId}`);
+      return;
+    }
     this.jsonlWatcher.closeWatcher(sessionId);
     const base: Session = existingSession ?? {
       id: sessionId,

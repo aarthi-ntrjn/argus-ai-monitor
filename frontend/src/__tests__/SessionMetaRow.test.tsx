@@ -7,6 +7,14 @@ vi.mock('react-router-dom', () => ({
   Link: ({ children, ...props }: React.PropsWithChildren<{ to: string }>) => <a {...props}>{children}</a>,
 }));
 
+vi.mock('../hooks/useArgusSettings', () => ({
+  useArgusSettings: vi.fn().mockReturnValue({
+    settings: { restingThresholdMinutes: 20, yoloMode: false, autoRegisterRepos: false },
+    isLoading: false,
+    patchSetting: vi.fn(),
+  }),
+}));
+
 import SessionMetaRow from '../components/SessionMetaRow/SessionMetaRow';
 
 function makeSession(overrides: Partial<Session> = {}): Session {

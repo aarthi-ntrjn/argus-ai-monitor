@@ -4,6 +4,7 @@ import { Plus, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getSessions, getRepositories } from '../services/api';
 import { useSettings } from '../hooks/useSettings';
+import { useArgusSettings } from '../hooks/useArgusSettings';
 import { useOnboarding } from '../hooks/useOnboarding';
 import { useRepositoryManagement } from '../hooks/useRepositoryManagement';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -37,6 +38,7 @@ export default function DashboardPage() {
   const settingsRef = useRef<HTMLDivElement>(null);
 
   const [settings, updateSetting] = useSettings();
+  const { settings: argusSettings } = useArgusSettings();
   const { tourStatus, seenRepoSteps, startTour, skipTour, completeTour, markRepoStepsSeen, resetOnboarding } = useOnboarding();
   const [tourRun, setTourRun] = useState(false);
   const [catchUpRun, setCatchUpRun] = useState(false);
@@ -106,7 +108,7 @@ export default function DashboardPage() {
     const repoSessions = sessionsByRepo.get(repo.id) ?? [];
     const visibleSessions = repoSessions.filter(s => {
       if (settings.hideEndedSessions && ENDED_STATUSES.has(s.status)) return false;
-      if (settings.hideInactiveSessions && isInactive(s, settings.restingThresholdMinutes * 60_000)) return false;
+      if (settings.hideInactiveSessions && isInactive(s, (argusSettings?.restingThresholdMinutes ?? 20) * 60_000)) return false;
       return true;
     });
     return { ...repo, sessions: visibleSessions };
@@ -212,7 +214,6 @@ export default function DashboardPage() {
                 <SettingsPanel
                   settings={settings}
                   onToggle={(key, value) => updateSetting(key, value)}
-                  onUpdateThreshold={(m) => updateSetting('restingThresholdMinutes', m)}
                   onRestartTour={() => {
                     setSettingsOpen(false);
                     resetOnboarding();
