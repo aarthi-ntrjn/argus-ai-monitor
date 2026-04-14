@@ -32,6 +32,9 @@ const REPO = {
 };
 
 async function stubDashboard(page: import('@playwright/test').Page) {
+  // Stateful settings so PATCH requests are reflected in subsequent GETs and in the returned body.
+  let currentSettings: Record<string, unknown> = { port: 7411, yoloMode: false, restingThresholdMinutes: 20 };
+
   await page.addInitScript(() => {
     localStorage.setItem('argus:onboarding', JSON.stringify({
       schemaVersion: 1, userId: null,
@@ -48,9 +51,13 @@ async function stubDashboard(page: import('@playwright/test').Page) {
   await page.route(`**/api/v1/sessions/${SESSION_ID}/output**`, route =>
     route.fulfill({ contentType: 'application/json', body: JSON.stringify({ items: [], nextBefore: null, total: 0 }) })
   );
-  await page.route('**/api/v1/argus/settings', route =>
-    route.fulfill({ contentType: 'application/json', body: JSON.stringify({ port: 7411, yoloMode: false }) })
-  );
+  await page.route('**/api/v1/settings', async route => {
+    if (route.request().method() === 'PATCH') {
+      const patch = route.request().postDataJSON() as Record<string, unknown>;
+      currentSettings = { ...currentSettings, ...patch };
+    }
+    await route.fulfill({ contentType: 'application/json', body: JSON.stringify(currentSettings) });
+  });
   await page.route('**/ws**', route => route.abort());
 }
 

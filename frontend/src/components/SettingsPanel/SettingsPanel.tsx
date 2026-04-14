@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { RotateCcw } from 'lucide-react';
 import type { DashboardSettings } from '../../types';
 import { useArgusSettings } from '../../hooks/useArgusSettings';
@@ -13,15 +13,21 @@ const MAX_THRESHOLD = 60;
 interface SettingsPanelProps {
   settings: DashboardSettings;
   onToggle: (key: keyof DashboardSettings, value: boolean) => void;
-  onUpdateThreshold?: (minutes: number) => void;
   onRestartTour?: () => void;
 }
 
-export function SettingsPanel({ settings, onToggle, onUpdateThreshold, onRestartTour }: SettingsPanelProps) {
+export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPanelProps) {
   const { settings: argusSettings, patchSetting } = useArgusSettings();
   const [showYoloWarning, setShowYoloWarning] = useState(false);
-  const [thresholdInput, setThresholdInput] = useState(String(settings.restingThresholdMinutes ?? DEFAULT_THRESHOLD));
+  const [thresholdInput, setThresholdInput] = useState(String(argusSettings?.restingThresholdMinutes ?? DEFAULT_THRESHOLD));
   const [thresholdError, setThresholdError] = useState<string | null>(null);
+
+  // Sync input when argusSettings loads from server
+  useEffect(() => {
+    if (argusSettings?.restingThresholdMinutes != null) {
+      setThresholdInput(String(argusSettings.restingThresholdMinutes));
+    }
+  }, [argusSettings?.restingThresholdMinutes]);
 
   const handleYoloChange = (checked: boolean) => {
     if (checked) {
@@ -62,13 +68,13 @@ export function SettingsPanel({ settings, onToggle, onUpdateThreshold, onRestart
     setThresholdError(null);
     // On blur, normalise the display value (e.g. "05" -> "5", "5.7" -> "6").
     if (normalizeInput) setThresholdInput(String(rounded));
-    onUpdateThreshold?.(rounded);
+    patchSetting({ restingThresholdMinutes: rounded });
   };
 
   const handleReset = () => {
     setThresholdInput(String(DEFAULT_THRESHOLD));
     setThresholdError(null);
-    onUpdateThreshold?.(DEFAULT_THRESHOLD);
+    patchSetting({ restingThresholdMinutes: DEFAULT_THRESHOLD });
   };
 
   return (
@@ -93,7 +99,7 @@ export function SettingsPanel({ settings, onToggle, onUpdateThreshold, onRestart
         </div>
         <div className="py-1">
           <Checkbox
-            label={`Hide inactive sessions (>${settings.restingThresholdMinutes ?? DEFAULT_THRESHOLD} min)`}
+            label={`Hide inactive sessions (>${argusSettings?.restingThresholdMinutes ?? DEFAULT_THRESHOLD} min)`}
             aria-label="Hide inactive sessions"
             checked={settings.hideInactiveSessions}
             onChange={e => onToggle('hideInactiveSessions', e.target.checked)}

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -7,8 +7,8 @@ import type { DashboardSettings } from '../types';
 import * as api from '../services/api';
 
 vi.mock('../services/api', () => ({
-  getArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false, yoloMode: false }),
-  patchArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false, yoloMode: false }),
+  getArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false, yoloMode: false, restingThresholdMinutes: 20 } as any),
+  patchArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false, yoloMode: false, restingThresholdMinutes: 20 } as any),
 }));
 
 function renderWithQuery(ui: React.ReactElement) {
@@ -21,7 +21,6 @@ const allOff: DashboardSettings = {
   hideReposWithNoActiveSessions: false,
   hideInactiveSessions: false,
   outputDisplayMode: 'focused',
-  restingThresholdMinutes: 20,
   hideTodoPanel: false,
 };
 
@@ -30,7 +29,6 @@ const allOn: DashboardSettings = {
   hideReposWithNoActiveSessions: true,
   hideInactiveSessions: true,
   outputDisplayMode: 'focused',
-  restingThresholdMinutes: 20,
   hideTodoPanel: true,
 };
 
@@ -92,57 +90,64 @@ describe('SettingsPanel', () => {
   });
 
   describe('resting threshold input', () => {
-    it('renders a threshold input with the current value', () => {
-      renderWithQuery(<SettingsPanel settings={{ ...allOff, restingThresholdMinutes: 15 }} onToggle={vi.fn()} />);
-      expect(screen.getByRole('spinbutton', { name: /resting after/i })).toHaveValue(15);
+    beforeEach(() => {
+      vi.clearAllMocks();
+      vi.mocked(api.getArgusSettings).mockResolvedValue({ autoRegisterRepos: false, yoloMode: false, restingThresholdMinutes: 20 } as any);
+      vi.mocked(api.patchArgusSettings).mockResolvedValue({ autoRegisterRepos: false, yoloMode: false, restingThresholdMinutes: 20 } as any);
     });
 
-    it('calls onUpdateThreshold with the parsed integer on valid blur', async () => {
-      const onUpdateThreshold = vi.fn();
-      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} onUpdateThreshold={onUpdateThreshold} />);
+    it('renders a threshold input synced from argus settings', async () => {
+      vi.mocked(api.getArgusSettings).mockResolvedValueOnce({ autoRegisterRepos: false, yoloMode: false, restingThresholdMinutes: 15 } as any);
+      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
+      await waitFor(() => {
+        expect(screen.getByRole('spinbutton', { name: /resting after/i })).toHaveValue(15);
+      });
+    });
+
+    it('calls patchArgusSettings with the parsed integer on valid blur', async () => {
+      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
       const input = screen.getByRole('spinbutton', { name: /resting after/i });
       await userEvent.clear(input);
       await userEvent.type(input, '5');
       await userEvent.tab();
-      expect(onUpdateThreshold).toHaveBeenCalledWith(5);
+      expect(api.patchArgusSettings).toHaveBeenCalledWith({ restingThresholdMinutes: 5 });
     });
 
-    it('shows an inline error and does NOT call onUpdateThreshold for value 0', async () => {
-      const onUpdateThreshold = vi.fn();
-      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} onUpdateThreshold={onUpdateThreshold} />);
+    it('shows an inline error and does NOT call patchArgusSettings for value 0', async () => {
+      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
       const input = screen.getByRole('spinbutton', { name: /resting after/i });
       await userEvent.clear(input);
       await userEvent.type(input, '0');
       await userEvent.tab();
-      expect(onUpdateThreshold).not.toHaveBeenCalled();
+      expect(api.patchArgusSettings).not.toHaveBeenCalled();
       expect(screen.getByRole('alert')).toBeInTheDocument();
     });
 
-    it('shows an inline error and does NOT call onUpdateThreshold with the invalid value > 60', async () => {
-      const onUpdateThreshold = vi.fn();
-      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} onUpdateThreshold={onUpdateThreshold} />);
+    it('shows an inline error and does NOT call patchArgusSettings with the invalid value > 60', async () => {
+      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
       const input = screen.getByRole('spinbutton', { name: /resting after/i });
       await userEvent.clear(input);
       await userEvent.type(input, '99');
       await userEvent.tab();
-      // 99 itself must never be saved
-      expect(onUpdateThreshold).not.toHaveBeenCalledWith(99);
+      expect(api.patchArgusSettings).not.toHaveBeenCalledWith({ restingThresholdMinutes: 99 });
       expect(screen.getByRole('alert')).toBeInTheDocument();
     });
 
-    it('shows an inline error and does NOT call onUpdateThreshold for empty input', async () => {
-      const onUpdateThreshold = vi.fn();
-      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} onUpdateThreshold={onUpdateThreshold} />);
+    it('shows an inline error and does NOT call patchArgusSettings for empty input', async () => {
+      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
       const input = screen.getByRole('spinbutton', { name: /resting after/i });
       await userEvent.clear(input);
       await userEvent.tab();
-      expect(onUpdateThreshold).not.toHaveBeenCalled();
+      expect(api.patchArgusSettings).not.toHaveBeenCalled();
       expect(screen.getByRole('alert')).toBeInTheDocument();
     });
 
-    it('the hide inactive sessions label includes the current threshold value', () => {
-      renderWithQuery(<SettingsPanel settings={{ ...allOff, restingThresholdMinutes: 30 }} onToggle={vi.fn()} />);
-      expect(screen.getByText(/hide inactive sessions.*30 min/i)).toBeInTheDocument();
+    it('the hide inactive sessions label includes the threshold value from argus settings', async () => {
+      vi.mocked(api.getArgusSettings).mockResolvedValueOnce({ autoRegisterRepos: false, yoloMode: false, restingThresholdMinutes: 30 } as any);
+      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
+      await waitFor(() => {
+        expect(screen.getByText(/hide inactive sessions.*30 min/i)).toBeInTheDocument();
+      });
     });
 
     it('renders the Reset button', () => {
@@ -150,17 +155,15 @@ describe('SettingsPanel', () => {
       expect(screen.getByRole('button', { name: /reset/i })).toBeInTheDocument();
     });
 
-    it('clicking Reset calls onUpdateThreshold(20) and sets input to 20', async () => {
-      const onUpdateThreshold = vi.fn();
-      renderWithQuery(<SettingsPanel settings={{ ...allOff, restingThresholdMinutes: 5 }} onToggle={vi.fn()} onUpdateThreshold={onUpdateThreshold} />);
+    it('clicking Reset calls patchArgusSettings(20) and sets input to 20', async () => {
+      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
       await userEvent.click(screen.getByRole('button', { name: /reset/i }));
-      expect(onUpdateThreshold).toHaveBeenCalledWith(20);
+      expect(api.patchArgusSettings).toHaveBeenCalledWith({ restingThresholdMinutes: 20 });
       expect(screen.getByRole('spinbutton', { name: /resting after/i })).toHaveValue(20);
     });
 
     it('clicking Reset clears any existing validation error', async () => {
-      const onUpdateThreshold = vi.fn();
-      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} onUpdateThreshold={onUpdateThreshold} />);
+      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
       const input = screen.getByRole('spinbutton', { name: /resting after/i });
       await userEvent.clear(input);
       await userEvent.type(input, '0');

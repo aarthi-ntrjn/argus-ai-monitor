@@ -19,6 +19,7 @@ const DEFAULTS: ArgusConfig = {
   outputRetentionMbPerSession: 10,
   autoRegisterRepos: false,
   yoloMode: false,
+  restingThresholdMinutes: 20,
 };
 
 export function loadConfig(): ArgusConfig {
