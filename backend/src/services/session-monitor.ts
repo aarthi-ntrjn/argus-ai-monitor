@@ -194,14 +194,17 @@ export class SessionMonitor extends EventEmitter {
   }
 
   private async refreshRepositoryBranches(): Promise<void> {
-    try {
-      for (const repo of getRepositories()) {
-        const branch = await getCurrentBranch(repo.path);
-        if (branch !== repo.branch) {
-          updateRepositoryBranch(repo.id, branch);
-        }
-      }
-    } catch { /* ignore — branch refresh is best-effort */ }
+    const repos = getRepositories();
+    await Promise.all(
+      repos.map(async (repo) => {
+        try {
+          const branch = await getCurrentBranch(repo.path);
+          if (branch !== repo.branch) {
+            updateRepositoryBranch(repo.id, branch);
+          }
+        } catch { /* ignore — branch refresh is best-effort */ }
+      })
+    );
   }
 
   private reconcileClaudeSessionRegistry(): void {
