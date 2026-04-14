@@ -290,12 +290,26 @@ export class SessionMonitor extends EventEmitter {
 
   private async runScan(): Promise<void> {
     try {
+      const tRun = Date.now();
+      let t = Date.now();
       await this.scanner.scan();
+      console.log(`[SessionMonitor] scanner.scan — ${Date.now() - t}ms`);
+      t = Date.now();
       await this.refreshRepositoryBranches();
+      console.log(`[SessionMonitor] refreshRepositoryBranches — ${Date.now() - t}ms`);
+      t = Date.now();
       this.reconcileClaudeSessionRegistry();
+      console.log(`[SessionMonitor] reconcileClaudeSessionRegistry — ${Date.now() - t}ms`);
+      t = Date.now();
       await this.claudeDetector.scanExistingSessions();
+      console.log(`[SessionMonitor] claudeDetector.scanExistingSessions — ${Date.now() - t}ms`);
+      t = Date.now();
       await this.reconcileClaudeCodeSessions();
+      console.log(`[SessionMonitor] reconcileClaudeCodeSessions — ${Date.now() - t}ms`);
+      t = Date.now();
       const sessions = await this.cliDetector.scan();
+      console.log(`[SessionMonitor] cliDetector.scan — ${Date.now() - t}ms`);
+      console.log(`[SessionMonitor] runScan total — ${Date.now() - tRun}ms`);
       const currentScanIds = new Set<string>(sessions.map((s) => s.id));
 
       // Detect sessions that were active but are no longer returned (process exited + dir cleaned up)

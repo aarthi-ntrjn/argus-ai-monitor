@@ -83,9 +83,15 @@ export class CopilotCliDetector {
 
     const sessions: Session[] = [];
     const newActiveDirPaths = new Set<string>();
+    const tProcess = Date.now();
 
     for (const dirPath of dirsToProcess) {
+      const tDir = Date.now();
       const session = await this.processSessionDir(dirPath);
+      const dirMs = Date.now() - tDir;
+      if (dirMs > 50) {
+        console.log(`[CopilotDetector] slow dir (${dirMs}ms): ${dirPath}`);
+      }
       if (session) {
         sessions.push(session);
         if (session.status === 'active') newActiveDirPaths.add(dirPath);
@@ -95,7 +101,7 @@ export class CopilotCliDetector {
     this.activeDirPaths = newActiveDirPaths;
     this.lastScanTime = t0;
 
-    console.log(`[CopilotDetector] scan done${force ? ' (forced)' : ''} — ${totalDirs} total, ${dirsToProcess.size} processed, ${totalDirs - dirsToProcess.size} skipped, ${sessions.length} session(s) — ${Date.now() - t0}ms`);
+    console.log(`[CopilotDetector] scan done${force ? ' (forced)' : ''} — ${totalDirs} total, ${dirsToProcess.size} processed, ${totalDirs - dirsToProcess.size} skipped, ${sessions.length} session(s) — process:${Date.now() - tProcess}ms total:${Date.now() - t0}ms`);
     return sessions;
   }
 
