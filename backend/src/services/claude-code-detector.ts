@@ -117,6 +117,7 @@ export class ClaudeCodeDetector {
   }
 
   async scanExistingSessions(): Promise<void> {
+    const t0 = Date.now();
     const projectsDir = join(homedir(), '.claude', 'projects');
     if (!existsSync(projectsDir)) return;
 
@@ -162,6 +163,7 @@ export class ClaudeCodeDetector {
         }
       }
     } catch { /* ignore */ }
+    console.log(`[ClaudeDetector] scanExistingSessions done — ${Date.now() - t0}ms`);
   }
 
   async handleHookPayload(payload: HookPayload): Promise<void> {
