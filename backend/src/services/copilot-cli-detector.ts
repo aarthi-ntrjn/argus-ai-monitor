@@ -15,6 +15,18 @@ import type { Session, PidSource } from '../models/index.js';
 
 const DEFAULT_SESSION_DIR = join(homedir(), '.copilot', 'session-state');
 
+// Lightweight liveness check — no process list scan needed.
+// EPERM means the process exists but we lack signal permission (still alive).
+// ESRCH means the process does not exist.
+function isPidRunning(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return (e as NodeJS.ErrnoException).code === 'EPERM';
+  }
+}
+
 interface WorkspaceYaml {
   id?: string;
   cwd?: string;
@@ -96,11 +108,9 @@ export class CopilotCliDetector {
       workspace = yamlLoad(readFileSync(workspaceFile, 'utf-8')) as WorkspaceYaml;
     } catch { return null; }
 
-    // Lock file existence is the authoritative "is running" signal — Copilot creates it
-    // on start and deletes it on exit, so no process-list scan is needed.
     const lockFile = this.findLockFile(dirPath);
     const pid = lockFile ? this.extractPid(lockFile) : null;
-    const isRunning = lockFile !== null;
+    const isRunning = pid !== null && isPidRunning(pid);
 
     const sessionId = workspace.id ?? randomUUID();
     const existingSession = getSession(sessionId);
