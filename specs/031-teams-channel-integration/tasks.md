@@ -1,164 +1,118 @@
-# Tasks: Microsoft Teams Channel Integration
+# Tasks: Microsoft Teams Channel Integration (Graph API)
 
-**Input**: Design documents from `/specs/031-teams-channel-integration/`
+**Branch**: `031-teams-channel-integration` | **Revised**: 2026-04-14
+**Input**: Revised design documents — Graph API + Device Code Flow approach.
 **Prerequisites**: plan.md ✓, spec.md ✓, research.md ✓, data-model.md ✓, contracts/ ✓
 
 ---
 
-## Phase 1: Setup (Shared Infrastructure)
+## Phase 1: Setup
 
-**Purpose**: Add the one new runtime dependency required for Bot Framework JWT validation.
+**Purpose**: Install the single new runtime dependency for MSAL Device Code Flow.
 
-- [ ] T001 Install `jose` npm package in backend workspace for Bot Framework JWT token validation (`npm install jose --workspace=backend`)
+- [ ] T001 Install `@azure/msal-node` in backend workspace: `npm install @azure/msal-node --workspace=backend`
 
 ---
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-**Purpose**: Core infrastructure shared by all user stories — types, DB schema, config loader, Teams API client, message buffer.
+**Purpose**: Core infrastructure shared by all user stories — types, DB, config, Graph client, MSAL, message buffer.
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T002 Create DB migration `backend/src/db/migrations/003-teams-threads.sql` with the `teams_threads` table and `idx_teams_threads_session` index per data-model.md
-- [ ] T003 Apply migration in `backend/src/db/database.ts`: import and execute `003-teams-threads.sql` in the migrations runner; add `upsertTeamsThread`, `getTeamsThread`, `getTeamsThreadByTeamsId` helper functions
-- [ ] T004 [P] Add `TeamsConfig` and `TeamsThread` TypeScript interfaces to `backend/src/models/index.ts` per data-model.md
-- [ ] T005 [P] Create `backend/src/config/teams-config-loader.ts`: `loadTeamsConfig()` reads `~/.argus/teams-config.json` (defaults to `{ enabled: false }`), `saveTeamsConfig(config)` writes it; masks `botAppPassword` in log output
-- [ ] T006 Create `backend/src/services/teams-message-buffer.ts`: in-memory per-session circular buffer, max 1000 entries, FIFO eviction with pino log warning when cap is reached; `enqueue(sessionId, text)`, `flush(sessionId): string[]`, `clear(sessionId)`, `size(sessionId): number`
-- [ ] T007 Create `backend/src/services/teams-api-client.ts`: wraps Bot Framework REST API via native `fetch`; methods: `getToken(): Promise<string>` (OAuth2 client credentials to login.microsoftonline.com), `createThread(config, text): Promise<{ threadId, messageId }>`, `updateMessage(config, threadId, messageId, text): Promise<void>`, `postReply(config, threadId, text): Promise<{ messageId }>` — all methods accept `TeamsConfig`; on network failure throw `TeamsApiError` with structured fields
-- [ ] T008 [A-001 fix] Extend `backend/src/services/output-store.ts` to support internal output listeners: add `addOutputListener(listener: (sessionId: string, outputs: SessionOutput[]) => void)` and `removeOutputListener(listener)` methods; call all registered listeners inside `insertOutput` after the DB write and before the WS broadcast; export a singleton `outputStore` instance from `output-store.ts`
+- [ ] T002 Update `backend/src/db/migrations/003-teams-threads.sql`: add `delta_link TEXT` column to the `teams_threads` table definition per data-model.md
+- [ ] T003 Update `backend/src/db/database.ts`: add runtime migration `ALTER TABLE teams_threads ADD COLUMN delta_link TEXT` if column is absent; update `upsertTeamsThread` to include `deltaLink`; add `updateTeamsThreadDeltaLink(sessionId, deltaLink)` helper; add `updateTeamsThreadOutputMessageId(sessionId, messageId)` helper if not already present
+- [ ] T004 [P] Update `TeamsConfig` and `TeamsThread` interfaces in `backend/src/models/index.ts` to match data-model.md: `TeamsConfig` uses `clientId`, `tenantId`, `teamId`, `channelId`, `ownerUserId`, `refreshToken`; `TeamsThread` adds `deltaLink: string | null`
+- [ ] T005 [P] Rewrite `backend/src/config/teams-config-loader.ts`: `loadTeamsConfig()` / `saveTeamsConfig(config)` / `maskTeamsConfig(config)` — mask `refreshToken` as `"***"` (not botAppPassword); remove Bot Framework fields
+- [ ] T006 [P] Keep `backend/src/services/teams-message-buffer.ts` as-is (no changes needed — buffer logic is approach-agnostic)
+- [ ] T007 Create `backend/src/services/teams-graph-client.ts`: wraps Microsoft Graph API via native `fetch`; accepts an `accessToken` string on each call (caller obtains token via T008); methods: `createThreadPost(teamId, channelId, text): Promise<{ messageId }>`, `postReply(teamId, channelId, threadId, text): Promise<{ messageId }>`, `updateReply(teamId, channelId, threadId, replyId, text): Promise<void>`, `pollReplies(teamId, channelId, threadId, deltaLink?): Promise<{ replies: GraphReply[], nextDeltaLink: string }>`, `getMe(accessToken): Promise<{ id, displayName }>`; throw `TeamsGraphError` (structured: code, message, statusCode) on non-2xx
+- [ ] T008 Create `backend/src/services/teams-msal-service.ts`: wraps `@azure/msal-node`; methods: `initiateDeviceCodeFlow(clientId, tenantId): Promise<DeviceCodeInfo>`, `pollDeviceCodeFlow(clientId, tenantId): Promise<DeviceCodeResult>` where result is `{ status: "pending"|"completed"|"expired", accessToken?, refreshToken?, ownerUserId?, displayName? }`; `getAccessToken(config: TeamsConfig): Promise<string>` using stored refreshToken via `acquireTokenByRefreshToken`; on token refresh failure throw `TeamsAuthError`
+- [ ] T009 Verify `backend/src/services/output-store.ts` singleton and listener API are present (already implemented in prior iteration — confirm `outputStore` export, `addOutputListener`, `removeOutputListener` exist; no changes needed)
 
-**Checkpoint**: Foundation ready — DB migrated, types defined, config loader working, API client and buffer implemented.
-
----
-
-## Phase 3: User Story 1 — Monitor Session Output in Teams (Priority: P1) 🎯 MVP
-
-**Goal**: When a CLI session starts in Argus and Teams integration is enabled, automatically create a Teams thread and stream all session output into it as a rolling updated message.
-
-**Independent Test**: Configure Teams credentials in `~/.argus/teams-config.json`, start a session, verify a thread appears in Teams with real-time output.
-
-### Tests for User Story 1
-
-> **Write these tests FIRST and confirm they FAIL before implementing T013–T018**
-
-- [ ] T010 [P] [US1] Unit tests for `TeamsIntegrationService` in `backend/tests/unit/teams-integration.test.ts`: test `onSessionCreated` creates a thread via mocked `TeamsApiClient`; test `onSessionOutput` enqueues to buffer and flushes on schedule; test `onSessionEnded` posts final status update; test no-op when `enabled: false`
-- [ ] T011 [P] [US1] Unit tests for `TeamsMessageBuffer` in `backend/tests/unit/teams-message-buffer.test.ts`: test enqueue/flush order, cap eviction at 1000, dropped-count increment, clear
-
-### Implementation for User Story 1
-
-- [ ] T013 [US1] Create `backend/src/services/teams-integration.ts` — `TeamsIntegrationService` class: constructor accepts `TeamsApiClient` and `TeamsMessageBuffer`; `onSessionCreated(session)`, `onSessionOutput(sessionId, content)`, `onSessionEnded(session)` methods; periodic flush timer (every 3 s or 500 ms after last output); uses `upsertTeamsThread` to persist thread mapping; reads `loadTeamsConfig()` on each call (hot-reloadable)
-- [ ] T014 [US1] In `TeamsIntegrationService.onSessionCreated`: first check if a `TeamsThread` record already exists for the session ID (for FR-012 reconnect after restart — reuse existing thread, do not create a new one); if no existing thread, call `TeamsApiClient.createThread` with opening message containing session metadata (name, owner identity `ownerTeamsUserId`, start time per FR-011); persist `TeamsThread` record via `upsertTeamsThread`; log structured event `teams.thread.created` or `teams.thread.reused`
-- [ ] T015 [US1] In `TeamsIntegrationService.onSessionOutput`: enqueue content to `TeamsMessageBuffer`; on flush call `TeamsApiClient.updateMessage` if `currentOutputMessageId` exists, else `postReply` to create first output message and store ID; on Teams API failure enqueue to buffer and schedule retry; emit pino warning when buffer cap reached
-- [ ] T016 [US1] In `TeamsIntegrationService.onSessionEnded`: flush remaining buffer; call `TeamsApiClient.postReply` with final status message (completed/failed/killed per FR-005); log `teams.session.ended`
-- [ ] T017 [US1] Wire `TeamsIntegrationService` into `backend/src/server.ts`: instantiate after `SessionMonitor`; subscribe to `monitor.on('session.created')` and `monitor.on('session.ended')`; register an output listener via `outputStore.addOutputListener()` to receive `SessionOutput[]` batches for streaming (A-001 fix: use T008's listener API, not `session.updated`)
-- [ ] T018 [US1] Integration test `backend/tests/integration/teams-session-lifecycle.test.ts`: mock `TeamsApiClient`; simulate session created → outputs → ended lifecycle; assert thread created, messages buffered and flushed, final status posted
-
-**Checkpoint**: User Story 1 fully functional — sessions stream to Teams threads.
+**Checkpoint**: Foundation complete — DB migrated, types updated, config loader rewritten, Graph client and MSAL service implemented.
 
 ---
 
-## Phase 4: User Story 2 — Send Commands to a Session from Teams (Priority: P1)
+## Phase 3: US1 — Monitor Session Output in Teams
 
-**Goal**: The session owner can reply to a Teams thread to send a free-text command to the active CLI session. Non-owners receive a notice and are ignored.
+**Goal**: When a session starts, create a Teams thread via Graph API and stream output into it.
 
-**Independent Test**: Reply to a session thread in Teams as the owner; verify a `send_prompt` ControlAction is created for the session and response appears in thread.
+**Independent Test**: Configure integration (mock Graph API), start session, verify `createThreadPost` called, output flushed to `postReply`/`updateReply`.
 
-### Tests for User Story 2
+### Tests (write first — must fail before implementation)
 
-> **Write these tests FIRST and confirm they FAIL before implementing T022–T028**
+- [ ] T010 [P] Create `backend/tests/unit/teams-graph-client.test.ts`: mock native `fetch`; test `createThreadPost` sends correct Graph URL and body; test `postReply` sends to replies endpoint; test `updateReply` sends PATCH; test `pollReplies` uses deltaLink and returns replies + nextDeltaLink; test non-2xx throws `TeamsGraphError`
+- [ ] T011 [P] Create `backend/tests/unit/teams-msal-service.test.ts`: mock `@azure/msal-node` PublicClientApplication; test `initiateDeviceCodeFlow` returns userCode/verificationUrl/expiresIn; test `pollDeviceCodeFlow` returns `{ status: "pending" }` while waiting; test `pollDeviceCodeFlow` returns `{ status: "completed", accessToken, ownerUserId }` on success; test `getAccessToken` calls acquireTokenByRefreshToken
+- [ ] T012 [P] Verify/update `backend/tests/unit/teams-message-buffer.test.ts`: confirm existing tests pass with current implementation (no changes expected)
 
-- [ ] T020 [P] [US2] Contract tests for `POST /api/botframework/messages` in `backend/tests/contract/teams-webhook.test.ts`: valid owner message → 200 + ControlAction created; non-owner message → 200 + no ControlAction + notice reply; ended-session message → 200 + no ControlAction + notice reply; invalid JWT → 401; missing `from` field → 400; unknown thread → 200 no-op; non-message activity type → 200 no-op
-- [ ] T021 [P] [US2] Unit test for Bot Framework JWT validation in `backend/tests/unit/teams-webhook.test.ts`: valid token passes; expired token rejected; wrong audience rejected; missing header rejected
+### Implementation
 
-### Implementation for User Story 2
-
-- [ ] T022 [US2] Create `backend/src/api/routes/teams-webhook.ts` Fastify plugin skeleton: register `POST /api/botframework/messages`; parse body as `BotFrameworkActivity`; return 200 `{}` for all valid processed cases per contract
-- [ ] T023 [US2] Implement Bot Framework JWT validation in `teams-webhook.ts`: use `jose` to fetch Microsoft JWKS (`https://login.botframework.com/v1/.well-known/openidconfiguration`), validate `Authorization: Bearer <token>` JWT on every request; reject with 401 on failure (§VI, D-007)
-- [ ] T024 [US2] Implement activity routing in `teams-webhook.ts`: ignore non-`message` types; look up `TeamsThread` by `conversation.id`; compare `activity.from.id` to `ownerTeamsUserId` from config; branch to owner-command or non-owner-notice path
-- [ ] T025 [US2] Owner path: call existing `createControlAction` (or equivalent DB helper) to insert `ControlAction` of type `send_prompt` with `payload: { text: activity.text }` for the session; log `teams.command.received` with source `"Teams"`; this satisfies FR-003 and FR-013
-- [ ] T026 [US2] Non-owner path: call `TeamsApiClient.postReply` with human-readable notice ("Only the session owner can send commands to this session."); log `teams.command.rejected` with `from.id`
-- [ ] T027 [US2] Ended-session path: call `TeamsApiClient.postReply` with notice ("This session has ended and is no longer accepting commands.")
-- [ ] T028 [US2] Register `teams-webhook` route plugin in `backend/src/server.ts`
-
-**Checkpoint**: User Stories 1 and 2 fully functional — bidirectional Teams integration working end-to-end.
+- [ ] T013 Rewrite `backend/src/services/teams-integration.ts`: replace `TeamsApiClient` with `TeamsGraphClient` + `TeamsMsalService`; update `onSessionCreated` to call `graphClient.createThreadPost` using token from `msalService.getAccessToken(config)`; update `_flush` to call `graphClient.postReply` or `graphClient.updateReply`; update `onSessionEnded` to call `graphClient.postReply` with session-end message; remove all `botAppId`/`botAppPassword`/`serviceUrl` references
+- [ ] T014 Wire updated `TeamsIntegrationService` in `backend/src/server.ts`: update constructor arguments to pass `TeamsGraphClient` and `TeamsMsalService` instances; remove `TeamsApiClient` instantiation; keep session lifecycle event wiring and outputStore listener unchanged
+- [ ] T015 [P] Create `backend/tests/integration/teams-session-lifecycle.test.ts`: mock `TeamsGraphClient` and `TeamsMsalService`; simulate session created → output → flush → session ended; assert `createThreadPost` called once; assert `postReply`/`updateReply` called; assert reconnect reuses existing thread (no second `createThreadPost`)
 
 ---
 
-## Phase 5: User Story 3 — Configure Teams Integration in Argus Settings (Priority: P2)
+## Phase 4: US2 — Send Commands from Teams via Delta Polling
 
-**Goal**: An Argus administrator can configure and validate the Teams bot credentials and channel details via the Argus settings UI and see a live connection status indicator.
+**Goal**: Poll Teams thread replies every 10s, route owner replies as ControlActions, reject non-owner replies.
 
-**Independent Test**: Open Argus settings, fill in Teams fields, save, see "Connected" status.
+**Independent Test**: Start polling service with mock graph client returning a reply; assert ControlAction created for owner reply; assert notice posted for non-owner reply.
 
-### Tests for User Story 3
+### Tests (write first — must fail before implementation)
 
-> **Write these tests FIRST and confirm they FAIL before implementing T032–T038**
+- [ ] T020 [P] Create `backend/tests/unit/teams-polling-service.test.ts`: mock `TeamsGraphClient` and `TeamsMsalService`; test poll cycle processes owner reply → inserts ControlAction; test poll cycle processes non-owner reply → calls `postReply` with notice; test poll cycle skips ended sessions; test deltaLink is stored after each poll; test polling skips sessions with no TeamsThread; test error in poll cycle is caught + logged without crashing
 
-- [ ] T030 [P] [US3] Contract tests for `GET /api/v1/settings/teams` and `PATCH /api/v1/settings/teams` in `backend/tests/contract/teams-settings.test.ts`: all scenarios from `contracts/teams-settings-api.md`; verify password masking; verify `connectionStatus` field
-- [ ] T031 [P] [US3] Frontend component tests in `frontend/src/__tests__/SettingsPanel.teams.test.tsx`: Teams section renders when no config; form fields bind correctly; save calls PATCH; connection status displays "Connected"/"Error"; disable button clears status
+### Implementation
 
-### Implementation for User Story 3
-
-- [ ] T032 [US3] Create `backend/src/api/routes/teams-settings.ts` Fastify plugin: `GET /api/v1/settings/teams` returns config with masked password and `connectionStatus`; `PATCH /api/v1/settings/teams` merges patch, validates required fields when enabling, probes Teams API (attempt token acquisition), saves config, returns result per contract
-- [ ] T033 [US3] Register `teams-settings` route plugin in `backend/src/server.ts`
-- [ ] T034 [P] [US3] Add Teams API helpers to `frontend/src/services/api.ts`: `getTeamsSettings()`, `patchTeamsSettings(patch)`
-- [ ] T035 [US3] Create `frontend/src/hooks/useTeamsSettings.ts`: wraps `getTeamsSettings`/`patchTeamsSettings` with loading/error state; returns `{ config, status, save, isSaving, error }`
-- [ ] T036 [US3] Add Teams integration section to `frontend/src/components/SettingsPanel/SettingsPanel.tsx`: fields for Bot App ID, Bot App Password, Channel ID, Service URL, Tenant ID, Owner Teams User ID; Save button using shared `Button` component; connection status badge using shared `Badge` component; disable/enable toggle; human-readable validation error messages per §XII
-- [ ] T037 [US3] Add `connectionStatus` field to `GET /api/v1/health` response: include `teams: { enabled, status }` object so monitoring tools can observe Teams integration health (§VII)
-
-**Checkpoint**: Settings UI working — Teams integration fully configurable from the browser.
+- [ ] T021 Create `backend/src/services/teams-polling-service.ts`: `start()` launches a `setInterval` at 10s; each tick: load config, get all sessions with status in `['active', 'idle', 'running']`, for each session with a TeamsThread call `graphClient.pollReplies(teamId, channelId, threadId, deltaLink)`; for each reply: if `from.user.id === config.ownerUserId` and session active → `insertControlAction`; if non-owner → `graphClient.postReply(...)` with notice; if session ended → `graphClient.postReply(...)` with ended notice; always update `deltaLink` via `updateTeamsThreadDeltaLink`; `stop()` clears the interval
+- [ ] T022 [P] Delete `backend/src/api/routes/teams-webhook.ts` and remove its registration from `backend/src/server.ts` (Bot Framework webhook no longer used)
+- [ ] T023 Wire `TeamsPollingService` in `backend/src/server.ts`: instantiate after `TeamsIntegrationService`; call `pollingService.start()`; call `pollingService.stop()` in SIGTERM/SIGINT handlers
 
 ---
 
-## Phase 6: User Story 4 — View All Sessions via Teams (Priority: P3)
+## Phase 5: US3 — Configure Teams Integration in Settings UI
 
-**Goal**: Each session thread has a clear header showing session name, owner identity, start time, and final status so team members can browse sessions from Teams without opening Argus.
+**Goal**: User enters clientId + tenantId, clicks Authenticate, completes Device Code Flow, saves — status shows "Connected".
 
-**Independent Test**: Start multiple sessions; verify each thread header shows session name, `ownerTeamsUserId`, start time; verify ended thread shows final status.
+**Independent Test**: POST `/auth/device-code`, assert userCode returned; POST `/auth/poll`, assert completed status; GET settings, assert `connectionStatus: "connected"`.
 
-### Tests for User Story 4
+### Tests (write first — must fail before implementation)
 
-> **Write these tests FIRST and confirm they FAIL before implementing T041–T042**
+- [ ] T030 [P] Create `backend/tests/contract/teams-settings.test.ts`: test all 14 cases from contracts/teams-settings-api.md; mock `TeamsMsalService` to avoid real MSAL calls
+- [ ] T031 [P] Create `frontend/src/__tests__/TeamsSettingsSection.test.tsx`: render component; assert clientId/tenantId/teamId/channelId fields render; assert "Authenticate" button visible when no refreshToken; assert Device Code Flow step shown (userCode + verificationUrl) after clicking Authenticate; assert "Connected" badge after poll completes; assert error shown on poll failure
 
-- [ ] T040 [P] [US4] Unit test in `backend/tests/unit/teams-integration.test.ts`: assert opening message contains session ID, type, start time, ownerTeamsUserId; assert ended message contains final status string
+### Implementation
 
-### Implementation for User Story 4
-
-- [ ] T041 [US4] Update `TeamsIntegrationService.onSessionCreated` opening message template: include session type (claude-code/copilot-cli), session ID (truncated), start time (ISO 8601), and owner Teams user ID label; format as readable plain-text block
-- [ ] T042 [US4] Update `TeamsIntegrationService.onSessionEnded` status message: include session type, session ID, end time, and status (completed/failed/killed) in a consistent format
-
-**Checkpoint**: All four user stories delivered.
-
----
-
-## Phase 7: Polish and Cross-Cutting Concerns
-
-**Purpose**: Documentation, final test run, build validation, README update per §XI.
-
-- [ ] T050 Update `README.md`: add "Microsoft Teams Integration" section with step-by-step setup instructions (Azure Bot registration, bot channel setup, ngrok for localhost, required config fields, how to find Teams user ID); link to contracts for API reference
-- [ ] T051 [P] Run full backend test suite and confirm no regressions: `npm run test --workspace=backend`
-- [ ] T052 [P] Run frontend build and confirm no regressions: `npm run build --workspace=frontend`
-- [ ] T053 [P] Run backend build: `npm run build --workspace=backend`
+- [ ] T032 Create `backend/src/api/routes/teams-auth.ts`: Fastify plugin for `POST /api/v1/settings/teams/auth/device-code` and `POST /api/v1/settings/teams/auth/poll`; uses `TeamsMsalService`; on device-code completion: call `msalService.getMe()`, save `ownerUserId` + `refreshToken` to config; return ownerUserId + displayName
+- [ ] T033 Rewrite `backend/src/api/routes/teams-settings.ts`: remove Bot Framework fields; use new `TeamsConfig` shape; required fields when enabling: `clientId`, `tenantId`, `teamId`, `channelId`, `refreshToken`; validate by calling `msalService.getAccessToken(config)` on save; clear refreshToken when clientId or tenantId changes
+- [ ] T034 Register `teams-auth.ts` in `backend/src/server.ts` alongside updated `teams-settings.ts`; remove `teams-webhook.ts` registration if not already removed in T022
+- [ ] T035 [P] Update `frontend/src/services/api.ts`: replace Bot Framework `TeamsSettings` interface with Graph API interface (`clientId`, `tenantId`, `teamId`, `channelId`, `ownerUserId`, `refreshToken`); add `initiateDeviceCodeFlow(clientId, tenantId)`, `pollDeviceCodeFlow(clientId, tenantId)` API helpers
+- [ ] T036 [P] Rewrite `frontend/src/hooks/useTeamsSettings.ts`: add Device Code Flow state machine (`idle` → `device-code-pending` → `authenticated`); expose `startAuth(clientId, tenantId)`, `pollAuth()` alongside existing `save()`
+- [ ] T037 Rewrite `frontend/src/components/SettingsPanel/TeamsSettingsSection.tsx` (or equivalent Teams section in SettingsPanel): show clientId/tenantId/teamId/channelId fields; show "Authenticate with Microsoft" button when not authenticated; on click, call `startAuth` then display userCode + verificationUrl step; auto-poll every 5s via `pollAuth()`; on authenticated show ownerUserId as "Authenticated as: [displayName]"; show connection status badge; use shared `Button` component variants
+- [ ] T038 Update `backend/src/api/routes/health.ts`: update Teams status section to check `config.refreshToken` existence (not `botAppId`) for `teams.enabled` / `teams.authenticated` fields
 
 ---
 
-## Dependencies and Execution Order
+## Phase 6: US4 — Session Thread Headers
 
-### Phase Dependencies
+**Goal**: Opening and closing thread messages include full session metadata.
 
-- **Phase 1 (Setup)**: No dependencies — start immediately
-- **Phase 2 (Foundational)**: Depends on Phase 1 — BLOCKS all user stories
-- **Phase 3 (US1)**: Depends on Phase 2 — tests first, then implementation
-- **Phase 4 (US2)**: Depends on Phase 2 — tests first, then implementation; can run in parallel with Phase 3
-- **Phase 5 (US3)**: Depends on Phase 2 — tests first, then implementation; can run after Phase 2
-- **Phase 6 (US4)**: Depends on Phase 3 (extends T013/T014/T016) — must run after Phase 3
-- **Phase 7 (Polish)**: Depends on all prior phases complete
+### Tests (write first — must fail before implementation)
 
-### Parallel Opportunities
+- [ ] T040 Add tests to `backend/tests/unit/teams-integration.test.ts`: assert `_formatOpeningMessage` includes session ID, type, startedAt, ownerUserId; assert `onSessionEnded` posts reply containing session status and endedAt
 
-- T010, T011 (US1 tests) can run in parallel before T013
-- T020, T021 (US2 tests) can run in parallel before T022
-- T030, T031 (US3 tests) can run in parallel before T032
-- T004, T005 (types, config loader) can run in parallel in Phase 2
-- T034 (frontend API helpers) can run in parallel with T032 (backend route)
-- T051, T052, T053 (final checks) can run in parallel
+### Implementation
+
+- [ ] T041 Update `_formatOpeningMessage` in `backend/src/services/teams-integration.ts`: ensure HTML format (`<b>Argus Session Started</b><br>...`) includes session ID, type, startedAt, ownerUserId; matches contract in contracts/teams-webhook-api.md (Graph API contract)
+- [ ] T042 Update `onSessionEnded` message format to include session type, ID, final status, and endedAt timestamp
+
+---
+
+## Phase 7: Polish
+
+- [ ] T050 Update `README.md`: replace Bot Framework setup instructions with Graph API setup: (1) register Azure AD app at portal.azure.com with delegated scopes `ChannelMessage.Send ChannelMessage.Read.All User.Read`; (2) find your Teams team ID and channel ID; (3) open Argus Settings > Teams, enter clientId/tenantId/teamId/channelId, click Authenticate; (4) no ngrok or public endpoint needed
+- [ ] T051 [P] Run full backend test suite: `npm run test --workspace=backend` — all tests must pass
+- [ ] T052 [P] Run frontend build: `npm run build --workspace=frontend` — must succeed with no errors
+- [ ] T053 [P] Run backend build: `npm run build --workspace=backend` — must succeed with no type errors
+
