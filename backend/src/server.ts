@@ -7,19 +7,21 @@ import fastifySwaggerUi from '@fastify/swagger-ui';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
-import { loadConfig } from './config/config-loader.js';
+import { loadConfig, loadSlackConfig } from './config/config-loader.js';
 import * as logger from './utils/logger.js';
+import { SlackNotifier } from './services/slack-notifier.js';
+import { SlackListener } from './services/slack-listener.js';
 import { addClient, removeClient, broadcast } from './api/ws/event-dispatcher.js';
 import repositoriesRoutes, { setMonitor } from './api/routes/repositories.js';
 import sessionsRoutes from './api/routes/sessions.js';
 import hooksRoutes, { setClaudeDetector } from './api/routes/hooks.js';
-import healthRoutes from './api/routes/health.js';
+import healthRoutes, { setSlackServices } from './api/routes/health.js';
 import metricsRoutes from './api/routes/metrics.js';
 import { fsRoutes } from './api/routes/fs.js';
 import todosRoutes from './api/routes/todos.js';
 import launcherRoutes from './api/routes/launcher.js';
 import toolsRoutes from './api/routes/tools.js';
-import settingsRoutes from './api/routes/settings.js';
+import settingsRoutes, { setSlackNotifier } from './api/routes/settings.js';
 import { SessionMonitor } from './services/session-monitor.js';
 import { startPruningJob } from './services/pruning-job.js';
 import type { Session, Repository } from './models/index.js';
@@ -28,6 +30,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 let monitor: SessionMonitor | null = null;
+let slackNotifier: SlackNotifier | null = null;
+let slackListener: SlackListener | null = null;
 
 export async function buildServer() {
   const config = loadConfig();
@@ -125,11 +129,24 @@ export async function startServer() {
     broadcast({ type: 'repository.added', timestamp: new Date().toISOString(), data: repo as unknown as Record<string, unknown> });
   });
 
+  const slackConfig = loadSlackConfig();
+  if (slackConfig) {
+    slackNotifier = new SlackNotifier(slackConfig, monitor);
+    slackNotifier.initialize();
+    setSlackNotifier(slackNotifier);
+
+    if (slackNotifier.webClient) {
+      slackListener = new SlackListener(slackConfig, slackNotifier.webClient);
+      slackListener.initialize();
+    }
+    setSlackServices(slackNotifier, slackListener);
+  }
+
   await monitor.start();
   startPruningJob();
 
-  process.on('SIGTERM', async () => { monitor?.stop(); await app.close(); process.exit(0); });
-  process.on('SIGINT', async () => { monitor?.stop(); await app.close(); process.exit(0); });
+  process.on('SIGTERM', async () => { slackListener?.shutdown(); slackNotifier?.shutdown(); monitor?.stop(); await app.close(); process.exit(0); });
+  process.on('SIGINT', async () => { slackListener?.shutdown(); slackNotifier?.shutdown(); monitor?.stop(); await app.close(); process.exit(0); });
 
   await app.listen({ port: config.port, host: '127.0.0.1' });
   app.log.info({ port: config.port }, 'Argus server started');

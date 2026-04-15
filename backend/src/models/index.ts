@@ -92,6 +92,14 @@ export interface TodoItem {
   updatedAt: string;
 }
 
+export interface SlackConfig {
+  botToken: string;
+  appToken?: string;
+  channelId: string;
+  enabled: boolean;
+  enabledEventTypes?: string[];
+}
+
 export interface ArgusConfig {
   port: number;
   watchDirectories: string[];

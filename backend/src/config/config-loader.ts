@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { homedir } from 'os';
-import type { ArgusConfig } from '../models/index.js';
+import type { ArgusConfig, SlackConfig } from '../models/index.js';
 
 function getConfigPath(): string {
   return process.env.ARGUS_CONFIG_PATH ?? join(homedir(), '.argus', 'config.json');
@@ -45,6 +45,46 @@ export function saveConfig(config: ArgusConfig): void {
   const configPath = getConfigPath();
   const configDir = getConfigDir();
   mkdirSync(configDir, { recursive: true });
-  writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+  // Preserve any unknown keys (e.g. slack) already in the file
+  let existing: Record<string, unknown> = {};
+  try {
+    existing = JSON.parse(readFileSync(configPath, 'utf-8'));
+  } catch { /* use empty */ }
+  writeFileSync(configPath, JSON.stringify({ ...existing, ...config }, null, 2), 'utf-8');
+}
+
+export function loadSlackConfig(): SlackConfig | null {
+  let fileSack: Partial<SlackConfig> = {};
+  const configPath = getConfigPath();
+  try {
+    const raw = JSON.parse(readFileSync(configPath, 'utf-8')) as Record<string, unknown>;
+    fileSack = (raw.slack ?? {}) as Partial<SlackConfig>;
+  } catch { /* fall through */ }
+
+  const botToken = process.env.SLACK_BOT_TOKEN ?? fileSack.botToken ?? '';
+  const appToken = process.env.SLACK_APP_TOKEN ?? fileSack.appToken;
+  const channelId = process.env.SLACK_CHANNEL_ID ?? fileSack.channelId ?? '';
+
+  if (!botToken && !channelId) return null;
+
+  return {
+    botToken,
+    appToken,
+    channelId,
+    enabled: fileSack.enabled ?? true,
+    enabledEventTypes: fileSack.enabledEventTypes,
+  };
+}
+
+export function saveSlackConfig(partial: Partial<SlackConfig>): void {
+  const configPath = getConfigPath();
+  const configDir = getConfigDir();
+  mkdirSync(configDir, { recursive: true });
+  let existing: Record<string, unknown> = {};
+  try {
+    existing = JSON.parse(readFileSync(configPath, 'utf-8'));
+  } catch { /* use empty */ }
+  existing.slack = { ...(existing.slack as object ?? {}), ...partial };
+  writeFileSync(configPath, JSON.stringify(existing, null, 2), 'utf-8');
 }
 
