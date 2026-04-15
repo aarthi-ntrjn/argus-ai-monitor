@@ -1,10 +1,13 @@
 import { WebClient } from '@slack/web-api';
 import type { SessionMonitor } from './session-monitor.js';
-import type { Session, Repository, SlackConfig } from '../models/index.js';
+import type { Session, Repository, SlackConfig, SessionOutput } from '../models/index.js';
+import { getRepository } from '../db/database.js';
+import { outputEvents } from './output-store.js';
 import {
   SESSION_CREATED,
   SESSION_UPDATED,
   SESSION_ENDED,
+  SESSION_AI_RESPONSE,
   REPOSITORY_ADDED,
   REPOSITORY_REMOVED,
 } from '../constants/slack-events.js';
@@ -26,6 +29,9 @@ export class SlackNotifier {
 
   // Thread anchor map: sessionId -> Slack message ts of the parent message
   private readonly threadAnchors = new Map<string, string>();
+
+  // Previous session state for computing diffs on session.updated
+  private readonly prevSessions = new Map<string, Session>();
 
   // Rate-limit queue
   private readonly sendQueue: SendJob[] = [];
@@ -99,7 +105,8 @@ export class SlackNotifier {
     if (this.disabled || !this.client) return;
     if (!this.isEventEnabled(SESSION_CREATED)) return;
 
-    const blocks = buildSessionStartBlocks(session);
+    const repo = session.repositoryId ? getRepository(session.repositoryId) : undefined;
+    const blocks = buildSessionStartBlocks(session, repo);
     this.enqueueMessage(async () => {
       try {
         const result = await this.client!.chat.postMessage({
@@ -137,6 +144,60 @@ export class SlackNotifier {
     }, SESSION_ENDED, session.id);
   }
 
+  async postSessionUpdate(session: Session): Promise<void> {
+    if (this.disabled || !this.client) return;
+    if (!this.isEventEnabled(SESSION_UPDATED)) return;
+
+    const prev = this.prevSessions.get(session.id);
+    const diff = prev ? diffSessions(prev, session) : null;
+    this.prevSessions.set(session.id, session);
+
+    // No previous state (e.g. server restart mid-session) or only untracked fields changed
+    if (!diff || Object.keys(diff).length === 0) return;
+
+    const blocks = buildSessionUpdatedBlocks(session, diff);
+    this.enqueueMessage(async () => {
+      const threadTs = this.threadAnchors.get(session.id);
+      if (!threadTs) {
+        logger.error(`${LOG_TAG} No thread anchor for ${SESSION_UPDATED} session ${session.id}, cannot post`);
+        return;
+      }
+      try {
+        await this.client!.chat.postMessage({
+          channel: this.config.channelId,
+          text: `Session updated: ${session.id}`,
+          blocks,
+          thread_ts: threadTs,
+        });
+      } catch (err) {
+        logger.error(`${LOG_TAG} Failed to post session update for ${session.id}:`, err);
+      }
+    }, SESSION_UPDATED, session.id);
+  }
+
+  async postAiResponse(sessionId: string, outputs: SessionOutput[]): Promise<void> {
+    if (this.disabled || !this.client) return;
+    if (!this.isEventEnabled(SESSION_AI_RESPONSE)) return;
+
+    const assistantMessages = outputs.filter((o) => o.role === 'assistant' && o.type === 'message' && o.content);
+    if (assistantMessages.length === 0) return;
+
+    const text = assistantMessages.map((o) => o.content).join('\n\n');
+    this.enqueueMessage(async () => {
+      const threadTs = this.threadAnchors.get(sessionId);
+      if (!threadTs) return;
+      try {
+        await this.client!.chat.postMessage({
+          channel: this.config.channelId,
+          text,
+          thread_ts: threadTs,
+        });
+      } catch (err) {
+        logger.error(`${LOG_TAG} Failed to post AI response for session ${sessionId}:`, err);
+      }
+    }, SESSION_AI_RESPONSE, sessionId);
+  }
+
   // -------------------------------------------------------------------------
   // Generic event (T012)
   // -------------------------------------------------------------------------
@@ -145,9 +206,15 @@ export class SlackNotifier {
     if (this.disabled || !this.client) return;
     if (!this.isEventEnabled(eventType)) return;
 
-    const threadTs = sessionId ? this.threadAnchors.get(sessionId) : undefined;
     const blocks = buildEventBlocks(eventType, payload);
     this.enqueueMessage(async () => {
+      // Resolve thread anchor at execution time so any preceding SESSION_CREATED job in the
+      // queue has already run and set the anchor before we look it up.
+      const threadTs = sessionId ? this.threadAnchors.get(sessionId) : undefined;
+      if (sessionId && !threadTs) {
+        logger.error(`${LOG_TAG} No thread anchor for ${eventType} session ${sessionId}, cannot post`);
+        return;
+      }
       try {
         await this.client!.chat.postMessage({
           channel: this.config.channelId,
@@ -173,17 +240,19 @@ export class SlackNotifier {
   private subscribeToEvents(): void {
     // T010, T013: subscribe to all SessionMonitor events
     this.sessionMonitor.on(SESSION_CREATED, (session: Session) => {
+      this.prevSessions.set(session.id, session);
       this.postSessionStart(session).catch((err) => {
         logger.error(`${LOG_TAG} Unhandled error in session.created handler:`, err);
       });
     });
     this.sessionMonitor.on(SESSION_ENDED, (session: Session) => {
+      this.prevSessions.delete(session.id);
       this.postSessionEnd(session).catch((err) => {
         logger.error(`${LOG_TAG} Unhandled error in session.ended handler:`, err);
       });
     });
     this.sessionMonitor.on(SESSION_UPDATED, (session: Session) => {
-      this.postEvent(session.id, SESSION_UPDATED, session).catch((err) => {
+      this.postSessionUpdate(session).catch((err) => {
         logger.error(`${LOG_TAG} Unhandled error in session.updated handler:`, err);
       });
     });
@@ -195,6 +264,11 @@ export class SlackNotifier {
     this.sessionMonitor.on(REPOSITORY_REMOVED, (repo: Repository) => {
       this.postEvent('', REPOSITORY_REMOVED, repo).catch((err) => {
         logger.error(`${LOG_TAG} Unhandled error in repository.removed handler:`, err);
+      });
+    });
+    outputEvents.on('session.output.batch', (sessionId: string, outputs: SessionOutput[]) => {
+      this.postAiResponse(sessionId, outputs).catch((err) => {
+        logger.error(`${LOG_TAG} Unhandled error in session.output.batch handler:`, err);
       });
     });
   }
@@ -231,7 +305,10 @@ export class SlackNotifier {
 // Block Kit builders
 // -------------------------------------------------------------------------
 
-function buildSessionStartBlocks(session: Session) {
+function buildSessionStartBlocks(session: Session, repo: Repository | undefined) {
+  const connected = session.launchMode === 'pty' ? 'connected' : 'not connected';
+  const yolo = session.yoloMode === true ? 'yes' : session.yoloMode === false ? 'no' : 'unknown';
+  const pid = session.pid != null ? `\`${session.pid}\`` : 'unknown';
   return [
     {
       type: 'header',
@@ -240,10 +317,16 @@ function buildSessionStartBlocks(session: Session) {
     {
       type: 'section',
       fields: [
-        { type: 'mrkdwn', text: `*Session:*\n\`${session.id}\`` },
-        { type: 'mrkdwn', text: `*Type:*\n${session.type}` },
-        { type: 'mrkdwn', text: `*Model:*\n${session.model ?? 'unknown'}` },
-        { type: 'mrkdwn', text: `*Started:*\n${session.startedAt}` },
+        { type: 'mrkdwn', text: `*Session:* \`${session.id}\`` },
+        { type: 'mrkdwn', text: `*Type:* ${session.type}` },
+        { type: 'mrkdwn', text: `*Model:* ${session.model ?? 'unknown'}` },
+        { type: 'mrkdwn', text: `*Started:* ${session.startedAt}` },
+        { type: 'mrkdwn', text: `*Repo:* ${repo?.name ?? 'unknown'}` },
+        { type: 'mrkdwn', text: `*Branch:* ${repo?.branch ?? 'unknown'}` },
+        { type: 'mrkdwn', text: `*Repo path:* ${repo?.path ?? 'unknown'}` },
+        { type: 'mrkdwn', text: `*Connection:* ${connected}` },
+        { type: 'mrkdwn', text: `*Yolo:* ${yolo}` },
+        { type: 'mrkdwn', text: `*PID:* ${pid}` },
       ],
     },
   ];
@@ -261,11 +344,54 @@ function buildSessionEndBlocks(session: Session) {
     {
       type: 'section',
       fields: [
-        { type: 'mrkdwn', text: `*Session:*\n\`${session.id}\`` },
-        { type: 'mrkdwn', text: `*Status:*\n${session.status}` },
-        { type: 'mrkdwn', text: `*Duration:*\n${duration}` },
-        { type: 'mrkdwn', text: `*Ended:*\n${session.endedAt ?? 'unknown'}` },
+        { type: 'mrkdwn', text: `*Session:* \`${session.id}\`` },
+        { type: 'mrkdwn', text: `*Status:* ${session.status}` },
+        { type: 'mrkdwn', text: `*Duration:* ${duration}` },
+        { type: 'mrkdwn', text: `*Ended:* ${session.endedAt ?? 'unknown'}` },
       ],
+    },
+  ];
+}
+
+// Fields diffed for session.updated notifications. lastActivityAt is intentionally
+// excluded as it changes on every scan cycle and produces noise without signal.
+const TRACKED_UPDATE_FIELDS: (keyof Session)[] = ['model', 'summary', 'status', 'yoloMode'];
+
+type SessionFieldDiff = Record<string, { from: string; to: string }>;
+
+function diffSessions(prev: Session, curr: Session): SessionFieldDiff {
+  const diff: SessionFieldDiff = {};
+  for (const field of TRACKED_UPDATE_FIELDS) {
+    if (prev[field] !== curr[field]) {
+      diff[field] = {
+        from: formatSessionFieldValue(field, prev[field]),
+        to: formatSessionFieldValue(field, curr[field]),
+      };
+    }
+  }
+  return diff;
+}
+
+function formatSessionFieldValue(field: keyof Session, value: unknown): string {
+  if (value == null) return 'none';
+  if (field === 'yoloMode') return value ? 'yes' : 'no';
+  if (field === 'summary' && typeof value === 'string' && value.length > 150) {
+    return `${value.slice(0, 150)}…`;
+  }
+  return String(value);
+}
+
+function buildSessionUpdatedBlocks(session: Session, diff: SessionFieldDiff) {
+  const lines = Object.entries(diff).map(([field, { from, to }]) =>
+    `• *${field}:* ${from} → ${to}`
+  );
+  return [
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: `*Session Updated* \`${session.id}\`\n${lines.join('\n')}`,
+      },
     },
   ];
 }
