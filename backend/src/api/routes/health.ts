@@ -38,7 +38,9 @@ const healthRoutes: FastifyPluginAsync = async (app) => {
     } catch { /* use default */ }
 
     const teamsConfig = loadTeamsConfig();
-    const teamsAuthenticated = teamsConfig.enabled && Boolean((teamsConfig as any).refreshToken);
+    const teamsAuthenticated = teamsConfig.enabled && (
+      Boolean((teamsConfig as any).botAppSecret) || Boolean((teamsConfig as any).botCertPath)
+    );
     const teams = {
       enabled: teamsConfig.enabled,
       status: teamsConfig.enabled ? (teamsAuthenticated ? 'authenticated' : 'configured') : 'unconfigured',

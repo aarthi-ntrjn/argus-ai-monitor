@@ -6,6 +6,7 @@ import { useTeamsSettings } from '../../hooks/useTeamsSettings';
 import { YoloWarningDialog } from '../YoloWarningDialog/YoloWarningDialog';
 import { Checkbox } from '../Checkbox';
 import { Button } from '../Button';
+import Badge from '../Badge';
 
 const DEFAULT_THRESHOLD = 20;
 const MIN_THRESHOLD = 1;
@@ -192,6 +193,137 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
             </Button>
           </div>
         )}
+
+        <div className="mt-2 pt-2 border-t border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-gray-700">Microsoft Teams</span>
+            {teamsConfig && (
+              <Badge colorClass={
+                teamsConfig.connectionStatus === 'connected' ? 'bg-green-100 text-green-700' :
+                teamsConfig.connectionStatus === 'error' ? 'bg-red-100 text-red-700' :
+                'bg-gray-100 text-gray-600'
+              }>
+                {teamsConfig.connectionStatus}
+              </Badge>
+            )}
+          </div>
+          <div className="flex flex-col gap-2">
+            <div>
+              <label htmlFor="teams-bot-app-id" className="text-xs text-gray-600 block mb-1">Bot App ID</label>
+              <input
+                id="teams-bot-app-id"
+                type="text"
+                className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
+                value={teamsForm.botAppId || teamsConfig?.botAppId || ''}
+                onChange={e => setTeamsForm(f => ({ ...f, botAppId: e.target.value }))}
+                placeholder="Azure Bot Application (Client) ID"
+              />
+            </div>
+            <div>
+              <label htmlFor="teams-tenant-id" className="text-xs text-gray-600 block mb-1">Tenant ID</label>
+              <input
+                id="teams-tenant-id"
+                type="text"
+                className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
+                value={teamsForm.tenantId || teamsConfig?.tenantId || ''}
+                onChange={e => setTeamsForm(f => ({ ...f, tenantId: e.target.value }))}
+                placeholder="Azure Directory (Tenant) ID"
+              />
+            </div>
+            <p className="text-xs text-gray-500 font-medium mt-1">Authentication (leave blank to use device code flow on first run):</p>
+            <div>
+              <label htmlFor="teams-bot-app-secret" className="text-xs text-gray-600 block mb-1">Bot App Secret <span className="text-gray-400">(optional)</span></label>
+              <input
+                id="teams-bot-app-secret"
+                type="password"
+                className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
+                value={teamsForm.botAppSecret || (teamsConfig?.botAppSecret === '***' ? '' : teamsConfig?.botAppSecret ?? '')}
+                onChange={e => setTeamsForm(f => ({ ...f, botAppSecret: e.target.value }))}
+                placeholder="Client secret (if not using certificate or device code)"
+              />
+            </div>
+            <div>
+              <label htmlFor="teams-bot-cert-path" className="text-xs text-gray-600 block mb-1">Certificate Path <span className="text-gray-400">(optional)</span></label>
+              <input
+                id="teams-bot-cert-path"
+                type="text"
+                className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
+                value={teamsForm.botCertPath || teamsConfig?.botCertPath || ''}
+                onChange={e => setTeamsForm(f => ({ ...f, botCertPath: e.target.value }))}
+                placeholder="Path to PEM private key file (if not using secret or device code)"
+              />
+            </div>
+            <div>
+              <label htmlFor="teams-bot-cert-thumbprint" className="text-xs text-gray-600 block mb-1">Certificate Thumbprint <span className="text-gray-400">(optional)</span></label>
+              <input
+                id="teams-bot-cert-thumbprint"
+                type="text"
+                className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
+                value={teamsForm.botCertThumbprint || teamsConfig?.botCertThumbprint || ''}
+                onChange={e => setTeamsForm(f => ({ ...f, botCertThumbprint: e.target.value }))}
+                placeholder="SHA-1 thumbprint hex (from Azure Portal)"
+              />
+            </div>
+            <div>
+              <label htmlFor="teams-team-id" className="text-xs text-gray-600 block mb-1">Team ID</label>
+              <input
+                id="teams-team-id"
+                type="text"
+                className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
+                value={teamsForm.teamId || teamsConfig?.teamId || ''}
+                onChange={e => setTeamsForm(f => ({ ...f, teamId: e.target.value }))}
+                placeholder="Team (Group) ID"
+              />
+            </div>
+            <div>
+              <label htmlFor="teams-channel-id" className="text-xs text-gray-600 block mb-1">Channel ID</label>
+              <input
+                id="teams-channel-id"
+                type="text"
+                className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
+                value={teamsForm.channelId || teamsConfig?.channelId || ''}
+                onChange={e => setTeamsForm(f => ({ ...f, channelId: e.target.value }))}
+                placeholder="19:xxxx@thread.tacv2"
+              />
+            </div>
+            <div>
+              <label htmlFor="teams-owner-aad-object-id" className="text-xs text-gray-600 block mb-1">Owner AAD Object ID</label>
+              <input
+                id="teams-owner-aad-object-id"
+                type="text"
+                className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
+                value={teamsForm.ownerAadObjectId || teamsConfig?.ownerAadObjectId || ''}
+                onChange={e => setTeamsForm(f => ({ ...f, ownerAadObjectId: e.target.value }))}
+                placeholder="AAD Object ID of the session owner"
+              />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">
+                Webhook URL: <span className="font-mono">{window.location.origin}/api/v1/teams/webhook</span>
+              </p>
+            </div>
+            {teamsError && <p className="text-xs text-red-600">{teamsError}</p>}
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={isTeamsSaving}
+              onClick={() => saveTeams({
+                enabled: true,
+                botAppId: teamsForm.botAppId || teamsConfig?.botAppId,
+                botAppSecret: teamsForm.botAppSecret || teamsConfig?.botAppSecret,
+                botCertPath: teamsForm.botCertPath || teamsConfig?.botCertPath,
+                botCertThumbprint: teamsForm.botCertThumbprint || teamsConfig?.botCertThumbprint,
+                tenantId: teamsForm.tenantId || teamsConfig?.tenantId,
+                teamId: teamsForm.teamId || teamsConfig?.teamId,
+                channelId: teamsForm.channelId || teamsConfig?.channelId,
+                ownerAadObjectId: teamsForm.ownerAadObjectId || teamsConfig?.ownerAadObjectId,
+              })}
+              className="text-xs"
+            >
+              {isTeamsSaving ? 'Saving...' : 'Save Teams Settings'}
+            </Button>
+          </div>
+        </div>
       </div>
 
       <YoloWarningDialog
@@ -199,136 +331,6 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
         onConfirm={handleYoloConfirm}
         onCancel={handleYoloCancel}
       />
-      <div className="mt-3 pt-3 border-t border-gray-100">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-700">Microsoft Teams</span>
-          {teamsConfig && (
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-              teamsConfig.connectionStatus === 'connected' ? 'bg-green-100 text-green-700' :
-              teamsConfig.connectionStatus === 'error' ? 'bg-red-100 text-red-700' :
-              'bg-gray-100 text-gray-600'
-            }`}>
-              {teamsConfig.connectionStatus}
-            </span>
-          )}
-        </div>
-        <div className="flex flex-col gap-2">
-          <div>
-            <label htmlFor="teams-bot-app-id" className="text-xs text-gray-600 block mb-1">Bot App ID</label>
-            <input
-              id="teams-bot-app-id"
-              type="text"
-              className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
-              value={teamsForm.botAppId || teamsConfig?.botAppId || ''}
-              onChange={e => setTeamsForm(f => ({ ...f, botAppId: e.target.value }))}
-              placeholder="Azure Bot Application (Client) ID"
-            />
-          </div>
-          <div>
-            <label htmlFor="teams-tenant-id" className="text-xs text-gray-600 block mb-1">Tenant ID</label>
-            <input
-              id="teams-tenant-id"
-              type="text"
-              className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
-              value={teamsForm.tenantId || teamsConfig?.tenantId || ''}
-              onChange={e => setTeamsForm(f => ({ ...f, tenantId: e.target.value }))}
-              placeholder="Azure Directory (Tenant) ID"
-            />
-          </div>
-          <p className="text-xs text-gray-500 font-medium mt-1">Authentication (leave blank to use device code flow on first run):</p>
-          <div>
-            <label htmlFor="teams-bot-app-secret" className="text-xs text-gray-600 block mb-1">Bot App Secret <span className="text-gray-400">(optional)</span></label>
-            <input
-              id="teams-bot-app-secret"
-              type="password"
-              className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
-              value={teamsForm.botAppSecret || (teamsConfig?.botAppSecret === '***' ? '' : teamsConfig?.botAppSecret ?? '')}
-              onChange={e => setTeamsForm(f => ({ ...f, botAppSecret: e.target.value }))}
-              placeholder="Client secret (if not using certificate or device code)"
-            />
-          </div>
-          <div>
-            <label htmlFor="teams-bot-cert-path" className="text-xs text-gray-600 block mb-1">Certificate Path <span className="text-gray-400">(optional)</span></label>
-            <input
-              id="teams-bot-cert-path"
-              type="text"
-              className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
-              value={teamsForm.botCertPath || teamsConfig?.botCertPath || ''}
-              onChange={e => setTeamsForm(f => ({ ...f, botCertPath: e.target.value }))}
-              placeholder="Path to PEM private key file (if not using secret or device code)"
-            />
-          </div>
-          <div>
-            <label htmlFor="teams-bot-cert-thumbprint" className="text-xs text-gray-600 block mb-1">Certificate Thumbprint <span className="text-gray-400">(optional)</span></label>
-            <input
-              id="teams-bot-cert-thumbprint"
-              type="text"
-              className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
-              value={teamsForm.botCertThumbprint || teamsConfig?.botCertThumbprint || ''}
-              onChange={e => setTeamsForm(f => ({ ...f, botCertThumbprint: e.target.value }))}
-              placeholder="SHA-1 thumbprint hex (from Azure Portal)"
-            />
-          </div>
-          <div>
-            <label htmlFor="teams-team-id" className="text-xs text-gray-600 block mb-1">Team ID</label>
-            <input
-              id="teams-team-id"
-              type="text"
-              className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
-              value={teamsForm.teamId || teamsConfig?.teamId || ''}
-              onChange={e => setTeamsForm(f => ({ ...f, teamId: e.target.value }))}
-              placeholder="Team (Group) ID"
-            />
-          </div>
-          <div>
-            <label htmlFor="teams-channel-id" className="text-xs text-gray-600 block mb-1">Channel ID</label>
-            <input
-              id="teams-channel-id"
-              type="text"
-              className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
-              value={teamsForm.channelId || teamsConfig?.channelId || ''}
-              onChange={e => setTeamsForm(f => ({ ...f, channelId: e.target.value }))}
-              placeholder="19:xxxx@thread.tacv2"
-            />
-          </div>
-          <div>
-            <label htmlFor="teams-owner-aad-object-id" className="text-xs text-gray-600 block mb-1">Owner AAD Object ID</label>
-            <input
-              id="teams-owner-aad-object-id"
-              type="text"
-              className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
-              value={teamsForm.ownerAadObjectId || teamsConfig?.ownerAadObjectId || ''}
-              onChange={e => setTeamsForm(f => ({ ...f, ownerAadObjectId: e.target.value }))}
-              placeholder="AAD Object ID of the session owner"
-            />
-          </div>
-          <div>
-            <p className="text-xs text-gray-500">
-              Webhook URL: <span className="font-mono">{window.location.origin}/api/v1/teams/webhook</span>
-            </p>
-          </div>
-          {teamsError && <p className="text-xs text-red-600">{teamsError}</p>}
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={isTeamsSaving}
-            onClick={() => saveTeams({
-              enabled: true,
-              botAppId: teamsForm.botAppId || teamsConfig?.botAppId,
-              botAppSecret: teamsForm.botAppSecret || teamsConfig?.botAppSecret,
-              botCertPath: teamsForm.botCertPath || teamsConfig?.botCertPath,
-              botCertThumbprint: teamsForm.botCertThumbprint || teamsConfig?.botCertThumbprint,
-              tenantId: teamsForm.tenantId || teamsConfig?.tenantId,
-              teamId: teamsForm.teamId || teamsConfig?.teamId,
-              channelId: teamsForm.channelId || teamsConfig?.channelId,
-              ownerAadObjectId: teamsForm.ownerAadObjectId || teamsConfig?.ownerAadObjectId,
-            })}
-            className="text-xs"
-          >
-            {isTeamsSaving ? 'Saving...' : 'Save Teams Settings'}
-          </Button>
-        </div>
-      </div>
     </>
   );
 }
