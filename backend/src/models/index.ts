@@ -106,19 +106,23 @@ export interface ArgusConfig {
 
 export type TelemetryEventType =
   | 'app_started'
+  | 'app_ended'
   | 'session_started'
   | 'session_ended'
   | 'prompt_sent'
   | 'session_stopped'
-  | 'compare_view_opened';
+  | 'todo_added'
+  | 'view_diff_opened';
 
 export const TELEMETRY_EVENT_TYPES = new Set<TelemetryEventType>([
   'app_started',
+  'app_ended',
   'session_started',
   'session_ended',
   'prompt_sent',
   'session_stopped',
-  'compare_view_opened',
+  'todo_added',
+  'view_diff_opened',
 ]);
 
 export interface TelemetryEvent {

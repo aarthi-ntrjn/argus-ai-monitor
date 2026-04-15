@@ -270,7 +270,6 @@ Argus collects anonymous usage data to help improve the product. No personal inf
 | `session_ended` | A session completes or ends |
 | `prompt_sent` | A prompt is dispatched to a session via Argus |
 | `session_stopped` | A session is stopped via Argus |
-| `compare_view_opened` | The GitHub diff link for a repo is clicked |
 
 Each event includes: an anonymous installation ID (a random UUID stored in `~/.argus/telemetry-id`), the Argus version, and a timestamp. No file paths, prompts, session content, or user-identifying information are included.
 

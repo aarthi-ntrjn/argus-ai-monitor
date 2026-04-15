@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { RotateCcw } from 'lucide-react';
 import type { DashboardSettings } from '../../types';
 import { useArgusSettings } from '../../hooks/useArgusSettings';
@@ -178,6 +179,9 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
               onChange={e => patchSetting({ telemetryEnabled: e.target.checked })}
             />
           </div>
+          <Link to="/telemetry" className="block text-xs text-blue-600 hover:underline mt-1">
+            What we collect
+          </Link>
         </div>
 
         {onRestartTour && (

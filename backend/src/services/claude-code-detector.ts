@@ -37,6 +37,11 @@ interface HookPayload {
 export class ClaudeCodeDetector {
   private jsonlWatcher = new ClaudeJsonlWatcher();
   private pendingChoices = new Map<string, PendingChoice>();
+  private sessionCreatedCallback?: (session: Session) => void;
+
+  setSessionCreatedCallback(cb: (session: Session) => void): void {
+    this.sessionCreatedCallback = cb;
+  }
 
   getPendingChoice(sessionId: string): PendingChoice | null {
     return this.pendingChoices.get(sessionId) ?? null;
@@ -223,7 +228,7 @@ export class ClaudeCodeDetector {
       yoloMode,
     };
     upsertSession(session);
-    broadcast({ type: 'session.created', timestamp: now, data: session as unknown as Record<string, unknown> });
+    this.sessionCreatedCallback?.(session);
     await this.jsonlWatcher.watchFile(sessionId, repo.path);
   }
 
@@ -249,11 +254,11 @@ export class ClaudeCodeDetector {
     session.status = 'active';
     session.lastActivityAt = now;
     upsertSession(session);
-    broadcast({
-      type: existing ? 'session.updated' : 'session.created',
-      timestamp: now,
-      data: session as unknown as Record<string, unknown>,
-    });
+    if (existing) {
+      broadcast({ type: 'session.updated', timestamp: now, data: session as unknown as Record<string, unknown> });
+    } else {
+      this.sessionCreatedCallback?.(session);
+    }
   }
 
   private async activateFoundSession(sessionId: string, repo: Repository, claudePid: number | null): Promise<void> {
@@ -300,8 +305,13 @@ export class ClaudeCodeDetector {
       reconciled: true,
       yoloMode: claudePid ? detectYoloModeFromPids(claudePid, null, 'claude-code') : null,
     };
+    const isNewSession = !existingSession;
+    const activated = { ...base, status: 'active' as const, endedAt: null as null, lastActivityAt: now, pid: claudePid };
     logger.info(`[ClaudeDetector] session activated sessionId=${sessionId} pid=${claudePid}`);
-    upsertSession({ ...base, status: 'active', endedAt: null, lastActivityAt: now, pid: claudePid });
+    upsertSession(activated);
+    if (isNewSession) {
+      this.sessionCreatedCallback?.(activated);
+    }
     await this.jsonlWatcher.watchFile(sessionId, repo.path);
   }
 

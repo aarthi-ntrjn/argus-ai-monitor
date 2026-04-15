@@ -118,14 +118,14 @@ export async function startServer() {
 
   monitor.on('session.created', (session: Session) => {
     broadcast({ type: 'session.created', timestamp: new Date().toISOString(), data: session as unknown as Record<string, unknown> });
-    telemetryService.sendEvent('session_started', { sessionType: session.type });
+    telemetryService.sendEvent('session_started', { sessionType: session.type, sessionId: session.id, launchMode: session.launchMode === 'pty' ? 'connected' : 'readonly', yoloMode: session.yoloMode });
   });
   monitor.on('session.updated', (session: Session) => {
     broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: session as unknown as Record<string, unknown> });
   });
   monitor.on('session.ended', (session: Session) => {
     broadcast({ type: 'session.ended', timestamp: new Date().toISOString(), data: session as unknown as Record<string, unknown> });
-    telemetryService.sendEvent('session_ended');
+    telemetryService.sendEvent('session_ended', { sessionType: session.type, sessionId: session.id, yoloMode: session.yoloMode });
   });
   monitor.on('repository.added', (repo: Repository) => {
     broadcast({ type: 'repository.added', timestamp: new Date().toISOString(), data: repo as unknown as Record<string, unknown> });
@@ -134,8 +134,8 @@ export async function startServer() {
   await monitor.start();
   startPruningJob();
 
-  process.on('SIGTERM', async () => { monitor?.stop(); await app.close(); process.exit(0); });
-  process.on('SIGINT', async () => { monitor?.stop(); await app.close(); process.exit(0); });
+  process.on('SIGTERM', async () => { telemetryService.sendEvent('app_ended'); monitor?.stop(); await app.close(); process.exit(0); });
+  process.on('SIGINT', async () => { telemetryService.sendEvent('app_ended'); monitor?.stop(); await app.close(); process.exit(0); });
 
   await app.listen({ port: config.port, host: '127.0.0.1' });
   app.log.info({ port: config.port }, 'Argus server started');

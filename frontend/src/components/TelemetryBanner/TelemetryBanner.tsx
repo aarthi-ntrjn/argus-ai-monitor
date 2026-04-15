@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { Checkbox } from '../Checkbox';
 import { Button } from '../Button';
@@ -16,7 +17,8 @@ export function TelemetryBanner({ onDismiss }: TelemetryBannerProps) {
       className="flex items-center gap-3 px-4 py-2 bg-blue-50 border-b border-blue-100 text-sm text-blue-900"
     >
       <span className="flex-1">
-        Argus collects anonymous usage data to improve the product. No personal information is sent.
+        Argus collects anonymous usage data to improve the product. No personal information is sent.{' '}
+        <Link to="/telemetry" className="underline hover:text-blue-700 whitespace-nowrap">What we collect</Link>
       </span>
       <Checkbox
         label="Send telemetry"

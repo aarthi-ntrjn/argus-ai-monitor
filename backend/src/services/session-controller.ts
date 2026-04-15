@@ -56,7 +56,7 @@ export class SessionController {
       updateControlAction(action.id, 'completed', completed.completedAt, null);
       this.broadcastAction(completed);
       logger.info(`[stopSession] COMPLETED actionId=${action.id} sessionId=${sessionId} pid=${session.pid}`);
-      telemetryService.sendEvent('session_stopped');
+      telemetryService.sendEvent('session_stopped', { sessionType: session.type, sessionId, yoloMode: session.yoloMode });
       return completed;
     } catch (err) {
       const failed = { ...action, status: 'failed' as const, completedAt: new Date().toISOString(), result: String(err) };
@@ -127,7 +127,7 @@ export class SessionController {
       .then(() => {
         const now = new Date().toISOString();
         logger.info(`[sendPrompt] DELIVERED actionId=${action.id} sessionId=${sessionId}`);
-        telemetryService.sendEvent('prompt_sent');
+        telemetryService.sendEvent('prompt_sent', { sessionType: session.type, sessionId, yoloMode: session.yoloMode });
         updateControlAction(action.id, 'completed', now, null);
         this.broadcastAction({ ...action, status: 'completed', completedAt: now });
       })

@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { homedir } from 'os';
 import { randomUUID } from 'crypto';
 import type { TelemetryEventType } from '../models/index.js';
@@ -45,7 +46,7 @@ export class TelemetryService {
   readAppVersion(): string {
     if (this.appVersion) return this.appVersion;
     try {
-      const pkgPath = new URL('../../package.json', import.meta.url).pathname;
+      const pkgPath = fileURLToPath(new URL('../../../package.json', import.meta.url));
       const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
       this.appVersion = typeof pkg.version === 'string' ? pkg.version : 'unknown';
     } catch {
@@ -54,7 +55,7 @@ export class TelemetryService {
     return this.appVersion!;
   }
 
-  sendEvent(type: TelemetryEventType, extra?: Record<string, string>): void {
+  sendEvent(type: TelemetryEventType, extra?: Record<string, string | boolean | null>): void {
     const url = process.env.TELEMETRY_URL ?? POSTHOG_URL;
     if (!url) return;
 
@@ -68,7 +69,7 @@ export class TelemetryService {
       timestamp: new Date().toISOString(),
     };
 
-    console.info('[telemetry] sendEvent', { type, appVersion });
+    console.info('[telemetry] sendEvent', { type, appVersion, ...extra });
 
     void (async () => {
       try {
