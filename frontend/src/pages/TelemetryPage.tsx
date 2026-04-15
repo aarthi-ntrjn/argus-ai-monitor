@@ -60,7 +60,7 @@ export default function TelemetryPage() {
               <span className="font-medium text-gray-900">Launch mode</span> (session_started only): whether the session was launched via Argus (connected) or auto-detected (readonly).
             </li>
             <li>
-              <span className="font-medium text-gray-900">Yolo mode:</span> whether the session was started with the <span className="font-mono">--dangerously-skip-permissions</span> flag.
+              <span className="font-medium text-gray-900">Yolo mode:</span> whether the session was started with the <span className="font-mono">--dangerously-skip-permissions</span> or <span className="font-mono">--allow-all</span> flags.
             </li>
           </ul>
         </section>
