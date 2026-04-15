@@ -69,6 +69,8 @@ export interface ArgusConfig {
   outputRetentionMbPerSession: number;
   autoRegisterRepos: boolean;
   yoloMode: boolean;
+  telemetryEnabled: boolean;
+  telemetryPromptSeen: boolean;
 }
 
 export interface DashboardSettings {
