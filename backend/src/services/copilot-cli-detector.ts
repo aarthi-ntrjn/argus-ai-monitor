@@ -1,15 +1,17 @@
 import { readdirSync, existsSync, readFileSync, openSync, readSync, closeSync, statSync } from 'fs';
+import * as logger from '../utils/logger.js';
 import { join, normalize } from 'path';
 import { homedir } from 'os';
 import { load as yamlLoad } from 'js-yaml';
-import psList from 'ps-list';
 import { randomUUID } from 'crypto';
 import chokidar, { type FSWatcher } from 'chokidar';
 import { upsertSession, getRepositoryByPath, deleteSessionOutput, getSession } from '../db/database.js';
+import { broadcast } from '../api/ws/event-dispatcher.js';
 import { ptyRegistry } from './pty-registry.js';
 import { OutputStore } from './output-store.js';
 import { parseJsonlLine, parseModelFromEvent } from './events-parser.js';
-import { detectYoloModeFromPids } from './process-utils.js';
+import { detectYoloModeFromPids, isPidRunning } from './process-utils.js';
+import { SessionTypes } from '../models/index.js';
 import type { Session, PidSource } from '../models/index.js';
 
 const DEFAULT_SESSION_DIR = join(homedir(), '.copilot', 'session-state');
@@ -27,34 +29,70 @@ export class CopilotCliDetector {
   private filePositions = new Map<string, number>();
   private sequenceCounters = new Map<string, number>();
   private outputStore = new OutputStore();
+  private lastScanTime = 0;
+  // Dirs known to have an active session last scan — must be rechecked even if mtime unchanged.
+  private activeDirPaths = new Set<string>();
 
   constructor(private sessionStateDir: string = DEFAULT_SESSION_DIR) {}
 
-  async scan(): Promise<Session[]> {
+  async scan(force = false): Promise<Session[]> {
     if (!existsSync(this.sessionStateDir)) return [];
-    const runningPids = await this.getRunningPids();
-    const sessions: Session[] = [];
+    const t0 = Date.now();
+
+    // Collect dirs to process:
+    // 1. Dirs modified since last scan — may contain new sessions.
+    //    When force=true (triggered by repo add) skip the mtime filter so we catch
+    //    sessions whose dir predates the last scan (e.g. after a repo remove+re-add).
+    // 2. Dirs that had an active session last scan — detect if they have ended.
+    const dirsToProcess = new Set<string>();
+    let totalDirs = 0;
+
     try {
       const entries = readdirSync(this.sessionStateDir, { withFileTypes: true });
       for (const entry of entries) {
         if (!entry.isDirectory()) continue;
-        const session = await this.processSessionDir(join(this.sessionStateDir, entry.name), runningPids);
-        if (session) sessions.push(session);
+        totalDirs++;
+        const dirPath = join(this.sessionStateDir, entry.name);
+
+        if (this.activeDirPaths.has(dirPath)) {
+          dirsToProcess.add(dirPath);
+          continue;
+        }
+
+        if (force) {
+          dirsToProcess.add(dirPath);
+          continue;
+        }
+
+        try {
+          if (statSync(dirPath).mtimeMs > this.lastScanTime) dirsToProcess.add(dirPath);
+        } catch { /* ignore */ }
       }
     } catch { /* ignore */ }
+
+    const sessions: Session[] = [];
+    const newActiveDirPaths = new Set<string>();
+
+    for (const dirPath of dirsToProcess) {
+      const tDir = Date.now();
+      const session = await this.processSessionDir(dirPath);
+      const dirMs = Date.now() - tDir;
+      if (dirMs > 50) {
+        logger.info(`[CopilotDetector] slow dir (${dirMs}ms): ${dirPath}`);
+      }
+      if (session) {
+        sessions.push(session);
+        if (session.status === 'active') newActiveDirPaths.add(dirPath);
+      }
+    }
+
+    this.activeDirPaths = newActiveDirPaths;
+    this.lastScanTime = t0;
+
     return sessions;
   }
 
-  private async getRunningPids(): Promise<Set<number>> {
-    try {
-      const processes = await psList();
-      return new Set(processes.map((p) => p.pid));
-    } catch {
-      return new Set();
-    }
-  }
-
-  private async processSessionDir(dirPath: string, runningPids: Set<number>): Promise<Session | null> {
+  private async processSessionDir(dirPath: string): Promise<Session | null> {
     const workspaceFile = join(dirPath, 'workspace.yaml');
     if (!existsSync(workspaceFile)) return null;
 
@@ -65,7 +103,7 @@ export class CopilotCliDetector {
 
     const lockFile = this.findLockFile(dirPath);
     const pid = lockFile ? this.extractPid(lockFile) : null;
-    const isRunning = pid !== null && runningPids.has(pid);
+    const isRunning = pid !== null && isPidRunning(pid);
 
     const sessionId = workspace.id ?? randomUUID();
     const existingSession = getSession(sessionId);
@@ -78,71 +116,19 @@ export class CopilotCliDetector {
     if (!repo) return null;
 
     const status = isRunning ? 'active' : 'ended';
-
     const toIso = (val: string | Date | undefined): string =>
       val ? (val instanceof Date ? val.toISOString() : val) : new Date().toISOString();
 
-    // Check if this session was already claimed as a PTY session on a previous scan
-    const alreadyClaimed = existingSession?.launchMode === 'pty';
+    const { launchMode, resolvedPid, resolvedHostPid, resolvedPidSource } =
+      this.resolvePtyLinkage(sessionId, existingSession, repo, pid, isRunning);
 
-    let launchMode: 'pty' | null = null;
-    let resolvedPid = pid;
-    let resolvedHostPid: number | null = existingSession?.hostPid ?? null;
-    let resolvedPidSource: PidSource | null = pid != null ? 'lockfile' : null;
-
-    const registryHas = ptyRegistry.has(sessionId);
-
-    if (alreadyClaimed) {
-      // Preserve launchMode:'pty' as a historical record — this session was launched via argus launch
-      launchMode = 'pty';
-      resolvedPid = existingSession.pid;
-      resolvedHostPid = existingSession.hostPid;
-      resolvedPidSource = existingSession.pidSource;
-      // If the WS is gone but the process is still running (e.g. Argus restarted), try to
-      // re-link to a freshly reconnected launcher WS. If that also fails, keep the existing
-      // pid/pidSource — the launcher will reconnect within 2s and the next scan will claim it.
-      if (!registryHas && isRunning) {
-        console.log(`[CopilotDetector] alreadyClaimed + WS gone + isRunning — attempting re-link sessionId=${sessionId}`);
-        const claimed = ptyRegistry.claimForSession(sessionId, repo.path);
-        if (claimed) {
-          resolvedPid = claimed.pid;
-          resolvedHostPid = claimed.hostPid;
-          resolvedPidSource = 'pty_registry';
-          console.log(`[CopilotDetector] re-link OK sessionId=${sessionId} hostPid=${claimed.hostPid} pid=${claimed.pid}`);
-        } else {
-          console.log(`[CopilotDetector] re-link MISS — no pending WS yet for sessionId=${sessionId}`);
-        }
-      }
-    } else if (registryHas) {
-      // workspace_id message already claimed this session before the scan ran
-      console.log(`[CopilotDetector] ptyRegistry already has sessionId=${sessionId} — marking pty`);
-      launchMode = 'pty';
-      resolvedPidSource = 'pty_registry';
-    } else if (isRunning && existingSession == null) {
-      // Fallback: try claiming via repoPath (workspace_id message not yet received).
-      // Only attempt for sessions we have never seen before. Once in the DB, either
-      // hostPid is set and launchMode=pty (handled by alreadyClaimed above), or
-      // hostPid is null and launchMode=null (read-only — no PTY will ever arrive).
-      // Non-running (ended) sessions must not steal a pending launcher WS that belongs
-      // to the new active session for the same cwd.
-      console.log(`[CopilotDetector] isRunning + not claimed — trying claimForSession sessionId=${sessionId} repoPath="${repo.path}"`);
-      const claimed = ptyRegistry.claimForSession(sessionId, repo.path);
-      if (claimed) {
-        launchMode = 'pty';
-        resolvedPid = claimed.pid;
-        resolvedHostPid = claimed.hostPid;
-        resolvedPidSource = 'pty_registry';
-        console.log(`[CopilotDetector] claimForSession OK sessionId=${sessionId} hostPid=${claimed.hostPid} pid=${claimed.pid}`);
-      } else {
-        console.log(`[CopilotDetector] claimForSession MISS — no pending WS — sessionId=${sessionId} will be read-only`);
-      }
-    }
-
-    const yoloMode = detectYoloModeFromPids(resolvedPid, resolvedHostPid, 'copilot-cli');
+    const yoloMode = existingSession?.yoloMode != null
+      ? existingSession.yoloMode
+      : isRunning ? detectYoloModeFromPids(resolvedPid, resolvedHostPid, SessionTypes.COPILOT_CLI) : null;
     const session: Session = {
       id: sessionId,
       repositoryId: repo.id,
-      type: 'copilot-cli',
+      type: SessionTypes.COPILOT_CLI,
       launchMode,
       pid: resolvedPid,
       hostPid: resolvedHostPid,
@@ -150,10 +136,12 @@ export class CopilotCliDetector {
       status,
       startedAt: toIso(workspace.created_at),
       endedAt: status === 'ended' ? toIso(workspace.updated_at) : null,
-      lastActivityAt: toIso(workspace.updated_at),
-      summary: workspace.summary ?? null,
+      lastActivityAt: existingSession?.lastActivityAt && existingSession.lastActivityAt > toIso(workspace.updated_at)
+        ? existingSession.lastActivityAt
+        : toIso(workspace.updated_at),
+      summary: existingSession?.summary ?? workspace.summary ?? null,
       expiresAt: null,
-      model: this.extractModelFromEventsFile(join(dirPath, 'events.jsonl')),
+      model: existingSession?.model ?? null,
       reconciled: true,
       yoloMode,
     };
@@ -167,34 +155,81 @@ export class CopilotCliDetector {
     return session;
   }
 
+  private resolvePtyLinkage(
+    sessionId: string,
+    existingSession: Session | null | undefined,
+    repo: { path: string },
+    pid: number | null,
+    isRunning: boolean,
+  ): { launchMode: 'pty' | null; resolvedPid: number | null; resolvedHostPid: number | null; resolvedPidSource: PidSource | null } {
+    const alreadyClaimed = existingSession?.launchMode === 'pty';
+    const registryHas = ptyRegistry.has(sessionId);
+
+    let launchMode: 'pty' | null = null;
+    let resolvedPid = pid;
+    let resolvedHostPid: number | null = existingSession?.hostPid ?? null;
+    let resolvedPidSource: PidSource | null = pid != null ? 'lockfile' : null;
+
+    if (alreadyClaimed) {
+      launchMode = 'pty';
+      resolvedPid = existingSession!.pid;
+      resolvedHostPid = existingSession!.hostPid;
+      resolvedPidSource = existingSession!.pidSource;
+      if (!registryHas && isRunning) {
+        logger.info(`[CopilotDetector] alreadyClaimed + WS gone + isRunning — attempting re-link sessionId=${sessionId}`);
+        const claimed = ptyRegistry.claimForSession(sessionId, repo.path);
+        if (claimed) {
+          resolvedPid = claimed.pid;
+          resolvedHostPid = claimed.hostPid;
+          resolvedPidSource = 'pty_registry';
+          logger.info(`[CopilotDetector] re-link OK sessionId=${sessionId} hostPid=${claimed.hostPid} pid=${claimed.pid}`);
+        } else {
+          logger.info(`[CopilotDetector] re-link MISS — no pending WS yet for sessionId=${sessionId}`);
+        }
+      }
+    } else if (registryHas) {
+      logger.info(`[CopilotDetector] ptyRegistry already has sessionId=${sessionId} — marking pty`);
+      launchMode = 'pty';
+      resolvedPidSource = 'pty_registry';
+      const parkedPid = ptyRegistry.getClaimedPid(sessionId);
+      if (parkedPid != null) {
+        resolvedPid = parkedPid;
+        logger.info(`[CopilotDetector] using parked resolved pid=${parkedPid} for sessionId=${sessionId}`);
+      }
+    } else if (isRunning && existingSession == null) {
+      logger.info(`[CopilotDetector] isRunning + not claimed — trying claimForSession sessionId=${sessionId} repoPath="${repo.path}"`);
+      const claimed = ptyRegistry.claimForSession(sessionId, repo.path);
+      if (claimed) {
+        launchMode = 'pty';
+        resolvedPid = claimed.pid;
+        resolvedHostPid = claimed.hostPid;
+        resolvedPidSource = 'pty_registry';
+        logger.info(`[CopilotDetector] claimForSession OK sessionId=${sessionId} hostPid=${claimed.hostPid} pid=${claimed.pid}`);
+      } else {
+        logger.info(`[CopilotDetector] claimForSession MISS — no pending WS — sessionId=${sessionId} will be read-only`);
+      }
+    }
+
+    return { launchMode, resolvedPid, resolvedHostPid, resolvedPidSource };
+  }
+
   private watchEventsFile(sessionId: string, dirPath: string): void {
     if (this.watchers.has(sessionId)) return;
     const eventsFile = join(dirPath, 'events.jsonl');
     if (!existsSync(eventsFile)) return;
 
-    // Clear any stale output (may be raw JSON from before parser fix) and reload from scratch
+    const TAIL_BYTES = 16 * 1024; // ~20-50 recent events; avoids reading huge historical files
+    const fileSize = statSync(eventsFile).size;
+
     deleteSessionOutput(sessionId);
-    this.filePositions.set(sessionId, 0);
+    this.filePositions.set(sessionId, Math.max(0, fileSize - TAIL_BYTES));
     this.sequenceCounters.set(sessionId, 0);
 
-    // Load all historical lines immediately before starting the watcher
     this.readNewLines(sessionId, eventsFile);
 
     const watcher = chokidar.watch(eventsFile, { persistent: false, usePolling: false });
     watcher.on('change', () => this.readNewLines(sessionId, eventsFile));
     this.watchers.set(sessionId, watcher);
-  }
-
-  private extractModelFromEventsFile(filePath: string): string | null {
-    if (!existsSync(filePath)) return null;
-    try {
-      const lines = readFileSync(filePath, 'utf-8').split('\n');
-      for (const line of lines) {
-        const model = parseModelFromEvent(line);
-        if (model) return model;
-      }
-    } catch { /* ignore */ }
-    return null;
   }
 
   private readNewLines(sessionId: string, filePath: string): void {
@@ -223,15 +258,26 @@ export class CopilotCliDetector {
       this.sequenceCounters.set(sessionId, seq);
       if (outputs.length > 0) {
         this.outputStore.insertOutput(sessionId, outputs);
+        const now = new Date().toISOString();
+        const active = getSession(sessionId);
+        if (active) {
+          const updated = { ...active, lastActivityAt: now };
+          upsertSession(updated);
+          broadcast({ type: 'session.updated', timestamp: now, data: updated as unknown as Record<string, unknown> });
+        }
       }
 
       if (detectedModel && !getSession(sessionId)?.model) {
         const existing = getSession(sessionId);
-        if (existing) upsertSession({ ...existing, model: detectedModel });
+        if (existing) {
+          const updated = { ...existing, model: detectedModel };
+          upsertSession(updated);
+          broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: updated as unknown as Record<string, unknown> });
+        }
       }
 
       // Update summary with the most recent user prompt in this batch
-      const lastUserMsg = [...outputs].reverse().find(o => o.role === 'user' && o.type === 'message');
+      const lastUserMsg = [...outputs].reverse().find(o => o.role === 'user' && o.type === 'message' && !o.isMeta);
       if (lastUserMsg?.content) {
         const existing = getSession(sessionId);
         if (existing) {
@@ -239,6 +285,7 @@ export class CopilotCliDetector {
           if (existing.summary !== summary) {
             const updated = { ...existing, summary };
             upsertSession(updated);
+            broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: updated as unknown as Record<string, unknown> });
           }
         }
       }

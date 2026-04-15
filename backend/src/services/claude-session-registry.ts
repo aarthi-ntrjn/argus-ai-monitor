@@ -41,3 +41,4 @@ export class ClaudeSessionRegistry {
     return entries;
   }
 }
+

@@ -72,7 +72,6 @@ const sessionsRoutes: FastifyPluginAsync = async (app) => {
     }
   );
 
-
   // Dismiss a session: mark it as ended without killing the process.
   // Used for read-only sessions or sessions whose process is already gone.
   app.post<{ Params: { id: string } }>(

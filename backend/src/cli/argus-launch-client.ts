@@ -9,7 +9,7 @@ interface RegisterInfo {
   cwd: string;
 }
 
-type PromptCallback = (actionId: string, prompt: string) => void;
+type PromptCallback = (actionId: string, prompt: string) => void | Promise<void>;
 
 export class ArgusLaunchClient {
   private ws!: WebSocket;
@@ -18,9 +18,12 @@ export class ArgusLaunchClient {
   private promptCallback: PromptCallback | null = null;
   private isClosing = false;
   private workspaceSessionId: string | null = null;
+  private pendingPid: number | null = null;
+  private log: (msg: string) => void;
 
-  constructor(url: string) {
+  constructor(url: string, log?: (msg: string) => void) {
     this.url = url;
+    this.log = log ?? (() => {});
     this.connect();
   }
 
@@ -56,11 +59,19 @@ export class ArgusLaunchClient {
     this.send({ type: 'prompt_failed', actionId, error });
   }
 
-  sendDiagnostic(actionId: string, detail: string): void {
-    this.send({ type: 'diagnostic', actionId, detail });
-  }
-
   updatePid(pid: number): void {
+    // Always keep registerInfo in sync so the register replay on reconnect carries the correct pid.
+    if (this.registerInfo) {
+      this.registerInfo = { ...this.registerInfo, pid };
+    }
+    const wsState = this.ws.readyState;
+    const isOpen = wsState === WebSocket.OPEN;
+    this.log(`updatePid pid=${pid} ws.readyState=${wsState} (${isOpen ? 'OPEN' : 'NOT_OPEN'})`);
+    if (!isOpen) {
+      this.log(`updatePid: ws not open, parking pid=${pid} for replay on open`);
+      this.pendingPid = pid;
+      return;
+    }
     this.send({ type: 'update_pid', pid });
   }
 
@@ -92,6 +103,12 @@ export class ArgusLaunchClient {
     if (this.workspaceSessionId) {
       this.send({ type: 'workspace_id', sessionId: this.workspaceSessionId });
     }
+    // Replay a pid that arrived before the connection was ready
+    if (this.pendingPid !== null) {
+      this.log(`handleOpen: replaying deferred update_pid pid=${this.pendingPid}`);
+      this.send({ type: 'update_pid', pid: this.pendingPid });
+      this.pendingPid = null;
+    }
   }
 
   private handleMessage(data: Buffer): void {
@@ -114,3 +131,4 @@ export class ArgusLaunchClient {
     }
   }
 }
+

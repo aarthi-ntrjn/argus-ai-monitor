@@ -72,6 +72,30 @@ describe('KillSessionDialog', () => {
   });
 });
 
+describe('KillSessionDialog event propagation', () => {
+  it('does not bubble click events to parent when confirm button is clicked', async () => {
+    const parentClick = vi.fn();
+    render(
+      <div onClick={parentClick}>
+        <KillSessionDialog open={true} onConfirm={vi.fn()} onCancel={vi.fn()} />
+      </div>
+    );
+    await userEvent.click(screen.getByRole('button', { name: /kill session/i }));
+    expect(parentClick).not.toHaveBeenCalled();
+  });
+
+  it('does not bubble click events to parent when cancel button is clicked', async () => {
+    const parentClick = vi.fn();
+    render(
+      <div onClick={parentClick}>
+        <KillSessionDialog open={true} onConfirm={vi.fn()} onCancel={vi.fn()} />
+      </div>
+    );
+    await userEvent.click(screen.getByRole('button', { name: /cancel/i }));
+    expect(parentClick).not.toHaveBeenCalled();
+  });
+});
+
 describe('KillSessionDialog error scenarios', () => {
   it('displays 404 not-found error message', () => {
     render(

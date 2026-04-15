@@ -17,6 +17,7 @@ interface ClaudeEntry {
   timestamp?: string;
   sessionId?: string;
   isSidechain?: boolean;
+  isMeta?: boolean;
   message?: {
     role?: string;
     model?: string;
@@ -32,12 +33,13 @@ function stringifyContent(content: unknown): string {
 function parseUserEntry(entry: ClaudeEntry, sessionId: string, sequenceNumber: number): SessionOutput[] {
   const content = entry.message?.content;
   const timestamp = entry.timestamp ?? new Date().toISOString();
+  const isMeta = entry.isMeta === true ? true : undefined;
   const results: SessionOutput[] = [];
 
   if (typeof content === 'string') {
     results.push({
       id: randomUUID(), sessionId, timestamp,
-      type: 'message', role: 'user', content, toolName: null, toolCallId: null, sequenceNumber,
+      type: 'message', role: 'user', content, toolName: null, toolCallId: null, sequenceNumber, isMeta,
     });
     return results;
   }
@@ -45,7 +47,7 @@ function parseUserEntry(entry: ClaudeEntry, sessionId: string, sequenceNumber: n
   if (!Array.isArray(content)) {
     results.push({
       id: randomUUID(), sessionId, timestamp,
-      type: 'message', role: 'user', content: '', toolName: null, toolCallId: null, sequenceNumber,
+      type: 'message', role: 'user', content: '', toolName: null, toolCallId: null, sequenceNumber, isMeta,
     });
     return results;
   }
@@ -54,7 +56,7 @@ function parseUserEntry(entry: ClaudeEntry, sessionId: string, sequenceNumber: n
     if (block.type === 'text') {
       results.push({
         id: randomUUID(), sessionId, timestamp,
-        type: 'message', role: 'user', content: block.text ?? '', toolName: null, toolCallId: null, sequenceNumber,
+        type: 'message', role: 'user', content: block.text ?? '', toolName: null, toolCallId: null, sequenceNumber, isMeta,
       });
     } else if (block.type === 'tool_result') {
       results.push({
@@ -130,3 +132,4 @@ export function parseModel(line: string): string | null {
     return null;
   }
 }
+

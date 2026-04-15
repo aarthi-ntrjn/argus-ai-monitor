@@ -71,7 +71,7 @@ function ensureRepository(cwd: string): Repository {
   if (existing) return existing;
   const id = randomUUID();
   const now = new Date().toISOString();
-  const repo = { id, path: cwd, name: basename(cwd), source: 'ui' as const, addedAt: now, lastScannedAt: null, branch: null };
+  const repo = { id, path: cwd, name: basename(cwd), source: 'ui' as const, addedAt: now, lastScannedAt: null, branch: null, remoteUrl: null };
   insertRepository(repo);
   return repo;
 }
@@ -138,6 +138,11 @@ const launcherRoutes: FastifyPluginAsync = async (fastify) => {
             upsertSession(updated);
             broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: updated as unknown as Record<string, unknown> });
             fastify.log.info({ claudeSessionId, pid: msg.pid, yoloMode }, 'Updated session with resolved tool PID');
+          } else {
+            // Session row not yet inserted (update_pid raced ahead of the first scan).
+            // Park the pid in the registry so resolvePtyLinkage can pick it up on first scan.
+            ptyRegistry.updateClaimedPid(claudeSessionId, msg.pid);
+            fastify.log.info({ claudeSessionId, pid: msg.pid }, 'Parked resolved pid — session not yet in DB');
           }
         }
         return;
@@ -196,7 +201,7 @@ const launcherRoutes: FastifyPluginAsync = async (fastify) => {
           broadcast({
             type: 'session.ended',
             timestamp: now,
-            data: { id: claudeSessionId } as Record<string, unknown>,
+            data: { ...session, status: 'ended', endedAt: now } as unknown as Record<string, unknown>,
           });
           fastify.log.info({ claudeSessionId }, 'Launcher disconnected — session marked ended');
         } else {
@@ -212,3 +217,4 @@ const launcherRoutes: FastifyPluginAsync = async (fastify) => {
 };
 
 export default launcherRoutes;
+

@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
-import type { Repository, Session, SessionOutput, ControlAction, TodoItem, ArgusConfig } from '../types';
+import type { Repository, Session, SessionOutput, ControlAction, TodoItem, ArgusConfig, ToolCommand } from '../types';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -117,7 +117,7 @@ export async function getAvailableTools(): Promise<AvailableTools> {
   return apiFetch<AvailableTools>('/tools');
 }
 
-export async function launchInTerminal(tool: 'claude' | 'copilot', repoPath?: string): Promise<void> {
+export async function launchInTerminal(tool: ToolCommand, repoPath?: string): Promise<void> {
   await apiFetch<void>('/sessions/launch-terminal', {
     method: 'POST',
     body: JSON.stringify({ tool, repoPath }),
@@ -130,4 +130,12 @@ export async function getArgusSettings(): Promise<ArgusConfig> {
 
 export async function patchArgusSettings(patch: Partial<ArgusConfig>): Promise<ArgusConfig> {
   return apiFetch<ArgusConfig>('/settings', { method: 'PATCH', body: JSON.stringify(patch) });
+}
+
+export function postTelemetryEvent(type: string): void {
+  void fetch(`${BASE}/telemetry/event`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type }),
+  }).catch(() => { /* fire-and-forget */ });
 }

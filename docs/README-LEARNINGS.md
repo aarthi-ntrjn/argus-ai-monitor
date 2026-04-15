@@ -5,6 +5,30 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 
 ---
 
+## T123 — Branch name not updated on dashboard
+
+**Date**: 2026-04-14
+**Symptom**: The branch badge on a repository card does not update after the user switches git branches. It only changes after a full page reload.
+**Root cause**: `SessionMonitor.refreshRepositoryBranches()` in `backend/src/services/session-monitor.ts` correctly detects branch changes and writes them to the DB via `updateRepositoryBranch()`, but never calls `broadcast()`. The frontend removed its 5-second poll (T120), so there is no path for the UI to learn of the change. Additionally, `socket.ts` had no `repository.updated` handler even if a broadcast had been sent.
+**Why it was missed**: The DB write and the broadcast are two separate operations. T095 masked the missing broadcast by adding a 5-second `refetchInterval` poll, which T120 later removed as redundant. The combination of those two changes revealed the gap.
+**How to prevent**: Any function that writes to the DB and expects the frontend to reflect the change must also call `broadcast()`. Treat the DB write and the broadcast as an inseparable pair. Add a lint rule or code review checklist item: "If you call `update*` from `database.ts`, does a broadcast follow?"
+**Fix summary**: Added `broadcast({ type: 'repository.updated', ... })` in `refreshRepositoryBranches()` after `updateRepositoryBranch()`, and added a `repository.updated` handler in `frontend/src/services/socket.ts` that invalidates the `['repositories']` query.
+
+---
+
+## T122 — Copilot sessions show "resting" despite active responses
+
+**Date**: 2026-04-16
+**Symptom**: Even when Copilot was actively processing a response, the Argus session card showed the "resting" badge.
+**Root cause**: Two cooperating problems in `CopilotCliDetector`:
+(1) `readNewLines()` never updated `lastActivityAt` when output arrived. Claude's equivalent (`ClaudeJsonlWatcher.applyActivityUpdate()`) correctly sets `lastActivityAt = now` on every new JSONL line, but the Copilot path only updated `summary` and `model`, never `lastActivityAt`.
+(2) `processSessionDir()` unconditionally set `lastActivityAt: toIso(workspace.updated_at)` on every 5-second scan. Since `workspace.updated_at` is rarely written during active processing, this always provided a stale timestamp. Even if fix (1) had existed earlier, fix (2) would have clobbered it on the very next scan cycle.
+**Why it was missed**: `lastActivityAt` handling was implemented correctly for Claude (via `ClaudeJsonlWatcher`) but the analogous field in the Copilot detector was treated as a static snapshot from `workspace.yaml`. No test verified that `lastActivityAt` is updated when Copilot output arrives or that it survives subsequent scan cycles.
+**How to prevent**: When a field is written by two code paths (a file-watcher update and a periodic scan), the scan must preserve the most recent value, not unconditionally overwrite it. Use the `existingSession?.field > newValue ? existingSession.field : newValue` pattern. Add tests that write to a scan directory AND check that timestamp fields from live updates are not reset by a later scan call.
+**Fix summary**: `copilot-cli-detector.ts` — (1) `readNewLines()` now upserts `lastActivityAt = now` and broadcasts `session.updated` when `outputs.length > 0`, mirroring `ClaudeJsonlWatcher.applyActivityUpdate()`. (2) `processSessionDir()` now keeps `existingSession.lastActivityAt` when it is more recent than `workspace.updated_at`.
+
+---
+
 ## T114 — T113 regression: PTY launchMode wiped when session ends
 
 **Date**: 2026-04-10
@@ -246,3 +270,80 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 - `staleTime` ≠ `refetchInterval`. Always explicitly set `refetchInterval` on queries that need to stay live with the server.
 - When wiring up a backend polling loop, check end-to-end: does the frontend also have a matching poll? Trace the full data path from server update → DB → API → React Query → UI.
 **Fix summary**: Added `refetchInterval: 5000` to both `useQuery` calls (repositories and sessions) in `DashboardPage.tsx`. Also updated the `repository-scanner.js` vitest mock to properly export `getCurrentBranch`, fixing a silent mock gap where `refreshRepositoryBranches()` errors were being swallowed by the catch block.
+
+## T116 — copilot-cli send-prompt keystrokes inconsistent
+
+**Date**: 2026-04-13
+**Symptom**: Sending a prompt to a Copilot CLI PTY session via Argus worked unreliably. Adding log statements to the delivery path made it work consistently, suggesting a timing dependency.
+**Root cause**: `launch.ts` `onSendPrompt` pushed all Win32 input sequences for every character synchronously in a single event-loop tick. The Copilot CLI PTY read the events and dropped or merged them when they all arrived at once. Log statements introduced implicit I/O overhead that happened to space out the pushes enough for the PTY to process them individually.
+**Why it was missed**: The delivery function was tested with single-character prompts or short strings where the race was not reliably reproducible. The log-lines-help clue was not recognised as a timing signal.
+**How to prevent**: When injecting input into a PTY as individual "keystroke" events, always add an inter-character delay. Real keyboard input is never instantaneous; PTY readers are optimised for a stream with natural inter-key gaps. A synchronous burst of events should be treated as a red flag.
+**Fix summary**: Made the `onSendPrompt` callback in `launch.ts` async and added `await delay(KEYSTROKE_DELAY_MS)` (10 ms) after each character's key-down/key-up pair. Updated `PromptCallback` type in `argus-launch-client.ts` to allow `Promise<void>` return.
+
+---
+
+## T116 (master) — Conversation history not shown when adding a repository with an active session
+
+**Date**: 2026-04-13
+**Symptom**: After adding a repository that already had an active Claude Code session, the session card showed "Waiting for output..." and the output pane was empty, even though the conversation had been happening for some time.
+**Root cause**: `applyOutputBatchEvent` in `frontend/src/services/socket.ts` had `if (!old) return old` as a guard. When `session.output.batch` arrived before the `SessionCard` was mounted (cache key `['session-output-last', sessionId]` not yet populated), the updater returned `undefined` and the batch was silently dropped. The `SessionCard` subsequently fired an API call that could race the backend's `insertOutput` write. If the API response arrived before `insertOutput` completed, the cache was seeded with empty data and, because `staleTime: Infinity` was set on that query, it was never refetched.
+**Why it was missed**: The two code paths (broadcast from `reconcileClaudeSessionRegistry` and JSONL write from `scanExistingSessions`) are decoupled and run in sequence with an async gap between them. The race window was considered unlikely but is observable when the browser renders quickly and the JSONL file is large (slow read).
+**How to prevent**:
+- Any `setQueryData` updater that can receive `undefined` as `old` should either create a valid seed entry or be documented as an intentional no-op. Never silently discard an event by returning `old` without checking.
+- When a new entity is broadcast via WS (`session.created`) and its associated data immediately follows (`session.output.batch`), assume the second event may arrive before the first has been processed by React. Design cache updaters to be order-independent.
+**Fix summary**: Changed `if (!old) return old` to seed the cache in both `['session-output', sessionId]` and `['session-output-last', sessionId]` updaters inside `applyOutputBatchEvent` in `frontend/src/services/socket.ts`, so the batch always populates the cache regardless of whether the component has mounted yet.
+
+---
+
+## T117 — TODO toggle button state not preserved on remount
+
+**Date**: 2026-04-13
+**Symptom**: After switching mobile tabs away from the Tasks tab and back, or after toggling the Todo panel visibility in Settings, the three header toggle buttons (Hide completed, Show timestamps, Wrap text) reset to their default states, losing any changes the user had made.
+**Root cause**: `showDone`, `showTimestamps`, and `wrapText` in `frontend/src/components/TodoPanel/TodoPanel.tsx` were plain `useState` calls with hardcoded defaults (`true`, `true`, `false`). Nothing persisted these values across component unmount/remount cycles.
+**Why it was missed**: In the common desktop case the `TodoPanel` is always mounted while the dashboard is visible, so remount-triggered resets were not exercised. Mobile tab switching and panel hide/show are less frequently tested paths.
+**How to prevent**: Any UI toggle that controls a user preference (not ephemeral interaction state) should be initialised from `localStorage` and written back on change. The test suite should clear `localStorage` in a top-level `beforeEach` so that localStorage-backed state does not bleed between test cases.
+**Fix summary**: Initialised each of the three toggle states from `localStorage` (keys `argus.todo.showDone`, `argus.todo.showTimestamps`, `argus.todo.wrapText`) with `useEffect` writes on change, in `frontend/src/components/TodoPanel/TodoPanel.tsx`. Added `localStorage.clear()` to the global `beforeEach` in `TodoPanel.test.tsx` to prevent inter-test contamination.
+
+---
+
+## T118 — Kill session toggles output stream visibility
+
+**Date**: 2026-04-13
+**Symptom**: Clicking the "Kill session" button on a session card (or clicking Confirm/Cancel in the resulting dialog) unexpectedly toggled the inline output stream pane open or closed on the dashboard.
+**Root cause**: `KillSessionDialog` uses `createPortal` to render its backdrop and buttons to `document.body`, which correctly removes it from the DOM hierarchy. However, React's synthetic event system propagates events through the _virtual_ component tree, not the DOM tree. Since `KillSessionDialog` is a React child of `SessionCard`, any click inside the dialog bubbles up to `SessionCard`'s outer `div` click handler (`onClick={() => onSelect?.(session.id)}`), which calls `setSelectedSessionId` in `DashboardPage` and toggles the output pane. The kill button itself already called `e.stopPropagation()`, but the dialog's backdrop `onClick` did not.
+**Why it was missed**: The behaviour of React portal event bubbling is non-obvious. The DOM shows the dialog appended to `<body>`, so it is not visually a descendant of the card. Reviewers and tests did not exercise the click-propagation path through the React tree for portal content.
+**How to prevent**: Whenever a component uses `createPortal`, add `e.stopPropagation()` to the outermost rendered element's click handler. This contains portal clicks within the portal and prevents them from leaking into whichever React ancestor happens to render the portal component. Write a regression test that wraps the portal component in a div with a `parentClick` spy and asserts the spy is not called after user interactions inside the portal.
+**Fix summary**: Added `e.stopPropagation()` to the backdrop div's `onClick` handler in `frontend/src/components/KillSessionDialog/KillSessionDialog.tsx`.
+
+---
+
+## T119 — Copilot session summary reset to autogenerated title on every scan
+
+**Date**: 2026-04-13
+**Symptom**: The Copilot session card always showed the autogenerated title from workspace.yaml (e.g. "Implement a feature to...") instead of the user's actual last prompt, even after messages were exchanged.
+**Root cause**: `processSessionDir()` in `copilot-cli-detector.ts` always passed `summary: workspace.summary ?? null` to `upsertSession()`. The SQL uses `summary = excluded.summary` unconditionally, so every 5-second scan cycle overwrote the summary with the static workspace.yaml value, undoing any update that `readNewLines()` had written from the user's most recent `user.message` event.
+**Why it was missed**: The live-update path (`readNewLines` writing the user message as summary) was implemented and tested in isolation. The scan path was tested separately. The interaction between them — scan running repeatedly and clobbering the live update — was never tested end-to-end.
+**How to prevent**: When a periodic reconciliation loop upserts a record, prefer existing DB values over freshly-read file values for fields that can be updated by other code paths. Use `existingRecord?.field ?? freshValue` rather than always trusting the file. Any field whose update path differs from the scan path should be protected this way.
+**Fix summary**: Changed `summary: workspace.summary ?? null` to `summary: existingSession?.summary ?? workspace.summary ?? null` in `processSessionDir()` in `backend/src/services/copilot-cli-detector.ts`, preserving any summary already written by `readNewLines`.
+
+---
+
+## T120 — Copilot model/summary updates not broadcast; dashboard polled unnecessarily
+
+**Date**: 2026-04-13
+**Symptom**: Copilot session model and summary updates were only visible after the next 5-second poll cycle. The dashboard made HTTP requests to `/api/v1/sessions` and `/api/v1/repositories` every 5 seconds even though a WebSocket push channel already covered all lifecycle events.
+**Root cause**: `copilot-cli-detector.ts` `readNewLines()` called `upsertSession()` for both model-detection and summary-update paths but never called `broadcast()`. All other session mutation sites (claude-jsonl-watcher, session-monitor, launcher) broadcast `session.updated` immediately after writing. The missing broadcasts meant the only way for the frontend to see these changes was via polling. The `refetchInterval: 5000` in `DashboardPage.tsx` was added before the WS event model was fully wired up and never removed once the WS covered all session lifecycle events.
+**Why it was missed**: The model/summary update paths in `copilot-cli-detector.ts` were added incrementally. Each added `upsertSession` but the `broadcast` step was not in the immediate context and was easy to overlook. No test existed that verified a `broadcast` was emitted after these updates. The polling was not reviewed for removal when the WS was deemed complete.
+**How to prevent**: Any code path that mutates a session and calls `upsertSession()` must also call `broadcast({ type: 'session.updated', ... })`. Treat these two as an inseparable pair. The integration test for `copilot-cli-detector` now asserts `broadcast` is called, making future omissions detectable.
+**Fix summary**: Added `broadcast()` calls after both `upsertSession()` calls in `readNewLines()` in `backend/src/services/copilot-cli-detector.ts`; removed `refetchInterval: 5000` from both `useQuery` hooks in `frontend/src/pages/DashboardPage.tsx`.
+
+---
+
+## T121 — pid=null after backend restart reconnect
+
+**Date**: 2026-04-13
+**Symptom**: After the Argus backend restarted, the re-linked Copilot PTY session showed `pid=null` in the re-link log and in the DB, even though the process was still running and the pid had been resolved earlier.
+**Root cause**: `ArgusLaunchClient.updatePid()` in `backend/src/cli/argus-launch-client.ts` sent `update_pid` immediately when the WS was open, but did not update `this.registerInfo.pid`. On reconnect, `handleOpen()` replays the `register` message using `this.registerInfo`, which still held `pid: null`. The `pendingPid` replay path was also a dead end: `pendingPid` is only set when the WS is closed at the time `updatePid` fires, so it was `null` after the normal initial launch. The net result was that every reconnect sent `register` with `pid: null`.
+**Why it was missed**: The reconnect path was added in T114 and tested for `workspace_id` and `register` replay, but the test used `pid: 1` in `registerInfo` directly — it never exercised the case where `pid` starts as `null` and is resolved later via `updatePid()` while the WS is already open.
+**How to prevent**: Any field that can be updated after initial registration (pid, workspaceSessionId) must be kept in sync in the object used for reconnect replay. Treat `registerInfo` as the source of truth for what the next `register` message will contain, and update it eagerly on every mutation.
+**Fix summary**: Added `if (this.registerInfo) { this.registerInfo = { ...this.registerInfo, pid }; }` at the top of `updatePid()` in `backend/src/cli/argus-launch-client.ts`, before the `isOpen` check.

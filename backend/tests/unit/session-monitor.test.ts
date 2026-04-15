@@ -25,6 +25,14 @@ vi.mock('ps-list', () => ({
   default: vi.fn(async () => mockPsListResult),
 }));
 
+// Mock process-utils so isPidRunning is driven by the same mockPsListResult array.
+// reconcileClaudeCodeSessions uses isPidRunning directly (not ps-list).
+const mockIsPidRunning = vi.hoisted(() => vi.fn((_pid: number) => false));
+vi.mock('../../src/services/process-utils.js', () => ({
+  isPidRunning: mockIsPidRunning,
+  detectYoloModeFromPids: vi.fn().mockReturnValue(null),
+}));
+
 // Mock config to avoid reading real watch dirs
 vi.mock('../../src/config/config-loader.js', () => ({
   loadConfig: () => ({
@@ -59,9 +67,18 @@ vi.mock('../../src/services/claude-code-detector.js', () => ({
       scanExistingSessions: vi.fn(async () => {}),
       stopWatchers: vi.fn(),
       closeSessionWatcher: vi.fn(),
+      setSessionCreatedCallback: vi.fn(),
     })),
     { projectDirName: (p: string) => p.replace(/[:\\/]/g, '-') }
   ),
+}));
+
+// Capture broadcast calls so tests can assert repository.updated is emitted
+const mockBroadcast = vi.hoisted(() => vi.fn());
+vi.mock('../../src/api/ws/event-dispatcher.js', () => ({
+  broadcast: mockBroadcast,
+  addClient: vi.fn(),
+  removeClient: vi.fn(),
 }));
 
 describe('SessionMonitor.reconcileStaleSessions', () => {
@@ -223,6 +240,57 @@ describe('SessionMonitor.refreshRepositoryBranches', () => {
     const repo = repos.find(r => r.id === 'repo-stable-branch');
     expect(repo?.branch).toBe('main');
   });
+
+  // T123 regression: branch change must broadcast repository.updated so frontend refreshes without polling
+  it('T123: should broadcast repository.updated when branch changes', async () => {
+    mockBroadcast.mockClear();
+    insertRepository({
+      id: 'repo-broadcast-test',
+      path: '/stub/repo',
+      name: 'stub',
+      source: 'ui' as const,
+      addedAt: new Date().toISOString(),
+      lastScannedAt: null,
+      branch: 'main',
+    });
+
+    mockGetCurrentBranchResult = '037-reduce-log-noise';
+
+    const monitor = new SessionMonitor();
+    await monitor.start();
+    monitor.stop();
+
+    const updatedCall = mockBroadcast.mock.calls.find(
+      (call) => call[0]?.type === 'repository.updated' && call[0]?.data?.id === 'repo-broadcast-test'
+    );
+    expect(updatedCall).toBeDefined();
+    expect(updatedCall?.[0].data.branch).toBe('037-reduce-log-noise');
+  });
+
+  // T123: no broadcast when branch has not changed
+  it('T123: should not broadcast repository.updated when branch is unchanged', async () => {
+    mockBroadcast.mockClear();
+    insertRepository({
+      id: 'repo-no-broadcast-test',
+      path: '/stub/repo',
+      name: 'stub',
+      source: 'ui' as const,
+      addedAt: new Date().toISOString(),
+      lastScannedAt: null,
+      branch: 'main',
+    });
+
+    mockGetCurrentBranchResult = 'main';
+
+    const monitor = new SessionMonitor();
+    await monitor.start();
+    monitor.stop();
+
+    const updatedCall = mockBroadcast.mock.calls.find(
+      (call) => call[0]?.type === 'repository.updated' && call[0]?.data?.id === 'repo-no-broadcast-test'
+    );
+    expect(updatedCall).toBeUndefined();
+  });
 });
 
 describe('SessionMonitor.reconcileClaudeCodeSessions — active/ended logic', () => {
@@ -258,6 +326,8 @@ describe('SessionMonitor.reconcileClaudeCodeSessions — active/ended logic', ()
     vi.resetModules();
     mockPsListResult = [{ pid: 9999, name: 'some-process', cmd: 'some-process' }];
     mockGetCurrentBranchResult = null;
+    mockIsPidRunning.mockReset();
+    mockIsPidRunning.mockImplementation((pid: number) => mockPsListResult.some(p => p.pid === pid));
 
     const db = await import('../../src/db/database.js');
     closeDb = db.closeDb;
@@ -280,7 +350,7 @@ describe('SessionMonitor.reconcileClaudeCodeSessions — active/ended logic', ()
   // T005: alive PID → stays active
   it('T005: should stay active when PID is alive', async () => {
     const id = `t005-${randomUUID()}`;
-    mockPsListResult = [{ pid: 9999, name: 'other' }, { pid: 12345, name: 'node', cmd: 'claude' }];
+    mockPsListResult = [{ pid: 9999, name: 'other' }, { pid: 12345, name: 'claude' }];
     upsertSession(baseSession(id, 'active', 12345));
 
     const monitor = new SessionMonitor();
@@ -308,7 +378,7 @@ describe('SessionMonitor.reconcileClaudeCodeSessions — active/ended logic', ()
   // T008: fresh PID alive → active (no change)
   it('T008: should leave active session unchanged when PID is alive', async () => {
     const id = `t008-${randomUUID()}`;
-    mockPsListResult = [{ pid: 9999, name: 'other' }, { pid: 33333, name: 'node' }];
+    mockPsListResult = [{ pid: 9999, name: 'other' }, { pid: 33333, name: 'claude' }];
     upsertSession(baseSession(id, 'active', 33333));
 
     const monitor = new SessionMonitor();
@@ -322,7 +392,7 @@ describe('SessionMonitor.reconcileClaudeCodeSessions — active/ended logic', ()
   // T009: PID alive → session stays active
   it('T009: should keep session active when PID is alive', async () => {
     const id = `t009-${randomUUID()}`;
-    mockPsListResult = [{ pid: 9999, name: 'other' }, { pid: 44444, name: 'node' }];
+    mockPsListResult = [{ pid: 9999, name: 'other' }, { pid: 44444, name: 'claude' }];
     upsertSession(baseSession(id, 'active', 44444));
 
     const monitor = new SessionMonitor();
@@ -350,7 +420,7 @@ describe('SessionMonitor.reconcileClaudeCodeSessions — active/ended logic', ()
   // T012: startup reconcileStaleSessions — idle session + alive PID → active (reconciliation promotes to active)
   it('T012: startup sweep should mark idle session as active when PID is still alive', async () => {
     const id = `t012-${randomUUID()}`;
-    mockPsListResult = [{ pid: 9999, name: 'other' }, { pid: 77777, name: 'node' }];
+    mockPsListResult = [{ pid: 9999, name: 'other' }, { pid: 77777, name: 'claude' }];
     upsertSession(baseSession(id, 'idle', 77777));
 
     const monitor = new SessionMonitor();

@@ -11,7 +11,7 @@ const YOLO_FLAGS: Record<SessionType, string> = {
  * Inspect a running process's command line to detect yolo mode flags.
  * Returns true/false if the process was found, null if the command line could not be read.
  */
-export function detectYoloMode(pid: number, type: SessionType): boolean | null {
+function detectYoloMode(pid: number, type: SessionType): boolean | null {
   try {
     const cmdLine = getProcessCommandLine(pid);
     if (!cmdLine) return null;
@@ -41,6 +41,21 @@ function getProcessCommandLine(pid: number): string | null {
   }
 }
 
+
+/**
+ * Lightweight liveness check using signal 0.
+ * EPERM means the process exists but we lack permission (still alive).
+ * ESRCH means the process does not exist.
+ */
+export function isPidRunning(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return (e as NodeJS.ErrnoException).code === 'EPERM';
+  }
+}
+
 /**
  * Check yolo mode by inspecting multiple PIDs (pid and hostPid).
  * Returns true if any process has the yolo flag, false if a process was found but has no flag,
@@ -64,3 +79,4 @@ export function detectYoloModeFromPids(
   }
   return anyFound ? false : null;
 }
+

@@ -37,3 +37,4 @@ const metricsRoutes: FastifyPluginAsync = async (app) => {
 };
 
 export default metricsRoutes;
+

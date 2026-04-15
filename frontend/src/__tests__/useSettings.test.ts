@@ -16,7 +16,7 @@ describe('useSettings', () => {
       hideReposWithNoActiveSessions: false,
       hideInactiveSessions: false,
       outputDisplayMode: 'focused',
-      restingThresholdMinutes: 20,
+      hideTodoPanel: false,
     });
   });
 
@@ -39,21 +39,8 @@ describe('useSettings', () => {
       hideReposWithNoActiveSessions: false,
       hideInactiveSessions: false,
       outputDisplayMode: 'focused',
-      restingThresholdMinutes: 20,
+      hideTodoPanel: false,
     });
-  });
-
-  it('defaults restingThresholdMinutes to 20 when key is missing from stored settings', () => {
-    localStorage.setItem(KEY, JSON.stringify({ hideEndedSessions: true }));
-    const { result } = renderHook(() => useSettings());
-    expect(result.current[0].restingThresholdMinutes).toBe(20);
-  });
-
-  it('persists restingThresholdMinutes when updated', () => {
-    const { result } = renderHook(() => useSettings());
-    act(() => result.current[1]('restingThresholdMinutes', 5));
-    expect(result.current[0].restingThresholdMinutes).toBe(5);
-    expect(JSON.parse(localStorage.getItem(KEY)!).restingThresholdMinutes).toBe(5);
   });
 
   it('merges partial stored settings with defaults (missing keys get default values)', () => {

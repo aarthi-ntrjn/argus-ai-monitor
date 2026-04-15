@@ -52,3 +52,4 @@ export async function fsRoutes(app: FastifyInstance) {
     }
   });
 }
+

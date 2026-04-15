@@ -20,7 +20,7 @@ const SESSIONS = [
 ];
 
 const OUTPUT = [
-  { id: 'out-1', sessionId: 'session-abc-123', timestamp: new Date().toISOString(), type: 'text', content: 'Hello from Claude', toolName: null, sequenceNumber: 1 },
+  { id: 'out-1', sessionId: 'session-abc-123', timestamp: new Date().toISOString(), type: 'message', role: 'assistant', content: 'Hello from Claude', toolName: null, sequenceNumber: 1 },
 ];
 
 async function mockApis(page: import('@playwright/test').Page) {

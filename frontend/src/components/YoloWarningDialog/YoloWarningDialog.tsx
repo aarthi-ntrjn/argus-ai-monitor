@@ -1,3 +1,5 @@
+import { Button } from '../Button';
+
 interface YoloWarningDialogProps {
   open: boolean;
   onConfirm: () => void;
@@ -27,18 +29,8 @@ export function YoloWarningDialog({ open, onConfirm, onCancel }: YoloWarningDial
           Only enable this if you understand the risks. All safety guardrails will be disabled.
         </p>
         <div className="flex gap-2 justify-end">
-          <button
-            onClick={onCancel}
-            className="px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            className="px-3 py-1.5 text-sm text-white bg-red-600 rounded hover:bg-red-700 transition-colors"
-          >
-            Enable Yolo Mode
-          </button>
+          <Button variant="outline" onClick={onCancel}>Cancel</Button>
+          <Button variant="danger" onClick={onConfirm}>Enable Yolo Mode</Button>
         </div>
       </div>
     </div>

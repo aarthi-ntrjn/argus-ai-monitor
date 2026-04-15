@@ -51,8 +51,9 @@ Each card is a live snapshot of a session:
 - **Elapsed time** representing how long since the session start
 - **Drill in link**: displays a larger view of the session.
 - **Current prompt**: the most recent question you asked, shown below the badges and updated live as the conversation progresses
-- **Last output preview**: up to 2 lines of the most recent tool result or message
+- **Last output preview**: up to 2 lines of the most recent AI reply
 - **Send prompt input and button**: (only in live sessions) Type a prompt and send to the CLI session from Argus.
+- **Focus button** (crosshair icon): brings the originating terminal window to the foreground. Shown for all active sessions; disabled when no PID is known.
 
 ### Session Output
 
@@ -98,6 +99,12 @@ Every session card and the session detail page have a **kill button** (■ icon)
 2. A confirmation dialog appears showing the session type and ID prefix.
 3. Click **Kill Session** to terminate the process, or **Cancel** to dismiss.
 4. If the kill fails (session already ended, not found, or a network error), the error message is shown in the dialog so you can retry or dismiss.
+
+### Focusing a Terminal Window
+
+Each active session card has a **Focus** button (crosshair icon) next to the kill button. Clicking it brings the originating CLI terminal window to the foreground so you can type directly without hunting for the window.
+
+The button is shown for all active sessions and is disabled (greyed out) when Argus has no PID on record for that session. It works on Windows (SetForegroundWindow), macOS (osascript), and Linux (wmctrl or xdotool).
 
 ### Starting a Session with Prompt Control
 
@@ -153,6 +160,8 @@ Click **Add Repository**, type or paste a root folder path (e.g. `C:\source` or 
 
 Argus scans that folder recursively for git repos and registers all new ones in one go. Already-registered repos are skipped automatically.
 
+Each repo card shows the current branch name and, when the remote is a GitHub repository, a **compare link icon** (external link) next to the branch badge. Clicking it opens the GitHub compare page for that branch against master in a new tab. On the default branch (master or main), the link opens the repository's compare page directly.
+
 ## To Tackle
 
 <img src="docs/images/argus-todo.png" alt="To Tackle Panel" height="300">
@@ -188,6 +197,7 @@ Click the **gear icon** (top-right) to open Settings.
 | Hide ended sessions                | On       | Hides sessions with status `completed` or `ended`                                  |
 | Hide repos with no active sessions | Off      | Hides repo cards that have no sessions with status `active`, `waiting`, or `error` |
 | Hide inactive sessions             | Off      | Hides sessions with no output in the last N minutes (see Resting threshold below)  |
+| Hide To Do panel                   | Off      | Removes the To Do panel from the dashboard entirely                                 |
 | Resting after (minutes)            | 20       | Minutes of inactivity before a session is shown as **resting**. Valid range: 1 to 60. Click **Reset** to restore the default. |
 
 These settings are saved in your browser (`localStorage`) and restored on every load.
@@ -213,6 +223,22 @@ To disable, toggle Yolo mode off in Settings. No confirmation is required to dis
 
 New to Argus? An interactive tour launches automatically on your first visit.Dismiss it any time and replay it later from Settings.
 
+## Logging
+
+All server logs include an ISO 8601 timestamp prefix. Log verbosity is controlled by the `LOG_LEVEL` environment variable, which applies to both the application logger and the HTTP request logger (Fastify/pino):
+
+| `LOG_LEVEL` | What you see |
+| ----------- | ------------ |
+| `debug` | All logs including low-level diagnostics (scan timing, WS messages) |
+| `info` | Normal operational logs: session lifecycle, PTY events, errors (default) |
+| `warn` | Warnings and errors only |
+| `error` | Errors only |
+| `silent` | No logs |
+
+```bash
+LOG_LEVEL=debug node dist/server.js
+```
+
 ## Storage
 
 Argus keeps its data in `~/.argus/`:
@@ -230,6 +256,27 @@ Default port: **7411**. Override in `~/.argus/config.json`:
   "sessionRetentionHours": 24
 }
 ```
+
+## Telemetry
+
+Argus collects anonymous usage data to help improve the product. No personal information is ever sent.
+
+**What is collected:**
+
+| Event | When |
+| ----- | ---- |
+| `app_started` | Argus server starts |
+| `session_started` | A new Claude Code or Copilot session is detected |
+| `session_ended` | A session completes or ends |
+| `session_prompt_sent` | A prompt is dispatched to a session via Argus |
+| `session_stopped` | A session is stopped via Argus |
+
+Each event includes: an anonymous installation ID (a random UUID stored in `~/.argus/telemetry-id`), the Argus version, and a timestamp. No file paths, prompts, session content, or user-identifying information are included.
+
+**How to disable:**
+
+- On first launch, a banner appears with a checkbox. Uncheck "Send telemetry" before clicking "Got it".
+- At any time, open Settings (gear icon) and uncheck "Send anonymous usage telemetry" under the Privacy section.
 
 ## For Contributors
 

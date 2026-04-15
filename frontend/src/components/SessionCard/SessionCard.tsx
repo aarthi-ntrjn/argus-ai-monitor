@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { Session } from '../../types';
 import { getSessionOutput } from '../../services/api';
 import { isInactive, detectPendingChoice, type PendingChoice } from '../../utils/sessionUtils';
-import { useSettings } from '../../hooks/useSettings';
+import { useArgusSettings } from '../../hooks/useArgusSettings';
 import SessionPromptBar from '../SessionPromptBar/SessionPromptBar';
 import SessionMetaRow from '../SessionMetaRow/SessionMetaRow';
 import { useKillSession } from '../../hooks/useKillSession';
@@ -17,8 +17,8 @@ interface Props {
 
 
 function SessionCard({ session, selected, onSelect }: Props) {
-  const [settings] = useSettings();
-  const thresholdMs = settings.restingThresholdMinutes * 60_000;
+  const { settings: argusSettings } = useArgusSettings();
+  const thresholdMs = (argusSettings?.restingThresholdMinutes ?? 20) * 60_000;
 
   const { data: lastOutput } = useQuery({
     queryKey: ['session-output-last', session.id],
@@ -37,9 +37,7 @@ function SessionCard({ session, selected, onSelect }: Props) {
 
   const items = lastOutput?.items ?? [];
   const previewItem =
-    [...items].reverse().find((i: import('../../types').SessionOutput) => i.type === 'tool_result') ??
-    [...items].reverse().find((i: import('../../types').SessionOutput) => i.type === 'message') ??
-    items[items.length - 1] ??
+    [...items].reverse().find((i: import('../../types').SessionOutput) => i.type === 'message' && i.role === 'assistant') ??
     null;
   const previewContent = previewItem?.content?.trim() ?? null;
   const isTerminated = session.status === 'ended' || session.status === 'completed';
@@ -51,7 +49,7 @@ function SessionCard({ session, selected, onSelect }: Props) {
       tabIndex={0}
       aria-pressed={selected}
       aria-label={`Session ${session.id.slice(0, 8)} — ${session.status}. Press Enter to ${selected ? 'close' : 'view'} output.`}
-      className={`border rounded-md p-4 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400 ${selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'} ${isInactive(session, thresholdMs) && !selected ? 'opacity-75' : ''}`}
+      className={`interactive-card p-4 ${selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-400 hover:bg-blue-50'} ${isInactive(session, thresholdMs) && !selected ? 'opacity-75' : ''}`}
       onClick={() => onSelect?.(session.id)}
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect?.(session.id); } }}
     >
@@ -60,17 +58,19 @@ function SessionCard({ session, selected, onSelect }: Props) {
 
       {/* Summary / topic */}
       {pendingChoice !== null ? (
-        <p role="alert" className="text-sm mt-2 line-clamp-3 whitespace-normal break-words">
+        <div role="alert" className="text-sm mt-2">
           <span className="font-bold text-red-600">ATTENTION NEEDED</span>
           {pendingChoice.question ? ` ${pendingChoice.question}` : ''}
           {pendingChoice.choices.length > 0 && (
-            <span className="text-gray-600">
-              {' '}{pendingChoice.choices.map((c, i) => `${i + 1}. ${c}`).join(' / ')}
-            </span>
+            <div className="text-gray-600 mt-1">
+              {pendingChoice.choices.map((c, i) => (
+                <div key={i}>{i + 1}. {c}</div>
+              ))}
+            </div>
           )}
-        </p>
+        </div>
       ) : (
-        <p className={`text-sm mt-2 truncate ${session.summary ? 'text-gray-600' : 'text-gray-400 italic'}`}>
+        <p className={`text-sm mt-2 truncate ${session.summary ? 'text-gray-600' : 'text-gray-500 italic'}`}>
           {session.summary || 'Nothing sent yet'}
         </p>
       )}

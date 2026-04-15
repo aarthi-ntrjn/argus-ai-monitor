@@ -1,4 +1,16 @@
 export type SessionType = 'copilot-cli' | 'claude-code';
+
+export const SessionTypes = {
+  CLAUDE_CODE: 'claude-code' as const,
+  COPILOT_CLI: 'copilot-cli' as const,
+} as const;
+
+export type ToolCommand = 'claude' | 'copilot';
+
+export const ToolCommands = {
+  CLAUDE: 'claude' as const,
+  COPILOT: 'copilot' as const,
+} as const;
 export type SessionLaunchMode = 'pty' | 'detected';
 export type SessionStatus = 'active' | 'idle' | 'waiting' | 'error' | 'completed' | 'ended';
 export type PidSource = 'session_registry' | 'pty_registry' | 'lockfile';
@@ -17,6 +29,7 @@ export interface Repository {
   addedAt: string;
   lastScannedAt: string | null;
   branch: string | null;
+  remoteUrl?: string | null;
 }
 
 export interface Session {
@@ -46,6 +59,7 @@ export interface SessionOutput {
   toolCallId: string | null;
   role: OutputRole | null;
   sequenceNumber: number;
+  isMeta?: boolean;
 }
 
 export interface ArgusConfig {
@@ -55,6 +69,9 @@ export interface ArgusConfig {
   outputRetentionMbPerSession: number;
   autoRegisterRepos: boolean;
   yoloMode: boolean;
+  restingThresholdMinutes: number;
+  telemetryEnabled: boolean;
+  telemetryPromptSeen: boolean;
 }
 
 export interface DashboardSettings {
@@ -62,7 +79,7 @@ export interface DashboardSettings {
   hideReposWithNoActiveSessions: boolean;
   hideInactiveSessions: boolean;
   outputDisplayMode: OutputDisplayMode;
-  restingThresholdMinutes: number;
+  hideTodoPanel: boolean;
 }
 
 export const DEFAULT_SETTINGS: DashboardSettings = {
@@ -70,7 +87,7 @@ export const DEFAULT_SETTINGS: DashboardSettings = {
   hideReposWithNoActiveSessions: false,
   hideInactiveSessions: false,
   outputDisplayMode: 'focused',
-  restingThresholdMinutes: 20,
+  hideTodoPanel: false,
 };
 
 export interface ControlAction {
@@ -122,11 +139,4 @@ export interface TourStep {
   placement: 'top' | 'bottom' | 'left' | 'right' | 'auto' | 'center';
   disableBeacon?: boolean;
   targetWaitTimeout?: number;
-}
-
-export interface ContextualHint {
-  id: string;
-  label: string;
-  ariaLabel: string;
-  placement: 'top' | 'bottom' | 'left' | 'right';
 }

@@ -1,10 +1,13 @@
 import type { FastifyPluginAsync } from 'fastify';
+import * as logger from '../../utils/logger.js';
 import { spawnSync } from 'child_process';
 import { platform } from 'os';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import { loadConfig } from '../../config/config-loader.js';
+import { ToolCommands } from '../../models/index.js';
+import type { ToolCommand } from '../../models/index.js';
 
 // Resolve argus repo root from this file's location.
 // Source:   backend/src/api/routes/  -> 4 levels up = repo root
@@ -13,21 +16,20 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ARGUS_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 
-const YOLO_FLAGS: Record<'claude' | 'copilot', string> = {
+const YOLO_FLAGS: Record<ToolCommand, string> = {
   claude: '--dangerously-skip-permissions',
   copilot: '--allow-all',
 };
 
 // Base command (no --cwd): safe to copy and run manually from any directory.
-function buildLaunchCmdBase(tool: 'claude' | 'copilot', yoloMode = false): string {
-  const toolArg = tool === 'copilot' ? 'copilot' : 'claude';
-  const base = `npm --prefix "${ARGUS_ROOT}" run launch --workspace=backend -- ${toolArg}`;
+function buildLaunchCmdBase(tool: ToolCommand, yoloMode = false): string {
+  const base = `npm --prefix "${ARGUS_ROOT}" run launch --workspace=backend -- ${tool}`;
   return yoloMode ? `${base} ${YOLO_FLAGS[tool]}` : base;
 }
 
 // Full command with --cwd baked in: used when the backend spawns the terminal.
 // npm --workspace changes cwd to the workspace root, so we must pass --cwd explicitly.
-function buildLaunchCmdWithCwd(tool: 'claude' | 'copilot', repoPath: string, yoloMode = false): string {
+function buildLaunchCmdWithCwd(tool: ToolCommand, repoPath: string, yoloMode = false): string {
   return `${buildLaunchCmdBase(tool, yoloMode)} --cwd "${repoPath}"`;
 }
 
@@ -38,11 +40,11 @@ function isInstalled(cmd: string): boolean {
 }
 
 function isCopilotInstalled(): boolean {
-  return isInstalled('copilot');
+  return isInstalled(ToolCommands.COPILOT);
 }
 
 function openTerminalWithCommand(cmd: string): void {
-  console.log(`[LaunchTerminal] opening terminal with command: ${cmd}`);
+  logger.info(`[LaunchTerminal] opening terminal with command: ${cmd}`);
   if (platform() === 'win32') {
     // Prefer Windows Terminal; fall back to a plain PowerShell window.
     const wtAvailable = spawnSync('where', ['wt.exe'], { encoding: 'utf-8', timeout: 2000 }).status === 0;
@@ -67,18 +69,18 @@ function openTerminalWithCommand(cmd: string): void {
 
 const toolsRoutes: FastifyPluginAsync = async (app) => {
   app.get('/api/v1/tools', async (_req, reply) => {
-    const hasClaude = isInstalled('claude');
+    const hasClaude = isInstalled(ToolCommands.CLAUDE);
     const hasCopilot = isCopilotInstalled();
     const { yoloMode } = loadConfig();
     return reply.send({
       claude: hasClaude,
       copilot: hasCopilot,
-      claudeCmd: hasClaude ? buildLaunchCmdBase('claude', yoloMode) : undefined,
-      copilotCmd: hasCopilot ? buildLaunchCmdBase('copilot', yoloMode) : undefined,
+      claudeCmd: hasClaude ? buildLaunchCmdBase(ToolCommands.CLAUDE, yoloMode) : undefined,
+      copilotCmd: hasCopilot ? buildLaunchCmdBase(ToolCommands.COPILOT, yoloMode) : undefined,
     });
   });
 
-  app.post<{ Body: { tool: 'claude' | 'copilot'; repoPath?: string } }>(
+  app.post<{ Body: { tool: ToolCommand; repoPath?: string } }>(
     '/api/v1/sessions/launch-terminal',
     {
       schema: {
@@ -86,7 +88,7 @@ const toolsRoutes: FastifyPluginAsync = async (app) => {
           type: 'object',
           required: ['tool'],
           properties: {
-            tool: { type: 'string', enum: ['claude', 'copilot'] },
+            tool: { type: 'string', enum: [ToolCommands.CLAUDE, ToolCommands.COPILOT] },
             repoPath: { type: 'string' },
           },
         },
@@ -105,3 +107,4 @@ const toolsRoutes: FastifyPluginAsync = async (app) => {
 };
 
 export default toolsRoutes;
+

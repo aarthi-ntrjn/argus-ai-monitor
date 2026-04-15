@@ -12,3 +12,4 @@ export function isPathWithinBoundary(inputPath: string, allowedBoundaries: strin
     boundary => resolved === boundary || resolved.startsWith(boundary + sep),
   );
 }
+

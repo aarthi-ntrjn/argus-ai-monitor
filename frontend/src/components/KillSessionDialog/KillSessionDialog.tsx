@@ -1,4 +1,5 @@
 import { createPortal } from 'react-dom';
+import { Button } from '../Button';
 
 interface KillSessionDialogProps {
   open: boolean;
@@ -29,13 +30,13 @@ export function KillSessionDialog({
       aria-modal="true"
       aria-labelledby="kill-dialog-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-      onClick={(e) => { if (e.target === e.currentTarget && !isPending) onCancel(); }}
+      onClick={(e) => { e.stopPropagation(); if (e.target === e.currentTarget && !isPending) onCancel(); }}
     >
       <div className="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 p-5">
         {isPending ? (
           <>
             <div className="flex flex-col items-center py-4 gap-3">
-              <svg className="animate-spin h-8 w-8 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <svg aria-hidden="true" className="animate-spin h-8 w-8 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
@@ -60,18 +61,8 @@ export function KillSessionDialog({
           </p>
         )}
         <div className="flex gap-2 justify-end">
-          <button
-            onClick={onCancel}
-            className="px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            className="px-3 py-1.5 text-sm text-white bg-red-600 rounded hover:bg-red-700 transition-colors"
-          >
-            Kill Session
-          </button>
+          <Button variant="outline" onClick={onCancel}>Cancel</Button>
+          <Button variant="danger" onClick={onConfirm}>Kill Session</Button>
         </div>
           </>
         )}

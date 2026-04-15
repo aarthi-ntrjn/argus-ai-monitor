@@ -28,7 +28,31 @@ Record:
 - `CURRENT_BRANCH` = current branch name
 - `MAIN_BRANCH` = whichever of `main` / `master` exists; default to `main`
 
-If `CURRENT_BRANCH` equals `MAIN_BRANCH`, stop and tell the user: "You are already on the main branch. Nothing to pull into."
+If `CURRENT_BRANCH` equals `MAIN_BRANCH`, sync the main branch with its remote instead:
+
+```
+git fetch origin
+git --no-pager log HEAD..origin/<MAIN_BRANCH> --oneline
+```
+
+If there are no new commits, tell the user: "Already up to date — no new commits on `<MAIN_BRANCH>`." and stop.
+
+Otherwise run:
+```
+git merge --ff-only origin/<MAIN_BRANCH>
+git push origin <MAIN_BRANCH>
+```
+
+Then report:
+```
+## Pull complete
+
+- Branch: <MAIN_BRANCH> (synced)
+- Commits pulled: N
+- Pushed: ✅
+```
+
+And stop.
 
 ---
 

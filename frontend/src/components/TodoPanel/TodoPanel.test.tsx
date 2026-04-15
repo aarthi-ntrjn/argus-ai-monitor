@@ -39,6 +39,7 @@ const baseTodos = [
 ];
 
 beforeEach(() => {
+  localStorage.clear();
   mockUseCreateTodo.mockReturnValue(makeMutation());
   mockUseUpdateTodoText.mockReturnValue(makeMutation() as unknown as ReturnType<typeof useUpdateTodoText>);
   mockUseToggleTodo.mockReturnValue(makeMutation() as unknown as ReturnType<typeof useToggleTodo>);
@@ -143,6 +144,45 @@ describe('TodoPanel', () => {
       await userEvent.click(toggle);
       await userEvent.click(toggle);
       expect(screen.getByRole('textbox', { name: /edit task: Done task/i })).toBeInTheDocument();
+    });
+  });
+
+  describe('toggle state persistence', () => {
+    beforeEach(() => {
+      mockUseTodos.mockReturnValue({ data: baseTodos, isLoading: false, isError: false } as unknown as ReturnType<typeof useTodos>);
+    });
+
+    it('persists showDone=false to localStorage when hide completed is toggled', async () => {
+      renderPanel();
+      await userEvent.click(screen.getByTitle(/hide completed|show completed/i));
+      expect(localStorage.getItem('argus.todo.showDone')).toBe('false');
+    });
+
+    it('restores showDone=false from localStorage on remount', () => {
+      localStorage.setItem('argus.todo.showDone', 'false');
+      renderPanel();
+      expect(screen.queryByRole('textbox', { name: /edit task: Done task/i })).not.toBeInTheDocument();
+    });
+
+    it('persists showTimestamps=false to localStorage when timestamps toggle is clicked', async () => {
+      renderPanel();
+      await userEvent.click(screen.getByTitle(/hide timestamps|show timestamps/i));
+      expect(localStorage.getItem('argus.todo.showTimestamps')).toBe('false');
+    });
+
+    it('persists wrapText=true to localStorage when wrap text toggle is clicked', async () => {
+      mockUseTodos.mockReturnValue({ data: [baseTodos[0]], isLoading: false, isError: false } as unknown as ReturnType<typeof useTodos>);
+      renderPanel();
+      await userEvent.click(screen.getByTitle(/wrap text|single line/i));
+      expect(localStorage.getItem('argus.todo.wrapText')).toBe('true');
+    });
+
+    it('restores wrapText=true from localStorage on remount', () => {
+      localStorage.setItem('argus.todo.wrapText', 'true');
+      mockUseTodos.mockReturnValue({ data: [baseTodos[0]], isLoading: false, isError: false } as unknown as ReturnType<typeof useTodos>);
+      renderPanel();
+      const input = screen.getByRole('textbox', { name: /edit task: First task/i });
+      expect(input).not.toHaveStyle({ whiteSpace: 'nowrap' });
     });
   });
 

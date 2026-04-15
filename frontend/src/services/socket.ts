@@ -70,28 +70,66 @@ export function onEvent(type: string, handler: EventHandler): () => void {
   return () => handlers.get(type)?.delete(handler);
 }
 
+type OutputQueryData = { items: SessionOutput[]; nextBefore: string | null; total: number };
+
+function updateSessionInCache(qc: QueryClient, session: Session): void {
+  qc.setQueryData<Session[]>(['sessions'], (old) => {
+    if (!old) return old;
+    return old.map((s) => s.id === session.id ? { ...s, ...session } : s);
+  });
+  qc.setQueryData<Session>(['session', session.id], (old) => {
+    if (!old) return old;
+    return { ...old, ...session };
+  });
+}
+
+function applyOutputEvent(qc: QueryClient, sessionId: string, output: SessionOutput): void {
+  qc.setQueryData<OutputQueryData>(['session-output', sessionId], (old) => {
+    if (!old) return old;
+    return { ...old, items: [...old.items, output], total: old.total + 1 };
+  });
+  qc.setQueryData<OutputQueryData>(['session-output-last', sessionId], (old) => {
+    if (!old) return old;
+    return { ...old, items: [...old.items, output].slice(-10), total: old.total + 1 };
+  });
+}
+
+function applyOutputBatchEvent(qc: QueryClient, sessionId: string, outputs: SessionOutput[]): void {
+  qc.setQueryData<OutputQueryData>(['session-output', sessionId], (old) => {
+    if (!old) {
+      // Cache not yet seeded (session.output.batch arrived before SessionCard mounted).
+      // Seed it so the conversation is visible as soon as the pane opens.
+      const items = outputs.slice(-100);
+      return { items, nextBefore: items.length > 0 ? String(items[0].sequenceNumber) : null, total: outputs.length };
+    }
+    return { ...old, items: [...old.items, ...outputs], total: old.total + outputs.length };
+  });
+  qc.setQueryData<OutputQueryData>(['session-output-last', sessionId], (old) => {
+    if (!old) {
+      // Cache not yet seeded; seed from the batch so the session card preview shows immediately.
+      return { items: outputs.slice(-10), nextBefore: null, total: outputs.length };
+    }
+    return { ...old, items: [...old.items, ...outputs].slice(-10), total: old.total + outputs.length };
+  });
+}
+
 export function initSocketHandlers(qc: QueryClient): void {
   onEvent('session.created', (data) => {
     const session = data as unknown as Session;
-    qc.setQueryData<Session[]>(['sessions'], (old) => old ? [...old, session] : [session]);
+    qc.setQueryData<Session[]>(['sessions'], (old) => old ? [session, ...old] : [session]);
   });
   onEvent('session.updated', (data) => {
-    const session = data as unknown as Session;
-    qc.setQueryData<Session[]>(['sessions'], (old) => {
-      if (!old) return old;
-      return old.map((s) => s.id === session.id ? { ...s, ...session } : s);
-    });
+    updateSessionInCache(qc, data as unknown as Session);
   });
   onEvent('session.ended', (data) => {
-    const session = data as unknown as Session;
-    qc.setQueryData<Session[]>(['sessions'], (old) => {
-      if (!old) return old;
-      return old.map((s) => s.id === session.id ? { ...s, ...session } : s);
-    });
+    updateSessionInCache(qc, data as unknown as Session);
   });
   onEvent('repository.added', () => {
     qc.invalidateQueries({ queryKey: ['repositories'] });
     qc.invalidateQueries({ queryKey: ['sessions'] });
+  });
+  onEvent('repository.updated', () => {
+    qc.invalidateQueries({ queryKey: ['repositories'] });
   });
   onEvent('repository.removed', () => {
     qc.invalidateQueries({ queryKey: ['repositories'] });
@@ -99,41 +137,11 @@ export function initSocketHandlers(qc: QueryClient): void {
   });
   onEvent('session.output', (data) => {
     const { sessionId, output } = data as { sessionId: string; output: SessionOutput };
-    // Update full output pane cache
-    qc.setQueryData<{ items: SessionOutput[]; nextBefore: string | null; total: number }>(
-      ['session-output', sessionId],
-      (old) => {
-        if (!old) return old;
-        return { ...old, items: [...old.items, output], total: old.total + 1 };
-      }
-    );
-    // Update SessionCard preview cache (last 10) — keeps per-card polling unnecessary
-    qc.setQueryData<{ items: SessionOutput[]; nextBefore: string | null; total: number }>(
-      ['session-output-last', sessionId],
-      (old) => {
-        if (!old) return old;
-        const items = [...old.items, output].slice(-10);
-        return { ...old, items, total: old.total + 1 };
-      }
-    );
+    applyOutputEvent(qc, sessionId, output);
   });
   onEvent('session.output.batch', (data) => {
     const { sessionId, outputs } = data as { sessionId: string; outputs: SessionOutput[] };
-    qc.setQueryData<{ items: SessionOutput[]; nextBefore: string | null; total: number }>(
-      ['session-output', sessionId],
-      (old) => {
-        if (!old) return old;
-        return { ...old, items: [...old.items, ...outputs], total: old.total + outputs.length };
-      }
-    );
-    qc.setQueryData<{ items: SessionOutput[]; nextBefore: string | null; total: number }>(
-      ['session-output-last', sessionId],
-      (old) => {
-        if (!old) return old;
-        const items = [...old.items, ...outputs].slice(-10);
-        return { ...old, items, total: old.total + outputs.length };
-      }
-    );
+    applyOutputBatchEvent(qc, sessionId, outputs);
   });
   onEvent('session.pending_choice', (data) => {
     const { sessionId, question, choices } = data as { sessionId: string; question: string; choices: string[] };

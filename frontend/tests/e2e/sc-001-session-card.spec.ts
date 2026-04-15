@@ -259,11 +259,11 @@ test.describe('SC-001: Session Card — Summary & Output Preview', () => {
     await expect(page.getByText('Writing unit tests for auth module')).not.toBeVisible();
   });
 
-  test('output preview prefers tool_result over message content', async ({ page }) => {
+  test('output preview shows most recent assistant message, not tool_result', async ({ page }) => {
     await mockApis(page, [SESSION_CLAUDE], { sessionId: SESSION_CLAUDE.id, items: OUTPUT_WITH_TOOL_RESULT });
     await page.goto('/');
-    await expect(page.getByText('Tool result content shown')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('Not the preview — message comes before tool_result')).not.toBeVisible();
+    await expect(page.getByText('Not the preview — message comes before tool_result')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Tool result content shown')).not.toBeVisible();
   });
 
   test('output preview falls back to message content when no tool_result exists', async ({ page }) => {

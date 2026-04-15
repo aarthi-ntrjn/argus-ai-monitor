@@ -1,3 +1,16 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  /* Interactive card: shared chrome for clickable card elements. */
+  .interactive-card {
+    @apply border rounded-md transition-colors cursor-pointer
+           focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400;
+  }
+
+  /* Icon button: shared chrome for small icon-only controls. */
+  .icon-btn {
+    @apply p-1 rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400;
+  }
+}

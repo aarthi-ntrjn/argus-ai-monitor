@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "powershell -ExecutionPolicy Bypass -File ../.specify/scripts/powershell/kill-dev.ps1",
+    "predev": "powershell -ExecutionPolicy Bypass -File ../scripts/kill-dev.ps1",
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "test": "vitest run",
@@ -20,6 +20,7 @@
     "@homebridge/node-pty-prebuilt-multiarch": "^0.13.1",
     "better-sqlite3": "12.8.0",
     "chokidar": "3.6.0",
+    "dotenv": "^17.4.2",
     "fastify": "5.8.4",
     "js-yaml": "4.1.1",
     "node-pty": "^1.1.0",

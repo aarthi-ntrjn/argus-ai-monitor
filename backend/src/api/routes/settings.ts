@@ -4,7 +4,8 @@ import type { ArgusConfig } from '../../models/index.js';
 
 const ALLOWED_KEYS = new Set<keyof ArgusConfig>([
   'port', 'watchDirectories', 'sessionRetentionHours',
-  'outputRetentionMbPerSession', 'autoRegisterRepos', 'yoloMode',
+  'outputRetentionMbPerSession', 'autoRegisterRepos', 'yoloMode', 'restingThresholdMinutes',
+  'telemetryEnabled', 'telemetryPromptSeen',
 ]);
 
 const settingsRoutes: FastifyPluginAsync = async (app) => {
@@ -29,3 +30,4 @@ const settingsRoutes: FastifyPluginAsync = async (app) => {
 };
 
 export default settingsRoutes;
+

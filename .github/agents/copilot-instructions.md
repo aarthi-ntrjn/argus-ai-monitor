@@ -1,6 +1,6 @@
 # argus2 Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-04-12
+Auto-generated from all feature plans. Last updated: 2026-04-13
 
 ## Active Technologies
 - TypeScript 5.9, Node.js 22 + node-pty (new), Fastify 5, better-sqlite3, ws, @fastify/websocket (020-fix-send-prompts)
@@ -16,6 +16,8 @@ Auto-generated from all feature plans. Last updated: 2026-04-12
 - TypeScript 5.x, React 18 + React, Tailwind CSS, Vitest, Playwright (026-configurable-resting)
 - `localStorage` via the existing `useSettings` hook (`argus:settings` key) (026-configurable-resting)
 - N/A (reads from existing session output query cache; no new persistence) (028-ai-choice-alert)
+- TypeScript (Node.js 20 backend, React 18 frontend) + Fastify, better-sqlite3, React Query, Tailwind CSS, Vite (032-repo-compare-session-focus)
+- SQLite via better-sqlite3; runtime migration pattern (ALTER TABLE IF NOT EXISTS column) (032-repo-compare-session-focus)
 
 - TypeScript 5.9 (frontend + backend) + Fastify 5.x (backend), React 18 + TailwindCSS 3 + React Query (frontend), better-sqlite3 (storage), pino (logging), vitest + Playwright (testing) (014-engineer-todo-list)
 
@@ -36,10 +38,9 @@ npm test; npm run lint
 TypeScript 5.9 (frontend + backend): Follow standard conventions
 
 ## Recent Changes
+- 032-repo-compare-session-focus: Added TypeScript (Node.js 20 backend, React 18 frontend) + Fastify, better-sqlite3, React Query, Tailwind CSS, Vite
 - 028-ai-choice-alert: Added TypeScript 5.x, React 18 + React, Tailwind CSS, Vitest, Playwright
 - 027-kill-session: Added TypeScript 5.x (React 18 frontend, Node.js backend) + React, TanStack React Query, Tailwind CSS, Lucide icons, React Router
-- 026-configurable-resting: Added TypeScript 5.x, React 18 + React, Tailwind CSS, Vitest, Playwright
-- 025-yolo-mode: Added TypeScript 5.x (backend Node.js 20, frontend React 18 + Vite) + Fastify (backend API), React Query (frontend data fetching), Tailwind CSS (frontend styling)
 
 
 <!-- MANUAL ADDITIONS START -->
