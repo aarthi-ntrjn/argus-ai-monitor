@@ -257,6 +257,27 @@ Default port: **7411**. Override in `~/.argus/config.json`:
 }
 ```
 
+## Telemetry
+
+Argus collects anonymous usage data to help improve the product. No personal information is ever sent.
+
+**What is collected:**
+
+| Event | When |
+| ----- | ---- |
+| `app_started` | Argus server starts |
+| `session_started` | A new Claude Code or Copilot session is detected |
+| `session_ended` | A session completes or ends |
+| `session_prompt_sent` | A prompt is dispatched to a session via Argus |
+| `session_stopped` | A session is stopped via Argus |
+
+Each event includes: an anonymous installation ID (a random UUID stored in `~/.argus/telemetry-id`), the Argus version, and a timestamp. No file paths, prompts, session content, or user-identifying information are included.
+
+**How to disable:**
+
+- On first launch, a banner appears with a checkbox. Uncheck "Send telemetry" before clicking "Got it".
+- At any time, open Settings (gear icon) and uncheck "Send anonymous usage telemetry" under the Privacy section.
+
 ## For Contributors
 
 See [docs/README-CONTRIBUTORS.md](docs/README-CONTRIBUTORS.md) for architecture, dev setup, API reference, security model, CI pipeline, and development guides.

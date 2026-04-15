@@ -46,12 +46,21 @@ export class SessionMonitor extends EventEmitter {
     this.scanner = new RepositoryScanner(config.watchDirectories);
     this.cliDetector = new CopilotCliDetector();
     this.claudeDetector = new ClaudeCodeDetector();
+    this.claudeDetector.setSessionCreatedCallback((session) => this.emit('session.created', session));
     this.sessionRegistry = new ClaudeSessionRegistry();
   }
 
   async start(): Promise<void> {
     this.claudeDetector.injectHooks();
     await this.reconcileStaleSessions();
+
+    // Emit session.created for sessions already active in the DB from a previous run.
+    // reconcileStaleSessions() has already ended any dead ones, so what remains is live.
+    for (const session of getSessions({ status: 'active' })) {
+      this.knownSessionIds.add(session.id);
+      this.emit('session.created', session);
+    }
+
     await this.claudeDetector.scanExistingSessions();
     await this.runScan();
     this.scanInterval = setInterval(() => this.runScan(), 5000);
@@ -276,7 +285,7 @@ export class SessionMonitor extends EventEmitter {
       yoloMode: entry.pid ? detectYoloModeFromPids(entry.pid, null, 'claude-code') : null,
     };
     upsertSession(session);
-    broadcast({ type: 'session.created', timestamp: now, data: session as unknown as Record<string, unknown> });
+    this.emit('session.created', session);
   }
 
   private endDisappearedSessions(currentPids: Set<number>, now: string): void {

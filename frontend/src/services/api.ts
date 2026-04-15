@@ -131,3 +131,11 @@ export async function getArgusSettings(): Promise<ArgusConfig> {
 export async function patchArgusSettings(patch: Partial<ArgusConfig>): Promise<ArgusConfig> {
   return apiFetch<ArgusConfig>('/settings', { method: 'PATCH', body: JSON.stringify(patch) });
 }
+
+export function postTelemetryEvent(type: string): void {
+  void fetch(`${BASE}/telemetry/event`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type }),
+  }).catch(() => { /* fire-and-forget */ });
+}

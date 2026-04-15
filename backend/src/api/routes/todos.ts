@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { randomUUID } from 'crypto';
 import { getTodos, insertTodo, updateTodo, deleteTodo } from '../../db/database.js';
+import { telemetryService } from '../../services/telemetry-service.js';
 
 const DEFAULT_USER = 'default';
 
@@ -30,6 +31,7 @@ const todosRoutes: FastifyPluginAsync = async (app) => {
     const todo = { id: randomUUID(), userId: DEFAULT_USER, text: text.trim(), done: false, createdAt: now, updatedAt: now };
     insertTodo(todo);
     req.log.info({ action: 'todo_created', todoId: todo.id, userId: DEFAULT_USER }, 'Todo item created');
+    telemetryService.sendEvent('todo_added');
     return reply.status(201).send(todo);
   });
 

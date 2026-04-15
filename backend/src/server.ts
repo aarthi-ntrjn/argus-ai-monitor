@@ -6,6 +6,7 @@ import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+
 import { randomUUID } from 'crypto';
 import { loadConfig } from './config/config-loader.js';
 import * as logger from './utils/logger.js';
@@ -20,6 +21,8 @@ import todosRoutes from './api/routes/todos.js';
 import launcherRoutes from './api/routes/launcher.js';
 import toolsRoutes from './api/routes/tools.js';
 import settingsRoutes from './api/routes/settings.js';
+import telemetryRoutes from './api/routes/telemetry.js';
+import { telemetryService } from './services/telemetry-service.js';
 import { SessionMonitor } from './services/session-monitor.js';
 import { startPruningJob } from './services/pruning-job.js';
 import type { Session, Repository } from './models/index.js';
@@ -93,6 +96,7 @@ export async function buildServer() {
   await app.register(launcherRoutes);
   await app.register(toolsRoutes);
   await app.register(settingsRoutes);
+  await app.register(telemetryRoutes);
 
   app.register(async (fastify) => {
     fastify.get('/ws', { websocket: true }, (socket) => {
@@ -114,12 +118,14 @@ export async function startServer() {
 
   monitor.on('session.created', (session: Session) => {
     broadcast({ type: 'session.created', timestamp: new Date().toISOString(), data: session as unknown as Record<string, unknown> });
+    telemetryService.sendEvent('session_started', { sessionType: session.type, sessionId: session.id, launchMode: session.launchMode === 'pty' ? 'connected' : 'readonly', yoloMode: session.yoloMode });
   });
   monitor.on('session.updated', (session: Session) => {
     broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: session as unknown as Record<string, unknown> });
   });
   monitor.on('session.ended', (session: Session) => {
     broadcast({ type: 'session.ended', timestamp: new Date().toISOString(), data: session as unknown as Record<string, unknown> });
+    telemetryService.sendEvent('session_ended', { sessionType: session.type, sessionId: session.id, launchMode: session.launchMode === 'pty' ? 'connected' : 'readonly', yoloMode: session.yoloMode });
   });
   monitor.on('repository.added', (repo: Repository) => {
     broadcast({ type: 'repository.added', timestamp: new Date().toISOString(), data: repo as unknown as Record<string, unknown> });
@@ -128,11 +134,12 @@ export async function startServer() {
   await monitor.start();
   startPruningJob();
 
-  process.on('SIGTERM', async () => { monitor?.stop(); await app.close(); process.exit(0); });
-  process.on('SIGINT', async () => { monitor?.stop(); await app.close(); process.exit(0); });
+  process.on('SIGTERM', async () => { telemetryService.sendEvent('app_ended'); monitor?.stop(); await app.close(); process.exit(0); });
+  process.on('SIGINT', async () => { telemetryService.sendEvent('app_ended'); monitor?.stop(); await app.close(); process.exit(0); });
 
   await app.listen({ port: config.port, host: '127.0.0.1' });
   app.log.info({ port: config.port }, 'Argus server started');
+  telemetryService.sendEvent('app_started');
   return app;
 }
 
