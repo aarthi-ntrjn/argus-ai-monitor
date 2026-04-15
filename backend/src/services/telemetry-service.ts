@@ -65,7 +65,7 @@ export class TelemetryService {
       api_key: POSTHOG_API_KEY,
       distinct_id: installationId,
       event: type,
-      properties: { appVersion, $geoip_disable: true, ...extra },
+      properties: { appVersion, $geoip_disable: true, $ip: '', ...extra },
       timestamp: new Date().toISOString(),
     };
 
