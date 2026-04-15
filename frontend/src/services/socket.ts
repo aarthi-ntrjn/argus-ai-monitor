@@ -77,6 +77,10 @@ function updateSessionInCache(qc: QueryClient, session: Session): void {
     if (!old) return old;
     return old.map((s) => s.id === session.id ? { ...s, ...session } : s);
   });
+  qc.setQueryData<Session>(['session', session.id], (old) => {
+    if (!old) return old;
+    return { ...old, ...session };
+  });
 }
 
 function applyOutputEvent(qc: QueryClient, sessionId: string, output: SessionOutput): void {
