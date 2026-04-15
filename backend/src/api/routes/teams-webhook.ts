@@ -49,6 +49,7 @@ const teamsWebhookRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const activity = req.body;
+    req.log.info({ activityType: activity.type, source: 'teams.webhook' }, 'teams.webhook.activity.received');
     if (activity.type !== 'message' || !activity.text?.trim()) {
       return reply.status(200).send();
     }
