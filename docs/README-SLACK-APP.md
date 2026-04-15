@@ -134,6 +134,40 @@ The bot should reply with a list of supported commands.
 
 ---
 
+## How Socket Mode Works (No Public Endpoint Required)
+
+Normally, Slack delivers events by making HTTP POST requests to a URL you provide. That requires your server to be publicly reachable on the internet.
+
+**Socket Mode flips this around.** Instead of Slack calling you, Argus opens an outbound WebSocket connection to Slack's servers. The flow is:
+
+```
+Argus (your machine)  →  opens WebSocket  →  Slack's servers
+                      ←  events pushed back over that connection  ←
+```
+
+Since Argus initiates the connection (outbound on port 443), it works anywhere outbound HTTPS traffic is allowed: your laptop, a home server, a company network behind a firewall, or a Docker container with no exposed ports. No ngrok, no domain name, no port forwarding required.
+
+### What the two tokens do
+
+| Token | Prefix | Purpose |
+| ----- | ------ | ------- |
+| `SLACK_BOT_TOKEN` | `xoxb-` | Authenticates API calls: posting messages, replying in threads, looking up channel info |
+| `SLACK_APP_TOKEN` | `xapp-` | Authenticates the Socket Mode WebSocket connection. Keeps the tunnel open so Slack can push events to Argus |
+
+The Bot token does the work. The App token is purely the key that keeps the outbound tunnel alive.
+
+### What happens at startup
+
+When Argus starts with both tokens set:
+
+1. `SlackNotifier` creates an API client using your Bot token.
+2. `SlackListener` opens a WebSocket to Slack using your App token.
+3. Slack sends a hello handshake. From that point on, any `app_mention` or `message.im` event is pushed down that connection to Argus in real time.
+
+The only network requirement is outbound HTTPS/WSS access to `*.slack.com` on port 443.
+
+---
+
 ## Filtering Event Types
 
 By default, all session events are forwarded to Slack. To limit which events post messages, set `enabledEventTypes` in your config or via the API:
