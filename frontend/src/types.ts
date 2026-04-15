@@ -69,6 +69,7 @@ export interface ArgusConfig {
   outputRetentionMbPerSession: number;
   autoRegisterRepos: boolean;
   yoloMode: boolean;
+  restingThresholdMinutes: number;
   telemetryEnabled: boolean;
   telemetryPromptSeen: boolean;
 }
@@ -78,7 +79,6 @@ export interface DashboardSettings {
   hideReposWithNoActiveSessions: boolean;
   hideInactiveSessions: boolean;
   outputDisplayMode: OutputDisplayMode;
-  restingThresholdMinutes: number;
   hideTodoPanel: boolean;
 }
 
@@ -87,7 +87,6 @@ export const DEFAULT_SETTINGS: DashboardSettings = {
   hideReposWithNoActiveSessions: false,
   hideInactiveSessions: false,
   outputDisplayMode: 'focused',
-  restingThresholdMinutes: 20,
   hideTodoPanel: false,
 };
 

@@ -74,6 +74,8 @@ specs/[###-feature-name]/
 
 **Audit before committing**: When adding or modifying any utility function, event name, or status value, search for existing constants or helpers first. If you introduce a new string that will be used in more than one place, define it as a `const` immediately.
 
+**No unrelated changes**: Only modify code directly required to fix the bug or implement the feature at hand. Do not include speculative improvements, defensive refactors, or "while I'm here" cleanups in the same commit. If a separate issue is worth fixing, raise it explicitly and get confirmation before including it.
+
 ## Performance Rules for the Scan Cycle
 
 The scan cycle runs on a tight loop. Any code that touches it must follow these rules proactively. Do not wait for the user to report slowness.

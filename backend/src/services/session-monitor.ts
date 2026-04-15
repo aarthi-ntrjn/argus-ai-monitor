@@ -5,9 +5,10 @@ import { CopilotCliDetector } from './copilot-cli-detector.js';
 import { ClaudeCodeDetector } from './claude-code-detector.js';
 import { ClaudeSessionRegistry } from './claude-session-registry.js';
 import { loadConfig } from '../config/config-loader.js';
-import { getSessions, getSession, upsertSession, updateSessionStatus, getRepositories, getRepositoryByPath, updateRepositoryBranch } from '../db/database.js';
+import { getSessions, getSession, getRepository, upsertSession, updateSessionStatus, getRepositories, getRepositoryByPath, updateRepositoryBranch } from '../db/database.js';
 import { broadcast } from '../api/ws/event-dispatcher.js';
 import { getCurrentBranch } from './repository-scanner.js';
+import * as logger from '../utils/logger.js';
 import { detectYoloModeFromPids, isPidRunning } from './process-utils.js';
 import { isAiToolProcess } from './pid-validator.js';
 import { SessionTypes } from '../models/index.js';
@@ -21,6 +22,9 @@ export interface SessionMonitorEvents {
   'repository.removed': (repo: Repository) => void;
 }
 
+// Must match the default restingThresholdMinutes in config-loader.ts
+const INACTIVE_THRESHOLD_MS = 20 * 60 * 1000;
+
 export class SessionMonitor extends EventEmitter {
   private scanner: RepositoryScanner;
   private cliDetector: CopilotCliDetector;
@@ -33,6 +37,8 @@ export class SessionMonitor extends EventEmitter {
   private previousRegistryPids = new Set<number>();
   // Track last-emitted state per session to suppress no-op session.updated events
   private lastEmittedSessions = new Map<string, string>();
+  // Track sessions for which we have already broadcast the resting transition
+  private restingNotifiedSessions = new Set<string>();
 
   constructor() {
     super();
@@ -109,14 +115,14 @@ export class SessionMonitor extends EventEmitter {
             updateSessionStatus(session.id, 'active', null, true);
           } else {
             // Registry says this PID should be running, but OS says it's dead
-            console.warn(
+            logger.warn(
               `[reconcile] WARNING: ${session.type} session ${session.id} has ${registryLabel} entry with PID ${registryPid}, but process is not running. Marking ended (unreconciled).`
             );
             updateSessionStatus(session.id, 'ended', now, false);
           }
         } else if (session.pid != null && runningPids.has(session.pid)) {
           // No registry entry, but the DB PID is still a live OS process
-          console.error(
+          logger.error(
             `[reconcile] ERROR: ${session.type} session ${session.id} has no ${registryLabel} entry, but PID ${session.pid} is still running. Marking active (unreconciled).`
           );
           updateSessionStatus(session.id, 'active', null, false);
@@ -126,7 +132,7 @@ export class SessionMonitor extends EventEmitter {
         }
       }
     } catch (err) {
-      console.error('[reconcile] Failed to reconcile stale sessions:', err);
+      logger.error('[reconcile] Failed to reconcile stale sessions:', err);
     }
   }
 
@@ -141,7 +147,7 @@ export class SessionMonitor extends EventEmitter {
       for (const session of liveSessions) {
         const repo = repos.find(r => r.id === session.repositoryId);
         if (!repo) {
-          console.log(`[ClaudeReconcile] session ended — repo removed sessionId=${session.id}`);
+          logger.info(`[ClaudeReconcile] session ended — repo removed sessionId=${session.id}`);
           updateSessionStatus(session.id, 'ended', now);
           this.claudeDetector.closeSessionWatcher(session.id);
           this.emit('session.ended', { ...session, status: 'ended', endedAt: now });
@@ -149,7 +155,7 @@ export class SessionMonitor extends EventEmitter {
         }
 
         if (session.pid != null && !isPidRunning(session.pid)) {
-          console.log(`[ClaudeReconcile] session ended — process gone sessionId=${session.id} pid=${session.pid}`);
+          logger.info(`[ClaudeReconcile] session ended — process gone sessionId=${session.id} pid=${session.pid}`);
           updateSessionStatus(session.id, 'ended', now);
           this.claudeDetector.closeSessionWatcher(session.id);
           this.emit('session.ended', { ...session, status: 'ended', endedAt: now });
@@ -201,6 +207,10 @@ export class SessionMonitor extends EventEmitter {
           const branch = await getCurrentBranch(repo.path);
           if (branch !== repo.branch) {
             updateRepositoryBranch(repo.id, branch);
+            const updated = getRepository(repo.id);
+            if (updated) {
+              broadcast({ type: 'repository.updated', timestamp: new Date().toISOString(), data: updated as unknown as Record<string, unknown> });
+            }
           }
         } catch { /* ignore — branch refresh is best-effort */ }
       })
@@ -233,7 +243,7 @@ export class SessionMonitor extends EventEmitter {
         : detectYoloModeFromPids(entry.pid, null, 'claude-code');
       const yoloResolved = existing.yoloMode === null && yoloMode !== null;
       if (pidChanged || yoloResolved) {
-        console.log(`[ClaudeRegistry] pid assigned sessionId=${entry.sessionId} pid=${entry.pid} (was ${existing.pid}) yoloMode=${yoloMode}`);
+        logger.info(`[ClaudeRegistry] pid assigned sessionId=${entry.sessionId} pid=${entry.pid} (was ${existing.pid}) yoloMode=${yoloMode}`);
         const updated = { ...existing, pid: entry.pid, pidSource: 'session_registry' as const, yoloMode };
         upsertSession(updated);
         broadcast({ type: 'session.updated', timestamp: now, data: updated as unknown as Record<string, unknown> });
@@ -246,7 +256,7 @@ export class SessionMonitor extends EventEmitter {
   private createSessionFromRegistryEntry(entry: ClaudeSessionRegistryEntry, now: string): void {
     const repo = getRepositoryByPath(entry.cwd);
     if (!repo) return;
-    console.log(`[ClaudeRegistry] session created sessionId=${entry.sessionId} pid=${entry.pid} cwd="${entry.cwd}"`);
+    logger.info(`[ClaudeRegistry] session created sessionId=${entry.sessionId} pid=${entry.pid} cwd="${entry.cwd}"`);
     const session: Session = {
       id: entry.sessionId,
       repositoryId: repo.id,
@@ -275,9 +285,10 @@ export class SessionMonitor extends EventEmitter {
       const activeSessions = getSessions({ status: 'active', type: 'claude-code' });
       for (const session of activeSessions) {
         if (session.pid === oldPid && session.pidSource === 'session_registry') {
-          console.log(`[ClaudeRegistry] session ended — registry file gone sessionId=${session.id} pid=${oldPid}`);
+          logger.info(`[ClaudeRegistry] session ended — registry file gone sessionId=${session.id} pid=${oldPid}`);
           updateSessionStatus(session.id, 'ended', now);
           this.claudeDetector.closeSessionWatcher(session.id);
+          this.restingNotifiedSessions.delete(session.id);
           this.emit('session.ended', { ...session, status: 'ended', endedAt: now });
         }
       }
@@ -293,7 +304,7 @@ export class SessionMonitor extends EventEmitter {
       await this.claudeDetector.scanExistingSessions();
       this.reconcileClaudeCodeSessions();
       const sessions = await this.cliDetector.scan();
-      console.log(`[SessionMonitor] runScan total — ${Date.now() - tRun}ms`);
+      logger.debug(`[SessionMonitor] runScan total — ${Date.now() - tRun}ms`);
       const currentScanIds = new Set<string>(sessions.map((s) => s.id));
 
       // Detect sessions that were active but are no longer returned (process exited + dir cleaned up)
@@ -305,6 +316,7 @@ export class SessionMonitor extends EventEmitter {
           this.emit('session.ended', endedSession);
           this.activeSessionMap.delete(id);
           this.lastEmittedSessions.delete(id);
+          this.restingNotifiedSessions.delete(id);
         }
       }
 
@@ -327,9 +339,30 @@ export class SessionMonitor extends EventEmitter {
             this.emit('session.ended', session);
             this.activeSessionMap.delete(session.id);
             this.lastEmittedSessions.delete(session.id);
+            this.restingNotifiedSessions.delete(session.id);
           }
         } else if (session.status === 'active') {
           this.activeSessionMap.set(session.id, session);
+        }
+      }
+
+      // Broadcast a session.updated for any active session that just crossed the resting
+      // threshold, so already-connected clients flip the badge without a page refresh.
+      // Fires once per session; resets if the session becomes active again.
+      const now = Date.now();
+      const thresholdMs = loadConfig().restingThresholdMinutes * 60_000;
+      for (const session of getSessions({ status: 'active' })) {
+        if (!session.lastActivityAt) continue;
+        const age = now - new Date(session.lastActivityAt).getTime();
+        if (age >= thresholdMs) {
+          if (!this.restingNotifiedSessions.has(session.id)) {
+            this.restingNotifiedSessions.add(session.id);
+            logger.info(`[SessionMonitor] resting transition sessionId=${session.id} lastActivityAt=${session.lastActivityAt} ageMin=${Math.round(age / 60000)}`);
+            broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: session as unknown as Record<string, unknown> });
+          }
+        } else {
+          // Session has recent activity — reset so we broadcast again next time it goes resting
+          this.restingNotifiedSessions.delete(session.id);
         }
       }
     } catch (err) {
@@ -337,3 +370,4 @@ export class SessionMonitor extends EventEmitter {
     }
   }
 }
+

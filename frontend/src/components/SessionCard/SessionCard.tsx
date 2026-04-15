@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { Session } from '../../types';
 import { getSessionOutput } from '../../services/api';
 import { isInactive, detectPendingChoice, type PendingChoice } from '../../utils/sessionUtils';
-import { useSettings } from '../../hooks/useSettings';
+import { useArgusSettings } from '../../hooks/useArgusSettings';
 import SessionPromptBar from '../SessionPromptBar/SessionPromptBar';
 import SessionMetaRow from '../SessionMetaRow/SessionMetaRow';
 import { useKillSession } from '../../hooks/useKillSession';
@@ -17,8 +17,8 @@ interface Props {
 
 
 function SessionCard({ session, selected, onSelect }: Props) {
-  const [settings] = useSettings();
-  const thresholdMs = settings.restingThresholdMinutes * 60_000;
+  const { settings: argusSettings } = useArgusSettings();
+  const thresholdMs = (argusSettings?.restingThresholdMinutes ?? 20) * 60_000;
 
   const { data: lastOutput } = useQuery({
     queryKey: ['session-output-last', session.id],

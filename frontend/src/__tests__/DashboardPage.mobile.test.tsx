@@ -12,6 +12,8 @@ vi.mock('../services/api', () => ({
   getRepositories: vi.fn().mockResolvedValue([]),
   getSessions: vi.fn().mockResolvedValue([]),
   getTodos: vi.fn().mockResolvedValue([]),
+  getArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false, yoloMode: false, restingThresholdMinutes: 20 }),
+  patchArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false, yoloMode: false, restingThresholdMinutes: 20 }),
 }));
 
 vi.mock('../hooks/useSettings', () => ({

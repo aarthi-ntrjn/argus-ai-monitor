@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import Fastify, { type FastifyError } from 'fastify';
 import fastifyWebsocket from '@fastify/websocket';
 import fastifyStatic from '@fastify/static';
@@ -8,6 +9,7 @@ import { fileURLToPath } from 'url';
 
 import { randomUUID } from 'crypto';
 import { loadConfig } from './config/config-loader.js';
+import * as logger from './utils/logger.js';
 import { addClient, removeClient, broadcast } from './api/ws/event-dispatcher.js';
 import repositoriesRoutes, { setMonitor } from './api/routes/repositories.js';
 import sessionsRoutes from './api/routes/sessions.js';
@@ -35,7 +37,7 @@ export async function buildServer() {
 
   const app = Fastify({
     logger: {
-      level: 'info',
+      level: process.env.LOG_LEVEL ?? 'info',
       transport: process.env.NODE_ENV !== 'production'
         ? { target: 'pino-pretty', options: { colorize: true } }
         : undefined,
@@ -145,7 +147,8 @@ export async function startServer() {
 const isMain = process.argv[1]?.endsWith('server.ts') || process.argv[1]?.endsWith('server.js');
 if (isMain) {
   startServer().catch((err) => {
-    console.error('Failed to start server:', err);
+    logger.error('Failed to start server:', err);
     process.exit(1);
   });
 }
+

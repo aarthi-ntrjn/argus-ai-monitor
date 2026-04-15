@@ -104,3 +104,4 @@ const todosRoutes: FastifyPluginAsync = async (app) => {
 };
 
 export default todosRoutes;
+

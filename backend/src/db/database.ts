@@ -223,3 +223,4 @@ export function deleteTodo(id: string): boolean {
   const result = getDb().prepare('DELETE FROM todos WHERE id = ?').run(id);
   return result.changes > 0;
 }
+

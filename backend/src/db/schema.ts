@@ -38,3 +38,4 @@ CREATE TABLE IF NOT EXISTS todos (
 );
 CREATE INDEX IF NOT EXISTS idx_todos_user ON todos(user_id);
 `;
+

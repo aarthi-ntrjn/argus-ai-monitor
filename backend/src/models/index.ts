@@ -99,6 +99,7 @@ export interface ArgusConfig {
   outputRetentionMbPerSession: number;
   autoRegisterRepos: boolean;
   yoloMode: boolean;
+  restingThresholdMinutes: number;
   telemetryEnabled: boolean;
   telemetryPromptSeen: boolean;
 }
@@ -132,3 +133,4 @@ export interface PendingChoice {
   question: string;
   choices: string[];
 }
+

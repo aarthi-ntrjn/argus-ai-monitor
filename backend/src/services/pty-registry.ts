@@ -1,5 +1,6 @@
 import { normalize } from 'path';
 import WebSocket from 'ws';
+import * as logger from '../utils/logger.js';
 
 function normalizePath(p: string): string {
   return normalize(p.trimEnd().replace(/[/\\]+$/, '')).toLowerCase();
@@ -42,7 +43,7 @@ export class PtyRegistry {
   // or the same as hostPid on non-Windows (pty.pid is directly the tool process).
   registerPending(tempId: string, ws: WebSocket, repoPath: string, hostPid: number, pid: number | null = null): void {
     const key = normalizePath(repoPath);
-    console.log(`[PtyRegistry] registerPending tempId=${tempId} hostPid=${hostPid} pid=${pid} repoPath="${repoPath}" key="${key}"`);
+    logger.info(`[PtyRegistry] registerPending tempId=${tempId} hostPid=${hostPid} pid=${pid} repoPath="${repoPath}" key="${key}"`);
     this.pendingByRepoPath.set(key, { tempId, ws, hostPid, pid });
   }
 
@@ -51,7 +52,7 @@ export class PtyRegistry {
   updatePendingPid(repoPath: string, pid: number): void {
     const pending = this.pendingByRepoPath.get(normalizePath(repoPath));
     if (pending) {
-      console.log(`[PtyRegistry] updatePendingPid tempId=${pending.tempId} pid=${pid} repoPath="${repoPath}"`);
+      logger.info(`[PtyRegistry] updatePendingPid tempId=${pending.tempId} pid=${pid} repoPath="${repoPath}"`);
       pending.pid = pid;
     }
   }
@@ -62,14 +63,14 @@ export class PtyRegistry {
   claimByTempId(tempId: string, sessionId: string): { pid: number | null; hostPid: number } | null {
     for (const [key, pending] of this.pendingByRepoPath) {
       if (pending.tempId === tempId) {
-        console.log(`[PtyRegistry] claimByTempId tempId=${tempId} sessionId=${sessionId} hostPid=${pending.hostPid} pid=${pending.pid} key="${key}"`);
+        logger.info(`[PtyRegistry] claimByTempId tempId=${tempId} sessionId=${sessionId} hostPid=${pending.hostPid} pid=${pending.pid} key="${key}"`);
         this.connections.set(sessionId, pending.ws);
         this.tempToClaimedId.set(tempId, sessionId);
         this.pendingByRepoPath.delete(key);
         return { pid: pending.pid, hostPid: pending.hostPid };
       }
     }
-    console.log(`[PtyRegistry] claimByTempId MISS tempId=${tempId} sessionId=${sessionId} — no pending entry found`);
+    logger.info(`[PtyRegistry] claimByTempId MISS tempId=${tempId} sessionId=${sessionId} — no pending entry found`);
     return null;
   }
 
@@ -81,10 +82,10 @@ export class PtyRegistry {
     const key = normalizePath(repoPath);
     const pending = this.pendingByRepoPath.get(key);
     if (!pending) {
-      console.log(`[PtyRegistry] claimForSession MISS sessionId=${claudeSessionId} repoPath="${repoPath}" key="${key}"`);
+      logger.info(`[PtyRegistry] claimForSession MISS sessionId=${claudeSessionId} repoPath="${repoPath}" key="${key}"`);
       return null;
     }
-    console.log(`[PtyRegistry] claimForSession OK sessionId=${claudeSessionId} hostPid=${pending.hostPid} pid=${pending.pid} repoPath="${repoPath}"`);
+    logger.info(`[PtyRegistry] claimForSession OK sessionId=${claudeSessionId} hostPid=${pending.hostPid} pid=${pending.pid} repoPath="${repoPath}"`);
     this.connections.set(claudeSessionId, pending.ws);
     this.tempToClaimedId.set(pending.tempId, claudeSessionId);
     this.pendingByRepoPath.delete(key);
@@ -100,7 +101,7 @@ export class PtyRegistry {
   // Stores the resolved tool PID for an already-claimed session.
   // Called when update_pid arrives but the DB session row doesn't exist yet.
   updateClaimedPid(sessionId: string, pid: number): void {
-    console.log(`[PtyRegistry] updateClaimedPid sessionId=${sessionId} pid=${pid}`);
+    logger.info(`[PtyRegistry] updateClaimedPid sessionId=${sessionId} pid=${pid}`);
     this.claimedPids.set(sessionId, pid);
   }
 
@@ -111,13 +112,13 @@ export class PtyRegistry {
 
   // Clean up a pending connection that never got claimed (e.g. claude crashed before first hook).
   unregisterPending(repoPath: string, tempId: string): void {
-    console.log(`[PtyRegistry] unregisterPending tempId=${tempId} repoPath="${repoPath}"`);
+    logger.info(`[PtyRegistry] unregisterPending tempId=${tempId} repoPath="${repoPath}"`);
     this.pendingByRepoPath.delete(normalizePath(repoPath));
     this.tempToClaimedId.delete(tempId);
   }
 
   unregister(sessionId: string): void {
-    console.log(`[PtyRegistry] unregister sessionId=${sessionId}`);
+    logger.info(`[PtyRegistry] unregister sessionId=${sessionId}`);
     this.connections.delete(sessionId);
     this.claimedPids.delete(sessionId);
   }
@@ -130,7 +131,7 @@ export class PtyRegistry {
   // (copilot-cli adds a 500ms initial delay + 50ms per character, so longer prompts need more time)
   sendPrompt(sessionId: string, actionId: string, prompt: string, timeoutMs = 30_000): Promise<void> {
     const ws = this.connections.get(sessionId);
-    console.log(`[PtyRegistry.sendPrompt] sessionId=${sessionId} wsFound=${!!ws} wsState=${ws?.readyState}`);
+    logger.info(`[PtyRegistry.sendPrompt] sessionId=${sessionId} wsFound=${!!ws} wsState=${ws?.readyState}`);
     if (!ws) {
       return Promise.reject(new Error(`Session ${sessionId} launcher is not connected to Argus`));
     }
@@ -144,20 +145,20 @@ export class PtyRegistry {
     return new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.pending.delete(actionId);
-        console.log(`[PtyRegistry.sendPrompt] TIMEOUT — no ack received within ${timeoutMs}ms actionId=${actionId} sessionId=${sessionId}`);
+        logger.info(`[PtyRegistry.sendPrompt] TIMEOUT — no ack received within ${timeoutMs}ms actionId=${actionId} sessionId=${sessionId}`);
         reject(new Error(`Prompt delivery timed out after ${timeoutMs}ms`));
       }, timeoutMs);
 
       this.pending.set(actionId, { resolve, reject, timeout });
       const msg = JSON.stringify({ type: 'send_prompt', actionId, prompt });
-      console.log(`[PtyRegistry.sendPrompt] sending WS message actionId=${actionId} promptLen=${prompt.length}`);
+      logger.info(`[PtyRegistry.sendPrompt] sending WS message actionId=${actionId} promptLen=${prompt.length}`);
       ws.send(msg);
     });
   }
 
   handleAck(actionId: string, success: boolean, error?: string): void {
     const entry = this.pending.get(actionId);
-    console.log(`[PtyRegistry.handleAck] actionId=${actionId} success=${success} found=${!!entry} error=${error ?? ''}`);
+    logger.info(`[PtyRegistry.handleAck] actionId=${actionId} success=${success} found=${!!entry} error=${error ?? ''}`);
     if (!entry) return;
 
     clearTimeout(entry.timeout);
@@ -173,3 +174,4 @@ export class PtyRegistry {
 
 // Module-level singleton used by the server
 export const ptyRegistry = new PtyRegistry();
+

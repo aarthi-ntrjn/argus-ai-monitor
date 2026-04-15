@@ -6,36 +6,37 @@ import { validatePidOwnership } from './pid-validator.js';
 import { ptyRegistry } from './pty-registry.js';
 import { telemetryService } from './telemetry-service.js';
 import type { ControlAction } from '../models/index.js';
+import * as logger from '../utils/logger.js';
 
 export class SessionController {
   async stopSession(sessionId: string): Promise<ControlAction> {
-    console.log(`[stopSession] requested sessionId=${sessionId}`);
+    logger.info(`[stopSession] requested sessionId=${sessionId}`);
     const session = getSession(sessionId);
     if (!session) {
-      console.log(`[stopSession] NOT_FOUND sessionId=${sessionId}`);
+      logger.info(`[stopSession] NOT_FOUND sessionId=${sessionId}`);
       throw Object.assign(new Error(`Session ${sessionId} not found`), { code: 'NOT_FOUND' });
     }
     if (session.status === 'ended' || session.status === 'completed') {
-      console.log(`[stopSession] CONFLICT sessionId=${sessionId} status=${session.status}`);
+      logger.info(`[stopSession] CONFLICT sessionId=${sessionId} status=${session.status}`);
       throw Object.assign(new Error('Session already ended'), { code: 'CONFLICT' });
     }
     if (!session.pid) {
-      console.log(`[stopSession] PID_NOT_SET sessionId=${sessionId}`);
+      logger.info(`[stopSession] PID_NOT_SET sessionId=${sessionId}`);
       throw Object.assign(new Error('Session has no PID on record'), { code: 'PID_NOT_SET' });
     }
 
-    console.log(`[stopSession] validating PID ownership sessionId=${sessionId} pid=${session.pid} type=${session.type}`);
+    logger.info(`[stopSession] validating PID ownership sessionId=${sessionId} pid=${session.pid} type=${session.type}`);
     const validation = await validatePidOwnership(session.pid, session.type);
     if (!validation.valid) {
       const code = validation.reason === 'process_not_ai_tool' ? 'PID_NOT_AI_TOOL' : 'PID_NOT_FOUND';
       const message = validation.reason === 'process_not_ai_tool'
         ? 'PID does not belong to a monitored AI process'
         : 'Process is no longer running';
-      console.log(`[stopSession] validation failed sessionId=${sessionId} pid=${session.pid} reason=${validation.reason}`);
+      logger.info(`[stopSession] validation failed sessionId=${sessionId} pid=${session.pid} reason=${validation.reason}`);
       throw Object.assign(new Error(message), { code });
     }
 
-    console.log(`[stopSession] validation passed, killing pid=${session.pid} sessionId=${sessionId}`);
+    logger.info(`[stopSession] validation passed, killing pid=${session.pid} sessionId=${sessionId}`);
     const action: ControlAction = {
       id: randomUUID(),
       sessionId,
@@ -54,14 +55,14 @@ export class SessionController {
       const completed = { ...action, status: 'completed' as const, completedAt: new Date().toISOString() };
       updateControlAction(action.id, 'completed', completed.completedAt, null);
       this.broadcastAction(completed);
-      console.log(`[stopSession] COMPLETED actionId=${action.id} sessionId=${sessionId} pid=${session.pid}`);
+      logger.info(`[stopSession] COMPLETED actionId=${action.id} sessionId=${sessionId} pid=${session.pid}`);
       telemetryService.sendEvent('session_stopped');
       return completed;
     } catch (err) {
       const failed = { ...action, status: 'failed' as const, completedAt: new Date().toISOString(), result: String(err) };
       updateControlAction(action.id, 'failed', failed.completedAt, failed.result);
       this.broadcastAction(failed);
-      console.log(`[stopSession] FAILED actionId=${action.id} sessionId=${sessionId} pid=${session.pid} error=${String(err)}`);
+      logger.info(`[stopSession] FAILED actionId=${action.id} sessionId=${sessionId} pid=${session.pid} error=${String(err)}`);
       return failed;
     }
   }
@@ -73,7 +74,7 @@ export class SessionController {
       throw Object.assign(new Error('Session already ended'), { code: 'CONFLICT' });
     }
 
-    console.log(`[sendPrompt] sessionId=${sessionId} type=${session.type} launchMode=${session.launchMode} ptyRegistryHas=${ptyRegistry.has(sessionId)}`);
+    logger.info(`[sendPrompt] sessionId=${sessionId} type=${session.type} launchMode=${session.launchMode} ptyRegistryHas=${ptyRegistry.has(sessionId)}`);
 
     // Only PTY-launched sessions have a delivery channel
     if (session.launchMode !== 'pty') {
@@ -125,14 +126,14 @@ export class SessionController {
     ptyRegistry.sendPrompt(sessionId, action.id, prompt)
       .then(() => {
         const now = new Date().toISOString();
-        console.log(`[sendPrompt] DELIVERED actionId=${action.id} sessionId=${sessionId}`);
+        logger.info(`[sendPrompt] DELIVERED actionId=${action.id} sessionId=${sessionId}`);
         telemetryService.sendEvent('prompt_sent');
         updateControlAction(action.id, 'completed', now, null);
         this.broadcastAction({ ...action, status: 'completed', completedAt: now });
       })
       .catch((err: Error) => {
         const now = new Date().toISOString();
-        console.log(`[sendPrompt] FAILED actionId=${action.id} sessionId=${sessionId} error=${err.message}`);
+        logger.info(`[sendPrompt] FAILED actionId=${action.id} sessionId=${sessionId} error=${err.message}`);
         updateControlAction(action.id, 'failed', now, err.message);
         this.broadcastAction({ ...action, status: 'failed', completedAt: now, result: err.message });
       });
@@ -213,3 +214,4 @@ export class SessionController {
     });
   }
 }
+

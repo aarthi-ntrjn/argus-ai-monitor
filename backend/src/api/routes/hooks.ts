@@ -60,3 +60,4 @@ const hooksRoutes: FastifyPluginAsync = async (app) => {
 };
 
 export default hooksRoutes;
+

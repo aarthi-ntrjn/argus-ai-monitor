@@ -5,6 +5,30 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 
 ---
 
+## T123 — Branch name not updated on dashboard
+
+**Date**: 2026-04-14
+**Symptom**: The branch badge on a repository card does not update after the user switches git branches. It only changes after a full page reload.
+**Root cause**: `SessionMonitor.refreshRepositoryBranches()` in `backend/src/services/session-monitor.ts` correctly detects branch changes and writes them to the DB via `updateRepositoryBranch()`, but never calls `broadcast()`. The frontend removed its 5-second poll (T120), so there is no path for the UI to learn of the change. Additionally, `socket.ts` had no `repository.updated` handler even if a broadcast had been sent.
+**Why it was missed**: The DB write and the broadcast are two separate operations. T095 masked the missing broadcast by adding a 5-second `refetchInterval` poll, which T120 later removed as redundant. The combination of those two changes revealed the gap.
+**How to prevent**: Any function that writes to the DB and expects the frontend to reflect the change must also call `broadcast()`. Treat the DB write and the broadcast as an inseparable pair. Add a lint rule or code review checklist item: "If you call `update*` from `database.ts`, does a broadcast follow?"
+**Fix summary**: Added `broadcast({ type: 'repository.updated', ... })` in `refreshRepositoryBranches()` after `updateRepositoryBranch()`, and added a `repository.updated` handler in `frontend/src/services/socket.ts` that invalidates the `['repositories']` query.
+
+---
+
+## T122 — Copilot sessions show "resting" despite active responses
+
+**Date**: 2026-04-16
+**Symptom**: Even when Copilot was actively processing a response, the Argus session card showed the "resting" badge.
+**Root cause**: Two cooperating problems in `CopilotCliDetector`:
+(1) `readNewLines()` never updated `lastActivityAt` when output arrived. Claude's equivalent (`ClaudeJsonlWatcher.applyActivityUpdate()`) correctly sets `lastActivityAt = now` on every new JSONL line, but the Copilot path only updated `summary` and `model`, never `lastActivityAt`.
+(2) `processSessionDir()` unconditionally set `lastActivityAt: toIso(workspace.updated_at)` on every 5-second scan. Since `workspace.updated_at` is rarely written during active processing, this always provided a stale timestamp. Even if fix (1) had existed earlier, fix (2) would have clobbered it on the very next scan cycle.
+**Why it was missed**: `lastActivityAt` handling was implemented correctly for Claude (via `ClaudeJsonlWatcher`) but the analogous field in the Copilot detector was treated as a static snapshot from `workspace.yaml`. No test verified that `lastActivityAt` is updated when Copilot output arrives or that it survives subsequent scan cycles.
+**How to prevent**: When a field is written by two code paths (a file-watcher update and a periodic scan), the scan must preserve the most recent value, not unconditionally overwrite it. Use the `existingSession?.field > newValue ? existingSession.field : newValue` pattern. Add tests that write to a scan directory AND check that timestamp fields from live updates are not reset by a later scan call.
+**Fix summary**: `copilot-cli-detector.ts` — (1) `readNewLines()` now upserts `lastActivityAt = now` and broadcasts `session.updated` when `outputs.length > 0`, mirroring `ClaudeJsonlWatcher.applyActivityUpdate()`. (2) `processSessionDir()` now keeps `existingSession.lastActivityAt` when it is more recent than `workspace.updated_at`.
+
+---
+
 ## T114 — T113 regression: PTY launchMode wiped when session ends
 
 **Date**: 2026-04-10

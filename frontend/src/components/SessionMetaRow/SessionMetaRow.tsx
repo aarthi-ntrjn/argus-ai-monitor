@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Moon, Play, ShieldOff, ExternalLink, Plug, Eye, Power } from 'lucide-react';
 import type { Session } from '../../types';
 import { isInactive } from '../../utils/sessionUtils';
-import { useSettings } from '../../hooks/useSettings';
+import { useArgusSettings } from '../../hooks/useArgusSettings';
 import SessionTypeIcon from '../SessionTypeIcon/SessionTypeIcon';
 import Badge from '../Badge';
 
@@ -43,8 +43,8 @@ function claudeShortId(id: string): string {
 }
 
 export default function SessionMetaRow({ session, showLink = false, onKill, killPending = false }: Props) {
-  const [settings] = useSettings();
-  const thresholdMs = settings.restingThresholdMinutes * 60_000;
+  const { settings: argusSettings } = useArgusSettings();
+  const thresholdMs = (argusSettings?.restingThresholdMinutes ?? 20) * 60_000;
   const isKillable = onKill && session.pid != null && session.status !== 'ended' && session.status !== 'completed';
 
   return (

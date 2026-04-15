@@ -223,6 +223,22 @@ To disable, toggle Yolo mode off in Settings. No confirmation is required to dis
 
 New to Argus? An interactive tour launches automatically on your first visit.Dismiss it any time and replay it later from Settings.
 
+## Logging
+
+All server logs include an ISO 8601 timestamp prefix. Log verbosity is controlled by the `LOG_LEVEL` environment variable, which applies to both the application logger and the HTTP request logger (Fastify/pino):
+
+| `LOG_LEVEL` | What you see |
+| ----------- | ------------ |
+| `debug` | All logs including low-level diagnostics (scan timing, WS messages) |
+| `info` | Normal operational logs: session lifecycle, PTY events, errors (default) |
+| `warn` | Warnings and errors only |
+| `error` | Errors only |
+| `silent` | No logs |
+
+```bash
+LOG_LEVEL=debug node dist/server.js
+```
+
 ## Storage
 
 Argus keeps its data in `~/.argus/`:

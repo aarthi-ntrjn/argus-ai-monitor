@@ -201,7 +201,7 @@ const launcherRoutes: FastifyPluginAsync = async (fastify) => {
           broadcast({
             type: 'session.ended',
             timestamp: now,
-            data: { id: claudeSessionId } as Record<string, unknown>,
+            data: { ...session, status: 'ended', endedAt: now } as unknown as Record<string, unknown>,
           });
           fastify.log.info({ claudeSessionId }, 'Launcher disconnected — session marked ended');
         } else {
@@ -217,3 +217,4 @@ const launcherRoutes: FastifyPluginAsync = async (fastify) => {
 };
 
 export default launcherRoutes;
+

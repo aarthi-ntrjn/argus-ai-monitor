@@ -79,3 +79,4 @@ export function detectYoloModeFromPids(
   }
   return anyFound ? false : null;
 }
+

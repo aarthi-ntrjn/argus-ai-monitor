@@ -19,6 +19,7 @@ vi.mock('../services/api', () => ({
     pidSource: null,
   }),
   getSessionOutput: vi.fn().mockResolvedValue({ items: [] }),
+  getArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false, yoloMode: false, restingThresholdMinutes: 20 }),
 }));
 
 

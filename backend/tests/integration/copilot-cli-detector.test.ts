@@ -10,6 +10,8 @@ const testSessionId = randomUUID();
 
 const mockGetSession = vi.hoisted(() => vi.fn(() => undefined));
 
+const mockUpsertSession = vi.hoisted(() => vi.fn());
+
 // Mock the database module to avoid DB dependency in this unit-style integration test
 vi.mock('../../src/db/database.js', () => ({
   getRepositoryByPath: (path: string) => {
@@ -19,7 +21,7 @@ vi.mock('../../src/db/database.js', () => ({
     return undefined;
   },
   getSession: mockGetSession,
-  upsertSession: vi.fn(),
+  upsertSession: mockUpsertSession,
   deleteSessionOutput: vi.fn(),
   insertOutput: vi.fn(),
 }));
@@ -95,6 +97,7 @@ updated_at: ${new Date().toISOString()}
     mockGetSession.mockClear();
     mockPsList.mockClear();
     mockBroadcast.mockClear();
+    mockUpsertSession.mockClear();
     mockIsPidRunning.mockReset();
     mockIsPidRunning.mockReturnValue(false); // default: testPid not running
     mockPsList.mockResolvedValue([]); // default: no running processes
@@ -327,5 +330,92 @@ updated_at: ${new Date().toISOString()}
     expect(session?.launchMode).toBe('pty');
     expect(session?.pid).toBe(33333);
     expect(mockClaimForSession).not.toHaveBeenCalled();
+  });
+
+  it('updates lastActivityAt when events.jsonl output arrives (T122 regression)', async () => {
+    const staleTimestamp = new Date(Date.now() - 30 * 60 * 1000).toISOString(); // 30 min ago
+
+    // Rewrite workspace.yaml with an old updated_at so lastActivityAt would be stale
+    writeFileSync(join(sessionDir, 'workspace.yaml'), `id: ${testSessionId}
+cwd: ${testRepoCwd}
+summary: Test session
+created_at: ${staleTimestamp}
+updated_at: ${staleTimestamp}
+`);
+    // Remove any existing events file so watchEventsFile bootstraps fresh
+    const eventsFile = join(sessionDir, 'events.jsonl');
+    writeFileSync(eventsFile, JSON.stringify({
+      type: 'user.message',
+      timestamp: new Date().toISOString(),
+      data: { content: 'what does this do?' },
+    }) + '\n');
+
+    const beforeScan = new Date().toISOString();
+
+    mockIsPidRunning.mockReturnValueOnce(true);
+    mockPsList.mockResolvedValueOnce([{ pid: testPid, name: 'copilot', ppid: 1 }]);
+    mockClaimForSession.mockReturnValueOnce(null);
+    mockGetSession.mockReturnValue({
+      id: testSessionId, launchMode: null, pid: testPid, hostPid: null,
+      pidSource: 'lockfile' as const, status: 'active', summary: null, model: null,
+      lastActivityAt: staleTimestamp,
+    });
+
+    const detector = new CopilotCliDetector(testDir);
+    await detector.scan();
+
+    // Expect a session.updated broadcast with lastActivityAt >= beforeScan
+    const activityBroadcast = mockBroadcast.mock.calls.find(
+      ([evt]) => evt.type === 'session.updated' &&
+        typeof (evt.data as { lastActivityAt?: string }).lastActivityAt === 'string' &&
+        (evt.data as { lastActivityAt: string }).lastActivityAt >= beforeScan
+    );
+    expect(activityBroadcast).toBeDefined();
+
+    // Restore workspace.yaml for other tests
+    writeFileSync(join(sessionDir, 'workspace.yaml'), `id: ${testSessionId}
+cwd: ${testRepoCwd}
+summary: Test session
+created_at: ${new Date().toISOString()}
+updated_at: ${new Date().toISOString()}
+`);
+  });
+
+  it('preserves a fresher lastActivityAt across subsequent processSessionDir scans (T122 regression)', async () => {
+    const staleTimestamp = new Date(Date.now() - 30 * 60 * 1000).toISOString(); // 30 min ago
+    const freshTimestamp = new Date(Date.now() - 5000).toISOString(); // 5 seconds ago
+
+    // workspace.yaml has an old updated_at
+    writeFileSync(join(sessionDir, 'workspace.yaml'), `id: ${testSessionId}
+cwd: ${testRepoCwd}
+summary: Test session
+created_at: ${staleTimestamp}
+updated_at: ${staleTimestamp}
+`);
+
+    mockIsPidRunning.mockReturnValueOnce(true);
+    mockPsList.mockResolvedValueOnce([{ pid: testPid, name: 'copilot', ppid: 1 }]);
+    mockClaimForSession.mockReturnValueOnce(null);
+    // Existing DB session already has a fresh lastActivityAt (written by a prior readNewLines call)
+    mockGetSession.mockReturnValue({
+      id: testSessionId, launchMode: null, pid: testPid, hostPid: null,
+      pidSource: 'lockfile' as const, status: 'active', summary: null, model: null,
+      lastActivityAt: freshTimestamp,
+    });
+
+    const detector = new CopilotCliDetector(testDir);
+    const sessions = await detector.scan();
+    const session = sessions.find((s) => s.id === testSessionId);
+
+    // processSessionDir must keep the fresh lastActivityAt, not reset to staleTimestamp
+    expect(session?.lastActivityAt).toBe(freshTimestamp);
+
+    // Restore workspace.yaml for other tests
+    writeFileSync(join(sessionDir, 'workspace.yaml'), `id: ${testSessionId}
+cwd: ${testRepoCwd}
+summary: Test session
+created_at: ${new Date().toISOString()}
+updated_at: ${new Date().toISOString()}
+`);
   });
 });
