@@ -10,7 +10,7 @@ const EVENTS = [
   { name: 'session_stopped', when: 'You manually stop a session using the Stop button.' },
   { name: 'session_prompt_sent', when: 'You send a prompt to a session via Argus.' },
   { name: 'todo_added', when: 'You add a new todo item in Argus.' },
-  { name: 'view_diff_opened', when: 'You click the "View diff on GitHub" button for a repository.' },
+  { name: 'repo_diff_opened', when: 'You click the "View diff on GitHub" button for a repository.' },
 ];
 
 export default function TelemetryPage() {
