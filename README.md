@@ -223,6 +223,22 @@ To disable, toggle Yolo mode off in Settings. No confirmation is required to dis
 
 New to Argus? An interactive tour launches automatically on your first visit.Dismiss it any time and replay it later from Settings.
 
+## Logging
+
+All server logs include an ISO 8601 timestamp prefix. Log verbosity is controlled by the `LOG_LEVEL` environment variable, which applies to both the application logger and the HTTP request logger (Fastify/pino):
+
+| `LOG_LEVEL` | What you see |
+| ----------- | ------------ |
+| `debug` | All logs including low-level diagnostics (scan timing, WS messages) |
+| `info` | Normal operational logs: session lifecycle, PTY events, errors (default) |
+| `warn` | Warnings and errors only |
+| `error` | Errors only |
+| `silent` | No logs |
+
+```bash
+LOG_LEVEL=debug node dist/server.js
+```
+
 ## Storage
 
 Argus keeps its data in `~/.argus/`:
@@ -240,6 +256,28 @@ Default port: **7411**. Override in `~/.argus/config.json`:
   "sessionRetentionHours": 24
 }
 ```
+
+## Telemetry
+
+Argus collects anonymous usage data to help improve the product. No personal information is ever sent.
+
+**What is collected:**
+
+| Event | When |
+| ----- | ---- |
+| `app_started` | Argus server starts |
+| `session_started` | A new Claude Code or Copilot session is detected |
+| `session_ended` | A session completes or ends |
+| `session_prompt_sent` | A prompt is dispatched to a session via Argus |
+| `session_stopped` | A session is stopped via Argus |
+| `request_error` | An HTTP request to the Argus API returns a 4xx or 5xx error |
+
+Each event includes: an anonymous installation ID (a random UUID stored in `~/.argus/telemetry-id`), the Argus version, and a timestamp. No file paths, prompts, session content, or user-identifying information are included. The `request_error` event additionally includes a sanitized error message (file paths and IDs stripped), the HTTP status code, and the origin function name.
+
+**How to disable:**
+
+- On first launch, a banner appears with a checkbox. Uncheck "Send telemetry" before clicking "Got it".
+- At any time, open Settings (gear icon) and uncheck "Send anonymous usage telemetry" under the Privacy section.
 
 ## Microsoft Teams Integration
 

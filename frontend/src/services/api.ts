@@ -155,3 +155,11 @@ export async function patchTeamsSettings(patch: Partial<TeamsSettings>): Promise
     body: JSON.stringify(patch),
   });
 }
+
+export function postTelemetryEvent(type: string): void {
+  void fetch(`${BASE}/telemetry/event`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type }),
+  }).catch(() => { /* fire-and-forget */ });
+}

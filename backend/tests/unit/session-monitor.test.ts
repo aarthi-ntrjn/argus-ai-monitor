@@ -67,9 +67,18 @@ vi.mock('../../src/services/claude-code-detector.js', () => ({
       scanExistingSessions: vi.fn(async () => {}),
       stopWatchers: vi.fn(),
       closeSessionWatcher: vi.fn(),
+      setSessionCreatedCallback: vi.fn(),
     })),
     { projectDirName: (p: string) => p.replace(/[:\\/]/g, '-') }
   ),
+}));
+
+// Capture broadcast calls so tests can assert repository.updated is emitted
+const mockBroadcast = vi.hoisted(() => vi.fn());
+vi.mock('../../src/api/ws/event-dispatcher.js', () => ({
+  broadcast: mockBroadcast,
+  addClient: vi.fn(),
+  removeClient: vi.fn(),
 }));
 
 describe('SessionMonitor.reconcileStaleSessions', () => {
@@ -230,6 +239,57 @@ describe('SessionMonitor.refreshRepositoryBranches', () => {
     const repos = getRepositories() as Array<{ id: string; branch: string | null }>;
     const repo = repos.find(r => r.id === 'repo-stable-branch');
     expect(repo?.branch).toBe('main');
+  });
+
+  // T123 regression: branch change must broadcast repository.updated so frontend refreshes without polling
+  it('T123: should broadcast repository.updated when branch changes', async () => {
+    mockBroadcast.mockClear();
+    insertRepository({
+      id: 'repo-broadcast-test',
+      path: '/stub/repo',
+      name: 'stub',
+      source: 'ui' as const,
+      addedAt: new Date().toISOString(),
+      lastScannedAt: null,
+      branch: 'main',
+    });
+
+    mockGetCurrentBranchResult = '037-reduce-log-noise';
+
+    const monitor = new SessionMonitor();
+    await monitor.start();
+    monitor.stop();
+
+    const updatedCall = mockBroadcast.mock.calls.find(
+      (call) => call[0]?.type === 'repository.updated' && call[0]?.data?.id === 'repo-broadcast-test'
+    );
+    expect(updatedCall).toBeDefined();
+    expect(updatedCall?.[0].data.branch).toBe('037-reduce-log-noise');
+  });
+
+  // T123: no broadcast when branch has not changed
+  it('T123: should not broadcast repository.updated when branch is unchanged', async () => {
+    mockBroadcast.mockClear();
+    insertRepository({
+      id: 'repo-no-broadcast-test',
+      path: '/stub/repo',
+      name: 'stub',
+      source: 'ui' as const,
+      addedAt: new Date().toISOString(),
+      lastScannedAt: null,
+      branch: 'main',
+    });
+
+    mockGetCurrentBranchResult = 'main';
+
+    const monitor = new SessionMonitor();
+    await monitor.start();
+    monitor.stop();
+
+    const updatedCall = mockBroadcast.mock.calls.find(
+      (call) => call[0]?.type === 'repository.updated' && call[0]?.data?.id === 'repo-no-broadcast-test'
+    );
+    expect(updatedCall).toBeUndefined();
   });
 });
 

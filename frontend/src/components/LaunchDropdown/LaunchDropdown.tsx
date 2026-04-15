@@ -12,6 +12,7 @@ interface Props {
 export default function LaunchDropdown({ repoPath }: Props) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState<'claude' | 'copilot' | null>(null);
+  const [launchError, setLaunchError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const { data: tools } = useQuery({
@@ -63,18 +64,25 @@ export default function LaunchDropdown({ repoPath }: Props) {
 
   const handleLaunch = async (tool: 'claude' | 'copilot') => {
     setOpen(false);
-    await launchInTerminal(tool, repoPath);
+    try {
+      await launchInTerminal(tool, repoPath);
+    } catch (err) {
+      setLaunchError(err instanceof Error ? err.message : 'Failed to launch');
+    }
   };
 
   const hasAny = tools?.claude || tools?.copilot;
 
   return (
     <div className="relative" ref={menuRef}>
+      {launchError && (
+        <p className="text-xs text-red-600 mb-1">{launchError}</p>
+      )}
       <Button
         variant="outline"
         size="sm"
         data-tour-id="dashboard-launch"
-        onClick={() => setOpen(o => !o)}
+        onClick={() => { setLaunchError(null); setOpen(o => !o); }}
         title="Launch a new session with Argus"
         aria-label="Launch with Argus"
         aria-expanded={open}

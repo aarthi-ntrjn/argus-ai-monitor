@@ -70,6 +70,8 @@ export interface ArgusConfig {
   autoRegisterRepos: boolean;
   yoloMode: boolean;
   restingThresholdMinutes: number;
+  telemetryEnabled: boolean;
+  telemetryPromptSeen: boolean;
 }
 
 export interface DashboardSettings {

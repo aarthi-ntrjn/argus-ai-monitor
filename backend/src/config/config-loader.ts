@@ -20,6 +20,8 @@ const DEFAULTS: ArgusConfig = {
   autoRegisterRepos: false,
   yoloMode: false,
   restingThresholdMinutes: 20,
+  telemetryEnabled: true,
+  telemetryPromptSeen: false,
 };
 
 export function loadConfig(): ArgusConfig {
@@ -47,3 +49,4 @@ export function saveConfig(config: ArgusConfig): void {
   mkdirSync(configDir, { recursive: true });
   writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
 }
+

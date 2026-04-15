@@ -25,8 +25,8 @@ function handleMessage(event: MessageEvent): void {
     if (allHandlers) {
       allHandlers.forEach((h) => h(msg));
     }
-  } catch {
-    // ignore parse errors
+  } catch (err) {
+    console.warn('[socket] Failed to parse WebSocket message', err);
   }
 }
 
@@ -77,6 +77,10 @@ function updateSessionInCache(qc: QueryClient, session: Session): void {
     if (!old) return old;
     return old.map((s) => s.id === session.id ? { ...s, ...session } : s);
   });
+  qc.setQueryData<Session>(['session', session.id], (old) => {
+    if (!old) return old;
+    return { ...old, ...session };
+  });
 }
 
 function applyOutputEvent(qc: QueryClient, sessionId: string, output: SessionOutput): void {
@@ -123,6 +127,9 @@ export function initSocketHandlers(qc: QueryClient): void {
   onEvent('repository.added', () => {
     qc.invalidateQueries({ queryKey: ['repositories'] });
     qc.invalidateQueries({ queryKey: ['sessions'] });
+  });
+  onEvent('repository.updated', () => {
+    qc.invalidateQueries({ queryKey: ['repositories'] });
   });
   onEvent('repository.removed', () => {
     qc.invalidateQueries({ queryKey: ['repositories'] });

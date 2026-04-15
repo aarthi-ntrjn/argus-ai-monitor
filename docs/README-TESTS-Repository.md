@@ -40,4 +40,20 @@ Manual tests for adding and removing repositories. Run these against a live Argu
 | R-14 | Re-add a previously removed repository path | The repository card reappears on the dashboard; previous sessions and output are gone |
 | R-15 | With at least 2 Claude Code and 2 GitHub Copilot CLI sessions already running on the re-added repository, refresh the page | All 4 sessions are detected and appear on the dashboard under the correct repository card; each session card shows the correct summary subject line and output preview |
 | R-15a | Refresh the page a second time | All session cards still show the correct summary subject line and output preview; nothing is lost or reset |
-| R-16 | Launch a new Claude session on the re-added repository via **Launch with Argus** | The new session card appears under the correct repository card within 5 seconds |
+| R-16 | Launch a new Claude session on the re-added repository via **Launch with Argus** | The new session card appears under the correct repository card Within 30 seconds |
+
+---
+
+## R2: Branch name updates
+
+**Prerequisites:** At least one repository registered. The dashboard is open in the browser.
+
+| # | Steps | Expected |
+|---|-------|----------|
+| R-20 | Note the branch badge shown on a repository card | The badge shows the current git branch (e.g. `master`) |
+| R-21 | In a terminal, switch the repository to a different branch (`git checkout -b test-branch`) | Within 30 seconds the branch badge on the dashboard updates to `test-branch` without any page refresh |
+| R-22 | Switch back to the original branch (`git checkout master`) | Within 30 seconds the badge reverts to `master` |
+| R-23 | Switch branches while the Argus tab is in the background (another tab focused) | On returning to the Argus tab the badge shows the correct branch immediately (no stale value) |
+| R-24 | Switch branches on a repository that has no active sessions | The badge still updates Within 30 seconds |
+| R-25 | Switch branches on a repository that has an active session running | The session card is unaffected; only the branch badge updates |
+

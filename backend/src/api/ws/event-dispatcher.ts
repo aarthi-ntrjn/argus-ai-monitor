@@ -34,3 +34,4 @@ export function broadcast(event: WsEvent): void {
 export function getClientCount(): number {
   return clients.size;
 }
+

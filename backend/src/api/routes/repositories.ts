@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
+import * as logger from '../../utils/logger.js';
 import { randomUUID } from 'crypto';
 import { basename } from 'path';
 import { existsSync } from 'fs';
@@ -40,10 +41,10 @@ const repositoriesRoutes: FastifyPluginAsync = async (app) => {
     const tRepo = Date.now();
     const t1 = Date.now();
     const branch = await getCurrentBranch(repoPath);
-    console.log(`[Repositories] getCurrentBranch — ${Date.now() - t1}ms`);
+    logger.debug(`[Repositories] getCurrentBranch — ${Date.now() - t1}ms`);
     const t2 = Date.now();
     const remoteUrl = await getRemoteUrl(repoPath);
-    console.log(`[Repositories] getRemoteUrl — ${Date.now() - t2}ms`);
+    logger.debug(`[Repositories] getRemoteUrl — ${Date.now() - t2}ms`);
 
     const repo = {
       id: randomUUID(),
@@ -60,10 +61,10 @@ const repositoriesRoutes: FastifyPluginAsync = async (app) => {
     // Re-inject Claude hooks in case they were removed when the last repo was deleted
     const tHooks = Date.now();
     new ClaudeCodeDetector().injectHooks();
-    console.log(`[Repositories] injectHooks — ${Date.now() - tHooks}ms`);
+    logger.debug(`[Repositories] injectHooks — ${Date.now() - tHooks}ms`);
 
     broadcast({ type: 'repository.added', timestamp: new Date().toISOString(), data: repo as unknown as Record<string, unknown> });
-    console.log(`[Repositories] POST handler total before triggers — ${Date.now() - tRepo}ms`);
+    logger.debug(`[Repositories] POST handler total before triggers — ${Date.now() - tRepo}ms`);
     _monitor?.triggerScan();
     _monitor?.triggerCopilotScan();
     return reply.status(201).send(repo);
@@ -88,3 +89,4 @@ const repositoriesRoutes: FastifyPluginAsync = async (app) => {
 };
 
 export default repositoriesRoutes;
+

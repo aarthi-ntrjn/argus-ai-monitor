@@ -5,6 +5,17 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 
 ---
 
+## T123 — Branch name not updated on dashboard
+
+**Date**: 2026-04-14
+**Symptom**: The branch badge on a repository card does not update after the user switches git branches. It only changes after a full page reload.
+**Root cause**: `SessionMonitor.refreshRepositoryBranches()` in `backend/src/services/session-monitor.ts` correctly detects branch changes and writes them to the DB via `updateRepositoryBranch()`, but never calls `broadcast()`. The frontend removed its 5-second poll (T120), so there is no path for the UI to learn of the change. Additionally, `socket.ts` had no `repository.updated` handler even if a broadcast had been sent.
+**Why it was missed**: The DB write and the broadcast are two separate operations. T095 masked the missing broadcast by adding a 5-second `refetchInterval` poll, which T120 later removed as redundant. The combination of those two changes revealed the gap.
+**How to prevent**: Any function that writes to the DB and expects the frontend to reflect the change must also call `broadcast()`. Treat the DB write and the broadcast as an inseparable pair. Add a lint rule or code review checklist item: "If you call `update*` from `database.ts`, does a broadcast follow?"
+**Fix summary**: Added `broadcast({ type: 'repository.updated', ... })` in `refreshRepositoryBranches()` after `updateRepositoryBranch()`, and added a `repository.updated` handler in `frontend/src/services/socket.ts` that invalidates the `['repositories']` query.
+
+---
+
 ## T122 — Copilot sessions show "resting" despite active responses
 
 **Date**: 2026-04-16

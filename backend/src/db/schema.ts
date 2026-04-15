@@ -48,3 +48,4 @@ CREATE TABLE IF NOT EXISTS teams_threads (
 );
 CREATE INDEX IF NOT EXISTS idx_teams_threads_session ON teams_threads(session_id);
 `;
+

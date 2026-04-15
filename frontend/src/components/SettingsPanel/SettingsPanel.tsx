@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { RotateCcw } from 'lucide-react';
 import type { DashboardSettings } from '../../types';
 import { useArgusSettings } from '../../hooks/useArgusSettings';
@@ -179,6 +180,21 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
               )}
             </span>
           </label>
+        </div>
+
+        <div className="mt-2 pt-2 border-t border-gray-100">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Privacy</p>
+          <div className="py-1">
+            <Checkbox
+              label="Send anonymous usage telemetry"
+              aria-label="Send anonymous usage telemetry"
+              checked={argusSettings?.telemetryEnabled ?? true}
+              onChange={e => patchSetting({ telemetryEnabled: e.target.checked })}
+            />
+          </div>
+          <Link to="/telemetry" className="block text-xs text-blue-600 hover:underline mt-1">
+            What we collect
+          </Link>
         </div>
 
         {onRestartTour && (

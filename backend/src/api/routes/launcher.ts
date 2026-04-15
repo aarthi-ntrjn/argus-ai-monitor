@@ -102,7 +102,7 @@ const launcherRoutes: FastifyPluginAsync = async (fastify) => {
         // Hold the connection pending — we do NOT create a DB session here.
         // The session is created in ClaudeCodeDetector.handleHookPayload once
         // Claude fires its first hook and we learn the real session ID.
-        ptyRegistry.registerPending(msg.sessionId, socket, msg.cwd, msg.hostPid, msg.pid);
+        ptyRegistry.registerPending(msg.sessionId, socket, msg.cwd, msg.hostPid, msg.pid, msg.sessionType);
         fastify.log.info({ tempId: msg.sessionId, hostPid: msg.hostPid, pid: msg.pid, cwd: msg.cwd }, 'Launcher pending waiting for Claude hook');
         return;
       }
@@ -217,3 +217,4 @@ const launcherRoutes: FastifyPluginAsync = async (fastify) => {
 };
 
 export default launcherRoutes;
+

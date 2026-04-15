@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
+import * as logger from '../../utils/logger.js';
 import { spawnSync } from 'child_process';
 import { platform } from 'os';
 import { spawn } from 'child_process';
@@ -43,7 +44,7 @@ function isCopilotInstalled(): boolean {
 }
 
 function openTerminalWithCommand(cmd: string): void {
-  console.log(`[LaunchTerminal] opening terminal with command: ${cmd}`);
+  logger.info(`[LaunchTerminal] opening terminal with command: ${cmd}`);
   if (platform() === 'win32') {
     // Prefer Windows Terminal; fall back to a plain PowerShell window.
     const wtAvailable = spawnSync('where', ['wt.exe'], { encoding: 'utf-8', timeout: 2000 }).status === 0;
@@ -106,3 +107,4 @@ const toolsRoutes: FastifyPluginAsync = async (app) => {
 };
 
 export default toolsRoutes;
+

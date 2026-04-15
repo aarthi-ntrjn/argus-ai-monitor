@@ -1,7 +1,8 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import * as logger from '../utils/logger.js';
 import { join, dirname, normalize } from 'path';
 import { homedir } from 'os';
-import { getSession, upsertSession, updateSessionStatus, getRepositories, getRepositoryByPath } from '../db/database.js';
+import { getSession, upsertSession, updateSessionStatus, getRepositoryByPath } from '../db/database.js';
 import { ptyRegistry } from './pty-registry.js';
 import { ClaudeSessionRegistry } from './claude-session-registry.js';
 import { ClaudeJsonlWatcher } from './claude-jsonl-watcher.js';
@@ -36,6 +37,11 @@ interface HookPayload {
 export class ClaudeCodeDetector {
   private jsonlWatcher = new ClaudeJsonlWatcher();
   private pendingChoices = new Map<string, PendingChoice>();
+  private sessionCreatedCallback?: (session: Session) => void;
+
+  setSessionCreatedCallback(cb: (session: Session) => void): void {
+    this.sessionCreatedCallback = cb;
+  }
 
   getPendingChoice(sessionId: string): PendingChoice | null {
     return this.pendingChoices.get(sessionId) ?? null;
@@ -155,7 +161,7 @@ export class ClaudeCodeDetector {
     }
 
     if (!existing) {
-      const claimed = normalizedCwd ? ptyRegistry.claimForSession(session_id, normalizedCwd) : null;
+      const claimed = normalizedCwd ? ptyRegistry.claimForSession(session_id, normalizedCwd, 'claude-code') : null;
       if (claimed) {
         return this.createPtySession(session_id, repo, claimed, now);
       }
@@ -222,7 +228,7 @@ export class ClaudeCodeDetector {
       yoloMode,
     };
     upsertSession(session);
-    broadcast({ type: 'session.created', timestamp: now, data: session as unknown as Record<string, unknown> });
+    this.sessionCreatedCallback?.(session);
     await this.jsonlWatcher.watchFile(sessionId, repo.path);
   }
 
@@ -248,11 +254,11 @@ export class ClaudeCodeDetector {
     session.status = 'active';
     session.lastActivityAt = now;
     upsertSession(session);
-    broadcast({
-      type: existing ? 'session.updated' : 'session.created',
-      timestamp: now,
-      data: session as unknown as Record<string, unknown>,
-    });
+    if (existing) {
+      broadcast({ type: 'session.updated', timestamp: now, data: session as unknown as Record<string, unknown> });
+    } else {
+      this.sessionCreatedCallback?.(session);
+    }
   }
 
   private async activateFoundSession(sessionId: string, repo: Repository, claudePid: number | null): Promise<void> {
@@ -260,9 +266,9 @@ export class ClaudeCodeDetector {
     const existingSession = getSession(sessionId);
 
     if (!existingSession) {
-      const claimed = ptyRegistry.claimForSession(sessionId, repo.path);
+      const claimed = ptyRegistry.claimForSession(sessionId, repo.path, 'claude-code');
       if (claimed) {
-        console.log(`[ClaudeDetector] session activated via PTY claim sessionId=${sessionId} hostPid=${claimed.hostPid} pid=${claimed.pid}`);
+        logger.info(`[ClaudeDetector] session activated via PTY claim sessionId=${sessionId} hostPid=${claimed.hostPid} pid=${claimed.pid}`);
         await this.createPtySession(sessionId, repo, claimed, now);
         return;
       }
@@ -277,7 +283,7 @@ export class ClaudeCodeDetector {
     // When the terminal closes, the WS close handler calls ptyRegistry.unregister(),
     // so has() being false means the launcher is gone and the session should stay ended.
     if (existingSession?.launchMode === 'pty' && !ptyRegistry.has(sessionId)) {
-      console.log(`[ClaudeDetector] skipping re-activation — PTY launcher gone sessionId=${sessionId}`);
+      logger.info(`[ClaudeDetector] skipping re-activation — PTY launcher gone sessionId=${sessionId}`);
       return;
     }
     this.jsonlWatcher.closeWatcher(sessionId);
@@ -299,8 +305,13 @@ export class ClaudeCodeDetector {
       reconciled: true,
       yoloMode: claudePid ? detectYoloModeFromPids(claudePid, null, 'claude-code') : null,
     };
-    console.log(`[ClaudeDetector] session activated sessionId=${sessionId} pid=${claudePid}`);
-    upsertSession({ ...base, status: 'active', endedAt: null, lastActivityAt: now, pid: claudePid });
+    const isNewSession = !existingSession;
+    const activated = { ...base, status: 'active' as const, endedAt: null as null, lastActivityAt: now, pid: claudePid };
+    logger.info(`[ClaudeDetector] session activated sessionId=${sessionId} pid=${claudePid}`);
+    upsertSession(activated);
+    if (isNewSession) {
+      this.sessionCreatedCallback?.(activated);
+    }
     await this.jsonlWatcher.watchFile(sessionId, repo.path);
   }
 
@@ -311,4 +322,5 @@ export class ClaudeCodeDetector {
   stopWatchers(): void {
     this.jsonlWatcher.stopAll();
   }
-}
+}
+

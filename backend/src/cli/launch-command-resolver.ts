@@ -26,3 +26,4 @@ export function resolveLaunchCommand(args: string[]): LaunchCommand {
   // Default: assume claude-code for unknown commands
   return { sessionType: SessionTypes.CLAUDE_CODE, cmd, cmdArgs };
 }
+

@@ -134,12 +134,22 @@ Output a pre-merge report:
 
 ### Step 6 — Merge into main
 
+Before merging, generate a clear PR/merge description by running:
+```
+git --no-pager log <MAIN_BRANCH>..HEAD --pretty=format:"- %s" --no-merges
+```
+Use this commit list to write a human-readable summary of all changes coming in. Group related commits into bullet points where possible. This summary goes into the merge commit message body.
+
 Execute the merge:
 
 ```
 git checkout <MAIN_BRANCH>
 git pull origin <MAIN_BRANCH>
-git merge --no-ff <FEATURE_BRANCH> -m "merge(<FEATURE_BRANCH>): merge feature into <MAIN_BRANCH>
+git merge --no-ff <FEATURE_BRANCH> -m "merge(<FEATURE_BRANCH>): <one-line feature summary>
+
+<Human-readable summary of all changes in this feature. List the key
+changes grouped by area (backend, frontend, infra, docs, etc.). This
+must accurately reflect everything coming in — not just the branch name.>
 
 Constitution gate: PASSED
 Branch: <FEATURE_BRANCH>
