@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Git Workflow
 
 - After every commit, always run `git push`.
+- **Always create branches in the current working directory.** Never `cd` into a different repo folder to create a branch. Branch off the `master` of whichever repo folder you are already working in.
 - After creating a local branch, always publish it to the remote (`git push --set-upstream origin <branch>`).
 - During implementation, commit after completing each task (use the task ID in the commit message).
 - After making any frontend changes, run `npm run build --workspace=frontend` before committing so the served build at port 7411 reflects the changes.
@@ -26,6 +27,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Debugging
 
 - **Add logs when the root cause is unclear.** If static analysis and code reading have not pinpointed a bug after a reasonable effort, add targeted log statements to the relevant code path, ask the user to reproduce the issue, and use the output to confirm the root cause before making any fix. Remove diagnostic logs after the bug is resolved.
+
+## Error Handling
+
+- **Never swallow errors silently.** Every `catch` block must either surface the error to the user (via `setError`, a toast, etc.) or log it (`console.warn` / `console.error` for non-user-facing errors such as WebSocket parse failures). An empty `catch` block or a `catch` that discards the error object is always a bug.
+- **`try/finally` without `catch` is acceptable only when the caller will handle the thrown error.** If the caller is a React event handler (which has no global async error boundary), the error must be caught locally.
+- **Frontend: propagate fetch/API errors to the UI.** When an API call fails, set visible error state. Do not let the mutation silently succeed (no-op) from the user's perspective.
 
 ## Project Context
 

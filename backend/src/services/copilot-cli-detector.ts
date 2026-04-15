@@ -175,9 +175,20 @@ export class CopilotCliDetector {
       resolvedPid = existingSession!.pid;
       resolvedHostPid = existingSession!.hostPid;
       resolvedPidSource = existingSession!.pidSource;
+      // The lockfile PID is ground truth: it is written by the Copilot process itself and
+      // is always authoritative for which process owns this session. If it disagrees with the
+      // stored pid, the DB row is stale. The most likely cause is the session-type hijack bug
+      // where a Copilot scan claimed a Claude launcher's pending registry entry (keyed only by
+      // repo path) before the workspace_id message arrived, writing Claude's PID into this row.
+      // Correcting to the lockfile PID here lets the DB converge within one scan cycle.
+      if (pid !== null && pid !== existingSession!.pid) {
+        logger.warn(`[CopilotDetector] alreadyClaimed pid mismatch: lockfile=${pid} stored=${existingSession!.pid} sessionId=${sessionId} — correcting to lockfile pid`);
+        resolvedPid = pid;
+        resolvedPidSource = 'lockfile';
+      }
       if (!registryHas && isRunning) {
         logger.info(`[CopilotDetector] alreadyClaimed + WS gone + isRunning — attempting re-link sessionId=${sessionId}`);
-        const claimed = ptyRegistry.claimForSession(sessionId, repo.path);
+        const claimed = ptyRegistry.claimForSession(sessionId, repo.path, 'copilot-cli');
         if (claimed) {
           resolvedPid = claimed.pid;
           resolvedHostPid = claimed.hostPid;
@@ -198,7 +209,7 @@ export class CopilotCliDetector {
       }
     } else if (isRunning && existingSession == null) {
       logger.info(`[CopilotDetector] isRunning + not claimed — trying claimForSession sessionId=${sessionId} repoPath="${repo.path}"`);
-      const claimed = ptyRegistry.claimForSession(sessionId, repo.path);
+      const claimed = ptyRegistry.claimForSession(sessionId, repo.path, 'copilot-cli');
       if (claimed) {
         launchMode = 'pty';
         resolvedPid = claimed.pid;

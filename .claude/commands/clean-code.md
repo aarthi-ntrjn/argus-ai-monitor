@@ -46,12 +46,14 @@ For each exported function, class, type, interface, or constant, verify it is im
 
 Flag: any export with zero consumers.
 
-#### 2c — Unreachable code
+#### 2c — Unreachable code and silent error swallowing
 
 Look for:
 - Code after a `return`, `throw`, or `break` statement inside the same block
 - Branches whose condition is always `true` or always `false` by inspection (e.g. `if (false)`, `if (x === x)`)
-- Empty `catch` blocks that swallow errors silently
+- Empty `catch` blocks (`catch { }` or `catch (e) { }` with no body)
+- `catch` blocks that discard the error without surfacing it to the user or logging it
+- `try/finally` with no `catch` inside a React event handler (async errors in event handlers are not caught by any global boundary)
 
 Flag each occurrence with file and line number.
 
@@ -138,6 +140,7 @@ Work through every finding. For each fix:
    - **Unused import**: remove the import line (or the specific named import).
    - **Unused export**: remove the export (and the symbol if nothing in the file uses it either).
    - **Unreachable code**: delete the unreachable block.
+   - **Silent error swallowing**: add a `catch` block that either calls `setError` / shows a toast (for user-facing async operations) or logs with `console.warn` / `console.error` (for background/non-user-facing operations). Never leave the `catch` body empty.
    - **Dead file**: delete the file with `git rm`.
    - **Function too long**: extract the identified sub-operation into a named helper in the same file (or a new file if it is reusable). Update the original function to call the helper.
    - **Too many parameters**: introduce a named options interface and update the call sites.

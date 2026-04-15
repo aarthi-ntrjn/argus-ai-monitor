@@ -120,7 +120,8 @@ export type TelemetryEventType =
   | 'session_prompt_sent'
   | 'session_stopped'
   | 'todo_added'
-  | 'repo_diff_opened';
+  | 'repo_diff_opened'
+  | 'request_error';
 
 export const TELEMETRY_EVENT_TYPES = new Set<TelemetryEventType>([
   'app_started',
@@ -131,6 +132,7 @@ export const TELEMETRY_EVENT_TYPES = new Set<TelemetryEventType>([
   'session_stopped',
   'todo_added',
   'repo_diff_opened',
+  'request_error',
 ]);
 
 export interface TelemetryEvent {

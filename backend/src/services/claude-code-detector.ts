@@ -161,7 +161,7 @@ export class ClaudeCodeDetector {
     }
 
     if (!existing) {
-      const claimed = normalizedCwd ? ptyRegistry.claimForSession(session_id, normalizedCwd) : null;
+      const claimed = normalizedCwd ? ptyRegistry.claimForSession(session_id, normalizedCwd, 'claude-code') : null;
       if (claimed) {
         return this.createPtySession(session_id, repo, claimed, now);
       }
@@ -266,7 +266,7 @@ export class ClaudeCodeDetector {
     const existingSession = getSession(sessionId);
 
     if (!existingSession) {
-      const claimed = ptyRegistry.claimForSession(sessionId, repo.path);
+      const claimed = ptyRegistry.claimForSession(sessionId, repo.path, 'claude-code');
       if (claimed) {
         logger.info(`[ClaudeDetector] session activated via PTY claim sessionId=${sessionId} hostPid=${claimed.hostPid} pid=${claimed.pid}`);
         await this.createPtySession(sessionId, repo, claimed, now);

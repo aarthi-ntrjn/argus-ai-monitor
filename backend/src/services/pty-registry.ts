@@ -1,6 +1,7 @@
 import { normalize } from 'path';
 import WebSocket from 'ws';
 import * as logger from '../utils/logger.js';
+import type { SessionType } from '../models/index.js';
 
 function normalizePath(p: string): string {
   return normalize(p.trimEnd().replace(/[/\\]+$/, '')).toLowerCase();
@@ -17,6 +18,7 @@ interface PendingLauncher {
   ws: WebSocket;
   hostPid: number;
   pid: number | null;
+  sessionType: SessionType;
 }
 
 export class PtyRegistry {
@@ -41,10 +43,10 @@ export class PtyRegistry {
   // hostPid is the shell wrapper PID (powershell.exe on Windows, same as tool PID elsewhere).
   // pid is the initial tool PID: null on Windows (resolved later via update_pid),
   // or the same as hostPid on non-Windows (pty.pid is directly the tool process).
-  registerPending(tempId: string, ws: WebSocket, repoPath: string, hostPid: number, pid: number | null = null): void {
+  registerPending(tempId: string, ws: WebSocket, repoPath: string, hostPid: number, pid: number | null = null, sessionType: SessionType = 'claude-code'): void {
     const key = normalizePath(repoPath);
-    logger.info(`[PtyRegistry] registerPending tempId=${tempId} hostPid=${hostPid} pid=${pid} repoPath="${repoPath}" key="${key}"`);
-    this.pendingByRepoPath.set(key, { tempId, ws, hostPid, pid });
+    logger.info(`[PtyRegistry] registerPending tempId=${tempId} hostPid=${hostPid} pid=${pid} sessionType=${sessionType} repoPath="${repoPath}" key="${key}"`);
+    this.pendingByRepoPath.set(key, { tempId, ws, hostPid, pid, sessionType });
   }
 
   // Update the real tool PID for a pending connection (before claim).
@@ -78,14 +80,18 @@ export class PtyRegistry {
   // Promotes the pending connection to a claimed connection keyed by claudeSessionId.
   // Returns pid (may be null if update_pid hasn't arrived yet) and hostPid (always set),
   // or null if no launcher is waiting for this repo.
-  claimForSession(claudeSessionId: string, repoPath: string): { pid: number | null; hostPid: number } | null {
+  claimForSession(claudeSessionId: string, repoPath: string, sessionType: SessionType): { pid: number | null; hostPid: number } | null {
     const key = normalizePath(repoPath);
     const pending = this.pendingByRepoPath.get(key);
     if (!pending) {
       logger.info(`[PtyRegistry] claimForSession MISS sessionId=${claudeSessionId} repoPath="${repoPath}" key="${key}"`);
       return null;
     }
-    logger.info(`[PtyRegistry] claimForSession OK sessionId=${claudeSessionId} hostPid=${pending.hostPid} pid=${pending.pid} repoPath="${repoPath}"`);
+    if (pending.sessionType !== sessionType) {
+      logger.info(`[PtyRegistry] claimForSession TYPE MISMATCH sessionId=${claudeSessionId} expected=${sessionType} got=${pending.sessionType} repoPath="${repoPath}" — skipping`);
+      return null;
+    }
+    logger.info(`[PtyRegistry] claimForSession OK sessionId=${claudeSessionId} hostPid=${pending.hostPid} pid=${pending.pid} sessionType=${sessionType} repoPath="${repoPath}"`);
     this.connections.set(claudeSessionId, pending.ws);
     this.tempToClaimedId.set(pending.tempId, claudeSessionId);
     this.pendingByRepoPath.delete(key);

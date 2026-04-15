@@ -25,8 +25,8 @@ function handleMessage(event: MessageEvent): void {
     if (allHandlers) {
       allHandlers.forEach((h) => h(msg));
     }
-  } catch {
-    // ignore parse errors
+  } catch (err) {
+    console.warn('[socket] Failed to parse WebSocket message', err);
   }
 }
 
