@@ -6,7 +6,9 @@ import { writeFileSync, rmSync, existsSync } from 'fs';
 
 // Must set env before importing the module under test
 const testIdPath = join(tmpdir(), `argus-telemetry-id-test-${randomUUID()}`);
+const testConfigPath = join(tmpdir(), `argus-config-test-${randomUUID()}.json`);
 process.env.ARGUS_TELEMETRY_ID_PATH = testIdPath;
+process.env.ARGUS_CONFIG_PATH = testConfigPath;
 process.env.TELEMETRY_URL = 'http://localhost:19999/capture/';
 
 // Dynamic import so env is set first
@@ -16,14 +18,17 @@ describe('TelemetryService', () => {
   let service: InstanceType<typeof TelemetryService>;
 
   beforeEach(() => {
-    // Fresh instance and clean ID file for each test
+    // Fresh instance and clean ID/config files for each test
     if (existsSync(testIdPath)) rmSync(testIdPath);
+    if (existsSync(testConfigPath)) rmSync(testConfigPath);
+    writeFileSync(testConfigPath, JSON.stringify({ telemetryEnabled: true }), 'utf-8');
     service = new TelemetryService();
     vi.restoreAllMocks();
   });
 
   afterEach(() => {
     if (existsSync(testIdPath)) rmSync(testIdPath);
+    if (existsSync(testConfigPath)) rmSync(testConfigPath);
   });
 
   describe('loadOrCreateInstallationId', () => {
@@ -77,6 +82,14 @@ describe('TelemetryService', () => {
       service.sendEvent('app_started');
       expect(fetchSpy).not.toHaveBeenCalled();
       process.env.TELEMETRY_URL = originalUrl;
+      fetchSpy.mockRestore();
+    });
+
+    it('is a no-op when telemetryEnabled is false in config', () => {
+      writeFileSync(testConfigPath, JSON.stringify({ telemetryEnabled: false }), 'utf-8');
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+      service.sendEvent('app_started');
+      expect(fetchSpy).not.toHaveBeenCalled();
       fetchSpy.mockRestore();
     });
 

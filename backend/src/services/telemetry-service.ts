@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { homedir } from 'os';
 import { randomUUID } from 'crypto';
 import type { TelemetryEventType } from '../models/index.js';
+import { loadConfig } from '../config/config-loader.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -18,6 +19,17 @@ function getIdPath(): string {
 export class TelemetryService {
   private installationId: string | null = null;
   private appVersion: string | null = null;
+  private enabledCache: { value: boolean; expiresAt: number } | null = null;
+
+  private isTelemetryEnabled(): boolean {
+    const now = Date.now();
+    if (this.enabledCache && now < this.enabledCache.expiresAt) {
+      return this.enabledCache.value;
+    }
+    const value = loadConfig().telemetryEnabled;
+    this.enabledCache = { value, expiresAt: now + 5000 };
+    return value;
+  }
 
   loadOrCreateInstallationId(): string {
     if (this.installationId) return this.installationId;
@@ -56,6 +68,7 @@ export class TelemetryService {
   }
 
   sendEvent(type: TelemetryEventType, extra?: Record<string, string | boolean | null>): void {
+    if (!this.isTelemetryEnabled()) return;
     const url = process.env.TELEMETRY_URL ?? POSTHOG_URL;
     if (!url) return;
 
