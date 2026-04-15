@@ -77,13 +77,13 @@ $pollInterval = 15
 $elapsed = 0
 
 while ($elapsed -lt $maxWaitSeconds) {
-    $checks = gh pr checks $prNumber --repo $publicRepo --json name,state,conclusion 2>$null | ConvertFrom-Json
+    $checks = gh pr checks $prNumber --repo $publicRepo --json name,state,bucket 2>$null | ConvertFrom-Json
     if (-not $checks) {
         Write-Host "    Waiting for checks to appear..." -ForegroundColor Yellow
     } else {
-        $pending  = $checks | Where-Object { $_.state -eq "PENDING" -or $_.state -eq "IN_PROGRESS" -or $_.state -eq "QUEUED" }
-        $failed   = $checks | Where-Object { $_.conclusion -eq "failure" -or $_.conclusion -eq "cancelled" }
-        $passed   = $checks | Where-Object { $_.conclusion -eq "success" }
+        $pending  = $checks | Where-Object { $_.bucket -eq "pending" }
+        $failed   = $checks | Where-Object { $_.bucket -eq "fail" }
+        $passed   = $checks | Where-Object { $_.bucket -eq "pass" }
 
         if ($failed) {
             $failNames = ($failed | ForEach-Object { $_.name }) -join ", "
