@@ -9,6 +9,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - During implementation, commit after completing each task (use the task ID in the commit message).
 - After making any frontend changes, run `npm run build --workspace=frontend` before committing so the served build at port 7411 reflects the changes.
 
+## File Placement
+
+- **Scripts**: All scripts (`.ps1`, `.sh`, `.mjs`, etc.) must go in `scripts/`. The `.specify/scripts/powershell/` folder is strictly reserved for scripts invoked directly by Speckit workflow steps. Do not put application or dev tooling scripts there.
+- **Documentation**: All `README-*.md` files must go in `docs/`. The only README at the repo root is `README.md`.
+
 ## Writing Style
 
 - **Never use em dashes** (`—`) in any documentation, comments, or content. They are tiresome to read. Use a comma, colon, parentheses, or rewrite the sentence instead.
@@ -111,8 +116,6 @@ Always reuse shared components and CSS classes from `frontend/src/components/` a
 **Rule**: If a new UI pattern appears in two or more places, extract it into a shared component before the second use. Do not duplicate Tailwind class combinations that already have a named abstraction.
 
 ## Scripts
-
-**All scripts must be placed in the `scripts/` folder at the repo root.** Never create `.ps1`, `.sh`, `.mjs`, or other executable scripts in the repo root or any other location. The `.specify/scripts/powershell/` folder is strictly reserved for scripts that are directly invoked by the Speckit workflow steps (`speckit.specify`, `speckit.plan`, `speckit.tasks`, etc.). Do not put application or dev tooling scripts there.
 
 All automation is PowerShell (`.ps1`) under `.specify/scripts/powershell/`. VS Code (and Claude's tool execution) auto-approves these scripts.
 
