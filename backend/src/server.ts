@@ -79,7 +79,14 @@ export async function buildServer() {
 
   app.setErrorHandler((error: FastifyError, request, reply) => {
     request.log.error({ err: error, requestId: request.id }, 'Request error');
-    reply.status(error.statusCode ?? 500).send({
+    const statusCode = error.statusCode ?? 500;
+    if (statusCode >= 500) {
+      telemetryService.sendEvent('request_error', {
+        statusCode: String(statusCode),
+        errorCode: error.code ?? 'INTERNAL_ERROR',
+      });
+    }
+    reply.status(statusCode).send({
       error: error.code ?? 'INTERNAL_ERROR',
       message: error.message,
       requestId: request.id,
