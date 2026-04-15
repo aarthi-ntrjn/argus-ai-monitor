@@ -94,6 +94,9 @@ export async function buildServer() {
   const teamsApp = new App({
     httpServerAdapter: new FastifyTeamsAdapter(app),
     messagingEndpoint: '/api/v1/teams/webhook',
+    clientId: process.env.CLIENT_ID,
+    clientSecret: process.env.CLIENT_SECRET,
+    tenantId: process.env.TENANT_ID,
   });
   teamsApp.message(/.*/, async (ctx) => {
     const teamsConfig = loadTeamsConfig();
