@@ -254,7 +254,7 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
             </div>
             <div>
               <p className="text-xs text-gray-500">
-                Webhook URL: <span className="font-mono">{window.location.origin}/api/messages</span>
+                Webhook URL: <span className="font-mono">{window.location.origin}/api/v1/teams/webhook</span>
               </p>
             </div>
             {teamsError && <p className="text-xs text-red-600">{teamsError}</p>}

@@ -91,7 +91,10 @@ export async function buildServer() {
   });
 
   // Initialize Teams SDK App with Fastify adapter before static/catch-all routes
-  const teamsApp = new App({ httpServerAdapter: new FastifyTeamsAdapter(app) });
+  const teamsApp = new App({
+    httpServerAdapter: new FastifyTeamsAdapter(app),
+    messagingEndpoint: '/api/v1/teams/webhook',
+  });
   teamsApp.message(/.*/, async (ctx) => {
     const teamsConfig = loadTeamsConfig();
     const senderAadObjectId = (ctx.activity.from as Record<string, unknown>)?.['aadObjectId'] as string | undefined;
