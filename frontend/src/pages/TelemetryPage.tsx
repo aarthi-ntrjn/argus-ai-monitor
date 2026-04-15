@@ -48,7 +48,7 @@ export default function TelemetryPage() {
 
         <section className="bg-white border border-gray-200 rounded-lg p-5 mb-6">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Included in session events</h2>
-          <p className="text-sm text-gray-600 mb-3">The following properties are included in all session events: <span className="font-mono text-gray-800">session_started</span>, <span className="font-mono text-gray-800">session_ended</span>, <span className="font-mono text-gray-800">session_stopped</span>, <span className="font-mono text-gray-800">session_prompt_sent</span>.</p>
+          <p className="text-sm text-gray-600 mb-3">The following properties are included in all <span className="font-mono text-gray-800">session_*</span> events.</p>
           <ul className="space-y-2 text-sm text-gray-700">
             <li>
               <span className="font-medium text-gray-900">Session ID:</span> a random UUID assigned to each session. It identifies the session within a run but is not linked to any user or machine.
