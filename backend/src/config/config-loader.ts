@@ -20,6 +20,8 @@ const DEFAULTS: ArgusConfig = {
   autoRegisterRepos: false,
   yoloMode: false,
   restingThresholdMinutes: 20,
+  telemetryEnabled: true,
+  telemetryPromptSeen: false,
 };
 
 export function loadConfig(): ArgusConfig {

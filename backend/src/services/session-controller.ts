@@ -4,6 +4,7 @@ import { getSession, insertControlAction, updateControlAction } from '../db/data
 import { broadcast } from '../api/ws/event-dispatcher.js';
 import { validatePidOwnership } from './pid-validator.js';
 import { ptyRegistry } from './pty-registry.js';
+import { telemetryService } from './telemetry-service.js';
 import type { ControlAction } from '../models/index.js';
 import * as logger from '../utils/logger.js';
 
@@ -55,6 +56,7 @@ export class SessionController {
       updateControlAction(action.id, 'completed', completed.completedAt, null);
       this.broadcastAction(completed);
       logger.info(`[stopSession] COMPLETED actionId=${action.id} sessionId=${sessionId} pid=${session.pid}`);
+      telemetryService.sendEvent('session_stopped', { sessionType: session.type, sessionId, launchMode: session.launchMode === 'pty' ? 'connected' : 'readonly', yoloMode: session.yoloMode });
       return completed;
     } catch (err) {
       const failed = { ...action, status: 'failed' as const, completedAt: new Date().toISOString(), result: String(err) };
@@ -125,6 +127,7 @@ export class SessionController {
       .then(() => {
         const now = new Date().toISOString();
         logger.info(`[sendPrompt] DELIVERED actionId=${action.id} sessionId=${sessionId}`);
+        telemetryService.sendEvent('session_prompt_sent', { sessionType: session.type, sessionId, launchMode: session.launchMode === 'pty' ? 'connected' : 'readonly', yoloMode: session.yoloMode });
         updateControlAction(action.id, 'completed', now, null);
         this.broadcastAction({ ...action, status: 'completed', completedAt: now });
       })

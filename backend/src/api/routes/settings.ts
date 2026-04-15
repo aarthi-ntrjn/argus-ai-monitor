@@ -11,6 +11,7 @@ export function setSlackNotifier(n: SlackNotifier): void {
 const ALLOWED_KEYS = new Set<keyof ArgusConfig>([
   'port', 'watchDirectories', 'sessionRetentionHours',
   'outputRetentionMbPerSession', 'autoRegisterRepos', 'yoloMode', 'restingThresholdMinutes',
+  'telemetryEnabled', 'telemetryPromptSeen',
 ]);
 
 const settingsRoutes: FastifyPluginAsync = async (app) => {

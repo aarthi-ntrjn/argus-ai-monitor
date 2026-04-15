@@ -10,6 +10,8 @@ import { execSync } from 'child_process';
 const [port, dbPath] = process.argv.slice(2);
 if (port) process.env.ARGUS_PORT = port;
 if (dbPath) process.env.ARGUS_DB_PATH = dbPath;
+// Suppress telemetry during test runs so tests don't fire real events to PostHog
+process.env.TELEMETRY_URL = '';
 
 // Kill any process already listening on the port so the bind never fails.
 if (port) {

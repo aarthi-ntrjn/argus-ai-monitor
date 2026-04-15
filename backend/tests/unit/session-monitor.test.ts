@@ -67,6 +67,7 @@ vi.mock('../../src/services/claude-code-detector.js', () => ({
       scanExistingSessions: vi.fn(async () => {}),
       stopWatchers: vi.fn(),
       closeSessionWatcher: vi.fn(),
+      setSessionCreatedCallback: vi.fn(),
     })),
     { projectDirName: (p: string) => p.replace(/[:\\/]/g, '-') }
   ),

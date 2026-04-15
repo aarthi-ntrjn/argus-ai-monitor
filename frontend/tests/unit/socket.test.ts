@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
-import type { SessionOutput } from '../../src/types';
+import type { Session, SessionOutput } from '../../src/types';
 
 // These tests target the fix for T116: session.output.batch arriving before the
 // SessionCard/OutputPane mounts should still populate the React Query cache so
@@ -141,6 +141,107 @@ describe('socket — applyOutputBatchEvent seeding (T116 regression)', () => {
       expect(result?.items[0].sequenceNumber).toBe(51); // last 100 start at seq 51
       expect(result?.total).toBe(150);
       expect(result?.nextBefore).toBe('51');
+    });
+  });
+});
+
+// Reproduce the session-list and individual-session cache update logic from
+// socket.ts updateSessionInCache so we can unit-test both cache keys in isolation.
+function updateSessionInCache(qc: QueryClient, session: Session): void {
+  qc.setQueryData<Session[]>(['sessions'], (old) => {
+    if (!old) return old;
+    return old.map((s) => s.id === session.id ? { ...s, ...session } : s);
+  });
+  qc.setQueryData<Session>(['session', session.id], (old) => {
+    if (!old) return old;
+    return { ...old, ...session };
+  });
+}
+
+function makeSession(overrides: Partial<Session> = {}): Session {
+  return {
+    id: 'sess-1',
+    repositoryId: 'repo-1',
+    type: 'claude-code',
+    launchMode: 'detected',
+    pid: 1234,
+    pidSource: 'lockfile',
+    status: 'active',
+    startedAt: '2026-01-01T00:00:00Z',
+    endedAt: null,
+    lastActivityAt: '2026-01-01T00:00:00Z',
+    summary: null,
+    expiresAt: null,
+    model: null,
+    yoloMode: null,
+    ...overrides,
+  };
+}
+
+describe('socket — updateSessionInCache', () => {
+  let qc: QueryClient;
+  const SESSION_ID = 'sess-1';
+
+  beforeEach(() => {
+    qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  });
+
+  describe("['sessions'] list cache", () => {
+    it('updates the matching session in the list', () => {
+      const original = makeSession({ status: 'active' });
+      qc.setQueryData<Session[]>(['sessions'], [original]);
+
+      const updated = makeSession({ status: 'idle' });
+      updateSessionInCache(qc, updated);
+
+      const sessions = qc.getQueryData<Session[]>(['sessions']);
+      expect(sessions?.[0].status).toBe('idle');
+    });
+
+    it('leaves other sessions untouched', () => {
+      const other = makeSession({ id: 'sess-2', status: 'active' });
+      const target = makeSession({ id: SESSION_ID, status: 'active' });
+      qc.setQueryData<Session[]>(['sessions'], [other, target]);
+
+      updateSessionInCache(qc, makeSession({ id: SESSION_ID, status: 'ended' }));
+
+      const sessions = qc.getQueryData<Session[]>(['sessions']);
+      expect(sessions?.[0].status).toBe('active'); // sess-2 unchanged
+      expect(sessions?.[1].status).toBe('ended');  // sess-1 updated
+    });
+
+    it('does nothing when sessions list cache is empty', () => {
+      updateSessionInCache(qc, makeSession({ status: 'idle' }));
+      expect(qc.getQueryData<Session[]>(['sessions'])).toBeUndefined();
+    });
+  });
+
+  describe("['session', id] individual cache (T038 regression)", () => {
+    it('merges updated fields into the individual session cache', () => {
+      const original = makeSession({ status: 'active', summary: null });
+      qc.setQueryData<Session>(['session', SESSION_ID], original);
+
+      updateSessionInCache(qc, makeSession({ status: 'idle', summary: 'done' }));
+
+      const session = qc.getQueryData<Session>(['session', SESSION_ID]);
+      expect(session?.status).toBe('idle');
+      expect(session?.summary).toBe('done');
+    });
+
+    it('preserves fields not present in the incoming update', () => {
+      const original = makeSession({ model: 'claude-3-5-sonnet', status: 'active' });
+      qc.setQueryData<Session>(['session', SESSION_ID], original);
+
+      updateSessionInCache(qc, makeSession({ status: 'idle', model: 'claude-3-5-sonnet' }));
+
+      const session = qc.getQueryData<Session>(['session', SESSION_ID]);
+      expect(session?.model).toBe('claude-3-5-sonnet');
+    });
+
+    it('does nothing when individual session cache is not seeded', () => {
+      // No cache entry for this session yet — update must be a no-op (not create a stale entry)
+      updateSessionInCache(qc, makeSession({ status: 'idle' }));
+      expect(qc.getQueryData<Session>(['session', SESSION_ID])).toBeUndefined();
     });
   });
 });
