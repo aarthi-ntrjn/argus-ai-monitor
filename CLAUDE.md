@@ -23,6 +23,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Always ask before making tradeoff decisions.** If a fix or change has meaningful tradeoffs (security, performance, correctness, maintainability), stop and present the options to the user with a brief explanation of each. Do not pick one unilaterally. Examples: weakening a security check, changing a default behavior, removing a feature, choosing between approaches with different risk profiles.
 - **Only modify what the task requires.** Do not make unrelated changes in a file while fixing something else. If you spot something worth improving, raise it explicitly and get confirmation before touching it.
 
+## Debugging
+
+- **Add logs when the root cause is unclear.** If static analysis and code reading have not pinpointed a bug after a reasonable effort, add targeted log statements to the relevant code path, ask the user to reproduce the issue, and use the output to confirm the root cause before making any fix. Remove diagnostic logs after the bug is resolved.
+
 ## Project Context
 
 Argus is a tool for centrally monitoring and remotely controlling Claude Code and GitHub Copilot sessions. For full project documentation, see [README.md](README.md). For architecture, API reference, and dev setup, see [docs/README-CONTRIBUTORS.md](docs/README-CONTRIBUTORS.md).
