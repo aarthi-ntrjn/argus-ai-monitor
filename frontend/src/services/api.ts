@@ -134,15 +134,10 @@ export async function patchArgusSettings(patch: Partial<ArgusConfig>): Promise<A
 
 export interface TeamsSettings {
   enabled: boolean;
-  botAppId?: string;
-  botAppSecret?: string;
-  botCertPath?: string;
-  botCertThumbprint?: string;
-  tenantId?: string;
   teamId?: string;
   channelId?: string;
   ownerAadObjectId?: string;
-  connectionStatus: 'connected' | 'disconnected' | 'error' | 'unconfigured';
+  connectionStatus: 'connected' | 'disconnected' | 'unconfigured';
 }
 
 export async function getTeamsSettings(): Promise<TeamsSettings> {

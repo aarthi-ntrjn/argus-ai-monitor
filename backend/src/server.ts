@@ -8,6 +8,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 import { randomUUID } from 'crypto';
+import { App } from '@microsoft/teams.apps';
 import { loadConfig } from './config/config-loader.js';
 import * as logger from './utils/logger.js';
 import { addClient, removeClient, broadcast } from './api/ws/event-dispatcher.js';
@@ -22,16 +23,16 @@ import launcherRoutes from './api/routes/launcher.js';
 import toolsRoutes from './api/routes/tools.js';
 import settingsRoutes from './api/routes/settings.js';
 import teamsSettingsRoutes from './api/routes/teams-settings.js';
-import teamsWebhookRoutes from './api/routes/teams-webhook.js';
 import telemetryRoutes from './api/routes/telemetry.js';
 import { telemetryService } from './services/telemetry-service.js';
 import { SessionMonitor } from './services/session-monitor.js';
 import { startPruningJob } from './services/pruning-job.js';
 import { TeamsIntegrationService } from './services/teams-integration.js';
-import { TeamsGraphClient } from './services/teams-graph-client.js';
-import { TeamsBotAuthService } from './services/teams-bot-auth-service.js';
 import { TeamsMessageBuffer } from './services/teams-message-buffer.js';
+import { FastifyTeamsAdapter } from './services/teams-sdk-adapter.js';
 import { outputStore } from './services/output-store.js';
+import { loadTeamsConfig } from './config/teams-config-loader.js';
+import { getTeamsThreadByTeamsId, insertControlAction } from './db/database.js';
 import type { Session, Repository } from './models/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -44,16 +45,21 @@ const ABS_PATH_RE = /([A-Za-z]:[\\/]|\/)[^\s:)]+[\\/]([^\s:)]+)/g;
 
 function sanitizeForTelemetry(value: string): string {
   return value
-    .replace(ABS_PATH_RE, '$2')   // keep only the filename, drop the directory prefix
-    .replace(UUID_RE, '[id]')     // replace UUIDs with [id]
+    .replace(ABS_PATH_RE, '$2')
+    .replace(UUID_RE, '[id]')
     .slice(0, 300);
 }
 
 function extractOrigin(stack: string | undefined): string {
   if (!stack) return 'unknown';
-  // Find the first frame that is src code (not node_modules)
   const frame = stack.split('\n').find(line => line.includes(' at ') && !line.includes('node_modules'));
   return frame ? sanitizeForTelemetry(frame.trim()) : 'unknown';
+}
+
+function extractThreadId(conversationId: string | undefined): string | null {
+  if (!conversationId) return null;
+  const match = conversationId.match(/messageid=([^;]+)/);
+  return match ? match[1] : null;
 }
 
 export async function buildServer() {
@@ -84,10 +90,48 @@ export async function buildServer() {
     uiConfig: { docExpansion: 'list', deepLinking: false },
   });
 
+  // Initialize Teams SDK App with Fastify adapter before static/catch-all routes
+  const teamsApp = new App({ httpServerAdapter: new FastifyTeamsAdapter(app) });
+  teamsApp.message(/.*/, async (ctx) => {
+    const teamsConfig = loadTeamsConfig();
+    const senderAadObjectId = (ctx.activity.from as Record<string, unknown>)?.['aadObjectId'] as string | undefined;
+    app.log.info({ senderAadObjectId, source: 'teams.message' }, 'teams.message.received');
+
+    if (!senderAadObjectId || senderAadObjectId !== teamsConfig.ownerAadObjectId) {
+      app.log.info({ senderAadObjectId, source: 'teams.message' }, 'teams.message.rejected.non-owner');
+      return;
+    }
+
+    const threadId = extractThreadId(ctx.activity.conversation?.id);
+    if (!threadId) return;
+
+    const thread = getTeamsThreadByTeamsId(threadId);
+    if (!thread) {
+      app.log.warn({ threadId, source: 'teams.message' }, 'teams.message.unknown.thread');
+      return;
+    }
+
+    const text = ctx.activity.text?.trim();
+    if (!text) return;
+
+    insertControlAction({
+      id: randomUUID(),
+      sessionId: thread.sessionId,
+      type: 'send_prompt',
+      payload: { text },
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      completedAt: null,
+      result: null,
+      source: 'Teams',
+    });
+    app.log.info({ sessionId: thread.sessionId, source: 'Teams' }, 'teams.message.command.received');
+  });
+  await teamsApp.initialize();
+
   const frontendDist = join(__dirname, '..', '..', 'frontend', 'dist');
   try {
     await app.register(fastifyStatic, { root: frontendDist });
-    // SPA catch-all: serve index.html for any unmatched non-API route
     app.setNotFoundHandler((_request, reply) => {
       reply.sendFile('index.html');
     });
@@ -128,7 +172,6 @@ export async function buildServer() {
   await app.register(toolsRoutes);
   await app.register(settingsRoutes);
   await app.register(teamsSettingsRoutes);
-  await app.register(teamsWebhookRoutes);
   await app.register(telemetryRoutes);
 
   app.register(async (fastify) => {
@@ -138,11 +181,11 @@ export async function buildServer() {
     });
   });
 
-  return { app, config };
+  return { app, config, teamsApp };
 }
 
 export async function startServer() {
-  const { app, config } = await buildServer();
+  const { app, config, teamsApp } = await buildServer();
 
   monitor = new SessionMonitor();
   const claudeDetector = monitor.getClaudeCodeDetector();
@@ -167,10 +210,8 @@ export async function startServer() {
   await monitor.start();
   startPruningJob();
 
-  const teamsGraphClient = new TeamsGraphClient();
-  const teamsBotAuthService = new TeamsBotAuthService();
   const teamsBuffer = new TeamsMessageBuffer(1000, app.log as any);
-  const teamsService = new TeamsIntegrationService(teamsGraphClient, teamsBotAuthService, teamsBuffer, app.log as any);
+  const teamsService = new TeamsIntegrationService(teamsApp, teamsBuffer, app.log as any);
 
   monitor.on('session.created', (session: Session) => {
     teamsService.onSessionCreated(session).catch(err => app.log.error({ err }, 'teams.session.created.error'));
@@ -199,4 +240,3 @@ if (isMain) {
     process.exit(1);
   });
 }
-

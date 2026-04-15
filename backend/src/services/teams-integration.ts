@@ -1,26 +1,23 @@
 import { randomUUID } from 'crypto';
 import type { Logger } from 'pino';
-import type { Session, SessionOutput, TeamsConfig } from '../models/index.js';
+import type { App } from '@microsoft/teams.apps';
+import type { Session, SessionOutput } from '../models/index.js';
 import { loadTeamsConfig } from '../config/teams-config-loader.js';
 import { getTeamsThread, upsertTeamsThread, updateTeamsThreadOutputMessageId } from '../db/database.js';
-import type { TeamsGraphClient } from './teams-graph-client.js';
-import type { TeamsBotAuthService } from './teams-bot-auth-service.js';
 import type { TeamsMessageBuffer } from './teams-message-buffer.js';
 
 export class TeamsIntegrationService {
   private flushTimers = new Map<string, ReturnType<typeof setInterval>>();
 
   constructor(
-    private readonly graphClient: TeamsGraphClient,
-    private readonly botAuthService: TeamsBotAuthService,
+    private readonly teamsApp: App,
     private readonly buffer: TeamsMessageBuffer,
     private readonly logger: Logger,
   ) {}
 
-  private isConfigured(config: Partial<TeamsConfig> & { enabled: boolean }): config is TeamsConfig {
+  private isConfigured(): boolean {
+    const config = loadTeamsConfig();
     return config.enabled === true &&
-      Boolean(config.botAppId) &&
-      Boolean(config.tenantId) &&
       Boolean(config.teamId) &&
       Boolean(config.channelId) &&
       Boolean(config.ownerAadObjectId);
@@ -28,30 +25,30 @@ export class TeamsIntegrationService {
 
   async onSessionCreated(session: Session): Promise<void> {
     const config = loadTeamsConfig();
-    if (!this.isConfigured(config)) return;
+    if (!this.isConfigured()) return;
+    const { channelId } = config as { channelId: string };
 
     const existing = getTeamsThread(session.id);
     if (existing) {
       this.logger.info({ sessionId: session.id, teamsThreadId: existing.teamsThreadId }, 'teams.thread.reused');
-      this._startFlushTimer(session.id, config);
+      this._startFlushTimer(session.id, channelId);
       return;
     }
 
-    const openingText = this._formatOpeningMessage(session, config.ownerAadObjectId);
+    const openingText = this._formatOpeningMessage(session, config.ownerAadObjectId!);
     try {
-      const accessToken = await this.botAuthService.getAccessToken(config);
-      const { messageId: threadId } = await this.graphClient.createThreadPost(config.teamId, config.channelId, accessToken, openingText);
+      const sent = await this.teamsApp.send(channelId, { type: 'message', text: openingText });
       upsertTeamsThread({
         id: randomUUID(),
         sessionId: session.id,
-        teamsThreadId: threadId,
-        teamsChannelId: config.channelId,
+        teamsThreadId: sent.id,
+        teamsChannelId: channelId,
         currentOutputMessageId: null,
         deltaLink: null,
         createdAt: new Date().toISOString(),
       });
-      this.logger.info({ sessionId: session.id, teamsThreadId: threadId }, 'teams.thread.created');
-      this._startFlushTimer(session.id, config);
+      this.logger.info({ sessionId: session.id, teamsThreadId: sent.id }, 'teams.thread.created');
+      this._startFlushTimer(session.id, channelId);
     } catch (err) {
       this.logger.error({ err, sessionId: session.id }, 'teams.thread.create.failed');
     }
@@ -61,24 +58,26 @@ export class TeamsIntegrationService {
     const config = loadTeamsConfig();
     if (!config.enabled) return;
     for (const output of outputs) {
-      const text = output.content;
-      if (!text.trim()) continue;
-      this.buffer.enqueue(sessionId, text);
+      if (!output.content.trim()) continue;
+      this.buffer.enqueue(sessionId, output.content);
     }
   }
 
   async onSessionEnded(session: Session): Promise<void> {
     const config = loadTeamsConfig();
-    if (!this.isConfigured(config)) return;
-    await this._flush(session.id, config);
+    if (!this.isConfigured()) return;
+    const { channelId } = config as { channelId: string };
+
+    await this._flush(session.id, channelId);
     this._stopFlushTimer(session.id);
+
     const thread = getTeamsThread(session.id);
     if (!thread) return;
+
     const endedAt = session.endedAt ?? new Date().toISOString();
-    const statusMsg = `<b>Session Ended</b><br>Type: ${session.type}<br>Session ID: ${session.id}<br>Status: <b>${session.status}</b><br>Ended: ${endedAt}`;
+    const statusMsg = `Session Ended\nType: ${session.type}\nSession ID: ${session.id}\nStatus: ${session.status}\nEnded: ${endedAt}`;
     try {
-      const accessToken = await this.botAuthService.getAccessToken(config);
-      await this.graphClient.postReply(config.teamId, config.channelId, thread.teamsThreadId, accessToken, statusMsg);
+      await this.teamsApp.api.conversations.activities(channelId).reply(thread.teamsThreadId, { type: 'message', text: statusMsg });
       this.logger.info({ sessionId: session.id, status: session.status }, 'teams.session.ended');
     } catch (err) {
       this.logger.error({ err, sessionId: session.id }, 'teams.session.end.notify.failed');
@@ -91,9 +90,9 @@ export class TeamsIntegrationService {
     }
   }
 
-  private _startFlushTimer(sessionId: string, config: TeamsConfig): void {
+  private _startFlushTimer(sessionId: string, channelId: string): void {
     if (this.flushTimers.has(sessionId)) return;
-    const timer = setInterval(() => this._flush(sessionId, config), 3000);
+    const timer = setInterval(() => this._flush(sessionId, channelId), 3000);
     this.flushTimers.set(sessionId, timer);
   }
 
@@ -102,19 +101,21 @@ export class TeamsIntegrationService {
     if (timer) { clearInterval(timer); this.flushTimers.delete(sessionId); }
   }
 
-  async _flush(sessionId: string, config: TeamsConfig): Promise<void> {
+  async _flush(sessionId: string, channelId: string): Promise<void> {
     const entries = this.buffer.flush(sessionId);
     if (entries.length === 0) return;
     const text = entries.join('');
     const thread = getTeamsThread(sessionId);
     if (!thread) return;
     try {
-      const accessToken = await this.botAuthService.getAccessToken(config);
+      const acts = this.teamsApp.api.conversations.activities(channelId);
       if (thread.currentOutputMessageId) {
-        await this.graphClient.updateReply(config.teamId, config.channelId, thread.teamsThreadId, thread.currentOutputMessageId, accessToken, text);
+        await acts.update(thread.currentOutputMessageId, { type: 'message', text });
+        this.logger.info({ sessionId, chars: text.length }, 'teams.flush.updated');
       } else {
-        const { messageId } = await this.graphClient.postReply(config.teamId, config.channelId, thread.teamsThreadId, accessToken, text);
-        updateTeamsThreadOutputMessageId(sessionId, messageId);
+        const res = await acts.reply(thread.teamsThreadId, { type: 'message', text });
+        updateTeamsThreadOutputMessageId(sessionId, res.id);
+        this.logger.info({ sessionId, messageId: res.id, chars: text.length }, 'teams.flush.posted');
       }
     } catch (err) {
       for (const entry of entries) this.buffer.enqueue(sessionId, entry);
@@ -124,12 +125,11 @@ export class TeamsIntegrationService {
 
   _formatOpeningMessage(session: Session, ownerAadObjectId: string): string {
     return [
-      `<b>Argus Session Started</b>`,
+      'Argus Session Started',
       `Session ID: ${session.id}`,
       `Type: ${session.type}`,
       `Started: ${session.startedAt}`,
       `Owner: ${ownerAadObjectId}`,
-    ].join('<br>');
+    ].join('\n');
   }
 }
-

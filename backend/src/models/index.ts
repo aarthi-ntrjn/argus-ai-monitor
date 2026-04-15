@@ -143,11 +143,6 @@ export interface PendingChoice {
 
 export interface TeamsConfig {
   enabled: boolean;
-  botAppId: string;
-  botAppSecret?: string;
-  botCertPath?: string;
-  botCertThumbprint?: string;
-  tenantId: string;
   teamId: string;
   channelId: string;
   ownerAadObjectId: string;
