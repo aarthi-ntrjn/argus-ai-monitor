@@ -61,6 +61,12 @@ export class TeamsIntegrationService {
     if (existing) {
       this.logger.info({ ...this._logCtx(), sessionId: session.id, teamsThreadId: existing.teamsThreadId }, 'teams.thread.reused');
       this.lastPostedState.set(session.id, extractTrackedState(session));
+      const reconnectMsg = `Session Reconnected\nSession: ${session.id}\nStatus: ${session.status}`;
+      try {
+        await this.teamsApp.api.conversations.activities(channelId).reply(existing.teamsThreadId, { type: 'message', text: reconnectMsg });
+      } catch (err) {
+        this.logger.warn({ ...this._logCtx(), err, sessionId: session.id }, 'teams.thread.reused.notify.failed');
+      }
       this._startFlushTimer(session.id, channelId);
       return;
     }
