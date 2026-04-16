@@ -8,7 +8,7 @@ import chokidar, { type FSWatcher } from 'chokidar';
 import { upsertSession, getRepositoryByPath, deleteSessionOutput, getSession } from '../db/database.js';
 import { broadcast } from '../api/ws/event-dispatcher.js';
 import { ptyRegistry } from './pty-registry.js';
-import { OutputStore } from './output-store.js';
+import { outputStore } from './output-store.js';
 import { parseJsonlLine, parseModelFromEvent } from './events-parser.js';
 import { detectYoloModeFromPids, isPidRunning } from './process-utils.js';
 import { SessionTypes } from '../models/index.js';
@@ -28,7 +28,6 @@ export class CopilotCliDetector {
   private watchers = new Map<string, FSWatcher>();
   private filePositions = new Map<string, number>();
   private sequenceCounters = new Map<string, number>();
-  private outputStore = new OutputStore();
   private lastScanTime = 0;
   // Dirs known to have an active session last scan — must be rechecked even if mtime unchanged.
   private activeDirPaths = new Set<string>();
@@ -268,7 +267,7 @@ export class CopilotCliDetector {
 
       this.sequenceCounters.set(sessionId, seq);
       if (outputs.length > 0) {
-        this.outputStore.insertOutput(sessionId, outputs);
+        outputStore.insertOutput(sessionId, outputs);
         const now = new Date().toISOString();
         const active = getSession(sessionId);
         if (active) {
