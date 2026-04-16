@@ -56,37 +56,12 @@ export function saveConfig(config: ArgusConfig): void {
 }
 
 export function loadSlackConfig(): SlackConfig | null {
-  let fileSack: Partial<SlackConfig> = {};
-  const configPath = getConfigPath();
-  try {
-    const raw = JSON.parse(readFileSync(configPath, 'utf-8')) as Record<string, unknown>;
-    fileSack = (raw.slack ?? {}) as Partial<SlackConfig>;
-  } catch { /* fall through */ }
-
-  const botToken = process.env.SLACK_BOT_TOKEN ?? fileSack.botToken ?? '';
-  const appToken = process.env.SLACK_APP_TOKEN ?? fileSack.appToken;
-  const channelId = process.env.SLACK_CHANNEL_ID ?? fileSack.channelId ?? '';
+  const botToken = process.env.SLACK_BOT_TOKEN ?? '';
+  const appToken = process.env.SLACK_APP_TOKEN;
+  const channelId = process.env.SLACK_CHANNEL_ID ?? '';
 
   if (!botToken && !channelId) return null;
 
-  return {
-    botToken,
-    appToken,
-    channelId,
-    enabled: fileSack.enabled ?? true,
-    enabledEventTypes: fileSack.enabledEventTypes,
-  };
-}
-
-export function saveSlackConfig(partial: Partial<SlackConfig>): void {
-  const configPath = getConfigPath();
-  const configDir = getConfigDir();
-  mkdirSync(configDir, { recursive: true });
-  let existing: Record<string, unknown> = {};
-  try {
-    existing = JSON.parse(readFileSync(configPath, 'utf-8'));
-  } catch { /* use empty */ }
-  existing.slack = { ...(existing.slack as object ?? {}), ...partial };
-  writeFileSync(configPath, JSON.stringify(existing, null, 2), 'utf-8');
+  return { botToken, appToken, channelId, enabled: true };
 }
 

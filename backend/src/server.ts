@@ -23,7 +23,7 @@ import { fsRoutes } from './api/routes/fs.js';
 import todosRoutes from './api/routes/todos.js';
 import launcherRoutes from './api/routes/launcher.js';
 import toolsRoutes from './api/routes/tools.js';
-import settingsRoutes, { setSlackNotifier } from './api/routes/settings.js';
+import settingsRoutes from './api/routes/settings.js';
 import teamsSettingsRoutes from './api/routes/teams-settings.js';
 import telemetryRoutes from './api/routes/telemetry.js';
 import { telemetryService } from './services/telemetry-service.js';
@@ -233,10 +233,9 @@ export async function startServer() {
   if (slackConfig) {
     slackNotifier = new SlackNotifier(slackConfig, monitor);
     slackNotifier.initialize();
-    setSlackNotifier(slackNotifier);
 
     if (slackNotifier.webClient) {
-      slackListener = new SlackListener(slackConfig, slackNotifier.webClient);
+      slackListener = new SlackListener(slackConfig, slackNotifier.webClient, slackNotifier);
       slackListener.initialize();
     }
     setSlackServices(slackNotifier, slackListener);

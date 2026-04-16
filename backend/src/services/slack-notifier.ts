@@ -94,23 +94,6 @@ export class SlackNotifier {
   }
 
   // -------------------------------------------------------------------------
-  // Configuration hot-reload (T015)
-  // -------------------------------------------------------------------------
-
-  reconfigure(partial: Partial<Pick<SlackConfig, 'channelId' | 'enabledEventTypes' | 'enabled'>>): void {
-    if ('channelId' in partial && partial.channelId !== undefined) {
-      this.config.channelId = partial.channelId;
-    }
-    if ('enabledEventTypes' in partial) {
-      this.config.enabledEventTypes = partial.enabledEventTypes;
-    }
-    if ('enabled' in partial && partial.enabled !== undefined) {
-      this.config.enabled = partial.enabled;
-    }
-    logger.info(`${LOG_TAG} Configuration updated`, { channelId: this.config.channelId, enabled: this.config.enabled });
-  }
-
-  // -------------------------------------------------------------------------
   // Session lifecycle (T008, T009)
   // -------------------------------------------------------------------------
 
