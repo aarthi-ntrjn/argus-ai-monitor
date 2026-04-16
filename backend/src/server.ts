@@ -118,7 +118,8 @@ export async function buildServer() {
       return;
     }
 
-    const text = ctx.activity.text?.trim();
+    const raw = ctx.activity.text ?? '';
+    const text = raw.replace(/<at>[^<]*<\/at>/g, '').trim();
     if (!text) return;
 
     insertControlAction({
