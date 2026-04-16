@@ -82,7 +82,7 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
 
   return (
     <>
-      <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3 max-h-[calc(100vh-4rem)] overflow-y-auto">
+      <div className="absolute right-0 top-full mt-1 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3 max-h-[calc(100vh-4rem)] overflow-y-auto">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Settings</p>
         <div className="py-1">
           <Checkbox
