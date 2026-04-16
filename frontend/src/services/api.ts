@@ -144,13 +144,6 @@ export async function getTeamsSettings(): Promise<TeamsSettings> {
   return apiFetch<TeamsSettings>('/settings/teams');
 }
 
-export async function patchTeamsSettings(patch: Partial<TeamsSettings>): Promise<TeamsSettings> {
-  return apiFetch<TeamsSettings>('/settings/teams', {
-    method: 'PATCH',
-    body: JSON.stringify(patch),
-  });
-}
-
 export function postTelemetryEvent(type: string): void {
   void fetch(`${BASE}/telemetry/event`, {
     method: 'POST',

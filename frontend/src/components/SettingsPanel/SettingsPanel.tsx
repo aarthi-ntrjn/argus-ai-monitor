@@ -21,16 +21,10 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPanelProps) {
   const { settings: argusSettings, patchSetting } = useArgusSettings();
-  const { config: teamsConfig, isSaving: isTeamsSaving, error: teamsError, save: saveTeams } = useTeamsSettings();
+  const { config: teamsConfig } = useTeamsSettings();
   const [showYoloWarning, setShowYoloWarning] = useState(false);
   const [thresholdInput, setThresholdInput] = useState(String(argusSettings?.restingThresholdMinutes ?? DEFAULT_THRESHOLD));
   const [thresholdError, setThresholdError] = useState<string | null>(null);
-  const [teamsForm, setTeamsForm] = useState({
-    teamId: '',
-    channelId: '',
-    ownerAadObjectId: '',
-  });
-
   // Sync input when argusSettings loads from server
   useEffect(() => {
     if (argusSettings?.restingThresholdMinutes != null) {
@@ -88,7 +82,7 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
 
   return (
     <>
-      <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3">
+      <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3 max-h-[calc(100vh-4rem)] overflow-y-auto">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Settings</p>
         <div className="py-1">
           <Checkbox
@@ -217,61 +211,24 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
               </Badge>
             )}
           </div>
-          <div className="flex flex-col gap-2">
-            <p className="text-xs text-gray-500">Auth is configured via <span className="font-mono">CLIENT_ID</span>, <span className="font-mono">CLIENT_SECRET</span>, and <span className="font-mono">TENANT_ID</span> environment variables.</p>
+          <div className="flex flex-col gap-1.5">
+            <p className="text-xs text-gray-500">Configured via environment variables.</p>
             <div>
-              <label htmlFor="teams-team-id" className="text-xs text-gray-600 block mb-1">Team ID</label>
-              <input
-                id="teams-team-id"
-                type="text"
-                className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
-                value={teamsForm.teamId || teamsConfig?.teamId || ''}
-                onChange={e => setTeamsForm(f => ({ ...f, teamId: e.target.value }))}
-                placeholder="Team (Group) ID"
-              />
+              <p className="text-xs text-gray-500 mb-0.5">Team ID</p>
+              <p className="text-xs font-mono text-gray-700 break-all">{teamsConfig?.teamId ?? <span className="text-gray-400">not set</span>}</p>
             </div>
             <div>
-              <label htmlFor="teams-channel-id" className="text-xs text-gray-600 block mb-1">Channel ID</label>
-              <input
-                id="teams-channel-id"
-                type="text"
-                className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
-                value={teamsForm.channelId || teamsConfig?.channelId || ''}
-                onChange={e => setTeamsForm(f => ({ ...f, channelId: e.target.value }))}
-                placeholder="19:xxxx@thread.tacv2"
-              />
+              <p className="text-xs text-gray-500 mb-0.5">Channel ID</p>
+              <p className="text-xs font-mono text-gray-700 break-all">{teamsConfig?.channelId ?? <span className="text-gray-400">not set</span>}</p>
             </div>
             <div>
-              <label htmlFor="teams-owner-aad-object-id" className="text-xs text-gray-600 block mb-1">Owner AAD Object ID</label>
-              <input
-                id="teams-owner-aad-object-id"
-                type="text"
-                className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
-                value={teamsForm.ownerAadObjectId || teamsConfig?.ownerAadObjectId || ''}
-                onChange={e => setTeamsForm(f => ({ ...f, ownerAadObjectId: e.target.value }))}
-                placeholder="AAD Object ID of the session owner"
-              />
+              <p className="text-xs text-gray-500 mb-0.5">Owner AAD Object ID</p>
+              <p className="text-xs font-mono text-gray-700 break-all">{teamsConfig?.ownerAadObjectId ?? <span className="text-gray-400">not set</span>}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500">
-                Webhook URL: <span className="font-mono">{window.location.origin}/api/v1/teams/webhook</span>
-              </p>
+              <p className="text-xs text-gray-500 mb-0.5">Webhook URL</p>
+              <p className="text-xs font-mono text-gray-700 break-all">{window.location.origin}/api/v1/teams/webhook</p>
             </div>
-            {teamsError && <p className="text-xs text-red-600">{teamsError}</p>}
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={isTeamsSaving}
-              onClick={() => saveTeams({
-                enabled: true,
-                teamId: teamsForm.teamId || teamsConfig?.teamId,
-                channelId: teamsForm.channelId || teamsConfig?.channelId,
-                ownerAadObjectId: teamsForm.ownerAadObjectId || teamsConfig?.ownerAadObjectId,
-              })}
-              className="text-xs"
-            >
-              {isTeamsSaving ? 'Saving...' : 'Save Teams Settings'}
-            </Button>
           </div>
         </div>
       </div>

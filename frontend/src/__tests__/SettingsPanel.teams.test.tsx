@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SettingsPanel } from '../components/SettingsPanel/SettingsPanel';
 import type { DashboardSettings } from '../types';
@@ -10,7 +9,6 @@ vi.mock('../services/api', () => ({
   getArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false, yoloMode: false }),
   patchArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false, yoloMode: false }),
   getTeamsSettings: vi.fn().mockResolvedValue({ enabled: false, connectionStatus: 'unconfigured' }),
-  patchTeamsSettings: vi.fn().mockResolvedValue({ enabled: false, connectionStatus: 'unconfigured' }),
 }));
 
 function renderWithQuery(ui: React.ReactElement) {
@@ -31,7 +29,6 @@ describe('SettingsPanel - Teams integration section', () => {
     vi.clearAllMocks();
     vi.mocked(api.getArgusSettings).mockResolvedValue({ autoRegisterRepos: false, yoloMode: false } as any);
     vi.mocked(api.getTeamsSettings).mockResolvedValue({ enabled: false, connectionStatus: 'unconfigured' });
-    vi.mocked(api.patchTeamsSettings).mockResolvedValue({ enabled: false, connectionStatus: 'unconfigured' });
   });
 
   it('renders the Microsoft Teams section heading', async () => {
@@ -62,22 +59,8 @@ describe('SettingsPanel - Teams integration section', () => {
     });
   });
 
-  it('renders Team ID input field', async () => {
-    renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
-    await waitFor(() => {
-      expect(screen.getByLabelText(/team id/i)).toBeInTheDocument();
-    });
-  });
-
-  it('renders Owner AAD Object ID input field', async () => {
-    renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
-    await waitFor(() => {
-      expect(screen.getByLabelText(/owner aad object id/i)).toBeInTheDocument();
-    });
-  });
-
-  it('calls patchTeamsSettings when Save is clicked', async () => {
-    vi.mocked(api.patchTeamsSettings).mockResolvedValue({
+  it('displays team ID read-only when config is loaded', async () => {
+    vi.mocked(api.getTeamsSettings).mockResolvedValue({
       enabled: true,
       teamId: 'test-team-id',
       channelId: '19:xxxx@thread.tacv2',
@@ -85,21 +68,21 @@ describe('SettingsPanel - Teams integration section', () => {
       connectionStatus: 'connected',
     });
     renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
-    await waitFor(() => screen.getByLabelText(/team id/i));
-    const teamIdInput = screen.getByLabelText(/team id/i);
-    await userEvent.clear(teamIdInput);
-    await userEvent.type(teamIdInput, 'test-team-id');
-    await userEvent.click(screen.getByRole('button', { name: /save teams settings/i }));
-    expect(api.patchTeamsSettings).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByText('test-team-id')).toBeInTheDocument();
+    });
   });
 
-  it('shows error message when save fails', async () => {
-    vi.mocked(api.patchTeamsSettings).mockRejectedValue(new Error('Connection failed'));
+  it('shows not set when team ID is missing', async () => {
     renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
-    await waitFor(() => screen.getByLabelText(/team id/i));
-    await userEvent.click(screen.getByRole('button', { name: /save teams settings/i }));
     await waitFor(() => {
-      expect(screen.getByText(/connection failed/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/not set/i).length).toBeGreaterThan(0);
     });
+  });
+
+  it('does not render a save button', async () => {
+    renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
+    await waitFor(() => screen.getByText(/microsoft teams/i));
+    expect(screen.queryByRole('button', { name: /save teams settings/i })).not.toBeInTheDocument();
   });
 });
