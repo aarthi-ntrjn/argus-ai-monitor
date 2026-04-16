@@ -309,12 +309,11 @@ export class TeamsIntegrationService {
     ].join('\n');
   }
 
-  _formatUpdateMessage(session: Session, changes: { label: string; value: string }[]): string {
+  _formatUpdateMessage(_session: Session, changes: { label: string; value: string }[]): string {
     return [
       '**Session Updated**',
       '---',
       ...changes.map(({ label, value }) => field(label, value)),
-      field('Session', code(session.id)),
     ].join('\n');
   }
 
@@ -323,9 +322,7 @@ export class TeamsIntegrationService {
       '**Session Ended**',
       '---',
       field('Status', session.status),
-      field('Type', session.type),
       field('Ended', session.endedAt ?? new Date().toISOString()),
-      field('Session', code(session.id)),
     ].join('\n');
   }
 }
