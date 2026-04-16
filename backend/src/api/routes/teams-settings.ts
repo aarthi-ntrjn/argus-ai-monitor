@@ -18,11 +18,6 @@ const teamsSettingsRoutes: FastifyPluginAsync = async (app) => {
     return reply.send({ ...config, connectionStatus });
   });
 
-  app.patch<{ Body: Partial<TeamsConfig> }>('/api/v1/settings/teams', async (_req, reply) => {
-    const config = loadTeamsConfig();
-    const connectionStatus = checkConnectionStatus(config);
-    return reply.send({ ...config, connectionStatus });
-  });
 };
 
 export default teamsSettingsRoutes;
