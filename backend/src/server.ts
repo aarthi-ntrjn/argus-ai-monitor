@@ -132,7 +132,7 @@ export async function buildServer() {
       result: null,
       source: 'Teams',
     });
-    app.log.info({ sessionId: thread.sessionId, source: 'Teams' }, 'teams.message.command.received');
+    app.log.info({ sessionId: thread.sessionId, text, source: 'Teams' }, 'teams.message.command.received');
   });
   await teamsApp.initialize();
 
