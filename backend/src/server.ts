@@ -222,6 +222,9 @@ export async function startServer() {
   monitor.on('session.created', (session: Session) => {
     teamsService.onSessionCreated(session).catch(err => app.log.error({ err }, 'teams.session.created.error'));
   });
+  monitor.on('session.updated', (session: Session) => {
+    teamsService.onSessionUpdated(session).catch(err => app.log.error({ err }, 'teams.session.updated.error'));
+  });
   monitor.on('session.ended', (session: Session) => {
     teamsService.onSessionEnded(session).catch(err => app.log.error({ err }, 'teams.session.ended.error'));
   });

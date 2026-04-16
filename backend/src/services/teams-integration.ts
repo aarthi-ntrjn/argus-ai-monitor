@@ -7,8 +7,27 @@ import { getTeamsThread, upsertTeamsThread, updateTeamsThreadOutputMessageId, ge
 import type { Repository } from '../models/index.js';
 import type { TeamsMessageBuffer } from './teams-message-buffer.js';
 
+type TrackedSessionState = {
+  status: string;
+  model: string | null;
+  yoloMode: boolean | null;
+  pid: number | null;
+  launchMode: string | null;
+};
+
+function extractTrackedState(session: Session): TrackedSessionState {
+  return {
+    status: session.status,
+    model: session.model,
+    yoloMode: session.yoloMode,
+    pid: session.pid,
+    launchMode: session.launchMode,
+  };
+}
+
 export class TeamsIntegrationService {
   private flushTimers = new Map<string, ReturnType<typeof setInterval>>();
+  private lastPostedState = new Map<string, TrackedSessionState>();
 
   constructor(
     private readonly teamsApp: App,
@@ -41,6 +60,7 @@ export class TeamsIntegrationService {
     const existing = getTeamsThread(session.id);
     if (existing) {
       this.logger.info({ ...this._logCtx(), sessionId: session.id, teamsThreadId: existing.teamsThreadId }, 'teams.thread.reused');
+      this.lastPostedState.set(session.id, extractTrackedState(session));
       this._startFlushTimer(session.id, channelId);
       return;
     }
@@ -58,10 +78,46 @@ export class TeamsIntegrationService {
         deltaLink: null,
         createdAt: new Date().toISOString(),
       });
+      this.lastPostedState.set(session.id, extractTrackedState(session));
       this.logger.info({ ...this._logCtx(), sessionId: session.id, teamsThreadId: sent.id }, 'teams.thread.created');
       this._startFlushTimer(session.id, channelId);
     } catch (err) {
       this.logger.error({ ...this._logCtx(), err, sessionId: session.id }, 'teams.thread.create.failed');
+    }
+  }
+
+  async onSessionUpdated(session: Session): Promise<void> {
+    if (!this.isConfigured()) return;
+
+    const thread = getTeamsThread(session.id);
+    if (!thread) {
+      // Thread doesn't exist yet — treat as a new session (e.g. server restarted mid-session)
+      await this.onSessionCreated(session);
+      return;
+    }
+
+    const prev = this.lastPostedState.get(session.id);
+    const curr = extractTrackedState(session);
+    const changes = this._diffState(prev, curr);
+    if (changes.length === 0) return;
+
+    this.lastPostedState.set(session.id, curr);
+
+    const config = loadTeamsConfig();
+    const { channelId } = config as { channelId: string };
+    const row = (label: string, value: string) => `${label.padEnd(10)} ${value}`;
+    const text = [
+      'Session Updated',
+      '',
+      ...changes.map(({ label, value }) => row(label, value)),
+      row('Session:', session.id),
+    ].join('\n');
+
+    try {
+      await this.teamsApp.api.conversations.activities(channelId).reply(thread.teamsThreadId, { type: 'message', text });
+      this.logger.info({ ...this._logCtx(), sessionId: session.id, changes: changes.map(c => c.label) }, 'teams.session.updated');
+    } catch (err) {
+      this.logger.error({ ...this._logCtx(), err, sessionId: session.id }, 'teams.session.update.notify.failed');
     }
   }
 
@@ -81,6 +137,7 @@ export class TeamsIntegrationService {
 
     await this._flush(session.id, channelId);
     this._stopFlushTimer(session.id);
+    this.lastPostedState.delete(session.id);
 
     const thread = getTeamsThread(session.id);
     if (!thread) return;
@@ -99,6 +156,21 @@ export class TeamsIntegrationService {
     for (const [sessionId] of this.flushTimers) {
       this._stopFlushTimer(sessionId);
     }
+  }
+
+  private _diffState(prev: TrackedSessionState | undefined, curr: TrackedSessionState): { label: string; value: string }[] {
+    const changes: { label: string; value: string }[] = [];
+    if (!prev || prev.status !== curr.status)
+      changes.push({ label: 'Status:', value: curr.status });
+    if (!prev || prev.model !== curr.model)
+      changes.push({ label: 'Model:', value: curr.model ?? '(unknown)' });
+    if (!prev || prev.yoloMode !== curr.yoloMode)
+      changes.push({ label: 'Yolo:', value: curr.yoloMode ? 'on' : 'off' });
+    if (!prev || prev.pid !== curr.pid)
+      changes.push({ label: 'PID:', value: curr.pid != null ? String(curr.pid) : '(unknown)' });
+    if (!prev || prev.launchMode !== curr.launchMode)
+      changes.push({ label: 'Mode:', value: curr.launchMode === 'pty' ? 'connected' : 'readonly' });
+    return changes;
   }
 
   private _startFlushTimer(sessionId: string, channelId: string): void {
