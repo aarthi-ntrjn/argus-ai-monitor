@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Copy, Check } from 'lucide-react';
 import type { DashboardSettings } from '../../types';
 import { useArgusSettings } from '../../hooks/useArgusSettings';
 import { useTeamsSettings } from '../../hooks/useTeamsSettings';
@@ -8,6 +8,29 @@ import { YoloWarningDialog } from '../YoloWarningDialog/YoloWarningDialog';
 import { Checkbox } from '../Checkbox';
 import { Button } from '../Button';
 import Badge from '../Badge';
+
+function CopyButton({ value }: { value: string | undefined }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = useCallback(() => {
+    if (!value) return;
+    navigator.clipboard.writeText(value).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }, [value]);
+  if (!value) return null;
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      aria-label="Copy to clipboard"
+      title="Copy to clipboard"
+      className="icon-btn text-gray-400 hover:text-blue-600 shrink-0"
+    >
+      {copied ? <Check size={11} aria-hidden="true" /> : <Copy size={11} aria-hidden="true" />}
+    </button>
+  );
+}
 
 const DEFAULT_THRESHOLD = 20;
 const MIN_THRESHOLD = 1;
@@ -82,7 +105,7 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
 
   return (
     <>
-      <div className="absolute right-0 top-full mt-1 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3 max-h-[calc(100vh-4rem)] overflow-y-auto">
+      <div className="absolute right-0 top-full mt-1 w-96 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3 max-h-[calc(100vh-4rem)] overflow-y-auto">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Settings</p>
         <div className="py-1">
           <Checkbox
@@ -213,22 +236,22 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
           </div>
           <div className="flex flex-col gap-1.5">
             <p className="text-xs text-gray-500">Configured via environment variables.</p>
-            <div>
-              <p className="text-xs text-gray-500 mb-0.5">Team ID</p>
-              <p className="text-xs font-mono text-gray-700 break-all">{teamsConfig?.teamId ?? <span className="text-gray-400">not set</span>}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 mb-0.5">Channel ID</p>
-              <p className="text-xs font-mono text-gray-700 break-all">{teamsConfig?.channelId ?? <span className="text-gray-400">not set</span>}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 mb-0.5">Owner AAD Object ID</p>
-              <p className="text-xs font-mono text-gray-700 break-all">{teamsConfig?.ownerAadObjectId ?? <span className="text-gray-400">not set</span>}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 mb-0.5">Webhook URL</p>
-              <p className="text-xs font-mono text-gray-700 break-all">{window.location.origin}/api/v1/teams/webhook</p>
-            </div>
+            {([
+              { label: 'Team ID', value: teamsConfig?.teamId },
+              { label: 'Channel ID', value: teamsConfig?.channelId },
+              { label: 'Owner AAD Object ID', value: teamsConfig?.ownerAadObjectId },
+              { label: 'Webhook URL', value: `${window.location.origin}/api/v1/teams/webhook` },
+            ] as { label: string; value: string | undefined }[]).map(({ label, value }) => (
+              <div key={label}>
+                <p className="text-xs text-gray-500 mb-0.5">{label}</p>
+                <div className="flex items-start gap-1">
+                  <p className="text-xs font-mono text-gray-700 break-all flex-1">
+                    {value ?? <span className="text-gray-400">not set</span>}
+                  </p>
+                  <CopyButton value={value} />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
