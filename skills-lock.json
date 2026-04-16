@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "teams-dev": {
+      "source": "heyitsaamir/teamscli",
+      "sourceType": "github",
+      "computedHash": "22bcffefe8eea1f49be08f71092fea9239efe07b9bdef8912bfbdcbfdbf7de70"
+    }
+  }
+}
