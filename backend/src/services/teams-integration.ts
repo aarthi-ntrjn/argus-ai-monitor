@@ -143,6 +143,7 @@ export class TeamsIntegrationService {
       row('Path:', repo?.path ?? '(unknown)'),
       row('Branch:', repo?.branch ?? '(unknown)'),
       row('Type:', session.type),
+      row('Mode:', session.launchMode === 'pty' ? 'connected' : 'readonly'),
       row('Model:', session.model ?? '(unknown)'),
       row('Yolo:', session.yoloMode ? 'on' : 'off'),
       row('PID:', session.pid != null ? String(session.pid) : '(unknown)'),
