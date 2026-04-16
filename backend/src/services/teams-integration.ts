@@ -25,6 +25,14 @@ function extractTrackedState(session: Session): TrackedSessionState {
   };
 }
 
+function field(label: string, value: string): string {
+  return `**${label}:** ${value}`;
+}
+
+function code(value: string): string {
+  return `\`${value}\``;
+}
+
 export class TeamsIntegrationService {
   private flushTimers = new Map<string, ReturnType<typeof setInterval>>();
   private lastPostedState = new Map<string, TrackedSessionState>();
@@ -61,9 +69,8 @@ export class TeamsIntegrationService {
     if (existing) {
       this.logger.info({ ...this._logCtx(), sessionId: session.id, teamsThreadId: existing.teamsThreadId }, 'teams.thread.reused');
       this.lastPostedState.set(session.id, extractTrackedState(session));
-      const reconnectMsg = `Session Reconnected\nSession: ${session.id}\nStatus: ${session.status}`;
       try {
-        await this.teamsApp.api.conversations.activities(channelId).reply(existing.teamsThreadId, { type: 'message', text: reconnectMsg });
+        await this.teamsApp.api.conversations.activities(channelId).reply(existing.teamsThreadId, { type: 'message', text: this._formatReconnectMessage(session) });
       } catch (err) {
         this.logger.warn({ ...this._logCtx(), err, sessionId: session.id }, 'teams.thread.reused.notify.failed');
       }
@@ -72,9 +79,8 @@ export class TeamsIntegrationService {
     }
 
     const repo = getRepository(session.repositoryId);
-    const openingText = this._formatOpeningMessage(session, repo);
     try {
-      const sent = await this.teamsApp.send(channelId, { type: 'message', text: openingText });
+      const sent = await this.teamsApp.send(channelId, { type: 'message', text: this._formatOpeningMessage(session, repo) });
       upsertTeamsThread({
         id: randomUUID(),
         sessionId: session.id,
@@ -111,16 +117,9 @@ export class TeamsIntegrationService {
 
     const config = loadTeamsConfig();
     const { channelId } = config as { channelId: string };
-    const row = (label: string, value: string) => `${label.padEnd(10)} ${value}`;
-    const text = [
-      'Session Updated',
-      '',
-      ...changes.map(({ label, value }) => row(label, value)),
-      row('Session:', session.id),
-    ].join('\n');
 
     try {
-      await this.teamsApp.api.conversations.activities(channelId).reply(thread.teamsThreadId, { type: 'message', text });
+      await this.teamsApp.api.conversations.activities(channelId).reply(thread.teamsThreadId, { type: 'message', text: this._formatUpdateMessage(session, changes) });
       this.logger.info({ ...this._logCtx(), sessionId: session.id, changes: changes.map(c => c.label) }, 'teams.session.updated');
     } catch (err) {
       this.logger.error({ ...this._logCtx(), err, sessionId: session.id }, 'teams.session.update.notify.failed');
@@ -147,10 +146,8 @@ export class TeamsIntegrationService {
     const thread = getTeamsThread(session.id);
     if (!thread) return;
 
-    const endedAt = session.endedAt ?? new Date().toISOString();
-    const statusMsg = `Session Ended\nType: ${session.type}\nSession ID: ${session.id}\nStatus: ${session.status}\nEnded: ${endedAt}`;
     try {
-      await this.teamsApp.api.conversations.activities(channelId).reply(thread.teamsThreadId, { type: 'message', text: statusMsg });
+      await this.teamsApp.api.conversations.activities(channelId).reply(thread.teamsThreadId, { type: 'message', text: this._formatEndedMessage(session) });
       this.logger.info({ ...this._logCtx(), sessionId: session.id, status: session.status }, 'teams.session.ended');
     } catch (err) {
       this.logger.error({ ...this._logCtx(), err, sessionId: session.id }, 'teams.session.end.notify.failed');
@@ -166,15 +163,15 @@ export class TeamsIntegrationService {
   private _diffState(prev: TrackedSessionState | undefined, curr: TrackedSessionState): { label: string; value: string }[] {
     const changes: { label: string; value: string }[] = [];
     if (!prev || prev.status !== curr.status)
-      changes.push({ label: 'Status:', value: curr.status });
+      changes.push({ label: 'Status', value: curr.status });
     if (!prev || prev.model !== curr.model)
-      changes.push({ label: 'Model:', value: curr.model ?? '(unknown)' });
+      changes.push({ label: 'Model', value: curr.model ?? '(unknown)' });
     if (!prev || prev.yoloMode !== curr.yoloMode)
-      changes.push({ label: 'Yolo:', value: curr.yoloMode ? 'on' : 'off' });
+      changes.push({ label: 'Yolo', value: curr.yoloMode ? 'on' : 'off' });
     if (!prev || prev.pid !== curr.pid)
-      changes.push({ label: 'PID:', value: curr.pid != null ? String(curr.pid) : '(unknown)' });
+      changes.push({ label: 'PID', value: curr.pid != null ? String(curr.pid) : '(unknown)' });
     if (!prev || prev.launchMode !== curr.launchMode)
-      changes.push({ label: 'Mode:', value: curr.launchMode === 'pty' ? 'connected' : 'readonly' });
+      changes.push({ label: 'Mode', value: curr.launchMode === 'pty' ? 'connected' : 'readonly' });
     return changes;
   }
 
@@ -212,19 +209,47 @@ export class TeamsIntegrationService {
   }
 
   _formatOpeningMessage(session: Session, repo: Repository | undefined): string {
-    const row = (label: string, value: string) => `${label.padEnd(10)} ${value}`;
     return [
-      'Argus Session Started',
-      '',
-      row('Repo:', repo?.name ?? '(unknown)'),
-      row('Path:', repo?.path ?? '(unknown)'),
-      row('Branch:', repo?.branch ?? '(unknown)'),
-      row('Type:', session.type),
-      row('Mode:', session.launchMode === 'pty' ? 'connected' : 'readonly'),
-      row('Model:', session.model ?? '(unknown)'),
-      row('Yolo:', session.yoloMode ? 'on' : 'off'),
-      row('PID:', session.pid != null ? String(session.pid) : '(unknown)'),
-      row('Session:', session.id),
+      '**Argus Session Started**',
+      '---',
+      field('Repo', repo?.name ?? '(unknown)'),
+      field('Path', repo?.path ? code(repo.path) : '(unknown)'),
+      field('Branch', repo?.branch ? code(repo.branch) : '(unknown)'),
+      field('Type', session.type),
+      field('Mode', session.launchMode === 'pty' ? 'connected' : 'readonly'),
+      field('Model', session.model ?? '(unknown)'),
+      field('Yolo', session.yoloMode ? 'on' : 'off'),
+      field('PID', session.pid != null ? String(session.pid) : '(unknown)'),
+      field('Session', code(session.id)),
+    ].join('\n');
+  }
+
+  _formatReconnectMessage(session: Session): string {
+    return [
+      '**Session Reconnected**',
+      '---',
+      field('Status', session.status),
+      field('Session', code(session.id)),
+    ].join('\n');
+  }
+
+  _formatUpdateMessage(session: Session, changes: { label: string; value: string }[]): string {
+    return [
+      '**Session Updated**',
+      '---',
+      ...changes.map(({ label, value }) => field(label, value)),
+      field('Session', code(session.id)),
+    ].join('\n');
+  }
+
+  _formatEndedMessage(session: Session): string {
+    return [
+      '**Session Ended**',
+      '---',
+      field('Status', session.status),
+      field('Type', session.type),
+      field('Ended', session.endedAt ?? new Date().toISOString()),
+      field('Session', code(session.id)),
     ].join('\n');
   }
 }
