@@ -3,7 +3,8 @@ import type { Logger } from 'pino';
 import type { App } from '@microsoft/teams.apps';
 import type { Session, SessionOutput } from '../models/index.js';
 import { loadTeamsConfig } from '../config/teams-config-loader.js';
-import { getTeamsThread, upsertTeamsThread, updateTeamsThreadOutputMessageId } from '../db/database.js';
+import { getTeamsThread, upsertTeamsThread, updateTeamsThreadOutputMessageId, getRepository } from '../db/database.js';
+import type { Repository } from '../models/index.js';
 import type { TeamsMessageBuffer } from './teams-message-buffer.js';
 
 export class TeamsIntegrationService {
@@ -44,7 +45,8 @@ export class TeamsIntegrationService {
       return;
     }
 
-    const openingText = this._formatOpeningMessage(session, config.ownerAadObjectId!);
+    const repo = getRepository(session.repositoryId);
+    const openingText = this._formatOpeningMessage(session, repo);
     try {
       const sent = await this.teamsApp.send(channelId, { type: 'message', text: openingText });
       upsertTeamsThread({
@@ -132,13 +134,18 @@ export class TeamsIntegrationService {
     }
   }
 
-  _formatOpeningMessage(session: Session, ownerAadObjectId: string): string {
+  _formatOpeningMessage(session: Session, repo: Repository | undefined): string {
+    const row = (label: string, value: string) => `${label.padEnd(10)} ${value}`;
     return [
       'Argus Session Started',
-      `Session ID: ${session.id}`,
-      `Type: ${session.type}`,
-      `Started: ${session.startedAt}`,
-      `Owner: ${ownerAadObjectId}`,
+      '',
+      row('Repo:', repo?.name ?? '(unknown)'),
+      row('Path:', repo?.path ?? '(unknown)'),
+      row('Branch:', repo?.branch ?? '(unknown)'),
+      row('Type:', session.type),
+      row('Model:', session.model ?? '(unknown)'),
+      row('Yolo:', session.yoloMode ? 'on' : 'off'),
+      row('Session:', session.id),
     ].join('\n');
   }
 }
