@@ -105,7 +105,7 @@ export class TeamsIntegrationService {
   }
 
   async onSessionUpdated(session: Session): Promise<void> {
-    this.logger.debug({ ...this._logCtx(), sessionId: session.id, status: session.status, model: session.model, pid: session.pid }, 'teams.session.updated.received');
+    this.logger.info({ ...this._logCtx(), sessionId: session.id, status: session.status, model: session.model, pid: session.pid }, 'teams.session.updated.received');
     if (!this.isConfigured()) {
       this.logger.warn({ ...this._logCtx(), sessionId: session.id }, 'teams.session.updated.skipped: not configured');
       return;
@@ -122,7 +122,7 @@ export class TeamsIntegrationService {
     const curr = extractTrackedState(session);
     const changes = this._diffState(prev, curr);
     if (changes.length === 0) {
-      this.logger.debug({ ...this._logCtx(), sessionId: session.id }, 'teams.session.updated.skipped: no meaningful changes');
+      this.logger.info({ ...this._logCtx(), sessionId: session.id }, 'teams.session.updated.skipped: no meaningful changes');
       return;
     }
 
@@ -142,7 +142,12 @@ export class TeamsIntegrationService {
 
   onSessionOutput(sessionId: string, outputs: SessionOutput[]): void {
     const config = loadTeamsConfig();
-    if (!config.enabled) return;
+    if (!config.enabled) {
+      this.logger.info({ sessionId }, 'teams.session.output.skipped: not enabled');
+      return;
+    }
+    const enqueued = outputs.filter(o => o.content.trim()).length;
+    this.logger.info({ sessionId, total: outputs.length, enqueued }, 'teams.session.output.received');
     for (const output of outputs) {
       if (!output.content.trim()) continue;
       this.buffer.enqueue(sessionId, output.content);
