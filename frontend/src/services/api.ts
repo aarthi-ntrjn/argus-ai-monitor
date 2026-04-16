@@ -144,6 +144,17 @@ export async function getTeamsSettings(): Promise<TeamsSettings> {
   return apiFetch<TeamsSettings>('/settings/teams');
 }
 
+export interface SlackSettings {
+  botToken: string;
+  appToken?: string;
+  channelId: string;
+  enabled: boolean;
+}
+
+export async function getSlackSettings(): Promise<SlackSettings> {
+  return apiFetch<SlackSettings>('/settings/slack');
+}
+
 export function postTelemetryEvent(type: string): void {
   void fetch(`${BASE}/telemetry/event`, {
     method: 'POST',
