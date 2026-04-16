@@ -68,8 +68,9 @@ export async function buildServer() {
   const app = Fastify({
     logger: {
       level: process.env.LOG_LEVEL ?? 'info',
+      customLevels: { teams: 35 },
       transport: process.env.NODE_ENV !== 'production'
-        ? { target: 'pino-pretty', options: { colorize: true } }
+        ? { target: 'pino-pretty', options: { colorize: true, customLevels: '35:TEAMS', customColors: 'teams:cyanBright' } }
         : undefined,
     },
     genReqId: () => randomUUID(),
