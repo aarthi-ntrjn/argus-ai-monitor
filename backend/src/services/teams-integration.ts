@@ -23,6 +23,15 @@ export class TeamsIntegrationService {
       Boolean(config.ownerAadObjectId);
   }
 
+  private _logCtx(): Record<string, string | undefined> {
+    const config = loadTeamsConfig();
+    return {
+      clientId: this.teamsApp.id,
+      tenantId: process.env.TENANT_ID,
+      teamId: config.teamId,
+    };
+  }
+
   async onSessionCreated(session: Session): Promise<void> {
     const config = loadTeamsConfig();
     if (!this.isConfigured()) return;
@@ -30,7 +39,7 @@ export class TeamsIntegrationService {
 
     const existing = getTeamsThread(session.id);
     if (existing) {
-      this.logger.info({ sessionId: session.id, teamsThreadId: existing.teamsThreadId }, 'teams.thread.reused');
+      this.logger.info({ ...this._logCtx(), sessionId: session.id, teamsThreadId: existing.teamsThreadId }, 'teams.thread.reused');
       this._startFlushTimer(session.id, channelId);
       return;
     }
@@ -47,10 +56,10 @@ export class TeamsIntegrationService {
         deltaLink: null,
         createdAt: new Date().toISOString(),
       });
-      this.logger.info({ sessionId: session.id, teamsThreadId: sent.id }, 'teams.thread.created');
+      this.logger.info({ ...this._logCtx(), sessionId: session.id, teamsThreadId: sent.id }, 'teams.thread.created');
       this._startFlushTimer(session.id, channelId);
     } catch (err) {
-      this.logger.error({ err, sessionId: session.id }, 'teams.thread.create.failed');
+      this.logger.error({ ...this._logCtx(), err, sessionId: session.id }, 'teams.thread.create.failed');
     }
   }
 
@@ -78,9 +87,9 @@ export class TeamsIntegrationService {
     const statusMsg = `Session Ended\nType: ${session.type}\nSession ID: ${session.id}\nStatus: ${session.status}\nEnded: ${endedAt}`;
     try {
       await this.teamsApp.api.conversations.activities(channelId).reply(thread.teamsThreadId, { type: 'message', text: statusMsg });
-      this.logger.info({ sessionId: session.id, status: session.status }, 'teams.session.ended');
+      this.logger.info({ ...this._logCtx(), sessionId: session.id, status: session.status }, 'teams.session.ended');
     } catch (err) {
-      this.logger.error({ err, sessionId: session.id }, 'teams.session.end.notify.failed');
+      this.logger.error({ ...this._logCtx(), err, sessionId: session.id }, 'teams.session.end.notify.failed');
     }
   }
 
@@ -111,15 +120,15 @@ export class TeamsIntegrationService {
       const acts = this.teamsApp.api.conversations.activities(channelId);
       if (thread.currentOutputMessageId) {
         await acts.update(thread.currentOutputMessageId, { type: 'message', text });
-        this.logger.info({ sessionId, chars: text.length }, 'teams.flush.updated');
+        this.logger.info({ ...this._logCtx(), sessionId, chars: text.length }, 'teams.flush.updated');
       } else {
         const res = await acts.reply(thread.teamsThreadId, { type: 'message', text });
         updateTeamsThreadOutputMessageId(sessionId, res.id);
-        this.logger.info({ sessionId, messageId: res.id, chars: text.length }, 'teams.flush.posted');
+        this.logger.info({ ...this._logCtx(), sessionId, messageId: res.id, chars: text.length }, 'teams.flush.posted');
       }
     } catch (err) {
       for (const entry of entries) this.buffer.enqueue(sessionId, entry);
-      this.logger.warn({ err, sessionId }, 'teams.flush.failed: re-enqueued');
+      this.logger.warn({ ...this._logCtx(), err, sessionId }, 'teams.flush.failed: re-enqueued');
     }
   }
 
