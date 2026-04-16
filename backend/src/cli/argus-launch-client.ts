@@ -16,7 +16,6 @@ export class ArgusLaunchClient {
   private registerInfo: RegisterInfo | null = null;
   private promptCallback: PromptCallback | null = null;
   private isClosing = false;
-  private workspaceSessionId: string | null = null;
   private pendingPid: number | null = null;
   private log: (msg: string) => void;
 
@@ -30,9 +29,8 @@ export class ArgusLaunchClient {
     this.ws = new WebSocket(this.url);
     this.ws.on('open', () => this.handleOpen());
     this.ws.on('message', (data: Buffer) => this.handleMessage(data));
-    this.ws.on('error', (err: Error) => {
+    this.ws.on('error', (_err: Error) => {
       // Connection errors are non-fatal — argus may not be running
-      // process.stderr.write(`[argus] Could not connect to Argus backend: ${err.message}\n`);
     });
     this.ws.on('close', () => {
       if (!this.isClosing) {
@@ -74,11 +72,6 @@ export class ArgusLaunchClient {
     this.send({ type: 'update_pid', pid });
   }
 
-  sendWorkspaceId(id: string): void {
-    this.workspaceSessionId = id;
-    this.send({ type: 'workspace_id', sessionId: id });
-  }
-
   notifySessionEnded(exitCode: number | null): Promise<void> {
     this.isClosing = true;
     return new Promise<void>((resolve) => {
@@ -111,9 +104,6 @@ export class ArgusLaunchClient {
       if (this.registerInfo) {
         this.send({ type: 'register', ...this.registerInfo });
       }
-      if (this.workspaceSessionId) {
-        this.send({ type: 'workspace_id', sessionId: this.workspaceSessionId });
-      }
       if (this.pendingPid !== null) {
         this.log(`handleConnected: replaying deferred update_pid pid=${this.pendingPid}`);
         this.send({ type: 'update_pid', pid: this.pendingPid });
@@ -123,7 +113,6 @@ export class ArgusLaunchClient {
     }
 
     if (msg.type === 'send_prompt' && msg.actionId && msg.prompt !== undefined) {
-      //process.stderr.write(`[argus-launch-client] send_prompt received actionId=${msg.actionId} promptLen=${msg.prompt.length}\n`);
       this.promptCallback?.(msg.actionId, msg.prompt);
     }
   }
