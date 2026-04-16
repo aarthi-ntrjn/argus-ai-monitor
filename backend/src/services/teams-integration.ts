@@ -26,7 +26,7 @@ export class TeamsIntegrationService {
   private _logCtx(): Record<string, string | undefined> {
     const config = loadTeamsConfig();
     return {
-      clientId: this.teamsApp.id,
+      clientId: process.env.CLIENT_ID,
       tenantId: process.env.TENANT_ID,
       teamId: config.teamId,
     };
