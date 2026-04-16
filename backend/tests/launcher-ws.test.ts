@@ -28,20 +28,20 @@ describe('PtyRegistry — pending / claim flow', () => {
     const mockWs = { send: vi.fn(), readyState: 1 };
     registry.registerPending('temp-uuid', mockWs as any, '/repo/path', 8348);
 
-    const claimed = registry.claimForSession('claude-session-id', '/repo/path');
+    const claimed = registry.claimForSession('claude-session-id', '/repo/path', 'claude-code');
     expect(claimed).toEqual({ pid: null, hostPid: 8348 });
     expect(registry.has('claude-session-id')).toBe(true);
   });
 
   it('claimForSession returns null when no pending launcher for that path', () => {
-    const result = registry.claimForSession('any-session', '/no/pending/here');
+    const result = registry.claimForSession('any-session', '/no/pending/here', 'claude-code');
     expect(result).toBeNull();
   });
 
   it('getClaimedId returns the claude session ID for a given temp UUID', () => {
     const mockWs = { send: vi.fn(), readyState: 1 };
     registry.registerPending('temp-1', mockWs as any, '/repo', 1234);
-    registry.claimForSession('claude-abc', '/repo');
+    registry.claimForSession('claude-abc', '/repo', 'claude-code');
     expect(registry.getClaimedId('temp-1')).toBe('claude-abc');
   });
 
@@ -55,13 +55,13 @@ describe('PtyRegistry — pending / claim flow', () => {
     const mockWs = { send: vi.fn(), readyState: 1 };
     registry.registerPending('temp-3', mockWs as any, '/repo3', 111);
     registry.unregisterPending('/repo3', 'temp-3');
-    expect(registry.claimForSession('any', '/repo3')).toBeNull();
+    expect(registry.claimForSession('any', '/repo3', 'claude-code')).toBeNull();
   });
 
   it('sendPrompt on claimed session sends to the WebSocket', async () => {
     const mockWs = { send: vi.fn(), readyState: 1 };
     registry.registerPending('temp-4', mockWs as any, '/repo4', 5678);
-    registry.claimForSession('claude-xyz', '/repo4');
+    registry.claimForSession('claude-xyz', '/repo4', 'claude-code');
 
     const p = registry.sendPrompt('claude-xyz', 'action-1', 'run tests');
     registry.handleAck('action-1', true);
@@ -74,7 +74,7 @@ describe('PtyRegistry — pending / claim flow', () => {
   it('prompt_delivered ack resolves the pending promise', async () => {
     const mockWs = { send: vi.fn(), readyState: 1 };
     registry.registerPending('t', mockWs as any, '/r', 1);
-    registry.claimForSession('s1', '/r');
+    registry.claimForSession('s1', '/r', 'claude-code');
 
     const p = registry.sendPrompt('s1', 'a1', 'hello');
     registry.handleAck('a1', true);
@@ -84,7 +84,7 @@ describe('PtyRegistry — pending / claim flow', () => {
   it('prompt_failed ack rejects the pending promise with the error message', async () => {
     const mockWs = { send: vi.fn(), readyState: 1 };
     registry.registerPending('t2', mockWs as any, '/r2', 2);
-    registry.claimForSession('s2', '/r2');
+    registry.claimForSession('s2', '/r2', 'claude-code');
 
     const p = registry.sendPrompt('s2', 'a2', 'hello');
     registry.handleAck('a2', false, 'PTY closed');
@@ -116,13 +116,13 @@ describe('PtyRegistry — pending / claim flow', () => {
     const mockWs = { send: vi.fn(), readyState: 1 };
     registry.registerPending('temp-cp3', mockWs as any, '/repo/cp3', 6666);
     registry.claimByTempId('temp-cp3', 'ws-session-3');
-    expect(registry.claimForSession('other', '/repo/cp3')).toBeNull();
+    expect(registry.claimForSession('other', '/repo/cp3', 'claude-code')).toBeNull();
   });
 
   it('unregister removes the claimed session', async () => {
     const mockWs = { send: vi.fn(), readyState: 1 };
     registry.registerPending('t3', mockWs as any, '/r3', 3);
-    registry.claimForSession('s3', '/r3');
+    registry.claimForSession('s3', '/r3', 'claude-code');
     registry.unregister('s3');
     await expect(registry.sendPrompt('s3', 'a3', 'hi')).rejects.toThrow(/not connected/i);
   });

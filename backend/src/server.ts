@@ -32,6 +32,23 @@ const __dirname = dirname(__filename);
 
 let monitor: SessionMonitor | null = null;
 
+const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+const ABS_PATH_RE = /([A-Za-z]:[\\/]|\/)[^\s:)]+[\\/]([^\s:)]+)/g;
+
+function sanitizeForTelemetry(value: string): string {
+  return value
+    .replace(ABS_PATH_RE, '$2')   // keep only the filename, drop the directory prefix
+    .replace(UUID_RE, '[id]')     // replace UUIDs with [id]
+    .slice(0, 300);
+}
+
+function extractOrigin(stack: string | undefined): string {
+  if (!stack) return 'unknown';
+  // Find the first frame that is src code (not node_modules)
+  const frame = stack.split('\n').find(line => line.includes(' at ') && !line.includes('node_modules'));
+  return frame ? sanitizeForTelemetry(frame.trim()) : 'unknown';
+}
+
 export async function buildServer() {
   const config = loadConfig();
 
@@ -79,7 +96,14 @@ export async function buildServer() {
 
   app.setErrorHandler((error: FastifyError, request, reply) => {
     request.log.error({ err: error, requestId: request.id }, 'Request error');
-    reply.status(error.statusCode ?? 500).send({
+    const statusCode = error.statusCode ?? 500;
+    telemetryService.sendEvent('request_error', {
+      statusCode: String(statusCode),
+      errorCode: error.code ?? 'INTERNAL_ERROR',
+      errorMessage: sanitizeForTelemetry(error.message),
+      errorOrigin: extractOrigin(error.stack),
+    });
+    reply.status(statusCode).send({
       error: error.code ?? 'INTERNAL_ERROR',
       message: error.message,
       requestId: request.id,
