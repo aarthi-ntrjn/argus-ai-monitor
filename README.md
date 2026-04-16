@@ -257,6 +257,71 @@ Default port: **7411**. Override in `~/.argus/config.json`:
 }
 ```
 
+## Slack Integration
+
+Argus can post AI session events to a Slack channel and respond to questions from the Slack bot. Both features run on Slack's free tier.
+
+### One-time Setup
+
+1. Go to [api.slack.com/apps](https://api.slack.com/apps) and create a new app in your workspace.
+2. Under **OAuth and Permissions**, add these Bot Token Scopes:
+   - `chat:write` (post messages)
+   - `channels:read` (look up channels)
+   - `app_mentions:read` (receive @mentions)
+   - `im:history` (receive direct messages)
+3. Under **Socket Mode**, enable Socket Mode and generate an App-level token with the `connections:write` scope. Copy the `xapp-...` token.
+4. Under **Event Subscriptions**, subscribe to bot events: `app_mention` and `message.im`.
+5. Install the app to your workspace. Copy the **Bot User OAuth Token** (`xoxb-...`).
+6. Invite the bot to your notification channel: `/invite @YourBotName`.
+
+### Configuration
+
+Set these in `backend/.env` or as environment variables:
+
+```bash
+SLACK_BOT_TOKEN=xoxb-...       # Required: Bot User OAuth Token
+SLACK_CHANNEL_ID=C01234ABCDE   # Required: target channel ID
+SLACK_APP_TOKEN=xapp-...       # Optional: enables Slack-to-Argus routing (Socket Mode)
+```
+
+Or add a `slack` section to `~/.argus/config.json`:
+
+```json
+{
+  "slack": {
+    "botToken": "xoxb-...",
+    "channelId": "C01234ABCDE",
+    "appToken": "xapp-...",
+    "enabled": true,
+    "enabledEventTypes": ["session.created", "session.ended"]
+  }
+}
+```
+
+Omit `enabledEventTypes` to receive all event types. Set it to a list to filter down to specific ones.
+
+### Asking the Bot Questions
+
+If `SLACK_APP_TOKEN` is set, you can ask the bot questions in Slack:
+
+| Command | Response |
+| ------- | -------- |
+| `@YourBot sessions` | Lists all active AI sessions |
+| `@YourBot status <sessionId>` | Shows details for a specific session |
+| `@YourBot help` | Lists available commands |
+
+You can also send these commands as direct messages to the bot.
+
+### Runtime Configuration
+
+Change the channel or enabled event types without restarting Argus:
+
+```bash
+curl -X PATCH http://localhost:7411/api/v1/settings/slack \
+  -H "Content-Type: application/json" \
+  -d '{"channelId": "C99999NEW", "enabledEventTypes": ["session.created", "session.ended"]}'
+```
+
 ## Telemetry
 
 Argus collects anonymous usage data to help improve the product. No personal information is ever sent.

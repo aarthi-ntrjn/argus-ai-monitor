@@ -31,7 +31,9 @@
     "pino-pretty": "11.3.0",
     "ps-list": "8.1.1",
     "uuid": "9.0.1",
-    "ws": "8.20.0"
+    "ws": "8.20.0",
+    "@slack/web-api": "^7.15.1",
+    "@slack/socket-mode": "^2.0.6"
   },
   "devDependencies": {
     "@types/better-sqlite3": "7.6.13",

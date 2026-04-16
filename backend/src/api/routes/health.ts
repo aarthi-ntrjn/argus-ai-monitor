@@ -3,9 +3,19 @@ import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { loadTeamsConfig } from '../../config/teams-config-loader.js';
+import type { SlackNotifier } from '../../services/slack-notifier.js';
+import type { SlackListener } from '../../services/slack-listener.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+let slackNotifierRef: SlackNotifier | null = null;
+let slackListenerRef: SlackListener | null = null;
+
+export function setSlackServices(notifier: SlackNotifier, listener: SlackListener | null): void {
+  slackNotifierRef = notifier;
+  slackListenerRef = listener;
+}
 
 const healthRoutes: FastifyPluginAsync = async (app) => {
   app.get('/api/health', {
@@ -24,12 +34,18 @@ const healthRoutes: FastifyPluginAsync = async (app) => {
                 status: { type: 'string' },
               },
             },
+            slack: {
+              type: 'object',
+              properties: {
+                notifier: { type: 'string' },
+                listener: { type: 'string' },
+              },
+            },
           },
         },
       },
     },
   }, async (_req, reply) => {
-    // Read version from package.json
     let version = '1.0.0';
     try {
       const require = createRequire(import.meta.url);
@@ -43,7 +59,15 @@ const healthRoutes: FastifyPluginAsync = async (app) => {
       enabled: teamsConfig.enabled,
       status: teamsConfig.enabled ? (teamsAuthenticated ? 'authenticated' : 'configured') : 'unconfigured',
     };
-    return reply.send({ status: 'ok', version, uptime: process.uptime(), teams });
+
+    const slackStatus = slackNotifierRef
+      ? {
+          notifier: slackNotifierRef.isDisabled ? 'disabled' : 'connected',
+          listener: slackListenerRef ? 'connected' : 'disabled',
+        }
+      : undefined;
+
+    return reply.send({ status: 'ok', version, uptime: process.uptime(), teams, ...(slackStatus ? { slack: slackStatus } : {}) });
   });
 };
 

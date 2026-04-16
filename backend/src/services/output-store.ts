@@ -1,7 +1,10 @@
+import { EventEmitter } from 'events';
 import { insertOutput as dbInsertOutput, getOutputForSession as dbGetOutput } from '../db/database.js';
 import { broadcast } from '../api/ws/event-dispatcher.js';
 import { getDb } from '../db/database.js';
 import type { SessionOutput } from '../models/index.js';
+
+export const outputEvents = new EventEmitter();
 
 export interface OutputPage {
   items: SessionOutput[];
@@ -33,6 +36,7 @@ export class OutputStore {
         timestamp: new Date().toISOString(),
         data: { sessionId, outputs: outputs as unknown as Record<string, unknown>[] },
       });
+      outputEvents.emit('session.output.batch', sessionId, outputs);
     }
   }
 

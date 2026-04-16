@@ -106,10 +106,32 @@ export function updateRepositoryRemoteUrl(id: string, remoteUrl: string | null):
 
 export function deleteRepository(id: string): void {
   const db = getDb();
-  db.prepare('DELETE FROM control_actions WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
-  db.prepare('DELETE FROM session_output WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
+
+  const sessionIds = (db.prepare('SELECT id FROM sessions WHERE repository_id = ?').all(id) as Array<{ id: string }>).map(r => r.id);
+  console.log(`[deleteRepository] repo=${id} sessions=${JSON.stringify(sessionIds)}`);
+
+  if (sessionIds.length > 0) {
+    const placeholders = sessionIds.map(() => '?').join(',');
+    const caCount = (db.prepare(`SELECT COUNT(*) as n FROM control_actions WHERE session_id IN (${placeholders})`).get(...sessionIds) as { n: number }).n;
+    const soCount = (db.prepare(`SELECT COUNT(*) as n FROM session_output WHERE session_id IN (${placeholders})`).get(...sessionIds) as { n: number }).n;
+    console.log(`[deleteRepository] control_actions to delete=${caCount}, session_output to delete=${soCount}`);
+  }
+
+  const caResult = db.prepare('DELETE FROM control_actions WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
+  const soResult = db.prepare('DELETE FROM session_output WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
+  console.log(`[deleteRepository] deleted control_actions=${caResult.changes}, session_output=${soResult.changes}`);
+
+  // Verify no child records remain before deleting sessions
+  if (sessionIds.length > 0) {
+    const placeholders = sessionIds.map(() => '?').join(',');
+    const caRemaining = (db.prepare(`SELECT COUNT(*) as n FROM control_actions WHERE session_id IN (${placeholders})`).get(...sessionIds) as { n: number }).n;
+    const soRemaining = (db.prepare(`SELECT COUNT(*) as n FROM session_output WHERE session_id IN (${placeholders})`).get(...sessionIds) as { n: number }).n;
+    console.log(`[deleteRepository] remaining after cleanup: control_actions=${caRemaining}, session_output=${soRemaining}`);
+  }
+
   db.prepare('DELETE FROM sessions WHERE repository_id = ?').run(id);
   db.prepare('DELETE FROM repositories WHERE id = ?').run(id);
+  console.log(`[deleteRepository] done repo=${id}`);
 }
 
 export interface SessionFilters { repositoryId?: string; status?: string; type?: string; limit?: number; }
