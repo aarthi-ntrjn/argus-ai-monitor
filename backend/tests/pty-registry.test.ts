@@ -10,7 +10,7 @@ function makeMockWs() {
 function registerAndClaim(registry: PtyRegistry, claudeId: string, repoPath = '/repo', pid = 1234) {
   const ws = makeMockWs();
   registry.registerPending('temp-' + claudeId, ws as any, repoPath, pid);
-  registry.claimForSession(claudeId, repoPath);
+  registry.claimForSession(claudeId, repoPath, 'claude-code');
   return ws;
 }
 
@@ -37,13 +37,13 @@ describe('PtyRegistry', () => {
   });
 
   it('claimForSession returns null when no pending launcher exists for that path', () => {
-    expect(registry.claimForSession('any', '/no/pending')).toBeNull();
+    expect(registry.claimForSession('any', '/no/pending', 'claude-code')).toBeNull();
   });
 
   it('claimForSession returns hostPid and null pid when a pending launcher exists', () => {
     const ws = makeMockWs();
     registry.registerPending('t', ws as any, '/repo', 9999);
-    expect(registry.claimForSession('s', '/repo')).toEqual({ pid: null, hostPid: 9999 });
+    expect(registry.claimForSession('s', '/repo', 'claude-code')).toEqual({ pid: null, hostPid: 9999 });
   });
 
   it('getClaimedId returns the claude session ID after claim', () => {
@@ -61,7 +61,7 @@ describe('PtyRegistry', () => {
     const ws = makeMockWs();
     registry.registerPending('t', ws as any, '/r3', 5);
     registry.unregisterPending('/r3', 't');
-    expect(registry.claimForSession('any', '/r3')).toBeNull();
+    expect(registry.claimForSession('any', '/r3', 'claude-code')).toBeNull();
   });
 
   it('sendPrompt() sends correct JSON message on the WebSocket', async () => {
@@ -123,7 +123,7 @@ describe('PtyRegistry', () => {
     const ws = makeMockWs();
     registry.registerPending('temp-def', ws as any, '/repo3', 9999);
     registry.claimByTempId('temp-def', 'workspace-session-3');
-    expect(registry.claimForSession('other', '/repo3')).toBeNull();
+    expect(registry.claimForSession('other', '/repo3', 'claude-code')).toBeNull();
   });
 
   it('sendPrompt() rejects after timeout when no ack arrives', async () => {

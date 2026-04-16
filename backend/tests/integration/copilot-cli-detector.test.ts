@@ -134,7 +134,7 @@ updated_at: ${new Date().toISOString()}
     expect(session?.pid).toBeNull();
     expect(session?.hostPid).toBe(12345);
     expect(session?.pidSource).toBe('pty_registry');
-    expect(mockClaimForSession).toHaveBeenCalledWith(testSessionId, testRepoCwd);
+    expect(mockClaimForSession).toHaveBeenCalledWith(testSessionId, testRepoCwd, 'copilot-cli');
   });
 
   it('does not claim pending PTY connection for a non-running (ended) session', async () => {
@@ -189,7 +189,7 @@ updated_at: ${new Date().toISOString()}
     expect(session?.pid).toBe(22222);
     expect(session?.hostPid).toBe(20000);
     expect(session?.pidSource).toBe('pty_registry');
-    expect(mockClaimForSession).toHaveBeenCalledWith(testSessionId, testRepoCwd);
+    expect(mockClaimForSession).toHaveBeenCalledWith(testSessionId, testRepoCwd, 'copilot-cli');
   });
 
   it('skips ended+not-running session and does not re-claim (no re-claim)', async () => {
@@ -313,10 +313,12 @@ updated_at: ${new Date().toISOString()}
   });
 
   it('preserves launchMode=pty without re-claiming when alreadyClaimed=true and WS is still live', async () => {
+    mockIsPidRunning.mockReturnValueOnce(true);
+    mockPsList.mockResolvedValueOnce([{ pid: testPid, name: 'copilot', ppid: 1 }]);
     mockGetSession.mockReturnValueOnce({
       id: testSessionId,
       launchMode: 'pty',
-      pid: 33333,
+      pid: testPid,
       hostPid: 30000,
       pidSource: 'pty_registry' as const,
       status: 'active',
@@ -328,7 +330,7 @@ updated_at: ${new Date().toISOString()}
     const session = sessions.find((s) => s.id === testSessionId);
 
     expect(session?.launchMode).toBe('pty');
-    expect(session?.pid).toBe(33333);
+    expect(session?.pid).toBe(testPid);
     expect(mockClaimForSession).not.toHaveBeenCalled();
   });
 
