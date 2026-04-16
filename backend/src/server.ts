@@ -9,7 +9,8 @@ import { fileURLToPath } from 'url';
 
 import { randomUUID } from 'crypto';
 import { App } from '@microsoft/teams.apps';
-import { loadConfig, loadSlackConfig } from './config/config-loader.js';
+import { loadConfig } from './config/config-loader.js';
+import { loadSlackConfig } from './config/slack-config-loader.js';
 import * as logger from './utils/logger.js';
 import { SlackNotifier } from './services/slack-notifier.js';
 import { SlackListener } from './services/slack-listener.js';

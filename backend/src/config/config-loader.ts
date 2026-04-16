@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { homedir } from 'os';
-import type { ArgusConfig, SlackConfig } from '../models/index.js';
+import type { ArgusConfig } from '../models/index.js';
 
 function getConfigPath(): string {
   return process.env.ARGUS_CONFIG_PATH ?? join(homedir(), '.argus', 'config.json');
@@ -55,13 +55,4 @@ export function saveConfig(config: ArgusConfig): void {
   writeFileSync(configPath, JSON.stringify({ ...existing, ...config }, null, 2), 'utf-8');
 }
 
-export function loadSlackConfig(): SlackConfig | null {
-  const botToken = process.env.SLACK_BOT_TOKEN ?? '';
-  const appToken = process.env.SLACK_APP_TOKEN;
-  const channelId = process.env.SLACK_CHANNEL_ID ?? '';
-
-  if (!botToken && !channelId) return null;
-
-  return { botToken, appToken, channelId, enabled: true };
-}
 
