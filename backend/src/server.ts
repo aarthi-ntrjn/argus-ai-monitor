@@ -32,7 +32,8 @@ import { TeamsMessageBuffer } from './services/teams-message-buffer.js';
 import { FastifyTeamsAdapter } from './services/teams-sdk-adapter.js';
 import { outputStore } from './services/output-store.js';
 import { loadTeamsConfig } from './config/teams-config-loader.js';
-import { getTeamsThreadByTeamsId, insertControlAction } from './db/database.js';
+import { getTeamsThreadByTeamsId } from './db/database.js';
+import { SessionController } from './services/session-controller.js';
 import type { Session, Repository } from './models/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -122,18 +123,9 @@ export async function buildServer() {
     const text = raw.replace(/<at>[^<]*<\/at>/g, '').trim();
     if (!text) return;
 
-    insertControlAction({
-      id: randomUUID(),
-      sessionId: thread.sessionId,
-      type: 'send_prompt',
-      payload: { text },
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-      completedAt: null,
-      result: null,
-      source: 'Teams',
-    });
     app.log.info({ sessionId: thread.sessionId, text, source: 'Teams' }, 'teams.message.command.received');
+    const action = await new SessionController().sendPrompt(thread.sessionId, text);
+    app.log.info({ sessionId: thread.sessionId, actionId: action.id, status: action.status, result: action.result, source: 'Teams' }, 'teams.message.command.dispatched');
   });
   await teamsApp.initialize();
 
