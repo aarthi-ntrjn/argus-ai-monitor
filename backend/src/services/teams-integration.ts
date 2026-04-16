@@ -3,7 +3,7 @@ import type { Logger } from 'pino';
 import type { App } from '@microsoft/teams.apps';
 import type { Session, SessionOutput } from '../models/index.js';
 import { loadTeamsConfig } from '../config/teams-config-loader.js';
-import { getTeamsThread, upsertTeamsThread, updateTeamsThreadOutputMessageId, getRepository } from '../db/database.js';
+import { getTeamsThread, upsertTeamsThread, updateTeamsThreadOutputMessageId, clearTeamsThreadOutputMessageId, getRepository } from '../db/database.js';
 import type { Repository } from '../models/index.js';
 import type { TeamsMessageBuffer } from './teams-message-buffer.js';
 
@@ -13,6 +13,7 @@ type TrackedSessionState = {
   yoloMode: boolean | null;
   pid: number | null;
   launchMode: string | null;
+  summary: string | null;
 };
 
 function extractTrackedState(session: Session): TrackedSessionState {
@@ -22,6 +23,7 @@ function extractTrackedState(session: Session): TrackedSessionState {
     yoloMode: session.yoloMode,
     pid: session.pid,
     launchMode: session.launchMode,
+    summary: session.summary,
   };
 }
 
@@ -74,7 +76,8 @@ export class TeamsIntegrationService {
       this.logger.info({ ...this._logCtx(), sessionId: session.id, teamsThreadId: existing.teamsThreadId }, 'teams.thread.reused');
       this.lastPostedState.set(session.id, extractTrackedState(session));
       try {
-        await this.teamsApp.api.conversations.activities(channelId).reply(existing.teamsThreadId, { type: 'message', text: this._formatReconnectMessage(session) });
+        const threadConvId = `${channelId};messageid=${existing.teamsThreadId}`;
+        await this.teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text: this._formatReconnectMessage(session) });
         this.logger.info({ ...this._logCtx(), sessionId: session.id, teamsThreadId: existing.teamsThreadId }, 'teams.thread.reused.notified');
       } catch (err) {
         this.logger.warn({ ...this._logCtx(), err, sessionId: session.id }, 'teams.thread.reused.notify.failed');
@@ -136,7 +139,11 @@ export class TeamsIntegrationService {
     const { channelId } = config as { channelId: string };
 
     try {
-      await this.teamsApp.api.conversations.activities(channelId).reply(thread.teamsThreadId, { type: 'message', text: this._formatUpdateMessage(session, changes) });
+      const threadConvId = `${channelId};messageid=${thread.teamsThreadId}`;
+      await this.teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text: this._formatUpdateMessage(session, changes) });
+      if (curr.summary !== null && curr.summary !== (prev?.summary ?? null)) {
+        clearTeamsThreadOutputMessageId(session.id);
+      }
       this.logger.info({ ...this._logCtx(), sessionId: session.id, changes: changes.map(c => c.label) }, 'teams.session.updated.posted');
     } catch (err) {
       this.logger.error({ ...this._logCtx(), err, sessionId: session.id }, 'teams.session.update.notify.failed');
@@ -152,6 +159,7 @@ export class TeamsIntegrationService {
     const enqueued = outputs.filter(o => o.content.trim()).length;
     this.logger.info({ sessionId, total: outputs.length, enqueued }, 'teams.session.output.received');
     for (const output of outputs) {
+      if (output.role !== 'assistant') continue;
       if (!output.content.trim()) continue;
       this.buffer.enqueue(sessionId, output.content);
     }
@@ -177,7 +185,8 @@ export class TeamsIntegrationService {
     }
 
     try {
-      await this.teamsApp.api.conversations.activities(channelId).reply(thread.teamsThreadId, { type: 'message', text: this._formatEndedMessage(session) });
+      const threadConvId = `${channelId};messageid=${thread.teamsThreadId}`;
+      await this.teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text: this._formatEndedMessage(session) });
       this.logger.info({ ...this._logCtx(), sessionId: session.id, status: session.status }, 'teams.session.ended');
     } catch (err) {
       this.logger.error({ ...this._logCtx(), err, sessionId: session.id }, 'teams.session.end.notify.failed');
@@ -191,17 +200,20 @@ export class TeamsIntegrationService {
   }
 
   private _diffState(prev: TrackedSessionState | undefined, curr: TrackedSessionState): { label: string; value: string }[] {
+    if (!prev) return [];
     const changes: { label: string; value: string }[] = [];
-    if (!prev || prev.status !== curr.status)
+    if (prev.status !== curr.status)
       changes.push({ label: 'Status', value: curr.status });
-    if (!prev || prev.model !== curr.model)
+    if (prev.model !== curr.model)
       changes.push({ label: 'Model', value: curr.model ?? '(unknown)' });
-    if (!prev || prev.yoloMode !== curr.yoloMode)
+    if (prev.yoloMode !== curr.yoloMode)
       changes.push({ label: 'Yolo', value: curr.yoloMode ? 'on' : 'off' });
-    if (!prev || prev.pid !== curr.pid)
+    if (prev.pid !== curr.pid)
       changes.push({ label: 'PID', value: curr.pid != null ? String(curr.pid) : '(unknown)' });
-    if (!prev || prev.launchMode !== curr.launchMode)
+    if (prev.launchMode !== curr.launchMode)
       changes.push({ label: 'Mode', value: curr.launchMode === 'pty' ? 'connected' : 'readonly' });
+    if (curr.summary !== null && prev.summary !== curr.summary)
+      changes.push({ label: 'Task', value: curr.summary });
     return changes;
   }
 
@@ -228,7 +240,8 @@ export class TeamsIntegrationService {
         await acts.update(thread.currentOutputMessageId, { type: 'message', text });
         this.logger.info({ ...this._logCtx(), sessionId, chars: text.length }, 'teams.flush.updated');
       } else {
-        const res = await acts.reply(thread.teamsThreadId, { type: 'message', text });
+        const threadConvId = `${channelId};messageid=${thread.teamsThreadId}`;
+        const res = await this.teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text });
         updateTeamsThreadOutputMessageId(sessionId, res.id);
         this.logger.info({ ...this._logCtx(), sessionId, messageId: res.id, chars: text.length }, 'teams.flush.posted');
       }

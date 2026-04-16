@@ -258,6 +258,10 @@ export function updateTeamsThreadOutputMessageId(sessionId: string, messageId: s
   getDb().prepare('UPDATE teams_threads SET current_output_message_id = ? WHERE session_id = ?').run(messageId, sessionId);
 }
 
+export function clearTeamsThreadOutputMessageId(sessionId: string): void {
+  getDb().prepare('UPDATE teams_threads SET current_output_message_id = NULL WHERE session_id = ?').run(sessionId);
+}
+
 export function updateTeamsThreadDeltaLink(sessionId: string, deltaLink: string): void {
   getDb().prepare('UPDATE teams_threads SET delta_link = ? WHERE session_id = ?').run(deltaLink, sessionId);
 }
