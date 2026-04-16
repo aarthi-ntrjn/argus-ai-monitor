@@ -8,6 +8,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 import { randomUUID } from 'crypto';
+import { App } from '@microsoft/teams.apps';
 import { loadConfig } from './config/config-loader.js';
 import * as logger from './utils/logger.js';
 import { addClient, removeClient, broadcast } from './api/ws/event-dispatcher.js';
@@ -21,10 +22,18 @@ import todosRoutes from './api/routes/todos.js';
 import launcherRoutes from './api/routes/launcher.js';
 import toolsRoutes from './api/routes/tools.js';
 import settingsRoutes from './api/routes/settings.js';
+import teamsSettingsRoutes from './api/routes/teams-settings.js';
 import telemetryRoutes from './api/routes/telemetry.js';
 import { telemetryService } from './services/telemetry-service.js';
 import { SessionMonitor } from './services/session-monitor.js';
 import { startPruningJob } from './services/pruning-job.js';
+import { TeamsIntegrationService } from './services/teams-integration.js';
+import { TeamsMessageBuffer } from './services/teams-message-buffer.js';
+import { FastifyTeamsAdapter } from './services/teams-sdk-adapter.js';
+import { outputStore } from './services/output-store.js';
+import { loadTeamsConfig } from './config/teams-config-loader.js';
+import { getTeamsThreadByTeamsId } from './db/database.js';
+import { SessionController } from './services/session-controller.js';
 import type { Session, Repository } from './models/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -37,16 +46,21 @@ const ABS_PATH_RE = /([A-Za-z]:[\\/]|\/)[^\s:)]+[\\/]([^\s:)]+)/g;
 
 function sanitizeForTelemetry(value: string): string {
   return value
-    .replace(ABS_PATH_RE, '$2')   // keep only the filename, drop the directory prefix
-    .replace(UUID_RE, '[id]')     // replace UUIDs with [id]
+    .replace(ABS_PATH_RE, '$2')
+    .replace(UUID_RE, '[id]')
     .slice(0, 300);
 }
 
 function extractOrigin(stack: string | undefined): string {
   if (!stack) return 'unknown';
-  // Find the first frame that is src code (not node_modules)
   const frame = stack.split('\n').find(line => line.includes(' at ') && !line.includes('node_modules'));
   return frame ? sanitizeForTelemetry(frame.trim()) : 'unknown';
+}
+
+function extractThreadId(conversationId: string | undefined): string | null {
+  if (!conversationId) return null;
+  const match = conversationId.match(/messageid=([^;]+)/);
+  return match ? match[1] : null;
 }
 
 export async function buildServer() {
@@ -55,8 +69,9 @@ export async function buildServer() {
   const app = Fastify({
     logger: {
       level: process.env.LOG_LEVEL ?? 'info',
+      customLevels: { teams: 35 },
       transport: process.env.NODE_ENV !== 'production'
-        ? { target: 'pino-pretty', options: { colorize: true } }
+        ? { target: 'pino-pretty', options: { colorize: true, customLevels: '35:TEAMS', customColors: 'teams:cyanBright' } }
         : undefined,
     },
     genReqId: () => randomUUID(),
@@ -77,10 +92,64 @@ export async function buildServer() {
     uiConfig: { docExpansion: 'list', deepLinking: false },
   });
 
+  // Initialize Teams SDK App with Fastify adapter before static/catch-all routes
+  const teamsApp = new App({
+    httpServerAdapter: new FastifyTeamsAdapter(app),
+    messagingEndpoint: '/api/v1/teams/webhook',
+    clientId: process.env.CLIENT_ID,
+    clientSecret: process.env.CLIENT_SECRET,
+    tenantId: process.env.TENANT_ID,
+  });
+  teamsApp.message(/.*/, async (ctx) => {
+    const teamsConfig = loadTeamsConfig();
+    const senderAadObjectId = (ctx.activity.from as Record<string, unknown>)?.['aadObjectId'] as string | undefined;
+    app.log.info({ senderAadObjectId, source: 'teams.message' }, 'teams.message.received');
+
+    if (!senderAadObjectId || senderAadObjectId !== teamsConfig.ownerAadObjectId) {
+      app.log.info({ senderAadObjectId, source: 'teams.message' }, 'teams.message.rejected.non-owner');
+      return;
+    }
+
+    const threadId = extractThreadId(ctx.activity.conversation?.id);
+    if (!threadId) return;
+
+    const thread = getTeamsThreadByTeamsId(threadId);
+    if (!thread) {
+      app.log.warn({ threadId, source: 'teams.message' }, 'teams.message.unknown.thread');
+      return;
+    }
+
+    const raw = ctx.activity.text ?? '';
+    const text = raw.replace(/<at>[^<]*<\/at>/g, '').trim();
+    if (!text) return;
+
+    app.log.info({ sessionId: thread.sessionId, text, source: 'Teams' }, 'teams.message.command.received');
+    let errorMessage: string | null = null;
+    try {
+      const action = await new SessionController().sendPrompt(thread.sessionId, text);
+      app.log.info({ sessionId: thread.sessionId, actionId: action.id, status: action.status, result: action.result, source: 'Teams' }, 'teams.message.command.dispatched');
+      if (action.status === 'failed') errorMessage = action.result ?? 'Unknown error';
+    } catch (err) {
+      app.log.warn({ err, sessionId: thread.sessionId, source: 'Teams' }, 'teams.message.command.failed');
+      errorMessage = err instanceof Error ? err.message : String(err);
+    }
+    if (errorMessage) {
+      const cfg = loadTeamsConfig();
+      if (cfg.channelId) {
+        try {
+          const threadConvId = `${cfg.channelId};messageid=${thread.teamsThreadId}`;
+          await teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text: `**Could not deliver message:** ${errorMessage}` });
+        } catch (replyErr) {
+          app.log.warn({ err: replyErr, sessionId: thread.sessionId }, 'teams.message.error-reply.failed');
+        }
+      }
+    }
+  });
+  await teamsApp.initialize();
+
   const frontendDist = join(__dirname, '..', '..', 'frontend', 'dist');
   try {
     await app.register(fastifyStatic, { root: frontendDist });
-    // SPA catch-all: serve index.html for any unmatched non-API route
     app.setNotFoundHandler((_request, reply) => {
       reply.sendFile('index.html');
     });
@@ -120,6 +189,7 @@ export async function buildServer() {
   await app.register(launcherRoutes);
   await app.register(toolsRoutes);
   await app.register(settingsRoutes);
+  await app.register(teamsSettingsRoutes);
   await app.register(telemetryRoutes);
 
   app.register(async (fastify) => {
@@ -129,11 +199,11 @@ export async function buildServer() {
     });
   });
 
-  return { app, config };
+  return { app, config, teamsApp };
 }
 
 export async function startServer() {
-  const { app, config } = await buildServer();
+  const { app, config, teamsApp } = await buildServer();
 
   monitor = new SessionMonitor();
   const claudeDetector = monitor.getClaudeCodeDetector();
@@ -158,8 +228,24 @@ export async function startServer() {
   await monitor.start();
   startPruningJob();
 
-  process.on('SIGTERM', async () => { telemetryService.sendEvent('app_ended'); monitor?.stop(); await app.close(); process.exit(0); });
-  process.on('SIGINT', async () => { telemetryService.sendEvent('app_ended'); monitor?.stop(); await app.close(); process.exit(0); });
+  const teamsBuffer = new TeamsMessageBuffer(1000, app.log as any);
+  const teamsService = new TeamsIntegrationService(teamsApp, teamsBuffer, app.log as any);
+
+  monitor.on('session.created', (session: Session) => {
+    teamsService.onSessionCreated(session).catch(err => app.log.error({ err }, 'teams.session.created.error'));
+  });
+  monitor.on('session.updated', (session: Session) => {
+    teamsService.onSessionUpdated(session).catch(err => app.log.error({ err }, 'teams.session.updated.error'));
+  });
+  monitor.on('session.ended', (session: Session) => {
+    teamsService.onSessionEnded(session).catch(err => app.log.error({ err }, 'teams.session.ended.error'));
+  });
+  outputStore.addOutputListener((sessionId, outputs) => {
+    teamsService.onSessionOutput(sessionId, outputs);
+  });
+
+  process.on('SIGTERM', async () => { telemetryService.sendEvent('app_ended'); teamsService.stop(); monitor?.stop(); await app.close(); process.exit(0); });
+  process.on('SIGINT', async () => { telemetryService.sendEvent('app_ended'); teamsService.stop(); monitor?.stop(); await app.close(); process.exit(0); });
 
   await app.listen({ port: config.port, host: '127.0.0.1' });
   app.log.info({ port: config.port }, 'Argus server started');
@@ -175,4 +261,3 @@ if (isMain) {
     process.exit(1);
   });
 }
-

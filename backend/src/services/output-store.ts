@@ -10,11 +10,24 @@ export interface OutputPage {
 }
 
 export class OutputStore {
+  private outputListeners = new Set<(sessionId: string, outputs: SessionOutput[]) => void>();
+
+  addOutputListener(fn: (sessionId: string, outputs: SessionOutput[]) => void): void {
+    this.outputListeners.add(fn);
+  }
+
+  removeOutputListener(fn: (sessionId: string, outputs: SessionOutput[]) => void): void {
+    this.outputListeners.delete(fn);
+  }
+
   insertOutput(sessionId: string, outputs: SessionOutput[]): void {
     for (const output of outputs) {
       dbInsertOutput(output);
     }
     if (outputs.length > 0) {
+      for (const listener of this.outputListeners) {
+        try { listener(sessionId, outputs); } catch { /* listeners must not crash the store */ }
+      }
       broadcast({
         type: 'session.output.batch',
         timestamp: new Date().toISOString(),
@@ -62,3 +75,4 @@ export class OutputStore {
   }
 }
 
+export const outputStore = new OutputStore();

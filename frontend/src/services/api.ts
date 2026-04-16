@@ -132,6 +132,18 @@ export async function patchArgusSettings(patch: Partial<ArgusConfig>): Promise<A
   return apiFetch<ArgusConfig>('/settings', { method: 'PATCH', body: JSON.stringify(patch) });
 }
 
+export interface TeamsSettings {
+  enabled: boolean;
+  teamId?: string;
+  channelId?: string;
+  ownerAadObjectId?: string;
+  connectionStatus: 'connected' | 'disconnected' | 'unconfigured';
+}
+
+export async function getTeamsSettings(): Promise<TeamsSettings> {
+  return apiFetch<TeamsSettings>('/settings/teams');
+}
+
 export function postTelemetryEvent(type: string): void {
   void fetch(`${BASE}/telemetry/event`, {
     method: 'POST',

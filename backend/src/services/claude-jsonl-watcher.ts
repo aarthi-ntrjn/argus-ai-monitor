@@ -6,7 +6,7 @@ import { homedir } from 'os';
 
 import chokidar, { type FSWatcher } from 'chokidar';
 import { getSession, upsertSession } from '../db/database.js';
-import { OutputStore } from './output-store.js';
+import { outputStore } from './output-store.js';
 import { broadcast } from '../api/ws/event-dispatcher.js';
 import { parseClaudeJsonlLine, parseModel } from './claude-code-jsonl-parser.js';
 
@@ -15,7 +15,6 @@ function claudeProjectDirName(repoPath: string): string {
 }
 
 export class ClaudeJsonlWatcher {
-  private outputStore = new OutputStore();
   private watchers = new Map<string, FSWatcher>();
   private filePositions = new Map<string, number>();
   private sequenceCounters = new Map<string, number>();
@@ -70,7 +69,7 @@ export class ClaudeJsonlWatcher {
 
       this.sequenceCounters.set(sessionId, seq);
       if (outputs.length > 0) {
-        this.outputStore.insertOutput(sessionId, outputs);
+        outputStore.insertOutput(sessionId, outputs);
         this.applyActivityUpdate(sessionId);
       }
       this.applySummaryUpdate(sessionId, outputs);

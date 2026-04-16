@@ -81,6 +81,7 @@ export interface ControlAction {
   createdAt: string;
   completedAt: string | null;
   result: string | null;
+  source: string | null;
 }
 
 export interface TodoItem {
@@ -140,3 +141,19 @@ export interface PendingChoice {
   choices: string[];
 }
 
+export interface TeamsConfig {
+  enabled: boolean;
+  teamId: string;
+  channelId: string;
+  ownerAadObjectId: string;
+}
+
+export interface TeamsThread {
+  id: string;
+  sessionId: string;
+  teamsThreadId: string;
+  teamsChannelId: string;
+  currentOutputMessageId: string | null;
+  deltaLink: string | null;
+  createdAt: string;
+}

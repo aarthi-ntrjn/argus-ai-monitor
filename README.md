@@ -279,6 +279,48 @@ Each event includes: an anonymous installation ID (a random UUID stored in `~/.a
 - On first launch, a banner appears with a checkbox. Uncheck "Send telemetry" before clicking "Got it".
 - At any time, open Settings (gear icon) and uncheck "Send anonymous usage telemetry" under the Privacy section.
 
+## Microsoft Teams Integration
+
+Argus can mirror every CLI session to a Microsoft Teams channel, streaming output in real-time and accepting commands via thread replies.
+
+### How it works
+
+- When a new Claude Code or Copilot session starts, Argus opens a Teams thread in your configured channel.
+- Session output is buffered and posted as updates to that thread every few seconds.
+- When the session ends, a final status message is posted.
+- You (the session owner) can reply to the thread to send a prompt directly to the running session.
+
+### Setup
+
+1. **Register a Bot Framework bot** in the [Azure portal](https://portal.azure.com) and create a client secret.
+2. **Install the bot** into the Teams channel where you want session threads to appear.
+3. **Configure Argus** via the Settings panel in the UI, or by writing `~/.argus/teams-config.json`:
+
+```json
+{
+  "enabled": true,
+  "botAppId": "<your Azure App ID>",
+  "botAppPassword": "<your client secret>",
+  "channelId": "<Teams channel ID>",
+  "serviceUrl": "https://smba.trafficmanager.net/<region>/",
+  "tenantId": "<optional: Azure AD tenant ID>",
+  "ownerTeamsUserId": "<your Teams user ID (29:xxxx)>"
+}
+```
+
+The `ownerTeamsUserId` identifies who is allowed to send commands via thread replies. Only messages from this user are routed to the session.
+
+### Incoming webhook endpoint
+
+Bot Framework delivers incoming messages to:
+
+```
+POST http://<argus-host>/api/botframework/messages
+```
+
+Configure this URL in your bot's messaging endpoint in the Azure portal.
+
 ## For Contributors
+
 
 See [docs/README-CONTRIBUTORS.md](docs/README-CONTRIBUTORS.md) for architecture, dev setup, API reference, security model, CI pipeline, and development guides.

@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS session_output (
 CREATE TABLE IF NOT EXISTS control_actions (
   id TEXT PRIMARY KEY, session_id TEXT NOT NULL REFERENCES sessions(id),
   type TEXT NOT NULL, payload TEXT, status TEXT NOT NULL,
-  created_at TEXT NOT NULL, completed_at TEXT, result TEXT
+  created_at TEXT NOT NULL, completed_at TEXT, result TEXT, source TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_repo ON sessions(repository_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
@@ -37,5 +37,15 @@ CREATE TABLE IF NOT EXISTS todos (
   updated_at TEXT    NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_todos_user ON todos(user_id);
+CREATE TABLE IF NOT EXISTS teams_threads (
+  id                        TEXT PRIMARY KEY,
+  session_id                TEXT NOT NULL UNIQUE REFERENCES sessions(id),
+  teams_thread_id           TEXT NOT NULL UNIQUE,
+  teams_channel_id          TEXT NOT NULL,
+  current_output_message_id TEXT,
+  delta_link                TEXT,
+  created_at                TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_teams_threads_session ON teams_threads(session_id);
 `;
 
