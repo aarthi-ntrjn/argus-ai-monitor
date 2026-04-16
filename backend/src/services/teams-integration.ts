@@ -87,6 +87,7 @@ export class TeamsIntegrationService {
     this.logger.info({ ...this._logCtx(), sessionId: session.id, repositoryId: session.repositoryId, repoName: repo?.name }, 'teams.thread.creating');
     try {
       const sent = await this.teamsApp.send(channelId, { type: 'message', text: this._formatOpeningMessage(session, repo) });
+      this.logger.info({ ...this._logCtx(), sessionId: session.id, sentId: sent?.id, sentKeys: sent ? Object.keys(sent) : [] }, 'teams.thread.send.response');
       upsertTeamsThread({
         id: randomUUID(),
         sessionId: session.id,
@@ -96,8 +97,9 @@ export class TeamsIntegrationService {
         deltaLink: null,
         createdAt: new Date().toISOString(),
       });
+      const stored = getTeamsThread(session.id);
+      this.logger.info({ ...this._logCtx(), sessionId: session.id, teamsThreadId: sent.id, storedThreadId: stored?.teamsThreadId, stored: !!stored }, 'teams.thread.created');
       this.lastPostedState.set(session.id, extractTrackedState(session));
-      this.logger.info({ ...this._logCtx(), sessionId: session.id, teamsThreadId: sent.id }, 'teams.thread.created');
       this._startFlushTimer(session.id, channelId);
     } catch (err) {
       this.logger.error({ ...this._logCtx(), err, sessionId: session.id }, 'teams.thread.create.failed');
@@ -112,6 +114,7 @@ export class TeamsIntegrationService {
     }
 
     const thread = getTeamsThread(session.id);
+    this.logger.info({ ...this._logCtx(), sessionId: session.id, threadFound: !!thread, teamsThreadId: thread?.teamsThreadId }, 'teams.session.updated.thread-lookup');
     if (!thread) {
       this.logger.info({ ...this._logCtx(), sessionId: session.id }, 'teams.session.updated: no thread, delegating to onSessionCreated');
       await this.onSessionCreated(session);
@@ -167,6 +170,7 @@ export class TeamsIntegrationService {
     this._stopFlushTimer(session.id);
 
     const thread = getTeamsThread(session.id);
+    this.logger.info({ ...this._logCtx(), sessionId: session.id, threadFound: !!thread, teamsThreadId: thread?.teamsThreadId }, 'teams.session.ended.thread-lookup');
     if (!thread) {
       this.logger.warn({ ...this._logCtx(), sessionId: session.id }, 'teams.session.ended.skipped: no thread');
       return;
