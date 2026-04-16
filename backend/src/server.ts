@@ -124,8 +124,26 @@ export async function buildServer() {
     if (!text) return;
 
     app.log.info({ sessionId: thread.sessionId, text, source: 'Teams' }, 'teams.message.command.received');
-    const action = await new SessionController().sendPrompt(thread.sessionId, text);
-    app.log.info({ sessionId: thread.sessionId, actionId: action.id, status: action.status, result: action.result, source: 'Teams' }, 'teams.message.command.dispatched');
+    let errorMessage: string | null = null;
+    try {
+      const action = await new SessionController().sendPrompt(thread.sessionId, text);
+      app.log.info({ sessionId: thread.sessionId, actionId: action.id, status: action.status, result: action.result, source: 'Teams' }, 'teams.message.command.dispatched');
+      if (action.status === 'failed') errorMessage = action.result ?? 'Unknown error';
+    } catch (err) {
+      app.log.warn({ err, sessionId: thread.sessionId, source: 'Teams' }, 'teams.message.command.failed');
+      errorMessage = err instanceof Error ? err.message : String(err);
+    }
+    if (errorMessage) {
+      const cfg = loadTeamsConfig();
+      if (cfg.channelId) {
+        try {
+          const threadConvId = `${cfg.channelId};messageid=${thread.teamsThreadId}`;
+          await teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text: `**Could not deliver message:** ${errorMessage}` });
+        } catch (replyErr) {
+          app.log.warn({ err: replyErr, sessionId: thread.sessionId }, 'teams.message.error-reply.failed');
+        }
+      }
+    }
   });
   await teamsApp.initialize();
 
