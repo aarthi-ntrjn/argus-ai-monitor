@@ -145,6 +145,7 @@ export class TeamsIntegrationService {
       row('Type:', session.type),
       row('Model:', session.model ?? '(unknown)'),
       row('Yolo:', session.yoloMode ? 'on' : 'off'),
+      row('PID:', session.pid != null ? String(session.pid) : '(unknown)'),
       row('Session:', session.id),
     ].join('\n');
   }
