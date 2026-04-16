@@ -61,8 +61,12 @@ export class TeamsIntegrationService {
   }
 
   async onSessionCreated(session: Session): Promise<void> {
+    this.logger.info({ ...this._logCtx(), sessionId: session.id, status: session.status }, 'teams.session.created.received');
     const config = loadTeamsConfig();
-    if (!this.isConfigured()) return;
+    if (!this.isConfigured()) {
+      this.logger.warn({ ...this._logCtx(), sessionId: session.id, enabled: config.enabled, hasTeamId: Boolean(config.teamId), hasChannelId: Boolean(config.channelId), hasOwner: Boolean(config.ownerAadObjectId) }, 'teams.session.created.skipped: not configured');
+      return;
+    }
     const { channelId } = config as { channelId: string };
 
     const existing = getTeamsThread(session.id);
@@ -71,6 +75,7 @@ export class TeamsIntegrationService {
       this.lastPostedState.set(session.id, extractTrackedState(session));
       try {
         await this.teamsApp.api.conversations.activities(channelId).reply(existing.teamsThreadId, { type: 'message', text: this._formatReconnectMessage(session) });
+        this.logger.info({ ...this._logCtx(), sessionId: session.id, teamsThreadId: existing.teamsThreadId }, 'teams.thread.reused.notified');
       } catch (err) {
         this.logger.warn({ ...this._logCtx(), err, sessionId: session.id }, 'teams.thread.reused.notify.failed');
       }
@@ -79,6 +84,7 @@ export class TeamsIntegrationService {
     }
 
     const repo = getRepository(session.repositoryId);
+    this.logger.info({ ...this._logCtx(), sessionId: session.id, repositoryId: session.repositoryId, repoName: repo?.name }, 'teams.thread.creating');
     try {
       const sent = await this.teamsApp.send(channelId, { type: 'message', text: this._formatOpeningMessage(session, repo) });
       upsertTeamsThread({
@@ -99,11 +105,15 @@ export class TeamsIntegrationService {
   }
 
   async onSessionUpdated(session: Session): Promise<void> {
-    if (!this.isConfigured()) return;
+    this.logger.debug({ ...this._logCtx(), sessionId: session.id, status: session.status, model: session.model, pid: session.pid }, 'teams.session.updated.received');
+    if (!this.isConfigured()) {
+      this.logger.warn({ ...this._logCtx(), sessionId: session.id }, 'teams.session.updated.skipped: not configured');
+      return;
+    }
 
     const thread = getTeamsThread(session.id);
     if (!thread) {
-      // Thread doesn't exist yet — treat as a new session (e.g. server restarted mid-session)
+      this.logger.info({ ...this._logCtx(), sessionId: session.id }, 'teams.session.updated: no thread, delegating to onSessionCreated');
       await this.onSessionCreated(session);
       return;
     }
@@ -111,8 +121,12 @@ export class TeamsIntegrationService {
     const prev = this.lastPostedState.get(session.id);
     const curr = extractTrackedState(session);
     const changes = this._diffState(prev, curr);
-    if (changes.length === 0) return;
+    if (changes.length === 0) {
+      this.logger.debug({ ...this._logCtx(), sessionId: session.id }, 'teams.session.updated.skipped: no meaningful changes');
+      return;
+    }
 
+    this.logger.info({ ...this._logCtx(), sessionId: session.id, changes: changes.map(c => c.label), prev, curr }, 'teams.session.updated.posting');
     this.lastPostedState.set(session.id, curr);
 
     const config = loadTeamsConfig();
@@ -120,7 +134,7 @@ export class TeamsIntegrationService {
 
     try {
       await this.teamsApp.api.conversations.activities(channelId).reply(thread.teamsThreadId, { type: 'message', text: this._formatUpdateMessage(session, changes) });
-      this.logger.info({ ...this._logCtx(), sessionId: session.id, changes: changes.map(c => c.label) }, 'teams.session.updated');
+      this.logger.info({ ...this._logCtx(), sessionId: session.id, changes: changes.map(c => c.label) }, 'teams.session.updated.posted');
     } catch (err) {
       this.logger.error({ ...this._logCtx(), err, sessionId: session.id }, 'teams.session.update.notify.failed');
     }
@@ -136,15 +150,22 @@ export class TeamsIntegrationService {
   }
 
   async onSessionEnded(session: Session): Promise<void> {
+    this.logger.info({ ...this._logCtx(), sessionId: session.id, status: session.status }, 'teams.session.ended.received');
     const config = loadTeamsConfig();
-    if (!this.isConfigured()) return;
+    if (!this.isConfigured()) {
+      this.logger.warn({ ...this._logCtx(), sessionId: session.id }, 'teams.session.ended.skipped: not configured');
+      return;
+    }
     const { channelId } = config as { channelId: string };
 
     await this._flush(session.id, channelId);
     this._stopFlushTimer(session.id);
 
     const thread = getTeamsThread(session.id);
-    if (!thread) return;
+    if (!thread) {
+      this.logger.warn({ ...this._logCtx(), sessionId: session.id }, 'teams.session.ended.skipped: no thread');
+      return;
+    }
 
     try {
       await this.teamsApp.api.conversations.activities(channelId).reply(thread.teamsThreadId, { type: 'message', text: this._formatEndedMessage(session) });
