@@ -137,7 +137,6 @@ export class TeamsIntegrationService {
 
     await this._flush(session.id, channelId);
     this._stopFlushTimer(session.id);
-    this.lastPostedState.delete(session.id);
 
     const thread = getTeamsThread(session.id);
     if (!thread) return;
