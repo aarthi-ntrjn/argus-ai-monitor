@@ -12,6 +12,7 @@ vi.mock('../services/api', () => ({
   patchArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false, yoloMode: false, restingThresholdMinutes: 20 } as any),
   getTeamsSettings: vi.fn().mockResolvedValue({ enabled: false, connectionStatus: 'unconfigured' }),
   patchTeamsSettings: vi.fn().mockResolvedValue({ enabled: false, connectionStatus: 'unconfigured' }),
+  getSlackSettings: vi.fn().mockRejectedValue(new Error('not configured')),
 }));
 
 function renderWithQuery(ui: React.ReactElement) {

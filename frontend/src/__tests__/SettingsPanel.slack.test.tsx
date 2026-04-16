@@ -26,65 +26,89 @@ const baseSettings: DashboardSettings = {
   hideTodoPanel: false,
 };
 
-describe('SettingsPanel - Teams integration section', () => {
+describe('SettingsPanel - Slack integration section', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(api.getArgusSettings).mockResolvedValue({ autoRegisterRepos: false, yoloMode: false } as any);
     vi.mocked(api.getTeamsSettings).mockResolvedValue({ enabled: false, connectionStatus: 'unconfigured' });
+    vi.mocked(api.getSlackSettings).mockRejectedValue(new Error('not configured'));
   });
 
-  it('renders the Microsoft Teams section heading', async () => {
+  it('renders the Slack section heading', async () => {
     renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
     await waitFor(() => {
-      expect(screen.getByText(/microsoft teams/i)).toBeInTheDocument();
+      expect(screen.getByText(/^slack$/i)).toBeInTheDocument();
     });
   });
 
-  it('shows connection status badge', async () => {
+  it('shows "configured via environment variables" note', async () => {
     renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
     await waitFor(() => {
-      expect(screen.getByText(/unconfigured/i)).toBeInTheDocument();
+      const notes = screen.getAllByText(/configured via environment variables/i);
+      expect(notes.length).toBeGreaterThan(0);
     });
   });
 
-  it('shows connected status when config is connected', async () => {
-    vi.mocked(api.getTeamsSettings).mockResolvedValue({
+  it('shows field labels for Bot Token, App Token, Channel ID', async () => {
+    vi.mocked(api.getSlackSettings).mockResolvedValue({
+      botToken: '***',
+      channelId: 'C01234ABCDE',
       enabled: true,
-      teamId: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
-      channelId: '19:xxxx@thread.tacv2',
-      ownerAadObjectId: 'owner-aad-id',
-      connectionStatus: 'connected',
     });
     renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
     await waitFor(() => {
-      expect(screen.getByText(/connected/i)).toBeInTheDocument();
+      expect(screen.getByText('Bot Token')).toBeInTheDocument();
+      expect(screen.getByText('App Token')).toBeInTheDocument();
+      // Channel ID appears in both Slack and Teams sections
+      expect(screen.getAllByText('Channel ID').length).toBeGreaterThanOrEqual(1);
     });
   });
 
-  it('displays team ID read-only when config is loaded', async () => {
-    vi.mocked(api.getTeamsSettings).mockResolvedValue({
+  it('shows connected badge when enabled is true', async () => {
+    vi.mocked(api.getSlackSettings).mockResolvedValue({
+      botToken: '***',
+      channelId: 'C01234ABCDE',
       enabled: true,
-      teamId: 'test-team-id',
-      channelId: '19:xxxx@thread.tacv2',
-      ownerAadObjectId: 'owner-aad-id',
-      connectionStatus: 'connected',
     });
     renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
     await waitFor(() => {
-      expect(screen.getByText('test-team-id')).toBeInTheDocument();
+      expect(screen.getByText('connected')).toBeInTheDocument();
     });
   });
 
-  it('shows not set when team ID is missing', async () => {
+  it('displays channel ID value read-only', async () => {
+    vi.mocked(api.getSlackSettings).mockResolvedValue({
+      botToken: '***',
+      channelId: 'C09876ZYXWV',
+      enabled: true,
+    });
+    renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
+    await waitFor(() => {
+      expect(screen.getByText('C09876ZYXWV')).toBeInTheDocument();
+    });
+  });
+
+  it('shows "not set" for appToken when absent', async () => {
+    vi.mocked(api.getSlackSettings).mockResolvedValue({
+      botToken: '***',
+      channelId: 'C01234',
+      enabled: true,
+    });
     renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
     await waitFor(() => {
       expect(screen.getAllByText(/not set/i).length).toBeGreaterThan(0);
     });
   });
 
-  it('does not render a save button', async () => {
+  it('does not render a save or edit button for Slack', async () => {
+    vi.mocked(api.getSlackSettings).mockResolvedValue({
+      botToken: '***',
+      channelId: 'C01234',
+      enabled: true,
+    });
     renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
-    await waitFor(() => screen.getByText(/microsoft teams/i));
-    expect(screen.queryByRole('button', { name: /save teams settings/i })).not.toBeInTheDocument();
+    await waitFor(() => screen.getByText(/^slack$/i));
+    expect(screen.queryByRole('button', { name: /save slack/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /edit slack/i })).not.toBeInTheDocument();
   });
 });
