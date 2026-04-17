@@ -212,20 +212,16 @@ export default function DashboardPage() {
             Argus
           </h1>
           <div className="flex items-center gap-2">
-            {teamsConfig && (
-              <IntegrationStatusIcon
-                type="teams"
-                connected={teamsConfig.connectionStatus === 'connected'}
-                title={`Microsoft Teams: ${teamsConfig.connectionStatus}`}
-              />
-            )}
-            {slackConfig && (
-              <IntegrationStatusIcon
-                type="slack"
-                connected={slackConfig.enabled}
-                title={`Slack: ${slackConfig.enabled ? 'connected' : 'disconnected'}`}
-              />
-            )}
+            <IntegrationStatusIcon
+              type="teams"
+              connected={teamsConfig?.connectionStatus === 'connected'}
+              title={`Microsoft Teams: ${teamsConfig?.connectionStatus ?? 'unconfigured'}`}
+            />
+            <IntegrationStatusIcon
+              type="slack"
+              connected={slackConfig?.enabled === true}
+              title={`Slack: ${slackConfig?.enabled ? 'connected' : 'disconnected'}`}
+            />
             <div className="relative" ref={settingsRef}>
               <button
                 data-tour-id="dashboard-settings"
