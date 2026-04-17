@@ -5,11 +5,14 @@ import { useNavigate } from 'react-router-dom';
 import { getSessions, getRepositories } from '../services/api';
 import { useSettings } from '../hooks/useSettings';
 import { useArgusSettings } from '../hooks/useArgusSettings';
+import { useTeamsSettings } from '../hooks/useTeamsSettings';
+import { useSlackSettings } from '../hooks/useSlackSettings';
 import { useOnboarding } from '../hooks/useOnboarding';
 import { useRepositoryManagement } from '../hooks/useRepositoryManagement';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { Button } from '../components/Button';
 import { SettingsPanel } from '../components/SettingsPanel';
+import { IntegrationStatusIcon } from '../components/IntegrationStatusIcon';
 import { TelemetryBanner } from '../components/TelemetryBanner';
 import { RemoveConfirmDialog } from '../components/RemoveConfirmDialog';
 import OutputPane from '../components/OutputPane/OutputPane';
@@ -48,6 +51,8 @@ export default function DashboardPage() {
 
   const [settings, updateSetting] = useSettings();
   const { settings: argusSettings, patchSetting } = useArgusSettings();
+  const { config: teamsConfig } = useTeamsSettings();
+  const { config: slackConfig } = useSlackSettings();
   const { tourStatus, seenRepoSteps, startTour, skipTour, completeTour, markRepoStepsSeen, resetOnboarding } = useOnboarding();
   const [tourRun, setTourRun] = useState(false);
   const [catchUpRun, setCatchUpRun] = useState(false);
@@ -207,6 +212,20 @@ export default function DashboardPage() {
             Argus
           </h1>
           <div className="flex items-center gap-2">
+            {teamsConfig && (
+              <IntegrationStatusIcon
+                type="teams"
+                connected={teamsConfig.connectionStatus === 'connected'}
+                title={`Microsoft Teams: ${teamsConfig.connectionStatus}`}
+              />
+            )}
+            {slackConfig && (
+              <IntegrationStatusIcon
+                type="slack"
+                connected={slackConfig.enabled}
+                title={`Slack: ${slackConfig.enabled ? 'connected' : 'disconnected'}`}
+              />
+            )}
             <div className="relative" ref={settingsRef}>
               <button
                 data-tour-id="dashboard-settings"
