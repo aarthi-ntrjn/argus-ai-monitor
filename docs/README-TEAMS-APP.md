@@ -143,7 +143,8 @@ devtunnel login
 Create a persistent tunnel named `argus-tunnel` and host it on port 7411:
 
 ```bash
-devtunnel create argus-tunnel --allow-anonymous
+devtunnel create argus-tunnel
+devtunnel access create argus-tunnel --anonymous
 devtunnel port create argus-tunnel -p 7411
 devtunnel host argus-tunnel
 ```
