@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   ended_at TEXT, last_activity_at TEXT NOT NULL, summary TEXT, expires_at TEXT,
   model TEXT, reconciled INTEGER NOT NULL DEFAULT 1,
   launch_mode TEXT CHECK(launch_mode IN ('pty','detected')),
-  host_pid INTEGER, yolo_mode INTEGER DEFAULT NULL
+  host_pid INTEGER, yolo_mode INTEGER DEFAULT NULL, pty_launch_id TEXT
 );
 CREATE TABLE IF NOT EXISTS session_output (
   id TEXT PRIMARY KEY, session_id TEXT NOT NULL REFERENCES sessions(id),

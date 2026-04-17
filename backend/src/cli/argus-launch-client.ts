@@ -2,7 +2,6 @@ import WebSocket from 'ws';
 import type { SessionType } from '../models/index.js';
 
 interface RegisterInfo {
-  sessionId: string;
   hostPid: number;
   pid: number | null;
   sessionType: SessionType;
@@ -17,12 +16,11 @@ export class ArgusLaunchClient {
   private registerInfo: RegisterInfo | null = null;
   private promptCallback: PromptCallback | null = null;
   private isClosing = false;
-  private workspaceSessionId: string | null = null;
   private pendingPid: number | null = null;
   private log: (msg: string) => void;
 
-  constructor(url: string, log?: (msg: string) => void) {
-    this.url = url;
+  constructor(url: string, ptyLaunchId: string, log?: (msg: string) => void) {
+    this.url = `${url}?id=${ptyLaunchId}`;
     this.log = log ?? (() => {});
     this.connect();
   }
@@ -31,9 +29,8 @@ export class ArgusLaunchClient {
     this.ws = new WebSocket(this.url);
     this.ws.on('open', () => this.handleOpen());
     this.ws.on('message', (data: Buffer) => this.handleMessage(data));
-    this.ws.on('error', (err: Error) => {
+    this.ws.on('error', (_err: Error) => {
       // Connection errors are non-fatal — argus may not be running
-      // process.stderr.write(`[argus] Could not connect to Argus backend: ${err.message}\n`);
     });
     this.ws.on('close', () => {
       if (!this.isClosing) {
@@ -75,11 +72,6 @@ export class ArgusLaunchClient {
     this.send({ type: 'update_pid', pid });
   }
 
-  sendWorkspaceId(id: string): void {
-    this.workspaceSessionId = id;
-    this.send({ type: 'workspace_id', sessionId: id });
-  }
-
   notifySessionEnded(sessionId: string, exitCode: number | null): Promise<void> {
     this.isClosing = true;
     return new Promise<void>((resolve) => {
@@ -96,19 +88,7 @@ export class ArgusLaunchClient {
   }
 
   private handleOpen(): void {
-    if (this.registerInfo) {
-      this.send({ type: 'register', ...this.registerInfo });
-    }
-    // Re-send workspace_id on reconnect so the backend can re-claim the session
-    if (this.workspaceSessionId) {
-      this.send({ type: 'workspace_id', sessionId: this.workspaceSessionId });
-    }
-    // Replay a pid that arrived before the connection was ready
-    if (this.pendingPid !== null) {
-      this.log(`handleOpen: replaying deferred update_pid pid=${this.pendingPid}`);
-      this.send({ type: 'update_pid', pid: this.pendingPid });
-      this.pendingPid = null;
-    }
+    this.log('connected — waiting for server handshake');
   }
 
   private handleMessage(data: Buffer): void {
@@ -119,8 +99,20 @@ export class ArgusLaunchClient {
       return;
     }
 
+    if (msg.type === 'connected') {
+      this.log(`connected`);
+      if (this.registerInfo) {
+        this.send({ type: 'register', ...this.registerInfo });
+      }
+      if (this.pendingPid !== null) {
+        this.log(`handleConnected: replaying deferred update_pid pid=${this.pendingPid}`);
+        this.send({ type: 'update_pid', pid: this.pendingPid });
+        this.pendingPid = null;
+      }
+      return;
+    }
+
     if (msg.type === 'send_prompt' && msg.actionId && msg.prompt !== undefined) {
-      //process.stderr.write(`[argus-launch-client] send_prompt received actionId=${msg.actionId} promptLen=${msg.prompt.length}\n`);
       this.promptCallback?.(msg.actionId, msg.prompt);
     }
   }

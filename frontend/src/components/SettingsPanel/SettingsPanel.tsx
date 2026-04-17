@@ -9,6 +9,7 @@ import { YoloWarningDialog } from '../YoloWarningDialog/YoloWarningDialog';
 import { Checkbox } from '../Checkbox';
 import { Button } from '../Button';
 import Badge from '../Badge';
+import { rescanRemoteUrls } from '../../services/api';
 
 function CopyButton({ value }: { value: string | undefined }) {
   const [copied, setCopied] = useState(false);
@@ -48,6 +49,7 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
   const { config: teamsConfig } = useTeamsSettings();
   const { config: slackConfig } = useSlackSettings();
   const [showYoloWarning, setShowYoloWarning] = useState(false);
+  const [rescanState, setRescanState] = useState<'idle' | 'scanning' | 'done'>('idle');
   const [thresholdInput, setThresholdInput] = useState(String(argusSettings?.restingThresholdMinutes ?? DEFAULT_THRESHOLD));
   const [thresholdError, setThresholdError] = useState<string | null>(null);
   // Sync input when argusSettings loads from server
@@ -198,17 +200,35 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
 
         <div className="mt-2 pt-2 border-t border-gray-100">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Privacy</p>
-          <div className="py-1">
+          <label className="flex items-start gap-2 cursor-pointer select-none py-1">
             <Checkbox
-              label="Send anonymous usage telemetry"
               aria-label="Send anonymous usage telemetry"
               checked={argusSettings?.telemetryEnabled ?? true}
               onChange={e => patchSetting({ telemetryEnabled: e.target.checked })}
+              className="mt-0.5"
             />
-          </div>
-          <Link to="/telemetry" className="block text-xs text-blue-600 hover:underline mt-1">
-            What we collect
-          </Link>
+            <span className="flex flex-col">
+              <span className="text-sm text-gray-600">Send anonymous usage telemetry</span>
+              <Link to="/telemetry" className="text-xs text-blue-600 hover:underline">What we collect</Link>
+            </span>
+          </label>
+        </div>
+
+        <div className="mt-2 pt-2 border-t border-gray-100 flex flex-col gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={rescanState === 'scanning'}
+            onClick={async () => {
+              setRescanState('scanning');
+              await rescanRemoteUrls().catch(() => {});
+              setRescanState('done');
+              setTimeout(() => setRescanState('idle'), 2000);
+            }}
+            className="w-full text-left !text-sm hover:!text-blue-600"
+          >
+            {rescanState === 'scanning' ? 'Scanning...' : rescanState === 'done' ? 'Done' : 'Rescan Remote URLs'}
+          </Button>
         </div>
 
         {onRestartTour && (
@@ -217,7 +237,7 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
               variant="ghost"
               size="sm"
               onClick={onRestartTour}
-              className="w-full text-left !text-sm"
+              className="w-full text-left !text-sm hover:!text-blue-600"
             >
               Restart Tour
             </Button>

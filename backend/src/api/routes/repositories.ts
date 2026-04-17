@@ -10,6 +10,7 @@ import {
   insertRepository,
   deleteRepository,
   getRepositoryByPath,
+  updateRepositoryRemoteUrl,
 } from '../../db/database.js';
 import { broadcast } from '../ws/event-dispatcher.js';
 import { ClaudeCodeDetector } from '../../services/claude-code-detector.js';
@@ -68,6 +69,23 @@ const repositoriesRoutes: FastifyPluginAsync = async (app) => {
     _monitor?.triggerScan();
     _monitor?.triggerCopilotScan();
     return reply.status(201).send(repo);
+  });
+
+  app.post('/api/v1/repositories/rescan-remotes', async (_req, reply) => {
+    const repos = getRepositories();
+    const results = await Promise.all(repos.map(async (repo) => {
+      const remoteUrl = await getRemoteUrl(repo.path);
+      if (remoteUrl !== repo.remoteUrl) {
+        updateRepositoryRemoteUrl(repo.id, remoteUrl);
+        const updated = { ...repo, remoteUrl };
+        broadcast({ type: 'repository.updated', timestamp: new Date().toISOString(), data: updated as unknown as Record<string, unknown> });
+        return true;
+      }
+      return false;
+    }));
+    const updated = results.filter(Boolean).length;
+    logger.info(`[Repositories] rescan-remotes updated ${updated}/${repos.length} repos`);
+    return reply.send({ updated, total: repos.length });
   });
 
   app.delete<{ Params: { id: string } }>('/api/v1/repositories/:id', async (req, reply) => {

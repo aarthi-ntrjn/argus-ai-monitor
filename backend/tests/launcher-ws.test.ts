@@ -29,7 +29,7 @@ describe('PtyRegistry — pending / claim flow', () => {
     registry.registerPending('temp-uuid', mockWs as any, '/repo/path', 8348);
 
     const claimed = registry.claimForSession('claude-session-id', '/repo/path', 'claude-code');
-    expect(claimed).toEqual({ pid: null, hostPid: 8348 });
+    expect(claimed).toMatchObject({ pid: null, hostPid: 8348 });
     expect(registry.has('claude-session-id')).toBe(true);
   });
 
@@ -91,31 +91,31 @@ describe('PtyRegistry — pending / claim flow', () => {
     await expect(p).rejects.toThrow('PTY closed');
   });
 
-  it('claimByTempId promotes pending connection to claimed by sessionId', () => {
+  it('claimByPtyLaunchId promotes pending connection to claimed by sessionId', () => {
     const mockWs = { send: vi.fn(), readyState: 1 };
     registry.registerPending('temp-copilot', mockWs as any, '/repo/copilot', 4444);
-    const result = registry.claimByTempId('temp-copilot', 'workspace-uuid-1');
-    expect(result).toEqual({ pid: null, hostPid: 4444 });
+    const result = registry.claimByPtyLaunchId('temp-copilot', 'workspace-uuid-1');
+    expect(result).toMatchObject({ pid: null, hostPid: 4444 });
     expect(registry.has('workspace-uuid-1')).toBe(true);
   });
 
-  it('claimByTempId returns null when tempId is not pending', () => {
-    expect(registry.claimByTempId('no-such-temp', 'ws-id')).toBeNull();
+  it('claimByPtyLaunchId returns null when tempId is not pending', () => {
+    expect(registry.claimByPtyLaunchId('no-such-temp', 'ws-id')).toBeNull();
   });
 
-  it('claimByTempId allows sendPrompt after claim', async () => {
+  it('claimByPtyLaunchId allows sendPrompt after claim', async () => {
     const mockWs = { send: vi.fn(), readyState: 1 };
     registry.registerPending('temp-cp2', mockWs as any, '/repo/cp2', 5555);
-    registry.claimByTempId('temp-cp2', 'ws-session-2');
+    registry.claimByPtyLaunchId('temp-cp2', 'ws-session-2');
     const p = registry.sendPrompt('ws-session-2', 'act-1', 'hello');
     registry.handleAck('act-1', true);
     await expect(p).resolves.toBeUndefined();
   });
 
-  it('claimByTempId removes pending entry so claimForSession returns null for same path', () => {
+  it('claimByPtyLaunchId removes pending entry so claimForSession returns null for same path', () => {
     const mockWs = { send: vi.fn(), readyState: 1 };
     registry.registerPending('temp-cp3', mockWs as any, '/repo/cp3', 6666);
-    registry.claimByTempId('temp-cp3', 'ws-session-3');
+    registry.claimByPtyLaunchId('temp-cp3', 'ws-session-3');
     expect(registry.claimForSession('other', '/repo/cp3', 'claude-code')).toBeNull();
   });
 

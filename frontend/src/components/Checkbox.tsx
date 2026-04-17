@@ -40,7 +40,7 @@ export function Checkbox({ checked = false, onChange, label, className = '', 'ar
   return (
     <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none" onClick={e => e.preventDefault()}>
       {checkbox}
-      <span onClick={handleClick}>{label}</span>
+      <span onClick={handleClick} className="min-w-0 break-words">{label}</span>
     </label>
   );
 }
