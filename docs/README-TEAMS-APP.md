@@ -126,17 +126,47 @@ For a programmatic install (no App Store listing required), you can upload a cus
 
 If Argus is running on your local machine, Microsoft cannot reach it directly. Use VS Code Dev Tunnels or ngrok.
 
-**VS Code Dev Tunnels:**
+**Azure Dev Tunnels CLI:**
 
-1. In VS Code, open the Command Palette and run **Dev Tunnels: Create Tunnel**.
-2. Select **Public** visibility and **Persistent** lifetime.
-3. Copy the tunnel URL (e.g. `https://xyz.devtunnel.ms`).
-4. Update your Azure Bot **Messaging endpoint** (Step 2, item 5) to:
-   ```
-   https://xyz.devtunnel.ms/api/v1/teams/webhook
-   ```
+Install the CLI if you haven't already:
 
-**ngrok:**
+```bash
+winget install Microsoft.DevTunnel
+```
+
+Log in once:
+
+```bash
+devtunnel login
+```
+
+Create a persistent tunnel and host it on port 7411:
+
+```bash
+devtunnel create --allow-anonymous
+devtunnel port create -p 7411
+devtunnel host
+```
+
+The CLI prints your tunnel URL in the format:
+
+```
+Connect via browser: https://<tunnel-id>-7411.<region>.devtunnels.ms
+```
+
+Update your Azure Bot **Messaging endpoint** (Step 2, item 5) to:
+
+```
+https://<tunnel-id>-7411.<region>.devtunnels.ms/api/v1/teams/webhook
+```
+
+The tunnel ID is stable across restarts as long as you reuse the same named tunnel. To reuse it in a later session:
+
+```bash
+devtunnel host <tunnel-id>
+```
+
+**ngrok (alternative):**
 
 ```bash
 ngrok http 7411
