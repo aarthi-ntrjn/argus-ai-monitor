@@ -14,7 +14,7 @@ interface PendingPrompt {
 }
 
 interface PendingLauncher {
-  tempId: string;
+  ptyLaunchId: string;
   ws: WebSocket;
   hostPid: number;
   pid: number | null;
@@ -28,8 +28,8 @@ export class PtyRegistry {
   // Pending connections waiting for Claude's session ID: repoPath -> launcher info
   private pendingByRepoPath = new Map<string, PendingLauncher>();
 
-  // Reverse map so close handlers can look up the claimed session ID by temp UUID
-  private tempToClaimedId = new Map<string, string>();
+  // Reverse map so close handlers can look up the claimed session ID by ptyLaunchId
+  private ptyLaunchToClaimedId = new Map<string, string>();
 
   // Stores the resolved tool PID for a claimed session even before the DB session exists.
   // Set by updateClaimedPid when update_pid arrives before the session row is inserted.
@@ -43,10 +43,10 @@ export class PtyRegistry {
   // hostPid is the shell wrapper PID (powershell.exe on Windows, same as tool PID elsewhere).
   // pid is the initial tool PID: null on Windows (resolved later via update_pid),
   // or the same as hostPid on non-Windows (pty.pid is directly the tool process).
-  registerPending(tempId: string, ws: WebSocket, repoPath: string, hostPid: number, pid: number | null = null, sessionType: SessionType = 'claude-code'): void {
+  registerPending(ptyLaunchId: string, ws: WebSocket, repoPath: string, hostPid: number, pid: number | null = null, sessionType: SessionType = 'claude-code'): void {
     const key = normalizePath(repoPath);
-    logger.info(`[PtyRegistry] registerPending tempId=${tempId} hostPid=${hostPid} pid=${pid} sessionType=${sessionType} repoPath="${repoPath}" key="${key}"`);
-    this.pendingByRepoPath.set(key, { tempId, ws, hostPid, pid, sessionType });
+    logger.info(`[PtyRegistry] registerPending ptyLaunchId=${ptyLaunchId} hostPid=${hostPid} pid=${pid} sessionType=${sessionType} repoPath="${repoPath}" key="${key}"`);
+    this.pendingByRepoPath.set(key, { ptyLaunchId, ws, hostPid, pid, sessionType });
   }
 
   // Update the real tool PID for a pending connection (before claim).
@@ -54,7 +54,7 @@ export class PtyRegistry {
   updatePendingPid(repoPath: string, pid: number): void {
     const pending = this.pendingByRepoPath.get(normalizePath(repoPath));
     if (pending) {
-      logger.info(`[PtyRegistry] updatePendingPid tempId=${pending.tempId} pid=${pid} repoPath="${repoPath}"`);
+      logger.info(`[PtyRegistry] updatePendingPid ptyLaunchId=${pending.ptyLaunchId} pid=${pid} repoPath="${repoPath}"`);
       pending.pid = pid;
     }
   }
@@ -62,17 +62,17 @@ export class PtyRegistry {
   // Called by the launcher WS handler when launch.ts sends a workspace_id message
   // after discovering the copilot workspace.yaml. Promotes the pending connection to
   // a claimed connection keyed by sessionId, bypassing repoPath matching entirely.
-  claimByTempId(tempId: string, sessionId: string): { pid: number | null; hostPid: number } | null {
+  claimByPtyLaunchId(ptyLaunchId: string, sessionId: string): { pid: number | null; hostPid: number; ptyLaunchId: string } | null {
     for (const [key, pending] of this.pendingByRepoPath) {
-      if (pending.tempId === tempId) {
-        logger.info(`[PtyRegistry] claimByTempId tempId=${tempId} sessionId=${sessionId} hostPid=${pending.hostPid} pid=${pending.pid} key="${key}"`);
+      if (pending.ptyLaunchId === ptyLaunchId) {
+        logger.info(`[PtyRegistry] claimByPtyLaunchId ptyLaunchId=${ptyLaunchId} sessionId=${sessionId} hostPid=${pending.hostPid} pid=${pending.pid} key="${key}"`);
         this.connections.set(sessionId, pending.ws);
-        this.tempToClaimedId.set(tempId, sessionId);
+        this.ptyLaunchToClaimedId.set(ptyLaunchId, sessionId);
         this.pendingByRepoPath.delete(key);
-        return { pid: pending.pid, hostPid: pending.hostPid };
+        return { pid: pending.pid, hostPid: pending.hostPid, ptyLaunchId };
       }
     }
-    logger.info(`[PtyRegistry] claimByTempId MISS tempId=${tempId} sessionId=${sessionId} — no pending entry found`);
+    logger.info(`[PtyRegistry] claimByPtyLaunchId MISS ptyLaunchId=${ptyLaunchId} sessionId=${sessionId} — no pending entry found`);
     return null;
   }
 
@@ -80,7 +80,7 @@ export class PtyRegistry {
   // Promotes the pending connection to a claimed connection keyed by claudeSessionId.
   // Returns pid (may be null if update_pid hasn't arrived yet) and hostPid (always set),
   // or null if no launcher is waiting for this repo.
-  claimForSession(claudeSessionId: string, repoPath: string, sessionType: SessionType): { pid: number | null; hostPid: number } | null {
+  claimForSession(claudeSessionId: string, repoPath: string, sessionType: SessionType): { pid: number | null; hostPid: number; ptyLaunchId: string } | null {
     const key = normalizePath(repoPath);
     const pending = this.pendingByRepoPath.get(key);
     if (!pending) {
@@ -93,15 +93,23 @@ export class PtyRegistry {
     }
     logger.info(`[PtyRegistry] claimForSession OK sessionId=${claudeSessionId} hostPid=${pending.hostPid} pid=${pending.pid} sessionType=${sessionType} repoPath="${repoPath}"`);
     this.connections.set(claudeSessionId, pending.ws);
-    this.tempToClaimedId.set(pending.tempId, claudeSessionId);
+    this.ptyLaunchToClaimedId.set(pending.ptyLaunchId, claudeSessionId);
     this.pendingByRepoPath.delete(key);
-    return { pid: pending.pid, hostPid: pending.hostPid };
+    return { pid: pending.pid, hostPid: pending.hostPid, ptyLaunchId: pending.ptyLaunchId };
   }
 
-  // Returns the claude session ID that was claimed for this temp launcher UUID,
+  // Returns the claude session ID that was claimed for this ptyLaunchId,
   // or undefined if the launcher never had a hook come in.
-  getClaimedId(tempId: string): string | undefined {
-    return this.tempToClaimedId.get(tempId);
+  getClaimedId(ptyLaunchId: string): string | undefined {
+    return this.ptyLaunchToClaimedId.get(ptyLaunchId);
+  }
+
+  // Returns the ptyLaunchId that claimed this session, or undefined if not found.
+  getPtyLaunchIdForSession(sessionId: string): string | undefined {
+    for (const [ptyLaunchId, claimedId] of this.ptyLaunchToClaimedId) {
+      if (claimedId === sessionId) return ptyLaunchId;
+    }
+    return undefined;
   }
 
   // Stores the resolved tool PID for an already-claimed session.
@@ -117,14 +125,14 @@ export class PtyRegistry {
   }
 
   // Clean up a pending connection that never got claimed (e.g. claude crashed before first hook).
-  unregisterPending(repoPath: string, tempId: string): void {
-    logger.info(`[PtyRegistry] unregisterPending tempId=${tempId} repoPath="${repoPath}"`);
+  unregisterPending(repoPath: string, ptyLaunchId: string): void {
+    logger.warn(`[PtyRegistry] unregisterPending ptyLaunchId=${ptyLaunchId} repoPath="${repoPath}"`);
     this.pendingByRepoPath.delete(normalizePath(repoPath));
-    this.tempToClaimedId.delete(tempId);
+    this.ptyLaunchToClaimedId.delete(ptyLaunchId);
   }
 
   unregister(sessionId: string): void {
-    logger.info(`[PtyRegistry] unregister sessionId=${sessionId}`);
+    logger.warn(`[PtyRegistry] unregister sessionId=${sessionId}`);
     this.connections.delete(sessionId);
     this.claimedPids.delete(sessionId);
   }
@@ -144,6 +152,7 @@ export class PtyRegistry {
 
     if (ws.readyState !== WebSocket.OPEN) {
       // Stale entry — WS closed between the has() check and now. Clean up and reject.
+      logger.warn(`[PtyRegistry] removing stale connection sessionId=${sessionId} wsState=${ws.readyState}`);
       this.connections.delete(sessionId);
       return Promise.reject(new Error(`Session ${sessionId} launcher is not connected to Argus`));
     }

@@ -2,6 +2,11 @@ import type { FastifyPluginAsync } from 'fastify';
 import { getSessions, getSession, updateSessionStatus } from '../../db/database.js';
 import { OutputStore } from '../../services/output-store.js';
 import { SessionController } from '../../services/session-controller.js';
+import { ptyRegistry } from '../../services/pty-registry.js';
+
+function withPtyConnected<T extends { id: string; launchMode?: string | null }>(session: T): T & { ptyConnected: boolean | null } {
+  return { ...session, ptyConnected: session.launchMode === 'pty' ? ptyRegistry.has(session.id) : null };
+}
 
 const outputStore = new OutputStore();
 const sessionController = new SessionController();
@@ -12,7 +17,7 @@ const sessionsRoutes: FastifyPluginAsync = async (app) => {
     async (req, reply) => {
       const { repositoryId, status, type } = req.query;
       const sessions = getSessions({ repositoryId, status, type });
-      return reply.send(sessions);
+      return reply.send(sessions.map(withPtyConnected));
     }
   );
 
@@ -21,7 +26,7 @@ const sessionsRoutes: FastifyPluginAsync = async (app) => {
     async (req, reply) => {
       const session = getSession(req.params.id);
       if (!session) return reply.status(404).send({ error: 'NOT_FOUND', message: `Session ${req.params.id} not found` });
-      return reply.send(session);
+      return reply.send(withPtyConnected(session));
     }
   );
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Components } from 'react-markdown';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -144,7 +144,6 @@ function ContentCell({ item, dark, displayMode, expandedIds, expandedFullIds, on
 }
 
 export default function SessionDetail({ items, dark = false, className, displayMode = 'focused' }: Props) {
-  const bottomRef = useRef<HTMLDivElement>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [expandedFullIds, setExpandedFullIds] = useState<Set<string>>(new Set());
 
@@ -183,10 +182,6 @@ export default function SessionDetail({ items, dark = false, className, displayM
     () => buildDisplayItems(items, displayMode === 'focused'),
     [items, displayMode],
   );
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [items.length]);
 
   if (items.length === 0) {
     return (
@@ -322,7 +317,6 @@ export default function SessionDetail({ items, dark = false, className, displayM
           </div>
         );
       })}
-      <div ref={bottomRef} />
     </div>
   );
 }

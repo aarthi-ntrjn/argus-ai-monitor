@@ -43,7 +43,7 @@ describe('PtyRegistry', () => {
   it('claimForSession returns hostPid and null pid when a pending launcher exists', () => {
     const ws = makeMockWs();
     registry.registerPending('t', ws as any, '/repo', 9999);
-    expect(registry.claimForSession('s', '/repo', 'claude-code')).toEqual({ pid: null, hostPid: 9999 });
+    expect(registry.claimForSession('s', '/repo', 'claude-code')).toMatchObject({ pid: null, hostPid: 9999 });
   });
 
   it('getClaimedId returns the claude session ID after claim', () => {
@@ -100,29 +100,29 @@ describe('PtyRegistry', () => {
     expect(() => registry.handleAck('unknown-action', true)).not.toThrow();
   });
 
-  it('claimByTempId returns hostPid and null pid when pending entry found', () => {
+  it('claimByPtyLaunchId returns hostPid and null pid when pending entry found', () => {
     const ws = makeMockWs();
     registry.registerPending('temp-abc', ws as any, '/repo', 7777);
-    const result = registry.claimByTempId('temp-abc', 'workspace-session-1');
-    expect(result).toEqual({ pid: null, hostPid: 7777 });
+    const result = registry.claimByPtyLaunchId('temp-abc', 'workspace-session-1');
+    expect(result).toMatchObject({ pid: null, hostPid: 7777 });
     expect(registry.has('workspace-session-1')).toBe(true);
   });
 
-  it('claimByTempId returns null when tempId not found', () => {
-    expect(registry.claimByTempId('no-such-temp', 'any-session')).toBeNull();
+  it('claimByPtyLaunchId returns null when tempId not found', () => {
+    expect(registry.claimByPtyLaunchId('no-such-temp', 'any-session')).toBeNull();
   });
 
-  it('claimByTempId sets getClaimedId mapping', () => {
+  it('claimByPtyLaunchId sets getClaimedId mapping', () => {
     const ws = makeMockWs();
     registry.registerPending('temp-xyz', ws as any, '/repo2', 8888);
-    registry.claimByTempId('temp-xyz', 'workspace-session-2');
+    registry.claimByPtyLaunchId('temp-xyz', 'workspace-session-2');
     expect(registry.getClaimedId('temp-xyz')).toBe('workspace-session-2');
   });
 
-  it('claimByTempId removes pending entry so subsequent claimForSession returns null', () => {
+  it('claimByPtyLaunchId removes pending entry so subsequent claimForSession returns null', () => {
     const ws = makeMockWs();
     registry.registerPending('temp-def', ws as any, '/repo3', 9999);
-    registry.claimByTempId('temp-def', 'workspace-session-3');
+    registry.claimByPtyLaunchId('temp-def', 'workspace-session-3');
     expect(registry.claimForSession('other', '/repo3', 'claude-code')).toBeNull();
   });
 

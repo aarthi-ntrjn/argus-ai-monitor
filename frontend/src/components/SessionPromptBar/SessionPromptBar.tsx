@@ -7,8 +7,12 @@ interface Props {
   session: Session;
 }
 
+type ConnectionState = 'readonly' | 'connecting' | 'connected';
+
 export default function SessionPromptBar({ session }: Props) {
-  const isReadOnly = session.launchMode !== 'pty';
+  const connectionState: ConnectionState =
+    session.launchMode !== 'pty' ? 'readonly' :
+    session.ptyConnected === false ? 'connecting' : 'connected';
   const [prompt, setPrompt] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +27,8 @@ export default function SessionPromptBar({ session }: Props) {
       await sendPrompt(session.id, text);
       setPrompt('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send');
+      const msg = err instanceof Error ? err.message : '';
+      setError(msg === 'Failed to fetch' ? 'Failed to send — server not reachable' : (msg || 'Failed to send'));
     } finally {
       setSending(false);
       setTimeout(() => inputRef.current?.focus(), 0);
@@ -51,7 +56,7 @@ export default function SessionPromptBar({ session }: Props) {
     }
   };
 
-  if (isReadOnly) {
+  if (connectionState === 'readonly') {
     return (
       <p className="text-xs text-gray-600 italic" title="Start this session with argus launch to enable prompt injection">
         read-only - start with argus launch to send prompts
@@ -59,8 +64,13 @@ export default function SessionPromptBar({ session }: Props) {
     );
   }
 
+  const isConnecting = connectionState === 'connecting';
+
   return (
     <div className="mt-2">
+      {isConnecting && (
+        <p className="text-xs text-amber-600 italic mb-1">Connecting to session…</p>
+      )}
       <div className="flex gap-1 items-center">
         <input
           ref={inputRef}
@@ -69,14 +79,14 @@ export default function SessionPromptBar({ session }: Props) {
           onChange={e => setPrompt(e.target.value)}
           onKeyDown={handleKeyDown}
           aria-label="Send a prompt to this session"
-          placeholder="Send a prompt…"
-          disabled={sending}
+          placeholder={isConnecting ? 'Connecting…' : 'Send a prompt…'}
+          disabled={sending || isConnecting}
           className="flex-1 text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50"
         />
         <Button
           size="sm"
           onClick={handleSend}
-          disabled={sending || !prompt.trim()}
+          disabled={sending || isConnecting || !prompt.trim()}
         >
           {sending ? '…' : '↵'}
         </Button>
