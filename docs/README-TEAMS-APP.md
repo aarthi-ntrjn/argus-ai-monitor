@@ -140,12 +140,12 @@ Log in once:
 devtunnel login
 ```
 
-Create a persistent tunnel and host it on port 7411:
+Create a persistent tunnel named `argus-tunnel` and host it on port 7411:
 
 ```bash
-devtunnel create --allow-anonymous
-devtunnel port create -p 7411
-devtunnel host
+devtunnel create argus-tunnel --allow-anonymous
+devtunnel port create argus-tunnel -p 7411
+devtunnel host argus-tunnel
 ```
 
 The CLI prints your tunnel URL in the format:
@@ -163,7 +163,7 @@ https://<tunnel-id>-7411.<region>.devtunnels.ms/api/v1/teams/webhook
 The tunnel ID is stable across restarts as long as you reuse the same named tunnel. To reuse it in a later session:
 
 ```bash
-devtunnel host <tunnel-id>
+devtunnel host argus-tunnel
 ```
 
 **ngrok (alternative):**
