@@ -23,7 +23,8 @@ export default function SessionPromptBar({ session }: Props) {
       await sendPrompt(session.id, text);
       setPrompt('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send');
+      const msg = err instanceof Error ? err.message : '';
+      setError(msg === 'Failed to fetch' ? 'Failed to send — server not reachable' : (msg || 'Failed to send'));
     } finally {
       setSending(false);
       setTimeout(() => inputRef.current?.focus(), 0);
