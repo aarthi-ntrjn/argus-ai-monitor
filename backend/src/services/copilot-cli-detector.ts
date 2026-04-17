@@ -10,7 +10,7 @@ import { broadcast } from '../api/ws/event-dispatcher.js';
 import { ptyRegistry } from './pty-registry.js';
 import { OutputStore } from './output-store.js';
 import { parseJsonlLine, parseModelFromEvent } from './events-parser.js';
-import { detectYoloModeFromPids, isPidRunning } from './process-utils.js';
+import { detectYoloModeFromPids, isPidRunning, isExpectedProcess } from './process-utils.js';
 import { SessionTypes } from '../models/index.js';
 import type { Session, PidSource } from '../models/index.js';
 
@@ -103,10 +103,22 @@ export class CopilotCliDetector {
 
     const lockFile = this.findLockFile(dirPath);
     const pid = lockFile ? this.extractPid(lockFile) : null;
-    const isRunning = pid !== null && isPidRunning(pid);
 
     const sessionId = workspace.id ?? randomUUID();
     const existingSession = getSession(sessionId);
+
+    // Guard 1: process is running (cheap signal-0 check)
+    // Guard 2: session is not already ended in DB
+    // Guard 3 (only when guard 1 passes but guard 2 fails): verify process name matches
+    //   — catches PID reuse where an unrelated process inherited a previously-used PID.
+    const pidAlive = pid !== null && isPidRunning(pid);
+    const isRunning = pidAlive && (
+      existingSession?.status !== 'ended' ||
+      isExpectedProcess(pid!, SessionTypes.COPILOT_CLI)
+    );
+    if (pidAlive && !isRunning) {
+      logger.info(`[CopilotDetector] PID reuse detected: session ${sessionId} is ended but pid ${pid} is running with wrong name — skipping`);
+    }
 
     // Skip directories for sessions already recorded as ended: no lock file means
     // nothing has changed since we last marked them ended.
