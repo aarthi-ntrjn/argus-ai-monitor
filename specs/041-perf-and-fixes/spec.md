@@ -1,128 +1,97 @@
-# Feature Specification: [FEATURE NAME]
+# Feature Specification: Performance Fixes and UX Improvements
 
-**Feature Branch**: `[###-feature-name]`  
-**Created**: [DATE]  
-**Status**: Draft  
-**Input**: User description: "$ARGUMENTS"
+**Feature Branch**: `041-perf-and-fixes`
+**Created**: 2026-04-16
+**Status**: Complete
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing
 
-<!--
-  IMPORTANT: User stories should be PRIORITIZED as user journeys ordered by importance.
-  Each user story/journey must be INDEPENDENTLY TESTABLE - meaning if you implement just ONE of them,
-  you should still have a viable MVP (Minimum Viable Product) that delivers value.
-  
-  Assign priorities (P1, P2, P3, etc.) to each story, where P1 is the most critical.
-  Think of each story as a standalone slice of functionality that can be:
-  - Developed independently
-  - Tested independently
-  - Deployed independently
-  - Demonstrated to users independently
--->
+### User Story 1 - PTY Session Reconnect After Server Restart (Priority: P1)
 
-### User Story 1 - [Brief Title] (Priority: P1)
+When the Argus backend restarts while a PTY session is running, the launcher
+WebSocket should automatically reconnect and the session should remain active
+rather than being lost.
 
-[Describe this user journey in plain language]
+**Why this priority**: Losing active sessions on server restart is disruptive.
 
-**Why this priority**: [Explain the value and why it has this priority level]
-
-**Independent Test**: [Describe how this can be tested independently - e.g., "Can be fully tested by [specific action] and delivers [specific value]"]
+**Independent Test**: Start a PTY session, restart the backend, verify the session
+remains active and the prompt bar still works.
 
 **Acceptance Scenarios**:
 
-1. **Given** [initial state], **When** [action], **Then** [expected outcome]
-2. **Given** [initial state], **When** [action], **Then** [expected outcome]
+1. **Given** a running PTY session with a known `ptyLaunchId`, **When** the backend restarts, **Then** the launcher reconnects and the session stays active.
+2. **Given** a launcher WebSocket connects with `?id=<ptyLaunchId>`, **When** a DB session with that `ptyLaunchId` already exists and the process is alive, **Then** the session is immediately re-linked without waiting for the next scan.
 
 ---
 
-### User Story 2 - [Brief Title] (Priority: P2)
+### User Story 2 - Output Pane Selection Persisted on Refresh (Priority: P2)
 
-[Describe this user journey in plain language]
+When the user selects a session and refreshes the page, the previously selected
+session's output pane reopens automatically.
 
-**Why this priority**: [Explain the value and why it has this priority level]
+**Why this priority**: Prevents losing context on accidental refresh.
 
-**Independent Test**: [Describe how this can be tested independently]
+**Independent Test**: Select a session, refresh the page, verify the output pane
+reopens for the same session.
 
 **Acceptance Scenarios**:
 
-1. **Given** [initial state], **When** [action], **Then** [expected outcome]
+1. **Given** a session is selected and its output pane is open, **When** the page is refreshed, **Then** the same session is selected and its output pane is visible.
+2. **Given** the user closes the output pane via the X button, **When** the page is refreshed, **Then** no output pane opens.
 
 ---
 
-### User Story 3 - [Brief Title] (Priority: P3)
+### User Story 3 - Rescan Remote URLs (Priority: P2)
 
-[Describe this user journey in plain language]
+A user can trigger a re-scan of all repository remote URLs from the Settings panel
+to update compare links after a remote has been added or changed.
 
-**Why this priority**: [Explain the value and why it has this priority level]
+**Why this priority**: Remote URLs are only captured on registration; users who
+change remotes have no way to refresh them without removing and re-adding repos.
 
-**Independent Test**: [Describe how this can be tested independently]
+**Independent Test**: Register a repo, change its remote URL on disk, click
+"Rescan Remote URLs" in Settings, verify the compare link updates.
 
 **Acceptance Scenarios**:
 
-1. **Given** [initial state], **When** [action], **Then** [expected outcome]
+1. **Given** a repo with a stale `remoteUrl`, **When** the user clicks "Rescan Remote URLs", **Then** `git remote get-url origin` is re-run for all repos and changed ones are updated in the DB.
+2. **Given** the rescan runs, **When** a remote URL changes, **Then** a `repository.updated` WebSocket event is broadcast and the compare link refreshes live.
 
 ---
 
-[Add more user stories as needed, each with an assigned priority]
+### User Story 4 - Correct Session Card Hover vs Selection States (Priority: P3)
+
+Session cards use distinct colors for hover (neutral gray) and selected (blue)
+states so users can clearly distinguish them.
+
+**Why this priority**: Visual consistency and usability.
+
+**Acceptance Scenarios**:
+
+1. **Given** an unselected session card, **When** the user hovers over it, **Then** the card shows a neutral gray background.
+2. **Given** a selected session card, **When** it is displayed, **Then** the card shows a blue background distinct from the hover color.
+
+---
 
 ### Edge Cases
 
-<!--
-  ACTION REQUIRED: The content in this section represents placeholders.
-  Fill them out with the right edge cases.
--->
+- Launcher connects without `?id=` query param (old client): server closes connection immediately with a warning log.
+- PID reuse: `ptyLaunchId` in DB is used instead of PID alone to re-link sessions, preventing false positives from OS PID recycling.
 
-- What happens when [boundary condition]?
-- How does system handle [error scenario]?
-
-## Requirements *(mandatory)*
-
-<!--
-  ACTION REQUIRED: The content in this section represents placeholders.
-  Fill them out with the right functional requirements.
--->
+## Requirements
 
 ### Functional Requirements
 
-- **FR-001**: System MUST [specific capability, e.g., "allow users to create accounts"]
-- **FR-002**: System MUST [specific capability, e.g., "validate email addresses"]  
-- **FR-003**: Users MUST be able to [key interaction, e.g., "reset their password"]
-- **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
-- **FR-005**: System MUST [behavior, e.g., "log all security events"]
+- **FR-001**: The server MUST persist `pty_launch_id` on PTY sessions so reconnect works after restart.
+- **FR-002**: The launcher MUST include `?id=<ptyLaunchId>` in the WebSocket URL.
+- **FR-003**: `notifySessionEnded` MUST include `sessionId` in the `session_ended` message.
+- **FR-004**: The selected session ID MUST be persisted in `localStorage` and restored on page load.
+- **FR-005**: `POST /api/v1/repositories/rescan-remotes` MUST update remote URLs for all registered repos in parallel and broadcast `repository.updated` for any that changed.
+- **FR-006**: Session cards MUST use neutral gray for hover and blue for selected state.
 
-*Example of marking unclear requirements:*
+## Success Criteria
 
-- **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
-- **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
-
-### Key Entities *(include if feature involves data)*
-
-- **[Entity 1]**: [What it represents, key attributes without implementation]
-- **[Entity 2]**: [What it represents, relationships to other entities]
-
-## Success Criteria *(mandatory)*
-
-<!--
-  ACTION REQUIRED: Define measurable success criteria.
-  These must be technology-agnostic and measurable.
--->
-
-### Measurable Outcomes
-
-- **SC-001**: [Measurable metric, e.g., "Users can complete account creation in under 2 minutes"]
-- **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
-- **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
-- **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
-
-## Assumptions
-
-<!--
-  ACTION REQUIRED: The content in this section represents placeholders.
-  Fill them out with the right assumptions based on reasonable defaults
-  chosen when the feature description did not specify certain details.
--->
-
-- [Assumption about target users, e.g., "Users have stable internet connectivity"]
-- [Assumption about scope boundaries, e.g., "Mobile support is out of scope for v1"]
-- [Assumption about data/environment, e.g., "Existing authentication system will be reused"]
-- [Dependency on existing system/service, e.g., "Requires access to the existing user profile API"]
+- **SC-001**: All 308 backend unit/integration tests pass.
+- **SC-002**: Frontend build succeeds with no TypeScript errors.
+- **SC-003**: E2E Tier 1 tests pass (152 tests).
+- **SC-004**: PTY sessions survive a backend restart without manual intervention.

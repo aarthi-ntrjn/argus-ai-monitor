@@ -43,4 +43,14 @@ describe('Repositories API', () => {
       expect(res.status).toBe(404);
     });
   });
+
+  describe('POST /api/v1/repositories/rescan-remotes', () => {
+    it('returns 200 with updated and total counts', async () => {
+      const res = await request.post('/api/v1/repositories/rescan-remotes');
+      expect(res.status).toBe(200);
+      expect(typeof res.body.updated).toBe('number');
+      expect(typeof res.body.total).toBe('number');
+      expect(res.body.total).toBeGreaterThanOrEqual(res.body.updated);
+    });
+  });
 });
