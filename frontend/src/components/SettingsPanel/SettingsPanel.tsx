@@ -6,6 +6,7 @@ import { useArgusSettings } from '../../hooks/useArgusSettings';
 import { YoloWarningDialog } from '../YoloWarningDialog/YoloWarningDialog';
 import { Checkbox } from '../Checkbox';
 import { Button } from '../Button';
+import { rescanRemoteUrls } from '../../services/api';
 
 const DEFAULT_THRESHOLD = 20;
 const MIN_THRESHOLD = 1;
@@ -20,6 +21,7 @@ interface SettingsPanelProps {
 export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPanelProps) {
   const { settings: argusSettings, patchSetting } = useArgusSettings();
   const [showYoloWarning, setShowYoloWarning] = useState(false);
+  const [rescanState, setRescanState] = useState<'idle' | 'scanning' | 'done'>('idle');
   const [thresholdInput, setThresholdInput] = useState(String(argusSettings?.restingThresholdMinutes ?? DEFAULT_THRESHOLD));
   const [thresholdError, setThresholdError] = useState<string | null>(null);
 
@@ -185,13 +187,30 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
           </label>
         </div>
 
+        <div className="mt-2 pt-2 border-t border-gray-100 flex flex-col gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={rescanState === 'scanning'}
+            onClick={async () => {
+              setRescanState('scanning');
+              await rescanRemoteUrls().catch(() => {});
+              setRescanState('done');
+              setTimeout(() => setRescanState('idle'), 2000);
+            }}
+            className="w-full text-left !text-sm hover:!text-blue-600"
+          >
+            {rescanState === 'scanning' ? 'Scanning...' : rescanState === 'done' ? 'Done' : 'Rescan Remote URLs'}
+          </Button>
+        </div>
+
         {onRestartTour && (
           <div className="mt-2 pt-2 border-t border-gray-100 flex flex-col gap-1">
             <Button
               variant="ghost"
               size="sm"
               onClick={onRestartTour}
-              className="w-full text-left !text-sm"
+              className="w-full text-left !text-sm hover:!text-blue-600"
             >
               Restart Tour
             </Button>
