@@ -15,6 +15,7 @@ interface Props {
 
 export default function OutputPane({ session, onClose, className, 'data-tour-id': dataTourId }: Props) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const pinnedToBottom = useRef(true);
   const [settings, updateSetting] = useSettings();
   const displayMode = settings.outputDisplayMode ?? 'focused';
 
@@ -30,10 +31,18 @@ export default function OutputPane({ session, onClose, className, 'data-tour-id'
     return () => document.removeEventListener('keydown', handleKey);
   }, [onClose]);
 
+  // Scroll to bottom on new data only when pinned.
   useEffect(() => {
     const el = scrollContainerRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (el && pinnedToBottom.current) el.scrollTop = el.scrollHeight;
   }, [data]);
+
+  // Track whether the user is scrolled near the bottom (within 8px = pinned).
+  function handleScroll() {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    pinnedToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 8;
+  }
 
   function toggleMode() {
     updateSetting('outputDisplayMode', displayMode === 'focused' ? 'verbose' : 'focused');
@@ -70,7 +79,7 @@ export default function OutputPane({ session, onClose, className, 'data-tour-id'
           )}
         </div>
       </div>
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto rounded-b-lg">
+      <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto rounded-b-lg">
         {isError ? (
           <p className="p-6 text-center text-sm text-red-600">Failed to load output. Is the server running?</p>
         ) : (
