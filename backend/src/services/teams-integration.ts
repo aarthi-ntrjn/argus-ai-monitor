@@ -89,7 +89,7 @@ export class TeamsIntegrationService {
     this.logger.teams({ ...this._sessionCtx(session), status: session.status }, 'teams.session.created.received');
     const config = loadTeamsConfig();
     if (!this.isConfigured()) {
-      this.logger.warn({ ...this._sessionCtx(session), enabled: config.enabled, hasTeamId: Boolean(config.teamId), hasChannelId: Boolean(config.channelId), hasOwner: Boolean(config.ownerAadObjectId) }, 'teams.session.created.skipped: not configured');
+      this.logger.debug({ ...this._sessionCtx(session), enabled: config.enabled, hasTeamId: Boolean(config.teamId), hasChannelId: Boolean(config.channelId), hasOwner: Boolean(config.ownerAadObjectId) }, 'teams.session.created.skipped: not configured');
       return;
     }
     const { channelId } = config as { channelId: string };
@@ -135,7 +135,7 @@ export class TeamsIntegrationService {
   async onSessionUpdated(session: Session): Promise<void> {
     this.logger.teams({ ...this._sessionCtx(session), status: session.status, model: session.model, pid: session.pid }, 'teams.session.updated.received');
     if (!this.isConfigured()) {
-      this.logger.warn({ ...this._sessionCtx(session) }, 'teams.session.updated.skipped: not configured');
+      this.logger.debug({ ...this._sessionCtx(session) }, 'teams.session.updated.skipped: not configured');
       return;
     }
 
@@ -202,7 +202,7 @@ export class TeamsIntegrationService {
     this.logger.teams({ ...this._sessionCtx(session), status: session.status }, 'teams.session.ended.received');
     const config = loadTeamsConfig();
     if (!this.isConfigured()) {
-      this.logger.warn({ ...this._sessionCtx(session) }, 'teams.session.ended.skipped: not configured');
+      this.logger.debug({ ...this._sessionCtx(session) }, 'teams.session.ended.skipped: not configured');
       return;
     }
     const { channelId } = config as { channelId: string };
