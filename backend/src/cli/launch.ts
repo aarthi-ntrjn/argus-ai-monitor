@@ -106,18 +106,15 @@ process.stdout.on('resize', () => {
 });
 
 // Connect to Argus backend
-log(`connecting to Argus WebSocket ws://127.0.0.1:7411/launcher`);
-const client = new ArgusLaunchClient('ws://127.0.0.1:7411/launcher', log);
+const ptyLaunchId = randomUUID();
+log(`connecting to Argus WebSocket ws://127.0.0.1:7411/launcher ptyLaunchId=${ptyLaunchId}`);
+const client = new ArgusLaunchClient('ws://127.0.0.1:7411/launcher', ptyLaunchId, log);
 // On Windows the real tool PID is unknown until the process tree walk resolves it.
 // On non-Windows pty.pid is already the tool directly (no shell wrapper).
-log(`registering session: sessionId=${sessionId} hostPid=${pty.pid} pid=${isWin ? null : pty.pid} sessionType=${sessionType}`);
-client.setRegisterInfo({ sessionId, hostPid: pty.pid, pid: isWin ? null : pty.pid, sessionType, cwd });
+log(`registering session: hostPid=${pty.pid} pid=${isWin ? null : pty.pid} sessionType=${sessionType}`);
+client.setRegisterInfo({ hostPid: pty.pid, pid: isWin ? null : pty.pid, sessionType, cwd });
 
-// For copilot-cli: watch the session-state dir for a workspace.yaml whose cwd
-// matches ours, then send its session ID to Argus for direct claim — no repoPath
-// matching required, which eliminates path-normalization failures.
-
-// Yield Win32 input mode sequences (ESC[Vk;Sc;Uc;Kd;Cs;Rc_) for a single character,
+// Yield Win32 input mode sequences(ESC[Vk;Sc;Uc;Kd;Cs;Rc_) for a single character,
 // one buffer per event: key-down first, then key-up.
 function* win32InputEvents(ch: string): Generator<Buffer> {
   // [VirtualKey, ScanCode] for US QWERTY layout

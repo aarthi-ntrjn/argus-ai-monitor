@@ -39,6 +39,7 @@ vi.mock('../../src/services/pty-registry.js', () => ({
     claimForSession: mockClaimForSession,
     has: mockHas,
     getClaimedPid: mockGetClaimedPid,
+    getPtyLaunchIdForSession: vi.fn().mockReturnValue(undefined),
   },
 }));
 

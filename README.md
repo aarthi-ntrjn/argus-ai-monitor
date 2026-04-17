@@ -59,7 +59,7 @@ Each card is a live snapshot of a session:
 
 <img src="docs/images/argus-session-stream.png" alt="Session Output" height="300">
 
-Click any card to open a **live output pane** on the right inline.The card list stays visible on the left. Press **Escape** or click the **X** icon to close it. Click another card to switch sessions.
+Click any card to open a **live output pane** on the right inline. The card list stays visible on the left. Click another card to switch sessions. The selected session is persisted across page refreshes. Click the **X** icon in the output pane header to close it.
 
 Output lines carry type badges so you always know what's what: **YOU** (your input), **AI** (assistant reply), **TOOL** (tool call), **RESULT** (tool result), **STATUS** (status change), **ERR** (error). These are streamed in real time, including tool calls.
 
@@ -201,6 +201,10 @@ Click the **gear icon** (top-right) to open Settings.
 | Resting after (minutes)            | 20       | Minutes of inactivity before a session is shown as **resting**. Valid range: 1 to 60. Click **Reset** to restore the default. |
 
 These settings are saved in your browser (`localStorage`) and restored on every load.
+
+### Rescan Remote URLs
+
+The **Rescan Remote URLs** button (in the Settings panel) re-runs `git remote get-url origin` for every registered repository and updates any that have changed. Use this if you moved a repo to a different remote, renamed the GitHub repo, or added a remote after the repo was already registered. Only changed repos are updated; the compare link in each repo card refreshes automatically via the live WebSocket connection.
 
 ### Launch Behaviour: Yolo Mode
 

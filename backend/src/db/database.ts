@@ -42,6 +42,9 @@ export function getDb(): Database.Database {
     if (!sessionCols.includes('host_pid')) {
       db.exec('ALTER TABLE sessions ADD COLUMN host_pid INTEGER');
     }
+    if (!sessionCols.includes('pty_launch_id')) {
+      db.exec('ALTER TABLE sessions ADD COLUMN pty_launch_id TEXT');
+    }
     const yoloColInfo = (db.pragma('table_info(sessions)') as Array<{ name: string; notnull: number }>)
       .find(c => c.name === 'yolo_mode');
     if (!yoloColInfo) {
@@ -111,7 +114,7 @@ export function deleteRepository(id: string): void {
 export interface SessionFilters { repositoryId?: string; status?: string; type?: string; limit?: number; }
 
 export function getSessions(filters: SessionFilters = {}): Session[] {
-  let sql = 'SELECT id, repository_id as repositoryId, type, launch_mode as launchMode, pid, host_pid as hostPid, pid_source as pidSource, status, started_at as startedAt, ended_at as endedAt, last_activity_at as lastActivityAt, summary, expires_at as expiresAt, model, reconciled, yolo_mode as yoloMode FROM sessions WHERE 1=1';
+  let sql = 'SELECT id, repository_id as repositoryId, type, launch_mode as launchMode, pid, host_pid as hostPid, pid_source as pidSource, status, started_at as startedAt, ended_at as endedAt, last_activity_at as lastActivityAt, summary, expires_at as expiresAt, model, reconciled, yolo_mode as yoloMode, pty_launch_id as ptyLaunchId FROM sessions WHERE 1=1';
   const params: unknown[] = [];
   if (filters.repositoryId) { sql += ' AND repository_id = ?'; params.push(filters.repositoryId); }
   if (filters.status) { sql += ' AND status = ?'; params.push(filters.status); }
@@ -125,8 +128,16 @@ export function getSessions(filters: SessionFilters = {}): Session[] {
 
 export function getSession(id: string): Session | undefined {
   const row = getDb().prepare(
-    'SELECT id, repository_id as repositoryId, type, launch_mode as launchMode, pid, host_pid as hostPid, pid_source as pidSource, status, started_at as startedAt, ended_at as endedAt, last_activity_at as lastActivityAt, summary, expires_at as expiresAt, model, reconciled, yolo_mode as yoloMode FROM sessions WHERE id = ?'
+    'SELECT id, repository_id as repositoryId, type, launch_mode as launchMode, pid, host_pid as hostPid, pid_source as pidSource, status, started_at as startedAt, ended_at as endedAt, last_activity_at as lastActivityAt, summary, expires_at as expiresAt, model, reconciled, yolo_mode as yoloMode, pty_launch_id as ptyLaunchId FROM sessions WHERE id = ?'
   ).get(id) as (Omit<Session, 'reconciled' | 'yoloMode'> & { reconciled: number; yoloMode: number | null }) | undefined;
+  if (!row) return undefined;
+  return { ...row, reconciled: row.reconciled === 1, yoloMode: row.yoloMode === null ? null : row.yoloMode === 1 };
+}
+
+export function getSessionByPtyLaunchId(ptyLaunchId: string): Session | undefined {
+  const row = getDb().prepare(
+    'SELECT id, repository_id as repositoryId, type, launch_mode as launchMode, pid, host_pid as hostPid, pid_source as pidSource, status, started_at as startedAt, ended_at as endedAt, last_activity_at as lastActivityAt, summary, expires_at as expiresAt, model, reconciled, yolo_mode as yoloMode, pty_launch_id as ptyLaunchId FROM sessions WHERE pty_launch_id = ?'
+  ).get(ptyLaunchId) as (Omit<Session, 'reconciled' | 'yoloMode'> & { reconciled: number; yoloMode: number | null }) | undefined;
   if (!row) return undefined;
   return { ...row, reconciled: row.reconciled === 1, yoloMode: row.yoloMode === null ? null : row.yoloMode === 1 };
 }
@@ -145,8 +156,8 @@ export function updateSessionStatus(id: string, status: string, endedAt: string 
 
 export function upsertSession(session: Session): void {
   getDb().prepare(`
-    INSERT INTO sessions (id, repository_id, type, launch_mode, pid, host_pid, pid_source, status, started_at, ended_at, last_activity_at, summary, expires_at, model, reconciled, yolo_mode)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO sessions (id, repository_id, type, launch_mode, pid, host_pid, pid_source, status, started_at, ended_at, last_activity_at, summary, expires_at, model, reconciled, yolo_mode, pty_launch_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       launch_mode = COALESCE(excluded.launch_mode, launch_mode),
       pid = excluded.pid, host_pid = COALESCE(excluded.host_pid, host_pid),
@@ -155,11 +166,13 @@ export function upsertSession(session: Session): void {
       last_activity_at = excluded.last_activity_at, summary = excluded.summary,
       expires_at = excluded.expires_at, model = COALESCE(excluded.model, model),
       reconciled = excluded.reconciled,
-      yolo_mode = COALESCE(excluded.yolo_mode, yolo_mode)
+      yolo_mode = COALESCE(excluded.yolo_mode, yolo_mode),
+      pty_launch_id = COALESCE(excluded.pty_launch_id, pty_launch_id)
   `).run(session.id, session.repositoryId, session.type, session.launchMode ?? null, session.pid,
     session.hostPid ?? null, session.pidSource ?? null, session.status, session.startedAt, session.endedAt,
     session.lastActivityAt, session.summary, session.expiresAt, session.model ?? null,
-    session.reconciled ? 1 : 0, session.yoloMode === null ? null : (session.yoloMode ? 1 : 0));
+    session.reconciled ? 1 : 0, session.yoloMode === null ? null : (session.yoloMode ? 1 : 0),
+    session.ptyLaunchId ?? null);
 }
 
 export function getOutputForSession(sessionId: string, limit = 100, before?: string): SessionOutput[] {

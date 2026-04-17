@@ -34,7 +34,15 @@ export default function DashboardPage() {
   const isMobile = useIsMobile();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
+    () => localStorage.getItem('selectedSessionId')
+  );
+
+  const selectSession = (id: string | null) => {
+    setSelectedSessionId(id);
+    if (id) localStorage.setItem('selectedSessionId', id);
+    else localStorage.removeItem('selectedSessionId');
+  };
   const [activeMobileTab, setActiveMobileTab] = useState<MobileTab>('sessions');
   const settingsRef = useRef<HTMLDivElement>(null);
 
@@ -128,7 +136,7 @@ export default function DashboardPage() {
     if (isMobile) {
       navigate(`/sessions/${id}`);
     } else {
-      setSelectedSessionId(prev => prev === id ? null : id);
+      selectSession(id);
     }
   };
 
@@ -292,16 +300,16 @@ export default function DashboardPage() {
                   {selectedSessionId && (() => {
                     const selectedSession = sessions.find(s => s.id === selectedSessionId);
                     return selectedSession ? (
-                      <div className={settings.hideTodoPanel ? 'flex-1 min-h-0' : 'flex-[3] min-h-0'}>
+                      <div className={settings.hideTodoPanel ? 'flex-1 min-h-0' : 'flex-[4] min-h-0'}>
                         <OutputPane
                           session={selectedSession}
-                          onClose={() => setSelectedSessionId(null)}
+                          onClose={() => selectSession(null)}
                         />
                       </div>
                     ) : null;
                   })()}
                   {!settings.hideTodoPanel && (
-                    <div className={selectedSessionId ? 'flex-[2] min-h-0 overflow-hidden' : 'flex-1'}>
+                    <div className={selectedSessionId ? 'flex-[1] min-h-0 overflow-hidden' : 'flex-1'}>
                       <TodoPanel />
                     </div>
                   )}

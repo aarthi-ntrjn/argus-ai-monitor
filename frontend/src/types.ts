@@ -37,6 +37,7 @@ export interface Session {
   repositoryId: string;
   type: SessionType;
   launchMode: SessionLaunchMode | null;
+  ptyConnected?: boolean | null;
   pid: number | null;
   pidSource: PidSource | null;
   status: SessionStatus;
