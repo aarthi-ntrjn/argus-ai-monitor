@@ -60,6 +60,7 @@ export function getDb(): Database.Database {
     if (!teamsCols.includes('delta_link')) db.exec('ALTER TABLE teams_threads ADD COLUMN delta_link TEXT');
     const controlCols = (db.pragma('table_info(control_actions)') as Array<{ name: string }>).map(c => c.name);
     if (!controlCols.includes('source')) db.exec('ALTER TABLE control_actions ADD COLUMN source TEXT');
+    if (!sessionCols.includes('slack_thread_ts')) db.exec('ALTER TABLE sessions ADD COLUMN slack_thread_ts TEXT');
   }
   return db;
 }
@@ -299,4 +300,13 @@ export function clearTeamsThreadOutputMessageId(sessionId: string): void {
 
 export function updateTeamsThreadDeltaLink(sessionId: string, deltaLink: string): void {
   getDb().prepare('UPDATE teams_threads SET delta_link = ? WHERE session_id = ?').run(deltaLink, sessionId);
+}
+
+export function getSlackThreadTs(sessionId: string): string | null {
+  const row = getDb().prepare('SELECT slack_thread_ts FROM sessions WHERE id = ?').get(sessionId) as { slack_thread_ts: string | null } | undefined;
+  return row?.slack_thread_ts ?? null;
+}
+
+export function setSlackThreadTs(sessionId: string, threadTs: string | null): void {
+  getDb().prepare('UPDATE sessions SET slack_thread_ts = ? WHERE id = ?').run(threadTs, sessionId);
 }

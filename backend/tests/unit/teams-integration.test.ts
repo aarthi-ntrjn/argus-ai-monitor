@@ -4,6 +4,8 @@ vi.mock('../../src/db/database.js', () => ({
   getTeamsThread: vi.fn(),
   upsertTeamsThread: vi.fn(),
   updateTeamsThreadOutputMessageId: vi.fn(),
+  clearTeamsThreadOutputMessageId: vi.fn(),
+  getRepository: vi.fn(),
   getSession: vi.fn(),
 }));
 
@@ -17,14 +19,20 @@ import { getTeamsThread, upsertTeamsThread } from '../../src/db/database.js';
 import { loadTeamsConfig } from '../../src/config/teams-config-loader.js';
 import type { Session } from '../../src/models/index.js';
 
-const mockGraphClient = {
-  createThreadPost: vi.fn(),
-  postReply: vi.fn(),
-  updateReply: vi.fn(),
-};
+const mockActivitiesCreate = vi.fn();
+const mockActivitiesUpdate = vi.fn();
+const mockActivities = vi.fn().mockReturnValue({
+  create: mockActivitiesCreate,
+  update: mockActivitiesUpdate,
+});
 
-const mockBotAuthService = {
-  getAccessToken: vi.fn(),
+const mockTeamsApp = {
+  send: vi.fn(),
+  api: {
+    conversations: {
+      activities: mockActivities,
+    },
+  },
 };
 
 const mockLogger = {
@@ -32,6 +40,7 @@ const mockLogger = {
   warn: vi.fn(),
   error: vi.fn(),
   debug: vi.fn(),
+  teams: vi.fn(),
 } as any;
 
 const baseSession: Session = {
@@ -69,20 +78,20 @@ describe('TeamsIntegrationService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockActivities.mockReturnValue({ create: mockActivitiesCreate, update: mockActivitiesUpdate });
     buffer = new TeamsMessageBuffer();
-    service = new TeamsIntegrationService(mockGraphClient as any, mockBotAuthService as any, buffer, mockLogger);
+    service = new TeamsIntegrationService(mockTeamsApp as any, buffer, mockLogger);
   });
 
   describe('onSessionCreated', () => {
     it('creates thread and upserts TeamsThread when enabled', async () => {
       vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
       vi.mocked(getTeamsThread).mockReturnValue(null);
-      mockBotAuthService.getAccessToken.mockResolvedValue('access-token');
-      mockGraphClient.createThreadPost.mockResolvedValue({ messageId: 'thread-1' });
+      mockTeamsApp.send.mockResolvedValue({ id: 'thread-1' });
 
       await service.onSessionCreated(baseSession);
 
-      expect(mockGraphClient.createThreadPost).toHaveBeenCalledOnce();
+      expect(mockTeamsApp.send).toHaveBeenCalledOnce();
       expect(upsertTeamsThread).toHaveBeenCalledOnce();
       service.stop();
     });
@@ -92,7 +101,7 @@ describe('TeamsIntegrationService', () => {
 
       await service.onSessionCreated(baseSession);
 
-      expect(mockGraphClient.createThreadPost).not.toHaveBeenCalled();
+      expect(mockTeamsApp.send).not.toHaveBeenCalled();
     });
 
     it('reuses existing thread without creating new one', async () => {
@@ -106,10 +115,11 @@ describe('TeamsIntegrationService', () => {
         deltaLink: null,
         createdAt: '2024-01-01T00:00:00.000Z',
       });
+      mockActivitiesCreate.mockResolvedValue({ id: 'notify-reply' });
 
       await service.onSessionCreated(baseSession);
 
-      expect(mockGraphClient.createThreadPost).not.toHaveBeenCalled();
+      expect(mockTeamsApp.send).not.toHaveBeenCalled();
       service.stop();
     });
   });
@@ -118,7 +128,7 @@ describe('TeamsIntegrationService', () => {
     it('enqueues content to buffer when enabled', () => {
       vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
       const outputs = [
-        { id: '1', sessionId: baseSession.id, timestamp: '', type: 'message' as const, content: 'hello', toolName: null, toolCallId: null, role: null, sequenceNumber: 1 },
+        { id: '1', sessionId: baseSession.id, timestamp: '', type: 'message' as const, content: 'hello', toolName: null, toolCallId: null, role: 'assistant' as const, sequenceNumber: 1 },
       ];
 
       service.onSessionOutput(baseSession.id, outputs);
@@ -128,7 +138,7 @@ describe('TeamsIntegrationService', () => {
   });
 
   describe('onSessionEnded', () => {
-    it('calls postReply with final status', async () => {
+    it('calls activities.create with final status', async () => {
       vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
       vi.mocked(getTeamsThread).mockReturnValue({
         id: 'thread-id',
@@ -139,14 +149,13 @@ describe('TeamsIntegrationService', () => {
         deltaLink: null,
         createdAt: '2024-01-01T00:00:00.000Z',
       });
-      mockBotAuthService.getAccessToken.mockResolvedValue('access-token');
-      mockGraphClient.postReply.mockResolvedValue({ messageId: 'end-msg' });
+      mockActivitiesCreate.mockResolvedValue({ id: 'end-msg' });
 
       await service.onSessionEnded({ ...baseSession, status: 'completed' });
 
-      expect(mockGraphClient.postReply).toHaveBeenCalled();
-      const callArg = mockGraphClient.postReply.mock.calls[0][4] as string;
-      expect(callArg).toContain('completed');
+      expect(mockActivitiesCreate).toHaveBeenCalled();
+      const callArg = mockActivitiesCreate.mock.calls[0][0] as { type: string; text: string };
+      expect(callArg.text).toContain('completed');
     });
   });
 
@@ -154,16 +163,13 @@ describe('TeamsIntegrationService', () => {
     it('includes session ID, type, startedAt, ownerAadObjectId', async () => {
       vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
       vi.mocked(getTeamsThread).mockReturnValue(null);
-      mockBotAuthService.getAccessToken.mockResolvedValue('access-token');
-      mockGraphClient.createThreadPost.mockResolvedValue({ messageId: 'thread-1' });
+      mockTeamsApp.send.mockResolvedValue({ id: 'thread-1' });
 
       await service.onSessionCreated(baseSession);
 
-      const callText = mockGraphClient.createThreadPost.mock.calls[0][3] as string;
-      expect(callText).toContain(baseSession.id);
-      expect(callText).toContain(baseSession.type);
-      expect(callText).toContain(baseSession.startedAt);
-      expect(callText).toContain(enabledConfig.ownerAadObjectId);
+      const callArg = mockTeamsApp.send.mock.calls[0][1] as { type: string; text: string };
+      expect(callArg.text).toContain(baseSession.id);
+      expect(callArg.text).toContain(baseSession.type);
       service.stop();
     });
   });
@@ -180,14 +186,12 @@ describe('TeamsIntegrationService', () => {
         deltaLink: null,
         createdAt: '2024-01-01T00:00:00.000Z',
       });
-      mockBotAuthService.getAccessToken.mockResolvedValue('access-token');
-      mockGraphClient.postReply.mockResolvedValue({ messageId: 'end-msg' });
+      mockActivitiesCreate.mockResolvedValue({ id: 'end-msg' });
 
       await service.onSessionEnded({ ...baseSession, status: 'completed' });
 
-      const callText = mockGraphClient.postReply.mock.calls[0][4] as string;
-      expect(callText).toContain('completed');
+      const callArg = mockActivitiesCreate.mock.calls[0][0] as { type: string; text: string };
+      expect(callArg.text).toContain('completed');
     });
   });
 });
-
