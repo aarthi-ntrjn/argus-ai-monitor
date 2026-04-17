@@ -122,12 +122,14 @@ const launcherRoutes: FastifyPluginAsync = async (fastify) => {
           if (livePid !== null && isPidRunning(livePid)) {
             ptyRegistry.claimByPtyLaunchId(ptyLaunchId, existingSession.id);
             fastify.log.info({ ptyLaunchId, sessionId: existingSession.id, priorStatus: existingSession.status }, 'Launcher reconnected to existing session via ptyLaunchId');
+            const now = new Date().toISOString();
             if (existingSession.status === 'ended') {
-              const now = new Date().toISOString();
               const restored = { ...existingSession, status: 'active' as const, endedAt: null, lastActivityAt: now };
               upsertSession(restored);
-              broadcast({ type: 'session.updated', timestamp: now, data: restored as unknown as Record<string, unknown> });
+              broadcast({ type: 'session.updated', timestamp: now, data: { ...restored, ptyConnected: true } as unknown as Record<string, unknown> });
               fastify.log.info({ ptyLaunchId, sessionId: existingSession.id }, 'Launcher: restored session to active after server restart');
+            } else {
+              broadcast({ type: 'session.updated', timestamp: now, data: { ...existingSession, ptyConnected: true } as unknown as Record<string, unknown> });
             }
           }
         }
@@ -201,7 +203,7 @@ const launcherRoutes: FastifyPluginAsync = async (fastify) => {
                 ptyLaunchId,
               };
               upsertSession(updated);
-              broadcast({ type: 'session.updated', timestamp: now, data: updated as unknown as Record<string, unknown> });
+              broadcast({ type: 'session.updated', timestamp: now, data: { ...updated, ptyConnected: true } as unknown as Record<string, unknown> });
               if (needsRestore) {
                 fastify.log.info({ claudeSessionId: msg.sessionId, ptyLaunchId }, 'Launcher: restored copilot session to active after server restart');
               } else {
@@ -244,18 +246,24 @@ const launcherRoutes: FastifyPluginAsync = async (fastify) => {
 
       const claudeSessionId = ptyRegistry.getClaimedId(ptyLaunchId);
       if (claudeSessionId) {
-        // Session was claimed — mark it ended and clean up.
         ptyRegistry.unregister(claudeSessionId);
         const session = getSession(claudeSessionId);
         if (session && session.status !== 'ended') {
           const now = new Date().toISOString();
-          updateSessionStatus(claudeSessionId, 'ended', now);
-          broadcast({
-            type: 'session.ended',
-            timestamp: now,
-            data: { ...session, status: 'ended', endedAt: now } as unknown as Record<string, unknown>,
-          });
-          fastify.log.info({ claudeSessionId, code }, 'Launcher disconnected — session marked ended');
+          const livePid = session.hostPid ?? session.pid;
+          if (livePid !== null && isPidRunning(livePid)) {
+            // Process is still alive — launcher is reconnecting. Mark as connecting, not ended.
+            broadcast({ type: 'session.updated', timestamp: now, data: { ...session, ptyConnected: false } as unknown as Record<string, unknown> });
+            fastify.log.info({ claudeSessionId, code }, 'Launcher disconnected but process alive — marked connecting');
+          } else {
+            updateSessionStatus(claudeSessionId, 'ended', now);
+            broadcast({
+              type: 'session.ended',
+              timestamp: now,
+              data: { ...session, status: 'ended', endedAt: now } as unknown as Record<string, unknown>,
+            });
+            fastify.log.info({ claudeSessionId, code }, 'Launcher disconnected — session marked ended');
+          }
         } else {
           fastify.log.info({ claudeSessionId, status: session?.status, code }, 'Launcher disconnected — session already ended, no status change');
         }

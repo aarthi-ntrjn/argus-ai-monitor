@@ -251,7 +251,7 @@ pty.onExit(({ exitCode }: { exitCode: number }) => {
   // Await the WebSocket flush so the backend receives the session_ended
   // message before this process exits.
   log(`notifying Argus session ended`);
-  client.notifySessionEnded(exitCode).then(() => {
+  client.notifySessionEnded(sessionId, exitCode).then(() => {
     log(`session_ended ack received — exiting with code ${exitCode}`);
     process.exit(exitCode ?? 0);
   });

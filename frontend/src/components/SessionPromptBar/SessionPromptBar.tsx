@@ -9,6 +9,7 @@ interface Props {
 
 export default function SessionPromptBar({ session }: Props) {
   const isReadOnly = session.launchMode !== 'pty';
+  const isConnecting = session.launchMode === 'pty' && session.ptyConnected === false;
   const [prompt, setPrompt] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +63,9 @@ export default function SessionPromptBar({ session }: Props) {
 
   return (
     <div className="mt-2">
+      {isConnecting && (
+        <p className="text-xs text-amber-600 italic mb-1">Connecting to session…</p>
+      )}
       <div className="flex gap-1 items-center">
         <input
           ref={inputRef}
@@ -70,14 +74,14 @@ export default function SessionPromptBar({ session }: Props) {
           onChange={e => setPrompt(e.target.value)}
           onKeyDown={handleKeyDown}
           aria-label="Send a prompt to this session"
-          placeholder="Send a prompt…"
-          disabled={sending}
+          placeholder={isConnecting ? 'Connecting…' : 'Send a prompt…'}
+          disabled={sending || isConnecting}
           className="flex-1 text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50"
         />
         <Button
           size="sm"
           onClick={handleSend}
-          disabled={sending || !prompt.trim()}
+          disabled={sending || isConnecting || !prompt.trim()}
         >
           {sending ? '…' : '↵'}
         </Button>

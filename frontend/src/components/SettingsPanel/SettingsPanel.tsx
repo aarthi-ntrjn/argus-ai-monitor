@@ -80,7 +80,7 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
 
   return (
     <>
-      <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3">
+      <div className="absolute right-0 top-full mt-1 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Settings</p>
         <div className="py-1">
           <Checkbox
@@ -171,17 +171,18 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
 
         <div className="mt-2 pt-2 border-t border-gray-100">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Privacy</p>
-          <div className="py-1">
+          <label className="flex items-start gap-2 cursor-pointer select-none py-1">
             <Checkbox
-              label="Send anonymous usage telemetry"
               aria-label="Send anonymous usage telemetry"
               checked={argusSettings?.telemetryEnabled ?? true}
               onChange={e => patchSetting({ telemetryEnabled: e.target.checked })}
+              className="mt-0.5"
             />
-          </div>
-          <Link to="/telemetry" className="block text-xs text-blue-600 hover:underline mt-1">
-            What we collect
-          </Link>
+            <span className="flex flex-col">
+              <span className="text-sm text-gray-600">Send anonymous usage telemetry</span>
+              <Link to="/telemetry" className="text-xs text-blue-600 hover:underline">What we collect</Link>
+            </span>
+          </label>
         </div>
 
         {onRestartTour && (
