@@ -248,18 +248,20 @@ export async function startServer() {
   const teamsBuffer = new TeamsMessageBuffer(1000, app.log as any);
   const teamsService = new TeamsIntegrationService(teamsApp, teamsBuffer, app.log as any);
 
-  monitor.on('session.created', (session: Session) => {
-    teamsService.onSessionCreated(session).catch(err => app.log.error({ err }, 'teams.session.created.error'));
-  });
-  monitor.on('session.updated', (session: Session) => {
-    teamsService.onSessionUpdated(session).catch(err => app.log.error({ err }, 'teams.session.updated.error'));
-  });
-  monitor.on('session.ended', (session: Session) => {
-    teamsService.onSessionEnded(session).catch(err => app.log.error({ err }, 'teams.session.ended.error'));
-  });
-  outputStore.addOutputListener((sessionId, outputs) => {
-    teamsService.onSessionOutput(sessionId, outputs);
-  });
+  if (teamsService.initialize()) {
+    monitor.on('session.created', (session: Session) => {
+      teamsService.onSessionCreated(session).catch(err => app.log.error({ err }, 'teams.session.created.error'));
+    });
+    monitor.on('session.updated', (session: Session) => {
+      teamsService.onSessionUpdated(session).catch(err => app.log.error({ err }, 'teams.session.updated.error'));
+    });
+    monitor.on('session.ended', (session: Session) => {
+      teamsService.onSessionEnded(session).catch(err => app.log.error({ err }, 'teams.session.ended.error'));
+    });
+    outputStore.addOutputListener((sessionId, outputs) => {
+      teamsService.onSessionOutput(sessionId, outputs);
+    });
+  }
 
   process.on('SIGTERM', async () => { telemetryService.sendEvent('app_ended'); teamsService.stop(); slackListener?.shutdown(); slackNotifier?.shutdown(); monitor?.stop(); await app.close(); process.exit(0); });
   process.on('SIGINT', async () => { telemetryService.sendEvent('app_ended'); teamsService.stop(); slackListener?.shutdown(); slackNotifier?.shutdown(); monitor?.stop(); await app.close(); process.exit(0); });
