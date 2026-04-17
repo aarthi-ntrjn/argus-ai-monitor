@@ -7,9 +7,12 @@ interface Props {
   session: Session;
 }
 
+type ConnectionState = 'readonly' | 'connecting' | 'connected';
+
 export default function SessionPromptBar({ session }: Props) {
-  const isReadOnly = session.launchMode !== 'pty';
-  const isConnecting = session.launchMode === 'pty' && session.ptyConnected === false;
+  const connectionState: ConnectionState =
+    session.launchMode !== 'pty' ? 'readonly' :
+    session.ptyConnected === false ? 'connecting' : 'connected';
   const [prompt, setPrompt] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,13 +56,15 @@ export default function SessionPromptBar({ session }: Props) {
     }
   };
 
-  if (isReadOnly) {
+  if (connectionState === 'readonly') {
     return (
       <p className="text-xs text-gray-600 italic" title="Start this session with argus launch to enable prompt injection">
         read-only - start with argus launch to send prompts
       </p>
     );
   }
+
+  const isConnecting = connectionState === 'connecting';
 
   return (
     <div className="mt-2">
