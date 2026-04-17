@@ -15,7 +15,7 @@ export function IntegrationStatusIcon({ type, connected, title }: IntegrationSta
       title={title}
       aria-label={title}
     >
-      <img src={src} alt="" width={18} height={18} aria-hidden="true" />
+      <img src={src} alt="" width={20} height={20} aria-hidden="true" />
       <span
         className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white ${connected ? 'bg-green-500' : 'bg-gray-300'}`}
         aria-hidden="true"
