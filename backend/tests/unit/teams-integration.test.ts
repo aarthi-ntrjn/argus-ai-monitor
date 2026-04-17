@@ -194,4 +194,110 @@ describe('TeamsIntegrationService', () => {
       expect(callArg.text).toContain('completed');
     });
   });
+
+  describe('initialize()', () => {
+    it('returns false and logs when enabled is false', () => {
+      vi.mocked(loadTeamsConfig).mockReturnValue({ enabled: false });
+
+      const result = service.initialize();
+
+      expect(result).toBe(false);
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.objectContaining({ enabled: false }),
+        'teams: not configured, skipping event subscriptions',
+      );
+    });
+
+    it('returns false when enabled but teamId/channelId/ownerAadObjectId are missing', () => {
+      vi.mocked(loadTeamsConfig).mockReturnValue({
+        enabled: true,
+        teamId: undefined,
+        channelId: undefined,
+        ownerAadObjectId: undefined,
+      });
+
+      const result = service.initialize();
+
+      expect(result).toBe(false);
+    });
+
+    it('returns true when fully configured', () => {
+      vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
+
+      const result = service.initialize();
+
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('onSessionUpdated()', () => {
+    const existingThread = {
+      id: 'thread-id',
+      sessionId: baseSession.id,
+      teamsThreadId: 'teams-thread-id',
+      teamsChannelId: 'channel-id',
+      currentOutputMessageId: null,
+      deltaLink: null,
+      createdAt: '2024-01-01T00:00:00.000Z',
+    };
+
+    it('delegates to onSessionCreated when no thread exists', async () => {
+      vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
+      vi.mocked(getTeamsThread).mockReturnValue(null);
+      mockTeamsApp.send.mockResolvedValue({ id: 'new-thread' });
+
+      await service.onSessionUpdated(baseSession);
+
+      expect(mockTeamsApp.send).toHaveBeenCalledOnce();
+      service.stop();
+    });
+
+    it('skips posting when only untracked fields changed (e.g. lastActivityAt)', async () => {
+      vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
+      vi.mocked(getTeamsThread).mockReturnValue(existingThread);
+      (service as any).lastPostedState.set(baseSession.id, {
+        status: baseSession.status,
+        model: baseSession.model,
+        yoloMode: baseSession.yoloMode,
+        pid: baseSession.pid,
+        launchMode: baseSession.launchMode,
+        summary: baseSession.summary,
+      });
+
+      const updatedSession = { ...baseSession, lastActivityAt: '2024-06-01T00:00:00.000Z' };
+      await service.onSessionUpdated(updatedSession);
+
+      expect(mockActivitiesCreate).not.toHaveBeenCalled();
+    });
+
+    it('posts a reply with changed fields when status changes', async () => {
+      vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
+      vi.mocked(getTeamsThread).mockReturnValue(existingThread);
+      (service as any).lastPostedState.set(baseSession.id, {
+        status: 'active',
+        model: null,
+        yoloMode: null,
+        pid: null,
+        launchMode: null,
+        summary: null,
+      });
+      mockActivitiesCreate.mockResolvedValue({ id: 'update-msg' });
+
+      await service.onSessionUpdated({ ...baseSession, status: 'completed' });
+
+      expect(mockActivitiesCreate).toHaveBeenCalledOnce();
+      const callArg = mockActivitiesCreate.mock.calls[0][0] as { type: string; text: string };
+      expect(callArg.text).toContain('Status');
+      expect(callArg.text).toContain('completed');
+    });
+
+    it('skips when not configured', async () => {
+      vi.mocked(loadTeamsConfig).mockReturnValue({ enabled: false });
+
+      await service.onSessionUpdated(baseSession);
+
+      expect(mockActivitiesCreate).not.toHaveBeenCalled();
+      expect(mockTeamsApp.send).not.toHaveBeenCalled();
+    });
+  });
 });
