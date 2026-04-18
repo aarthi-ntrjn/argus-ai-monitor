@@ -1,18 +1,25 @@
 /* ============================================================
-   CSS Custom Properties
+   CSS Custom Properties — colors match the Argus app (Tailwind values)
    ============================================================ */
 :root {
-  --color-bg: #f8fafc;          /* slate-50 */
-  --color-surface: #ffffff;
-  --color-surface-muted: #f1f5f9; /* slate-100 */
-  --color-border: #e2e8f0;      /* slate-200 */
-  --color-accent: #4f46e5;      /* indigo-600 */
-  --color-accent-hover: #4338ca; /* indigo-700 */
-  --color-accent-light: #eef2ff; /* indigo-50 */
-  --color-text: #0f172a;        /* slate-900 */
-  --color-text-muted: #64748b;  /* slate-500 */
-  --color-code-bg: #1e293b;     /* slate-800 */
-  --color-code-text: #e2e8f0;   /* slate-200 */
+  --color-bg: #f8fafc;          /* slate-50  — app page background (bg-slate-50) */
+  --color-surface: #ffffff;     /* white     — cards, nav, footer */
+  --color-surface-muted: #f3f4f6; /* gray-100 — hover bg, skeleton (bg-gray-100/200) */
+  --color-border: #e5e7eb;      /* gray-200  — default card border (border-gray-200) */
+  --color-border-muted: #d1d5db; /* gray-300 — outline button border (border-gray-300) */
+
+  --color-accent: #3b82f6;      /* blue-500  — primary button bg (bg-blue-500) */
+  --color-accent-hover: #1d4ed8; /* blue-700 — primary button hover (hover:bg-blue-700) */
+  --color-accent-light: #eff6ff; /* blue-50  — selected card bg (bg-blue-50) */
+  --color-accent-focus: #60a5fa; /* blue-400 — focus ring (ring-blue-400) */
+
+  --color-text: #111827;        /* gray-900  — headings, primary text (text-gray-900) */
+  --color-text-secondary: #1f2937; /* gray-800 — body text (text-gray-800) */
+  --color-text-muted: #6b7280;  /* gray-500  — muted/secondary text (text-gray-500) */
+  --color-text-link: #1d4ed8;   /* blue-700  — hover link color (hover:text-blue-700) */
+
+  --color-code-bg: #111827;     /* gray-900  — session output / terminal (bg-gray-900) */
+  --color-code-text: #d1d5db;   /* gray-300  — text on dark bg (text-gray-300) */
 
   --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Monaco, monospace;
@@ -131,12 +138,13 @@ code {
 
 .btn--outline {
   background-color: transparent;
-  color: var(--color-accent);
-  border-color: var(--color-accent);
+  color: var(--color-text-muted);
+  border-color: var(--color-border-muted);
 }
 
 .btn--outline:hover {
-  background-color: var(--color-accent-light);
+  border-color: var(--color-accent-focus);
+  color: var(--color-text-link);
 }
 
 .btn--ghost {
@@ -185,6 +193,7 @@ code {
 .nav__logo {
   width: 32px;
   height: 32px;
+  object-fit: contain;
   flex-shrink: 0;
 }
 
