@@ -40,7 +40,7 @@ function makeNotifier() {
     mockMonitor,
   );
   (notifier as any).client = { chat: { postMessage: mockPostMessage } };
-  (notifier as any).disabled = false;
+  (notifier as any).active = true;
   return notifier;
 }
 

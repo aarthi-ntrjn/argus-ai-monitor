@@ -62,7 +62,7 @@ const healthRoutes: FastifyPluginAsync = async (app) => {
 
     const slackStatus = slackNotifierRef
       ? {
-          notifier: slackNotifierRef.isDisabled ? 'disabled' : 'connected',
+          notifier: slackNotifierRef.isRunning ? 'connected' : 'disabled',
           listener: slackListenerRef ? 'connected' : 'disabled',
         }
       : undefined;

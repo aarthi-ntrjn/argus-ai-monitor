@@ -28,6 +28,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Add logs when the root cause is unclear.** If static analysis and code reading have not pinpointed a bug after a reasonable effort, add targeted log statements to the relevant code path, ask the user to reproduce the issue, and use the output to confirm the root cause before making any fix. Remove diagnostic logs after the bug is resolved.
 
+## Integration Design (Teams and Slack)
+
+The Teams and Slack integrations live under `backend/src/integration/{teams,slack}/`. Each platform has a notifier (outbound) and a listener (inbound), mirroring each other in structure and naming.
+
+**Consistent state field:** Both notifiers and both listeners use `private active: boolean` to represent whether the integration is running. Never use `disabled`, `enabled`, or any inverted flag. The `isRunning` getter always returns `this.active` directly. If the implementation derives running state from another source (e.g. `socketClient !== null`), the getter must still be named `isRunning`.
+
+**Interface:** Both notifiers implement `NotificationIntegration` from `models/index.ts`, which includes `readonly isRunning: boolean`. Do not add platform-specific running/stopped getters; use `isRunning` everywhere.
+
+**Handler guards:** Every session event handler (`onSessionCreated`, `onSessionUpdated`, `onSessionEnded`, `onSessionOutput`) must check `if (!this.active) return` as its first line, before any config or logging. This ensures stop takes effect immediately without draining in-flight config checks.
+
+**Restart support:** `initialize()` must be safe to call after `shutdown()`. Set `this.active = false` at the start of `initialize()` before validation, then `this.active = true` only on success. `shutdown()` sets `this.active = false` and drains the queue.
+
+**Double-subscription guard:** If a service subscribes to EventEmitter events in a method called by `initialize()`, guard with a `private subscribed: boolean` flag so re-initialization does not register duplicate listeners.
+
+**Layering:** Notifiers handle outbound notifications only. Listeners handle inbound commands only. Notifiers do not parse commands. Listeners do not send session notifications. Cross-cutting concerns (rate limiting, DB access) go through shared services in `backend/src/services/`, not duplicated in each integration.
+
+**API:** Start/stop endpoints live in `backend/src/api/routes/integrations.ts`. Any new integration must be registered there.
+
 ## Error Handling
 
 - **Never swallow errors silently.** Every `catch` block must either surface the error to the user (via `setError`, a toast, etc.) or log it (`console.warn` / `console.error` for non-user-facing errors such as WebSocket parse failures). An empty `catch` block or a `catch` that discards the error object is always a bug.

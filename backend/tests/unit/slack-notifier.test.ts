@@ -44,7 +44,7 @@ const mockMonitor = { on: vi.fn(), off: vi.fn(), emit: vi.fn() } as any;
 function makeNotifier(config = baseConfig) {
   const notifier = new SlackNotifier(config as any, mockMonitor);
   (notifier as any).client = { chat: { postMessage: mockPostMessage } };
-  (notifier as any).disabled = false;
+  (notifier as any).active = true;
   return notifier;
 }
 
@@ -59,19 +59,19 @@ describe('SlackNotifier', () => {
     it('disables when botToken is missing', async () => {
       const notifier = new SlackNotifier({ botToken: '', channelId: 'C01234', enabled: true } as any, mockMonitor);
       await notifier.initialize();
-      expect(notifier.isDisabled).toBe(true);
+      expect(notifier.isRunning).toBe(false);
     });
 
     it('disables when channelId is missing', async () => {
       const notifier = new SlackNotifier({ botToken: 'xoxb-test', channelId: '', enabled: true } as any, mockMonitor);
       await notifier.initialize();
-      expect(notifier.isDisabled).toBe(true);
+      expect(notifier.isRunning).toBe(false);
     });
 
     it('disables when enabled is false', async () => {
       const notifier = new SlackNotifier({ ...baseConfig, enabled: false }, mockMonitor);
       await notifier.initialize();
-      expect(notifier.isDisabled).toBe(true);
+      expect(notifier.isRunning).toBe(false);
     });
   });
 
@@ -160,7 +160,7 @@ describe('SlackNotifier', () => {
         mockMonitor,
       );
       (notifier as any).client = { chat: { postMessage: mockPostMessage } };
-      (notifier as any).disabled = false;
+      (notifier as any).active = true;
       await notifier.onSessionCreated(baseSession);
       expect(mockPostMessage).not.toHaveBeenCalled();
     });

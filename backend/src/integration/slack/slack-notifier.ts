@@ -21,7 +21,7 @@ export class SlackNotifier implements NotificationIntegration {
   private config: SlackConfig;
   private readonly sessionMonitor: SessionMonitor;
   private client: WebClient | null = null;
-  private disabled = false;
+  private active = false;
   private workspaceId = '';
 
   // Thread anchor map: sessionId -> Slack message ts of the parent message
@@ -42,7 +42,7 @@ export class SlackNotifier implements NotificationIntegration {
   }
 
   get isRunning(): boolean {
-    return !this.disabled;
+    return this.active;
   }
 
   // -------------------------------------------------------------------------
@@ -50,15 +50,13 @@ export class SlackNotifier implements NotificationIntegration {
   // -------------------------------------------------------------------------
 
   async initialize(): Promise<boolean> {
-    this.disabled = false;
+    this.active = false;
     if (!this.config.botToken || !this.config.channelId) {
       logger.warn(`${LOG_TAG} Slack integration disabled: missing botToken or channelId`);
-      this.disabled = true;
       return false;
     }
     if (!this.config.enabled) {
       logger.info(`${LOG_TAG} Slack integration disabled by configuration`);
-      this.disabled = true;
       return false;
     }
 
@@ -72,13 +70,14 @@ export class SlackNotifier implements NotificationIntegration {
       logger.warn(`${LOG_TAG} Failed to fetch workspace ID via auth.test:`, err);
     }
 
+    this.active = true;
     this.subscribeToEvents();
     logger.info(`${LOG_TAG} Initialized, posting to channel ${this.config.channelId}`);
     return true;
   }
 
   shutdown(): void {
-    this.disabled = true;
+    this.active = false;
     this.client = null;
     this.queue.drain();
     logger.info(`${LOG_TAG} Shutdown complete`);
@@ -86,10 +85,6 @@ export class SlackNotifier implements NotificationIntegration {
 
   get webClient(): WebClient | null {
     return this.client;
-  }
-
-  get isDisabled(): boolean {
-    return this.disabled;
   }
 
   getSessionIdByThreadTs(threadTs: string): string | undefined {
@@ -110,7 +105,7 @@ export class SlackNotifier implements NotificationIntegration {
   // -------------------------------------------------------------------------
 
   async onSessionCreated(session: Session): Promise<void> {
-    if (this.disabled || !this.client) return;
+    if (!this.active || !this.client) return;
     if (!this.isEventEnabled(SESSION_CREATED)) return;
 
     const repo = session.repositoryId ? getRepository(session.repositoryId) : undefined;
@@ -170,7 +165,7 @@ export class SlackNotifier implements NotificationIntegration {
   }
 
   async onSessionEnded(session: Session): Promise<void> {
-    if (this.disabled || !this.client) return;
+    if (!this.active || !this.client) return;
     if (!this.isEventEnabled(SESSION_ENDED)) return;
 
     const threadTs = this.threadAnchors.get(session.id);
@@ -192,7 +187,7 @@ export class SlackNotifier implements NotificationIntegration {
   }
 
   async onSessionUpdated(session: Session): Promise<void> {
-    if (this.disabled || !this.client) return;
+    if (!this.active || !this.client) return;
     if (!this.isEventEnabled(SESSION_UPDATED)) return;
 
     const prev = this.prevSessions.get(session.id);
@@ -223,7 +218,7 @@ export class SlackNotifier implements NotificationIntegration {
   }
 
   async onSessionOutput(sessionId: string, outputs: SessionOutput[]): Promise<void> {
-    if (this.disabled || !this.client) return;
+    if (!this.active || !this.client) return;
     if (!this.isEventEnabled(SESSION_AI_RESPONSE)) return;
 
     const assistantMessages = outputs.filter((o) => o.role === 'assistant' && o.type === 'message' && o.content);
@@ -250,7 +245,7 @@ export class SlackNotifier implements NotificationIntegration {
   // -------------------------------------------------------------------------
 
   async postEvent(sessionId: string, eventType: string, payload: Session | Repository): Promise<void> {
-    if (this.disabled || !this.client) return;
+    if (!this.active || !this.client) return;
     if (!this.isEventEnabled(eventType)) return;
 
     const blocks = buildEventBlocks(eventType, payload);
