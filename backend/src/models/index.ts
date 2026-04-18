@@ -165,3 +165,11 @@ export interface TeamsThread {
   teamsChannelId: string;
   createdAt: string;
 }
+
+export interface SlackThread {
+  id: string;
+  sessionId: string;
+  slackThreadTs: string;
+  slackChannelId: string;
+  createdAt: string;
+}

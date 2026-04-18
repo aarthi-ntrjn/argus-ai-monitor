@@ -2,15 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../../src/db/database.js', () => ({
   getRepository: vi.fn(),
-  getDb: vi.fn().mockReturnValue({
-    prepare: vi.fn().mockReturnValue({ get: vi.fn().mockReturnValue(undefined) }),
-  }),
-  getSlackThreadTs: vi.fn(),
-  setSlackThreadTs: vi.fn(),
+  getSlackThread: vi.fn(),
+  getSlackThreadByTs: vi.fn(),
+  upsertSlackThread: vi.fn(),
+  deleteSlackThread: vi.fn(),
 }));
 
 import { SlackNotifier } from '../../src/services/slack-notifier.js';
-import { getSlackThreadTs, setSlackThreadTs } from '../../src/db/database.js';
+import { getSlackThread, upsertSlackThread, deleteSlackThread } from '../../src/db/database.js';
 import type { Session } from '../../src/models/index.js';
 
 const baseConfig = {
@@ -51,7 +50,7 @@ function makeNotifier(config = baseConfig) {
 describe('SlackNotifier', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getSlackThreadTs).mockReturnValue(null);
+    vi.mocked(getSlackThread).mockReturnValue(null);
     mockPostMessage.mockResolvedValue({ ts: 'ts-123', message: { thread_ts: 'ts-123' } });
   });
 
@@ -84,14 +83,24 @@ describe('SlackNotifier', () => {
       expect(call.channel).toBe('C01234');
     });
 
-    it('sets thread anchor after first post', async () => {
+    it('upserts slack thread after first post', async () => {
       const notifier = makeNotifier();
       await notifier.postSessionStart(baseSession);
-      expect(setSlackThreadTs).toHaveBeenCalledWith(baseSession.id, 'ts-123');
+      expect(upsertSlackThread).toHaveBeenCalledWith(expect.objectContaining({
+        sessionId: baseSession.id,
+        slackThreadTs: 'ts-123',
+        slackChannelId: 'C01234',
+      }));
     });
 
     it('threads onto existing anchor when present', async () => {
-      vi.mocked(getSlackThreadTs).mockReturnValue('existing-ts');
+      vi.mocked(getSlackThread).mockReturnValue({
+        id: 'row-1',
+        sessionId: baseSession.id,
+        slackThreadTs: 'existing-ts',
+        slackChannelId: 'C01234',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      });
       const notifier = makeNotifier();
       await notifier.postSessionStart(baseSession);
       const call = mockPostMessage.mock.calls[0][0];
@@ -116,11 +125,11 @@ describe('SlackNotifier', () => {
       expect(call.thread_ts).toBe('thread-ts');
     });
 
-    it('clears thread anchor after end', async () => {
+    it('deletes slack thread after end', async () => {
       const notifier = makeNotifier();
       (notifier as any).threadAnchors.set(baseSession.id, 'thread-ts');
       await notifier.postSessionEnd(baseSession);
-      expect(setSlackThreadTs).toHaveBeenCalledWith(baseSession.id, null);
+      expect(deleteSlackThread).toHaveBeenCalledWith(baseSession.id);
     });
   });
 

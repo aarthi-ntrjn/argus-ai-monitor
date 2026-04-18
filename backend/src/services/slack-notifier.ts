@@ -1,7 +1,8 @@
 import { WebClient } from '@slack/web-api';
 import type { SessionMonitor } from './session-monitor.js';
 import type { Session, Repository, SlackConfig, SessionOutput } from '../models/index.js';
-import { getRepository, getDb, getSlackThreadTs, setSlackThreadTs } from '../db/database.js';
+import { randomUUID } from 'crypto';
+import { getRepository, getSlackThread, getSlackThreadByTs, upsertSlackThread, deleteSlackThread } from '../db/database.js';
 import { outputEvents } from './output-store.js';
 import {
   SESSION_CREATED,
@@ -85,10 +86,10 @@ export class SlackNotifier {
       if (ts === threadTs) return sessionId;
     }
     // Fall back to DB for sessions not yet loaded into the in-memory map
-    const row = (getDb().prepare('SELECT id FROM sessions WHERE slack_thread_ts = ?').get(threadTs) as { id: string } | undefined);
-    if (row) {
-      this.threadAnchors.set(row.id, threadTs); // warm the cache
-      return row.id;
+    const thread = getSlackThreadByTs(threadTs);
+    if (thread) {
+      this.threadAnchors.set(thread.sessionId, threadTs); // warm the cache
+      return thread.sessionId;
     }
     return undefined;
   }
@@ -105,7 +106,7 @@ export class SlackNotifier {
     const blocks = buildSessionStartBlocks(session, repo);
 
     // Restore a persisted thread anchor (e.g. after server restart)
-    const existingThreadTs = this.threadAnchors.get(session.id) ?? getSlackThreadTs(session.id) ?? null;
+    const existingThreadTs = this.threadAnchors.get(session.id) ?? getSlackThread(session.id)?.slackThreadTs ?? null;
     if (existingThreadTs) {
       this.threadAnchors.set(session.id, existingThreadTs);
     }
@@ -128,7 +129,7 @@ export class SlackNotifier {
           const isNewTopLevel = !threadTs || !resultThreadTs || resultThreadTs === result.ts;
           if (isNewTopLevel) {
             this.threadAnchors.set(session.id, result.ts);
-            setSlackThreadTs(session.id, result.ts);
+            upsertSlackThread({ id: randomUUID(), sessionId: session.id, slackThreadTs: result.ts, slackChannelId: this.config.channelId, createdAt: new Date().toISOString() });
           }
         }
       } catch (err) {
@@ -136,7 +137,7 @@ export class SlackNotifier {
           // Stale anchor: the parent message was deleted (e.g. after channel cleanup).
           // Clear the stale anchor and retry as a new top-level post.
           this.threadAnchors.delete(session.id);
-          setSlackThreadTs(session.id, null);
+          deleteSlackThread(session.id);
           try {
             const result = await this.client!.chat.postMessage({
               channel: this.config.channelId,
@@ -145,7 +146,7 @@ export class SlackNotifier {
             });
             if (result.ts) {
               this.threadAnchors.set(session.id, result.ts);
-              setSlackThreadTs(session.id, result.ts);
+              upsertSlackThread({ id: randomUUID(), sessionId: session.id, slackThreadTs: result.ts, slackChannelId: this.config.channelId, createdAt: new Date().toISOString() });
             }
           } catch (retryErr) {
             logger.error(`${LOG_TAG} Failed to re-post session start for ${session.id} after stale anchor:`, retryErr);
@@ -172,7 +173,7 @@ export class SlackNotifier {
           ...(threadTs ? { thread_ts: threadTs } : {}),
         });
         this.threadAnchors.delete(session.id);
-        setSlackThreadTs(session.id, null); // clear persisted anchor
+        deleteSlackThread(session.id);
       } catch (err) {
         logger.error(`${LOG_TAG} Failed to post session end for ${session.id}:`, err);
       }

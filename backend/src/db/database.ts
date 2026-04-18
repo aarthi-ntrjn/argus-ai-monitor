@@ -3,7 +3,7 @@ import { join, dirname, normalize } from 'path';
 import { homedir } from 'os';
 import { mkdirSync } from 'fs';
 import { SCHEMA_SQL } from './schema.js';
-import type { Repository, Session, SessionOutput, ControlAction, TodoItem, TeamsThread } from '../models/index.js';
+import type { Repository, Session, SessionOutput, ControlAction, TodoItem, TeamsThread, SlackThread } from '../models/index.js';
 
 const DB_PATH = process.env.ARGUS_DB_PATH ?? join(homedir(), '.argus', 'argus.db');
 
@@ -58,7 +58,15 @@ export function getDb(): Database.Database {
     }
     const controlCols = (db.pragma('table_info(control_actions)') as Array<{ name: string }>).map(c => c.name);
     if (!controlCols.includes('source')) db.exec('ALTER TABLE control_actions ADD COLUMN source TEXT');
-    if (!sessionCols.includes('slack_thread_ts')) db.exec('ALTER TABLE sessions ADD COLUMN slack_thread_ts TEXT');
+    if (sessionCols.includes('slack_thread_ts')) {
+      // Migrate existing slack thread data into the new slack_threads table then drop the column
+      db.prepare(`
+        INSERT OR IGNORE INTO slack_threads (id, session_id, slack_thread_ts, slack_channel_id, created_at)
+        SELECT lower(hex(randomblob(16))), id, slack_thread_ts, ?, started_at
+        FROM sessions WHERE slack_thread_ts IS NOT NULL
+      `).run(process.env.SLACK_CHANNEL_ID ?? '');
+      db.exec('ALTER TABLE sessions DROP COLUMN slack_thread_ts');
+    }
   }
   return db;
 }
@@ -122,7 +130,8 @@ export function deleteRepository(id: string): void {
   const caResult = db.prepare('DELETE FROM control_actions WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
   const soResult = db.prepare('DELETE FROM session_output WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
   const ttResult = db.prepare('DELETE FROM teams_threads WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
-  console.log(`[deleteRepository] deleted control_actions=${caResult.changes}, session_output=${soResult.changes}, teams_threads=${ttResult.changes}`);
+  const stResult = db.prepare('DELETE FROM slack_threads WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
+  console.log(`[deleteRepository] deleted control_actions=${caResult.changes}, session_output=${soResult.changes}, teams_threads=${ttResult.changes}, slack_threads=${stResult.changes}`);
 
   // Verify no child records remain before deleting sessions
   if (sessionIds.length > 0) {
@@ -130,7 +139,8 @@ export function deleteRepository(id: string): void {
     const caRemaining = (db.prepare(`SELECT COUNT(*) as n FROM control_actions WHERE session_id IN (${placeholders})`).get(...sessionIds) as { n: number }).n;
     const soRemaining = (db.prepare(`SELECT COUNT(*) as n FROM session_output WHERE session_id IN (${placeholders})`).get(...sessionIds) as { n: number }).n;
     const ttRemaining = (db.prepare(`SELECT COUNT(*) as n FROM teams_threads WHERE session_id IN (${placeholders})`).get(...sessionIds) as { n: number }).n;
-    console.log(`[deleteRepository] remaining after cleanup: control_actions=${caRemaining}, session_output=${soRemaining}, teams_threads=${ttRemaining}`);
+    const stRemaining = (db.prepare(`SELECT COUNT(*) as n FROM slack_threads WHERE session_id IN (${placeholders})`).get(...sessionIds) as { n: number }).n;
+    console.log(`[deleteRepository] remaining after cleanup: control_actions=${caRemaining}, session_output=${soRemaining}, teams_threads=${ttRemaining}, slack_threads=${stRemaining}`);
   }
 
   db.prepare('DELETE FROM sessions WHERE repository_id = ?').run(id);
@@ -290,11 +300,25 @@ export function getTeamsThreadByTeamsId(teamsThreadId: string): TeamsThread | nu
   ).get(teamsThreadId) as TeamsThread | null;
 }
 
-export function getSlackThreadTs(sessionId: string): string | null {
-  const row = getDb().prepare('SELECT slack_thread_ts FROM sessions WHERE id = ?').get(sessionId) as { slack_thread_ts: string | null } | undefined;
-  return row?.slack_thread_ts ?? null;
+export function upsertSlackThread(thread: SlackThread): void {
+  getDb().prepare(`
+    INSERT OR REPLACE INTO slack_threads (id, session_id, slack_thread_ts, slack_channel_id, created_at)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(thread.id, thread.sessionId, thread.slackThreadTs, thread.slackChannelId, thread.createdAt);
 }
 
-export function setSlackThreadTs(sessionId: string, threadTs: string | null): void {
-  getDb().prepare('UPDATE sessions SET slack_thread_ts = ? WHERE id = ?').run(threadTs, sessionId);
+export function getSlackThread(sessionId: string): SlackThread | null {
+  return getDb().prepare(
+    'SELECT id, session_id as sessionId, slack_thread_ts as slackThreadTs, slack_channel_id as slackChannelId, created_at as createdAt FROM slack_threads WHERE session_id = ?'
+  ).get(sessionId) as SlackThread | null;
+}
+
+export function getSlackThreadByTs(threadTs: string): SlackThread | null {
+  return getDb().prepare(
+    'SELECT id, session_id as sessionId, slack_thread_ts as slackThreadTs, slack_channel_id as slackChannelId, created_at as createdAt FROM slack_threads WHERE slack_thread_ts = ?'
+  ).get(threadTs) as SlackThread | null;
+}
+
+export function deleteSlackThread(sessionId: string): void {
+  getDb().prepare('DELETE FROM slack_threads WHERE session_id = ?').run(sessionId);
 }

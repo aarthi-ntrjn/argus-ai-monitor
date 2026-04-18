@@ -2,15 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('../../src/db/database.js', () => ({
   getRepository: vi.fn(),
-  getSlackThreadTs: vi.fn(),
-  setSlackThreadTs: vi.fn(),
-  getDb: vi.fn().mockReturnValue({
-    prepare: vi.fn().mockReturnValue({ get: vi.fn().mockReturnValue(undefined) }),
-  }),
+  getSlackThread: vi.fn(),
+  getSlackThreadByTs: vi.fn(),
+  upsertSlackThread: vi.fn(),
+  deleteSlackThread: vi.fn(),
 }));
 
 import { SlackNotifier } from '../../src/services/slack-notifier.js';
-import { getSlackThreadTs, setSlackThreadTs } from '../../src/db/database.js';
+import { getSlackThread, upsertSlackThread, deleteSlackThread } from '../../src/db/database.js';
 import type { Session } from '../../src/models/index.js';
 
 const baseSession: Session = {
@@ -49,7 +48,7 @@ describe('SlackNotifier - session lifecycle', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
-    vi.mocked(getSlackThreadTs).mockReturnValue(null);
+    vi.mocked(getSlackThread).mockReturnValue(null);
     mockPostMessage.mockResolvedValue({ ts: 'ts-123', message: { thread_ts: 'ts-123' } });
   });
 
@@ -62,7 +61,7 @@ describe('SlackNotifier - session lifecycle', () => {
 
     // Session start
     await notifier.postSessionStart(baseSession);
-    await vi.advanceTimersByTimeAsync(0); // flush microtasks: sets thread anchor + setSlackThreadTs
+    await vi.advanceTimersByTimeAsync(0); // flush microtasks: sets thread anchor + upsertSlackThread
     expect(mockPostMessage).toHaveBeenCalledTimes(1);
 
     // Set up for update: inject previous state so diff produces changes
@@ -83,31 +82,33 @@ describe('SlackNotifier - session lifecycle', () => {
     expect(endCall.thread_ts).toBe('ts-123');
   });
 
-  it('thread anchor is set after session start', async () => {
+  it('thread anchor is upserted after session start', async () => {
     const notifier = makeNotifier();
 
     await notifier.postSessionStart(baseSession);
-    await vi.advanceTimersByTimeAsync(0); // flush: thread anchor set, setSlackThreadTs called
+    await vi.advanceTimersByTimeAsync(0);
 
-    expect(setSlackThreadTs).toHaveBeenCalledWith(baseSession.id, 'ts-123');
+    expect(upsertSlackThread).toHaveBeenCalledWith(expect.objectContaining({
+      sessionId: baseSession.id,
+      slackThreadTs: 'ts-123',
+    }));
   });
 
-  it('postSessionEnd clears thread anchor', async () => {
+  it('postSessionEnd deletes slack thread', async () => {
     const notifier = makeNotifier();
 
     await notifier.postSessionStart(baseSession);
-    await vi.advanceTimersByTimeAsync(0); // flush: anchor = 'ts-123'
+    await vi.advanceTimersByTimeAsync(0);
 
     await notifier.postSessionEnd({ ...baseSession, status: 'completed' as const });
-    await vi.advanceTimersByTimeAsync(1200); // process end job: calls setSlackThreadTs(null)
+    await vi.advanceTimersByTimeAsync(1200);
 
-    expect(setSlackThreadTs).toHaveBeenLastCalledWith(baseSession.id, null);
+    expect(deleteSlackThread).toHaveBeenCalledWith(baseSession.id);
   });
 
   it('postSessionUpdate with no previous state is a no-op', async () => {
     const notifier = makeNotifier();
 
-    // No postSessionStart, no prevSessions entry: diff is null
     await notifier.postSessionUpdate(baseSession);
     await vi.advanceTimersByTimeAsync(1200);
 
@@ -117,15 +118,12 @@ describe('SlackNotifier - session lifecycle', () => {
   it('rate limiting: second message waits for timer', async () => {
     const notifier = makeNotifier();
 
-    // First message is processed immediately
     await notifier.postSessionStart(baseSession);
     expect(mockPostMessage).toHaveBeenCalledTimes(1);
 
-    // Second message is queued because isSending = true
     await notifier.postSessionStart(baseSession);
     expect(mockPostMessage).toHaveBeenCalledTimes(1); // still 1
 
-    // Advance past rate limit: timer fires, second message is processed
     await vi.advanceTimersByTimeAsync(1200);
     expect(mockPostMessage).toHaveBeenCalledTimes(2);
   });
