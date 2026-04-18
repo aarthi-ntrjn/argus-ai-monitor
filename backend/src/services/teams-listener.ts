@@ -2,7 +2,7 @@ import type { App } from '@microsoft/teams.apps';
 import { getSessions, getSession, getTeamsThreadByTeamsId } from '../db/database.js';
 import { SessionController } from './session-controller.js';
 import { loadTeamsConfig } from '../config/teams-config-loader.js';
-import type { TeamsLogger } from './teams-integration.js';
+import type { TeamsLogger } from './teams-notifier.js';
 
 const LOG_TAG = 'teams-listener';
 
