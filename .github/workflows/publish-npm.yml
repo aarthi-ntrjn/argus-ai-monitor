@@ -2,7 +2,8 @@
 # Triggered by a version tag push (e.g. v0.1.1) from the private repo,
 # or manually via workflow_dispatch.
 #
-# Required secret: NPM_TOKEN — an npm publish token scoped to argus-ai-hub.
+# Authentication: uses npm Trusted Publishing (OIDC). No NPM_TOKEN secret needed.
+# Configure the trusted publisher at: npmjs.com > argus-ai-hub > Settings > Publishing Access.
 
 name: Publish to npm
 
@@ -28,7 +29,9 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "22"
-          registry-url: "https://registry.npmjs.org"
+          # registry-url intentionally omitted: setting it causes setup-node to write
+          # an .npmrc that authenticates via NODE_AUTH_TOKEN, which conflicts with
+          # npm's native OIDC exchange used by Trusted Publishing.
 
       - name: Install dependencies (lockfile-enforced, scripts suppressed)
         run: npm ci --ignore-scripts
