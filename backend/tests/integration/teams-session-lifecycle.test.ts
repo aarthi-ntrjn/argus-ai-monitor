@@ -3,8 +3,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../../src/db/database.js', () => ({
   getTeamsThread: vi.fn(),
   upsertTeamsThread: vi.fn(),
-  updateTeamsThreadOutputMessageId: vi.fn(),
-  clearTeamsThreadOutputMessageId: vi.fn(),
   getRepository: vi.fn(),
   getSession: vi.fn(),
 }));
@@ -14,16 +12,13 @@ vi.mock('../../src/config/teams-config-loader.js', () => ({
 }));
 
 import { TeamsIntegrationService } from '../../src/services/teams-integration.js';
-import { TeamsMessageBuffer } from '../../src/services/teams-message-buffer.js';
-import { getTeamsThread, upsertTeamsThread, updateTeamsThreadOutputMessageId } from '../../src/db/database.js';
+import { getTeamsThread, upsertTeamsThread } from '../../src/db/database.js';
 import { loadTeamsConfig } from '../../src/config/teams-config-loader.js';
 import type { Session, SessionOutput } from '../../src/models/index.js';
 
 const mockActivitiesCreate = vi.fn();
-const mockActivitiesUpdate = vi.fn();
 const mockActivities = vi.fn().mockReturnValue({
   create: mockActivitiesCreate,
-  update: mockActivitiesUpdate,
 });
 
 const mockTeamsApp = {
@@ -68,28 +63,22 @@ const config = {
 
 describe('TeamsIntegrationService - session lifecycle', () => {
   let service: TeamsIntegrationService;
-  let buffer: TeamsMessageBuffer;
   let storedThread: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockActivities.mockReturnValue({ create: mockActivitiesCreate, update: mockActivitiesUpdate });
-    buffer = new TeamsMessageBuffer();
-    service = new TeamsIntegrationService(mockTeamsApp as any, buffer, mockLogger);
+    mockActivities.mockReturnValue({ create: mockActivitiesCreate });
+    service = new TeamsIntegrationService(mockTeamsApp as any, mockLogger);
 
     vi.mocked(loadTeamsConfig).mockReturnValue(config);
     storedThread = null;
     vi.mocked(getTeamsThread).mockImplementation(() => storedThread);
     vi.mocked(upsertTeamsThread).mockImplementation((t) => { storedThread = { ...t }; });
-    vi.mocked(updateTeamsThreadOutputMessageId).mockImplementation((_, msgId) => {
-      if (storedThread) storedThread.currentOutputMessageId = msgId;
-    });
     mockTeamsApp.send.mockResolvedValue({ id: 'teams-thread' });
     mockActivitiesCreate.mockResolvedValue({ id: 'reply-msg' });
-    mockActivitiesUpdate.mockResolvedValue(undefined);
   });
 
-  it('full lifecycle: created -> output -> flush -> ended', async () => {
+  it('full lifecycle: created -> output -> ended', async () => {
     await service.onSessionCreated(session);
     expect(mockTeamsApp.send).toHaveBeenCalledOnce();
     expect(upsertTeamsThread).toHaveBeenCalledOnce();
@@ -98,18 +87,11 @@ describe('TeamsIntegrationService - session lifecycle', () => {
       { id: '1', sessionId: session.id, timestamp: '', type: 'message', content: 'output line 1', toolName: null, toolCallId: null, role: 'assistant', sequenceNumber: 1 },
       { id: '2', sessionId: session.id, timestamp: '', type: 'message', content: 'output line 2', toolName: null, toolCallId: null, role: 'assistant', sequenceNumber: 2 },
     ];
-    service.onSessionOutput(session.id, outputs);
-    expect(buffer.size(session.id)).toBe(2);
+    await service.onSessionOutput(session.id, outputs);
+    expect(mockActivitiesCreate).toHaveBeenCalledOnce();
 
-    // Manually flush
-    await (service as any)._flush(session.id, config.channelId);
-    expect(mockActivitiesCreate).toHaveBeenCalled();
-
-    const callCountAfterFlush = mockActivitiesCreate.mock.calls.length;
     await service.onSessionEnded({ ...session, status: 'completed' });
-    // activities.create called again for the ended message
-    expect(mockActivitiesCreate.mock.calls.length).toBeGreaterThan(callCountAfterFlush);
-    service.stop();
+    expect(mockActivitiesCreate).toHaveBeenCalledTimes(2);
   });
 
   it('reconnect: second onSessionCreated reuses existing thread', async () => {
@@ -118,6 +100,5 @@ describe('TeamsIntegrationService - session lifecycle', () => {
 
     await service.onSessionCreated(session);
     expect(mockTeamsApp.send).toHaveBeenCalledOnce(); // still 1
-    service.stop();
   });
 });

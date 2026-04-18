@@ -163,6 +163,5 @@ export interface TeamsThread {
   sessionId: string;
   teamsThreadId: string;
   teamsChannelId: string;
-  currentOutputMessageId: string | null;
   createdAt: string;
 }

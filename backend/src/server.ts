@@ -31,7 +31,6 @@ import { telemetryService } from './services/telemetry-service.js';
 import { SessionMonitor } from './services/session-monitor.js';
 import { startPruningJob } from './services/pruning-job.js';
 import { TeamsIntegrationService } from './services/teams-integration.js';
-import { TeamsMessageBuffer } from './services/teams-message-buffer.js';
 import { FastifyTeamsAdapter } from './services/teams-sdk-adapter.js';
 import { outputStore } from './services/output-store.js';
 import { loadTeamsConfig } from './config/teams-config-loader.js';
@@ -245,8 +244,7 @@ export async function startServer() {
   await monitor.start();
   startPruningJob();
 
-  const teamsBuffer = new TeamsMessageBuffer(1000, app.log as any);
-  const teamsService = new TeamsIntegrationService(teamsApp, teamsBuffer, app.log as any);
+  const teamsService = new TeamsIntegrationService(teamsApp, app.log as any);
 
   if (teamsService.initialize()) {
     monitor.on('session.created', (session: Session) => {
@@ -259,7 +257,7 @@ export async function startServer() {
       teamsService.onSessionEnded(session).catch(err => app.log.error({ err }, 'teams.session.ended.error'));
     });
     outputStore.addOutputListener((sessionId, outputs) => {
-      teamsService.onSessionOutput(sessionId, outputs);
+      teamsService.onSessionOutput(sessionId, outputs).catch(err => app.log.error({ err }, 'teams.session.output.error'));
     });
   }
 

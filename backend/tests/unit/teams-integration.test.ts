@@ -3,8 +3,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../../src/db/database.js', () => ({
   getTeamsThread: vi.fn(),
   upsertTeamsThread: vi.fn(),
-  updateTeamsThreadOutputMessageId: vi.fn(),
-  clearTeamsThreadOutputMessageId: vi.fn(),
   getRepository: vi.fn(),
   getSession: vi.fn(),
 }));
@@ -14,16 +12,13 @@ vi.mock('../../src/config/teams-config-loader.js', () => ({
 }));
 
 import { TeamsIntegrationService } from '../../src/services/teams-integration.js';
-import { TeamsMessageBuffer } from '../../src/services/teams-message-buffer.js';
 import { getTeamsThread, upsertTeamsThread } from '../../src/db/database.js';
 import { loadTeamsConfig } from '../../src/config/teams-config-loader.js';
 import type { Session } from '../../src/models/index.js';
 
 const mockActivitiesCreate = vi.fn();
-const mockActivitiesUpdate = vi.fn();
 const mockActivities = vi.fn().mockReturnValue({
   create: mockActivitiesCreate,
-  update: mockActivitiesUpdate,
 });
 
 const mockTeamsApp = {
@@ -72,15 +67,21 @@ const enabledConfig = {
   ownerAadObjectId: 'owner-aad-object-id',
 };
 
+const existingThread = {
+  id: 'thread-id',
+  sessionId: baseSession.id,
+  teamsThreadId: 'teams-thread-id',
+  teamsChannelId: 'channel-id',
+  createdAt: '2024-01-01T00:00:00.000Z',
+};
+
 describe('TeamsIntegrationService', () => {
   let service: TeamsIntegrationService;
-  let buffer: TeamsMessageBuffer;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockActivities.mockReturnValue({ create: mockActivitiesCreate, update: mockActivitiesUpdate });
-    buffer = new TeamsMessageBuffer();
-    service = new TeamsIntegrationService(mockTeamsApp as any, buffer, mockLogger);
+    mockActivities.mockReturnValue({ create: mockActivitiesCreate });
+    service = new TeamsIntegrationService(mockTeamsApp as any, mockLogger);
   });
 
   describe('onSessionCreated', () => {
@@ -93,7 +94,6 @@ describe('TeamsIntegrationService', () => {
 
       expect(mockTeamsApp.send).toHaveBeenCalledOnce();
       expect(upsertTeamsThread).toHaveBeenCalledOnce();
-      service.stop();
     });
 
     it('skips when disabled', async () => {
@@ -106,49 +106,59 @@ describe('TeamsIntegrationService', () => {
 
     it('reuses existing thread without creating new one', async () => {
       vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
-      vi.mocked(getTeamsThread).mockReturnValue({
-        id: 'existing-id',
-        sessionId: baseSession.id,
-        teamsThreadId: 'existing-thread',
-        teamsChannelId: 'channel-id',
-        currentOutputMessageId: null,
-        deltaLink: null,
-        createdAt: '2024-01-01T00:00:00.000Z',
-      });
+      vi.mocked(getTeamsThread).mockReturnValue(existingThread);
       mockActivitiesCreate.mockResolvedValue({ id: 'notify-reply' });
 
       await service.onSessionCreated(baseSession);
 
       expect(mockTeamsApp.send).not.toHaveBeenCalled();
-      service.stop();
     });
   });
 
   describe('onSessionOutput', () => {
-    it('enqueues content to buffer when enabled', () => {
+    it('posts assistant messages as a thread reply', async () => {
       vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
+      vi.mocked(getTeamsThread).mockReturnValue(existingThread);
+      mockActivitiesCreate.mockResolvedValue({ id: 'output-msg' });
+
       const outputs = [
         { id: '1', sessionId: baseSession.id, timestamp: '', type: 'message' as const, content: 'hello', toolName: null, toolCallId: null, role: 'assistant' as const, sequenceNumber: 1 },
       ];
 
-      service.onSessionOutput(baseSession.id, outputs);
+      await service.onSessionOutput(baseSession.id, outputs);
 
-      expect(buffer.size(baseSession.id)).toBe(1);
+      expect(mockActivitiesCreate).toHaveBeenCalledOnce();
+      const callArg = mockActivitiesCreate.mock.calls[0][0] as { type: string; text: string };
+      expect(callArg.text).toContain('hello');
+    });
+
+    it('skips non-assistant outputs', async () => {
+      vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
+      const outputs = [
+        { id: '1', sessionId: baseSession.id, timestamp: '', type: 'message' as const, content: 'tool output', toolName: 'bash', toolCallId: null, role: 'tool' as const, sequenceNumber: 1 },
+      ];
+
+      await service.onSessionOutput(baseSession.id, outputs);
+
+      expect(mockActivitiesCreate).not.toHaveBeenCalled();
+    });
+
+    it('skips when not enabled', async () => {
+      vi.mocked(loadTeamsConfig).mockReturnValue({ enabled: false });
+      const outputs = [
+        { id: '1', sessionId: baseSession.id, timestamp: '', type: 'message' as const, content: 'hello', toolName: null, toolCallId: null, role: 'assistant' as const, sequenceNumber: 1 },
+      ];
+
+      await service.onSessionOutput(baseSession.id, outputs);
+
+      expect(mockActivitiesCreate).not.toHaveBeenCalled();
     });
   });
 
   describe('onSessionEnded', () => {
     it('calls activities.create with final status', async () => {
       vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
-      vi.mocked(getTeamsThread).mockReturnValue({
-        id: 'thread-id',
-        sessionId: baseSession.id,
-        teamsThreadId: 'teams-thread-id',
-        teamsChannelId: 'channel-id',
-        currentOutputMessageId: null,
-        deltaLink: null,
-        createdAt: '2024-01-01T00:00:00.000Z',
-      });
+      vi.mocked(getTeamsThread).mockReturnValue(existingThread);
       mockActivitiesCreate.mockResolvedValue({ id: 'end-msg' });
 
       await service.onSessionEnded({ ...baseSession, status: 'completed' });
@@ -170,22 +180,13 @@ describe('TeamsIntegrationService', () => {
       const callArg = mockTeamsApp.send.mock.calls[0][1] as { type: string; text: string };
       expect(callArg.text).toContain(baseSession.id);
       expect(callArg.text).toContain(baseSession.type);
-      service.stop();
     });
   });
 
   describe('ended message format', () => {
     it('includes session status', async () => {
       vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
-      vi.mocked(getTeamsThread).mockReturnValue({
-        id: 'thread-id',
-        sessionId: baseSession.id,
-        teamsThreadId: 'teams-thread-id',
-        teamsChannelId: 'channel-id',
-        currentOutputMessageId: null,
-        deltaLink: null,
-        createdAt: '2024-01-01T00:00:00.000Z',
-      });
+      vi.mocked(getTeamsThread).mockReturnValue(existingThread);
       mockActivitiesCreate.mockResolvedValue({ id: 'end-msg' });
 
       await service.onSessionEnded({ ...baseSession, status: 'completed' });
@@ -231,16 +232,6 @@ describe('TeamsIntegrationService', () => {
   });
 
   describe('onSessionUpdated()', () => {
-    const existingThread = {
-      id: 'thread-id',
-      sessionId: baseSession.id,
-      teamsThreadId: 'teams-thread-id',
-      teamsChannelId: 'channel-id',
-      currentOutputMessageId: null,
-      deltaLink: null,
-      createdAt: '2024-01-01T00:00:00.000Z',
-    };
-
     it('delegates to onSessionCreated when no thread exists', async () => {
       vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
       vi.mocked(getTeamsThread).mockReturnValue(null);
@@ -249,7 +240,6 @@ describe('TeamsIntegrationService', () => {
       await service.onSessionUpdated(baseSession);
 
       expect(mockTeamsApp.send).toHaveBeenCalledOnce();
-      service.stop();
     });
 
     it('skips posting when only untracked fields changed (e.g. lastActivityAt)', async () => {
