@@ -236,6 +236,39 @@ describe('TeamsNotifier', () => {
     });
   });
 
+  describe('onPendingChoice()', () => {
+    it('posts question and choices as a thread reply', async () => {
+      vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
+      vi.mocked(getTeamsThread).mockReturnValue(existingThread);
+      mockActivitiesCreate.mockResolvedValue({ id: 'choice-msg' });
+
+      await service.onPendingChoice({ sessionId: baseSession.id, question: 'Proceed?', choices: ['Yes', 'No'] });
+
+      expect(mockActivitiesCreate).toHaveBeenCalledOnce();
+      const callArg = mockActivitiesCreate.mock.calls[0][0] as { type: string; text: string };
+      expect(callArg.text).toContain('Proceed?');
+      expect(callArg.text).toContain('Yes');
+      expect(callArg.text).toContain('No');
+    });
+
+    it('skips when not configured', async () => {
+      vi.mocked(loadTeamsConfig).mockReturnValue({ enabled: false });
+
+      await service.onPendingChoice({ sessionId: baseSession.id, question: 'Proceed?', choices: [] });
+
+      expect(mockActivitiesCreate).not.toHaveBeenCalled();
+    });
+
+    it('skips when no thread exists for the session', async () => {
+      vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
+      vi.mocked(getTeamsThread).mockReturnValue(null);
+
+      await service.onPendingChoice({ sessionId: baseSession.id, question: 'Proceed?', choices: [] });
+
+      expect(mockActivitiesCreate).not.toHaveBeenCalled();
+    });
+  });
+
   describe('onSessionUpdated()', () => {
     it('delegates to onSessionCreated when no thread exists', async () => {
       vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);

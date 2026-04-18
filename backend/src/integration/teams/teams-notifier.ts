@@ -5,6 +5,7 @@ import type { Session, SessionOutput } from '../../models/index.js';
 import { loadTeamsConfig } from '../../config/teams-config-loader.js';
 import { getTeamsThread, upsertTeamsThread, deleteTeamsThread, getRepository } from '../../db/database.js';
 import type { Repository, NotificationIntegration } from '../../models/index.js';
+import type { PendingChoice } from '../../services/pending-choice-events.js';
 import { MessageQueue } from '../../services/message-queue.js';
 import { SessionDiffTracker } from '../../services/session-diff-tracker.js';
 import type { SessionChange } from '../../services/session-diff-tracker.js';
@@ -207,6 +208,27 @@ export class TeamsNotifier implements NotificationIntegration {
     }, 'session.output', sessionId);
   }
 
+  async onPendingChoice(choice: PendingChoice): Promise<void> {
+    if (!this.active) return;
+    const config = loadTeamsConfig();
+    if (!config.enabled) return;
+    const { channelId } = config as { channelId: string };
+
+    const thread = getTeamsThread(choice.sessionId);
+    if (!thread) return;
+
+    const text = this._formatPendingChoiceMessage(choice);
+    this.queue.enqueue(async () => {
+      try {
+        const threadConvId = `${channelId};messageid=${thread.teamsThreadId}`;
+        await this.teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text });
+        this.logger.teams({ ...this._logCtx(), sessionId: choice.sessionId }, 'teams.pending_choice.posted');
+      } catch (err) {
+        this.logger.error({ ...this._logCtx(), err, sessionId: choice.sessionId }, 'teams.pending_choice.failed');
+      }
+    }, 'session.pending_choice', choice.sessionId);
+  }
+
   async onSessionEnded(session: Session): Promise<void> {
     this.logger.teams({ ...this._sessionCtx(session), status: session.status }, 'teams.session.ended.received');
     if (!this.active) return;
@@ -278,6 +300,19 @@ export class TeamsNotifier implements NotificationIntegration {
       '---',
       ...changes.map(({ label, to }) => field(label, to)),
     ].join('\n');
+  }
+
+  _formatPendingChoiceMessage(choice: PendingChoice): string {
+    const lines = [
+      '**Action Required**',
+      '---',
+      field('Question', choice.question),
+    ];
+    if (choice.choices.length > 0) {
+      lines.push('**Options:**');
+      lines.push(...choice.choices.map((c, i) => `${i + 1}. ${c}`));
+    }
+    return lines.join('\n');
   }
 
   _formatEndedMessage(session: Session): string {

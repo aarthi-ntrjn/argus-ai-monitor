@@ -7,11 +7,14 @@ import { MessageQueue } from '../../services/message-queue.js';
 import { SessionDiffTracker } from '../../services/session-diff-tracker.js';
 import type { SessionChange } from '../../services/session-diff-tracker.js';
 import { outputEvents } from '../../services/output-store.js';
+import { pendingChoiceEvents } from '../../services/pending-choice-events.js';
+import type { PendingChoice } from '../../services/pending-choice-events.js';
 import {
   SESSION_CREATED,
   SESSION_UPDATED,
   SESSION_ENDED,
   SESSION_AI_RESPONSE,
+  SESSION_PENDING_CHOICE,
   REPOSITORY_ADDED,
   REPOSITORY_REMOVED,
 } from '../../constants/slack-events.js';
@@ -251,6 +254,27 @@ export class SlackNotifier implements NotificationIntegration {
     }, SESSION_AI_RESPONSE, sessionId);
   }
 
+  async onPendingChoice(choice: PendingChoice): Promise<void> {
+    if (!this.active || !this.client) return;
+    if (!this.isEventEnabled(SESSION_PENDING_CHOICE)) return;
+
+    const blocks = buildPendingChoiceBlocks(choice);
+    this.queue.enqueue(async () => {
+      const threadTs = this.threadAnchors.get(choice.sessionId);
+      if (!threadTs) return;
+      try {
+        await this.client!.chat.postMessage({
+          channel: this.config.channelId,
+          text: `Action required: ${choice.question}`,
+          blocks,
+          thread_ts: threadTs,
+        });
+      } catch (err) {
+        logger.error(`${LOG_TAG} Failed to post pending choice for session ${choice.sessionId}:`, err);
+      }
+    }, SESSION_PENDING_CHOICE, choice.sessionId);
+  }
+
   // -------------------------------------------------------------------------
   // Generic event
   // -------------------------------------------------------------------------
@@ -323,6 +347,11 @@ export class SlackNotifier implements NotificationIntegration {
         logger.error(`${LOG_TAG} Unhandled error in session.output.batch handler:`, err);
       });
     });
+    pendingChoiceEvents.on('session.pending_choice', (choice: PendingChoice) => {
+      this.onPendingChoice(choice).catch((err) => {
+        logger.error(`${LOG_TAG} Unhandled error in session.pending_choice handler:`, err);
+      });
+    });
   }
 
 }
@@ -390,6 +419,21 @@ function buildSessionUpdatedBlocks(session: Session, changes: SessionChange[]) {
         type: 'mrkdwn',
         text: `*Session Updated* \`${session.id}\`\n${lines.join('\n')}`,
       },
+    },
+  ];
+}
+
+function buildPendingChoiceBlocks(choice: PendingChoice) {
+  const optionLines = choice.choices.length > 0
+    ? choice.choices.map((c, i) => `${i + 1}. ${c}`).join('\n')
+    : '';
+  const text = optionLines
+    ? `*Action Required*\n*Question:* ${choice.question}\n*Options:*\n${optionLines}`
+    : `*Action Required*\n*Question:* ${choice.question}`;
+  return [
+    {
+      type: 'section',
+      text: { type: 'mrkdwn', text },
     },
   ];
 }

@@ -37,6 +37,8 @@ import { FastifyTeamsAdapter } from './integration/teams/teams-sdk-adapter.js';
 import { outputStore } from './services/output-store.js';
 import { loadTeamsConfig } from './config/teams-config-loader.js';
 import { getIntegrationEnabled } from './db/database.js';
+import { pendingChoiceEvents } from './services/pending-choice-events.js';
+import type { PendingChoice } from './services/pending-choice-events.js';
 import type { Session, Repository } from './models/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -216,6 +218,9 @@ export async function startServer() {
     });
     outputStore.addOutputListener((sessionId, outputs) => {
       teamsNotifier!.onSessionOutput(sessionId, outputs).catch(err => app.log.error({ err }, 'teams.session.output.error'));
+    });
+    pendingChoiceEvents.on('session.pending_choice', (choice: PendingChoice) => {
+      teamsNotifier!.onPendingChoice(choice).catch(err => app.log.error({ err }, 'teams.pending_choice.error'));
     });
   }
 

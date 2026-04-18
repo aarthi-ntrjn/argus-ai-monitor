@@ -165,4 +165,35 @@ describe('SlackNotifier', () => {
       expect(mockPostMessage).not.toHaveBeenCalled();
     });
   });
+
+  describe('onPendingChoice', () => {
+    it('posts question and choices as a thread reply', async () => {
+      const notifier = makeNotifier();
+      (notifier as any).threadAnchors.set(baseSession.id, 'thread-ts');
+      await notifier.onPendingChoice({ sessionId: baseSession.id, question: 'Proceed?', choices: ['Yes', 'No'] });
+      expect(mockPostMessage).toHaveBeenCalledOnce();
+      const call = mockPostMessage.mock.calls[0][0];
+      expect(call.thread_ts).toBe('thread-ts');
+      expect(call.text).toContain('Proceed?');
+    });
+
+    it('skips when no thread anchor exists for the session', async () => {
+      const notifier = makeNotifier();
+      // No threadAnchors entry set for baseSession.id
+      await notifier.onPendingChoice({ sessionId: baseSession.id, question: 'Proceed?', choices: [] });
+      expect(mockPostMessage).not.toHaveBeenCalled();
+    });
+
+    it('skips when not in enabledEventTypes', async () => {
+      const notifier = new SlackNotifier(
+        { ...baseConfig, enabledEventTypes: ['session.ended'] },
+        mockMonitor,
+      );
+      (notifier as any).client = { chat: { postMessage: mockPostMessage } };
+      (notifier as any).active = true;
+      (notifier as any).threadAnchors.set(baseSession.id, 'thread-ts');
+      await notifier.onPendingChoice({ sessionId: baseSession.id, question: 'Proceed?', choices: [] });
+      expect(mockPostMessage).not.toHaveBeenCalled();
+    });
+  });
 });
