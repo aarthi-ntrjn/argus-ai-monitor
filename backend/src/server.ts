@@ -31,11 +31,10 @@ import { telemetryService } from './services/telemetry-service.js';
 import { SessionMonitor } from './services/session-monitor.js';
 import { startPruningJob } from './services/pruning-job.js';
 import { TeamsIntegrationService } from './services/teams-integration.js';
+import { TeamsListener } from './services/teams-listener.js';
 import { FastifyTeamsAdapter } from './services/teams-sdk-adapter.js';
 import { outputStore } from './services/output-store.js';
 import { loadTeamsConfig } from './config/teams-config-loader.js';
-import { getTeamsThreadByTeamsId } from './db/database.js';
-import { SessionController } from './services/session-controller.js';
 import type { Session, Repository } from './models/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -44,6 +43,7 @@ const __dirname = dirname(__filename);
 let monitor: SessionMonitor | null = null;
 let slackNotifier: SlackNotifier | null = null;
 let slackListener: SlackListener | null = null;
+let teamsListener: TeamsListener | null = null;
 
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 const ABS_PATH_RE = /([A-Za-z]:[\\/]|\/)[^\s:)]+[\\/]([^\s:)]+)/g;
@@ -61,11 +61,6 @@ function extractOrigin(stack: string | undefined): string {
   return frame ? sanitizeForTelemetry(frame.trim()) : 'unknown';
 }
 
-function extractThreadId(conversationId: string | undefined): string | null {
-  if (!conversationId) return null;
-  const match = conversationId.match(/messageid=([^;]+)/);
-  return match ? match[1] : null;
-}
 
 export async function buildServer() {
   const config = loadConfig();
@@ -104,51 +99,8 @@ export async function buildServer() {
     clientSecret: process.env.CLIENT_SECRET,
     tenantId: process.env.TENANT_ID,
   });
-  teamsApp.message(/.*/, async (ctx) => {
-    const teamsConfig = loadTeamsConfig();
-    const senderAadObjectId = (ctx.activity.from as Record<string, unknown>)?.['aadObjectId'] as string | undefined;
-    app.log.info({ senderAadObjectId, source: 'teams.message' }, 'teams.message.received');
-
-    if (!senderAadObjectId || senderAadObjectId !== teamsConfig.ownerAadObjectId) {
-      app.log.info({ senderAadObjectId, source: 'teams.message' }, 'teams.message.rejected.non-owner');
-      return;
-    }
-
-    const threadId = extractThreadId(ctx.activity.conversation?.id);
-    if (!threadId) return;
-
-    const thread = getTeamsThreadByTeamsId(threadId);
-    if (!thread) {
-      app.log.warn({ threadId, source: 'teams.message' }, 'teams.message.unknown.thread');
-      return;
-    }
-
-    const raw = ctx.activity.text ?? '';
-    const text = raw.replace(/<at>[^<]*<\/at>/g, '').trim();
-    if (!text) return;
-
-    app.log.info({ sessionId: thread.sessionId, text, source: 'Teams' }, 'teams.message.command.received');
-    let errorMessage: string | null = null;
-    try {
-      const action = await new SessionController().sendPrompt(thread.sessionId, text);
-      app.log.info({ sessionId: thread.sessionId, actionId: action.id, status: action.status, result: action.result, source: 'Teams' }, 'teams.message.command.dispatched');
-      if (action.status === 'failed') errorMessage = action.result ?? 'Unknown error';
-    } catch (err) {
-      app.log.warn({ err, sessionId: thread.sessionId, source: 'Teams' }, 'teams.message.command.failed');
-      errorMessage = err instanceof Error ? err.message : String(err);
-    }
-    if (errorMessage) {
-      const cfg = loadTeamsConfig();
-      if (cfg.channelId) {
-        try {
-          const threadConvId = `${cfg.channelId};messageid=${thread.teamsThreadId}`;
-          await teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text: `**Could not deliver message:** ${errorMessage}` });
-        } catch (replyErr) {
-          app.log.warn({ err: replyErr, sessionId: thread.sessionId }, 'teams.message.error-reply.failed');
-        }
-      }
-    }
-  });
+  teamsListener = new TeamsListener(teamsApp, app.log as any);
+  teamsListener.initialize();
   await teamsApp.initialize();
 
   const frontendDist = join(__dirname, '..', '..', 'frontend', 'dist');
@@ -261,8 +213,8 @@ export async function startServer() {
     });
   }
 
-  process.on('SIGTERM', async () => { telemetryService.sendEvent('app_ended'); teamsService.shutdown(); slackListener?.shutdown(); slackNotifier?.shutdown(); monitor?.stop(); await app.close(); process.exit(0); });
-  process.on('SIGINT', async () => { telemetryService.sendEvent('app_ended'); teamsService.shutdown(); slackListener?.shutdown(); slackNotifier?.shutdown(); monitor?.stop(); await app.close(); process.exit(0); });
+  process.on('SIGTERM', async () => { telemetryService.sendEvent('app_ended'); teamsService.shutdown(); teamsListener?.shutdown(); slackListener?.shutdown(); slackNotifier?.shutdown(); monitor?.stop(); await app.close(); process.exit(0); });
+  process.on('SIGINT', async () => { telemetryService.sendEvent('app_ended'); teamsService.shutdown(); teamsListener?.shutdown(); slackListener?.shutdown(); slackNotifier?.shutdown(); monitor?.stop(); await app.close(); process.exit(0); });
 
   await app.listen({ port: config.port, host: '127.0.0.1' });
   app.log.info({ port: config.port }, 'Argus server started');

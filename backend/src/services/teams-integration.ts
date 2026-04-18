@@ -7,7 +7,7 @@ import { getTeamsThread, upsertTeamsThread, deleteTeamsThread, getRepository } f
 import type { Repository, NotificationIntegration } from '../models/index.js';
 import { MessageQueue } from './message-queue.js';
 
-type TeamsLogger = Logger & { teams: LogFn };
+export type TeamsLogger = Logger & { teams: LogFn };
 
 type TrackedSessionState = {
   status: string;
