@@ -119,7 +119,29 @@ export class TeamsIntegrationService implements NotificationIntegration {
           await this.teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text: this._formatReconnectMessage(session) });
           this.logger.teams({ ...this._sessionCtx(session), teamsThreadId: existing.teamsThreadId }, 'teams.thread.reused.notified');
         } catch (err) {
-          this.logger.warn({ ...this._sessionCtx(session), err }, 'teams.thread.reused.notify.failed');
+          if (isTeamsThreadNotFound(err)) {
+            // Stale anchor: the parent message was deleted. Clear the row and create a new thread.
+            this.logger.warn({ ...this._sessionCtx(session) }, 'teams.thread.stale.detected');
+            deleteTeamsThread(session.id);
+            const repo = getRepository(session.repositoryId);
+            try {
+              const sent = await this.teamsApp.send(channelId, { type: 'message', text: this._formatOpeningMessage(session, repo) });
+              upsertTeamsThread({
+                id: randomUUID(),
+                sessionId: session.id,
+                teamsThreadId: sent.id,
+                teamsChannelId: channelId,
+                tenantId: process.env.TENANT_ID ?? '',
+                createdAt: new Date().toISOString(),
+              });
+              this.lastPostedState.set(session.id, extractTrackedState(session));
+              this.logger.teams({ ...this._sessionCtx(session), teamsThreadId: sent.id }, 'teams.thread.stale.recovered');
+            } catch (retryErr) {
+              this.logger.error({ ...this._sessionCtx(session), err: retryErr }, 'teams.thread.stale.recover.failed');
+            }
+          } else {
+            this.logger.warn({ ...this._sessionCtx(session), err }, 'teams.thread.reused.notify.failed');
+          }
         }
       }, 'session.created', session.id);
       return;
@@ -315,4 +337,14 @@ export class TeamsIntegrationService implements NotificationIntegration {
       field('Ended', session.endedAt ?? new Date().toISOString()),
     ].join('\n');
   }
+}
+
+function isTeamsThreadNotFound(err: unknown): boolean {
+  const status = (err as any)?.statusCode ?? (err as any)?.status ?? (err as any)?.response?.status;
+  if (status === 404) return true;
+  if (err instanceof Error) {
+    const msg = err.message.toLowerCase();
+    return msg.includes('not found') || msg.includes('404') || msg.includes('does not exist');
+  }
+  return false;
 }

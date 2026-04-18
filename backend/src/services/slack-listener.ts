@@ -40,14 +40,14 @@ export class SlackListener {
       await ack();
       // Skip DMs: the 'message' handler covers those, avoid double-processing
       if (event.channel.startsWith('D')) return;
-      await this.handleIncoming(event.text, event.channel, event.ts, event.thread_ts);
+      await this.handleIncoming(event.text, event.channel, event.ts, event.user, event.thread_ts);
     });
 
     this.socketClient.on('message', async ({ event, ack }: { event: MessageEvent & { channel_type?: string }; ack: () => Promise<void> }) => {
       await ack();
       // Only handle direct messages (channel type 'im')
       if (event.channel_type !== 'im') return;
-      await this.handleIncoming(event.text ?? '', event.channel, event.ts, event.thread_ts);
+      await this.handleIncoming(event.text ?? '', event.channel, event.ts, event.user, event.thread_ts);
     });
 
     this.socketClient.start().then(() => {
@@ -70,9 +70,15 @@ export class SlackListener {
   // Message handling
   // -------------------------------------------------------------------------
 
-  private async handleIncoming(text: string, channel: string, messageTs: string, parentThreadTs?: string): Promise<void> {
+  private async handleIncoming(text: string, channel: string, messageTs: string, userId: string | undefined, parentThreadTs?: string): Promise<void> {
     try {
-      logger.info(`${LOG_TAG} Incoming message: channel=${channel} ts=${messageTs} thread_ts=${parentThreadTs ?? 'none'} text=${JSON.stringify(text)}`);
+      logger.info(`${LOG_TAG} Incoming message: channel=${channel} ts=${messageTs} thread_ts=${parentThreadTs ?? 'none'} userId=${userId ?? 'unknown'} text=${JSON.stringify(text)}`);
+
+      if (this.config.ownerUserId && userId !== this.config.ownerUserId) {
+        logger.info(`${LOG_TAG} Rejected message from non-owner userId=${userId ?? 'unknown'}`);
+        return;
+      }
+
       const replyThreadTs = parentThreadTs ?? messageTs;
       const blocks = await this.handleArgusQuery(text, parentThreadTs);
       await this.webClient.chat.postMessage({ channel, blocks, thread_ts: replyThreadTs, text: 'Argus response' });
@@ -221,6 +227,7 @@ interface AppMentionEvent {
   text: string;
   channel: string;
   ts: string;
+  user: string;
   thread_ts?: string;
 }
 
@@ -228,6 +235,7 @@ interface MessageEvent {
   text?: string;
   channel: string;
   ts: string;
+  user?: string;
   thread_ts?: string;
 }
 
