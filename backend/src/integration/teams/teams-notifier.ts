@@ -190,7 +190,7 @@ export class TeamsNotifier implements NotificationIntegration {
       (o.role === 'assistant' || o.role === 'user'));
     if (relevant.length === 0) return;
     const text = relevant.map(o =>
-      o.role === 'user' ? `You asked: ${o.content}` : o.content
+      o.role === 'user' ? `**You said:** ${o.content}` : o.content
     ).join('\n\n');
     const { channelId } = config as { channelId: string };
 

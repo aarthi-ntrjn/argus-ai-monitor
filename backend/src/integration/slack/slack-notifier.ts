@@ -234,7 +234,7 @@ export class SlackNotifier implements NotificationIntegration {
     if (relevant.length === 0) return;
 
     const text = relevant.map((o) =>
-      o.role === 'user' ? `You asked: ${o.content}` : o.content
+      o.role === 'user' ? `*You said:* ${o.content}` : o.content
     ).join('\n\n');
     this.queue.enqueue(async () => {
       const threadTs = this.threadAnchors.get(sessionId);
