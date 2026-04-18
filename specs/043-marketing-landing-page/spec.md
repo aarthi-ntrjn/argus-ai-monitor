@@ -107,7 +107,7 @@ A developer who uses Argus wants to share it with teammates. They need a clean, 
 
 ## Assumptions
 
-- The landing page will be a standalone static site, separate from the running Argus app (similar in style to openclaw.ai and authentive.ai), hosted on GitHub Pages at `argus-ai-monitor.github.io`.
+- The landing page will be a standalone static site, separate from the running Argus app (similar in style to openclaw.ai and authentive.ai), hosted on GitHub Pages. A custom domain will be configured once chosen; the site will fall back to `argus-ai-monitor.github.io` until then.
 - Existing product screenshots from `docs/images/` will be used as assets; no new screenshot production is required for v1.
 - The primary audience is software developers who work with Claude Code or GitHub Copilot CLI.
 - There is no backend required; all badge counts and social proof elements are fetched client-side or embedded as static shield.io badges.
