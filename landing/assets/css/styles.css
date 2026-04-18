@@ -378,7 +378,7 @@ code {
 }
 
 .badge {
-  height: 28px;
+  height: 20px;
   border-radius: var(--radius-sm);
   display: block;
 }
