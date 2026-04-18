@@ -7,7 +7,6 @@ export function useIntegrationControl() {
   const { data } = useQuery({
     queryKey: ['integration-status'],
     queryFn: getIntegrationStatus,
-    refetchInterval: 5000,
   });
 
   const teamsConfigured = data?.teams.notifier !== null;
