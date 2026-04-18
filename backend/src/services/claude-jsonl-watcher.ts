@@ -30,14 +30,14 @@ export class ClaudeJsonlWatcher {
 
     this.filePositions.set(sessionId, 0);
     this.sequenceCounters.set(sessionId, 0);
-    await this.readNewLines(sessionId, jsonlPath);
+    await this.readNewLines(sessionId, jsonlPath, { skipNotifications: true });
 
     const watcher = chokidar.watch(jsonlPath, { persistent: false, usePolling: false });
     watcher.on('change', () => { this.readNewLines(sessionId, jsonlPath).catch(() => {}); });
     this.watchers.set(sessionId, watcher);
   }
 
-  private async readNewLines(sessionId: string, filePath: string): Promise<void> {
+  private async readNewLines(sessionId: string, filePath: string, options?: { skipNotifications?: boolean }): Promise<void> {
     try {
       const { size: currentSize } = await fsStat(filePath);
       const lastPos = this.filePositions.get(sessionId) ?? 0;
@@ -69,7 +69,7 @@ export class ClaudeJsonlWatcher {
 
       this.sequenceCounters.set(sessionId, seq);
       if (outputs.length > 0) {
-        outputStore.insertOutput(sessionId, outputs);
+        outputStore.insertOutput(sessionId, outputs, options);
         this.applyActivityUpdate(sessionId);
       }
       this.applySummaryUpdate(sessionId, outputs);

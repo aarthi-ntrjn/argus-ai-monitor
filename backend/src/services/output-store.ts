@@ -23,11 +23,11 @@ export class OutputStore {
     this.outputListeners.delete(fn);
   }
 
-  insertOutput(sessionId: string, outputs: SessionOutput[]): void {
+  insertOutput(sessionId: string, outputs: SessionOutput[], options?: { skipNotifications?: boolean }): void {
     for (const output of outputs) {
       dbInsertOutput(output);
     }
-    if (outputs.length > 0) {
+    if (outputs.length > 0 && !options?.skipNotifications) {
       for (const listener of this.outputListeners) {
         try { listener(sessionId, outputs); } catch { /* listeners must not crash the store */ }
       }
