@@ -51,7 +51,7 @@ export class TeamsListener implements NotificationListener {
 
       try {
         const response = await this.handleArgusQuery(text, conversationId);
-        if (conversationId) {
+        if (conversationId && response) {
           await this.teamsApp.api.conversations.activities(conversationId).create({ type: 'message', text: response });
         }
       } catch (err) {
@@ -131,7 +131,7 @@ export class TeamsListener implements NotificationListener {
   private async formatSendPrompt(prompt: string, conversationId: string | undefined): Promise<string> {
     const threadId = extractThreadId(conversationId);
     if (!threadId) {
-      return '`send` must be used inside a session thread.';
+      return 'This message must be sent inside a session thread.';
     }
 
     const thread = getTeamsThreadByTeamsId(threadId);
@@ -151,7 +151,7 @@ export class TeamsListener implements NotificationListener {
       return `Failed to send prompt to \`${thread.sessionId}\`: ${action.result ?? 'unknown error'}`;
     }
 
-    return `Prompt sent to session \`${thread.sessionId}\` (action \`${action.id}\`)`;
+    return '';
   }
 
   private formatHelp(): string {

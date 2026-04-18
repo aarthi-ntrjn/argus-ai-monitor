@@ -91,7 +91,9 @@ export class SlackListener implements NotificationListener {
 
       const replyThreadTs = parentThreadTs ?? messageTs;
       const blocks = await this.handleArgusQuery(text, parentThreadTs);
-      await this.webClient.chat.postMessage({ channel, blocks, thread_ts: replyThreadTs, text: 'Argus response' });
+      if (blocks.length > 0) {
+        await this.webClient.chat.postMessage({ channel, blocks, thread_ts: replyThreadTs, text: 'Argus response' });
+      }
     } catch (err) {
       logger.error(`${LOG_TAG} Failed to handle incoming message:`, err);
     }
@@ -170,7 +172,7 @@ export class SlackListener implements NotificationListener {
     if (!parentThreadTs) {
       return [{
         type: 'section',
-        text: { type: 'mrkdwn', text: ':warning: `send` must be used inside a session thread.' },
+        text: { type: 'mrkdwn', text: ':warning: This message must be sent inside a session thread.' },
       }];
     }
 
@@ -200,10 +202,7 @@ export class SlackListener implements NotificationListener {
       }];
     }
 
-    return [{
-      type: 'section',
-      text: { type: 'mrkdwn', text: `:white_check_mark: Prompt sent to session \`${sessionId}\` (action \`${action.id}\`)` },
-    }];
+    return [];
   }
 
   private buildHelpBlocks(): Block[] {
