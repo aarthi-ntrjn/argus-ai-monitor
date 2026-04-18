@@ -347,3 +347,14 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 **Why it was missed**: The reconnect path was added in T114 and tested for `workspace_id` and `register` replay, but the test used `pid: 1` in `registerInfo` directly — it never exercised the case where `pid` starts as `null` and is resolved later via `updatePid()` while the WS is already open.
 **How to prevent**: Any field that can be updated after initial registration (pid, workspaceSessionId) must be kept in sync in the object used for reconnect replay. Treat `registerInfo` as the source of truth for what the next `register` message will contain, and update it eagerly on every mutation.
 **Fix summary**: Added `if (this.registerInfo) { this.registerInfo = { ...this.registerInfo, pid }; }` at the top of `updatePid()` in `backend/src/cli/argus-launch-client.ts`, before the `isOpen` check.
+
+---
+
+## T124 — Historical JSONL outputs re-sent to Slack/Teams on session detection
+
+**Date**: 2026-04-18
+**Symptom**: When Argus detects an existing Claude Code session, all historical messages from the session's JSONL file are re-sent as new Slack and Teams notifications, flooding the channel with past conversation.
+**Root cause**: `ClaudeJsonlWatcher.watchFile()` sets `filePositions` to 0 (start of file) and calls `readNewLines()` immediately, reading the entire JSONL history. `readNewLines()` passes all parsed outputs to `outputStore.insertOutput()`, which unconditionally fires output listeners (Teams) and emits `session.output.batch` (Slack) for every batch, regardless of whether the data is historical or new.
+**Why it was missed**: The initial read was designed to populate the UI output stream from history — a legitimate need. But `insertOutput()` treated every call identically: DB write plus notification. The dual purpose (populate UI vs. notify integrations) was never separated.
+**How to prevent**: Any function that inserts data for UI replay (bootstrapping a cache from stored/historical records) must not trigger side-effect notifications designed for live events. Annotate call sites with the intent: historical reads should always pass `{ skipNotifications: true }` so the distinction is explicit in code rather than implicit in timing.
+**Fix summary**: Added `options?: { skipNotifications?: boolean }` to `OutputStore.insertOutput()` in `backend/src/services/output-store.ts`. Changed `ClaudeJsonlWatcher.watchFile()` to call `readNewLines(..., { skipNotifications: true })` for the initial historical read. Subsequent `chokidar` change events call `readNewLines()` without the flag, so live output continues to notify normally.
