@@ -3,8 +3,8 @@ import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { loadTeamsConfig } from '../../config/teams-config-loader.js';
-import type { SlackNotifier } from '../../services/slack-notifier.js';
-import type { SlackListener } from '../../services/slack-listener.js';
+import type { SlackNotifier } from '../../integration/slack/slack-notifier.js';
+import type { SlackListener } from '../../integration/slack/slack-listener.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

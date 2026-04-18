@@ -12,7 +12,7 @@ vi.mock('../../src/config/teams-config-loader.js', () => ({
   loadTeamsConfig: vi.fn(),
 }));
 
-import { TeamsNotifier } from '../../src/services/teams-notifier.js';
+import { TeamsNotifier } from '../../src/integration/teams/teams-notifier.js';
 import { getTeamsThread, upsertTeamsThread } from '../../src/db/database.js';
 import { loadTeamsConfig } from '../../src/config/teams-config-loader.js';
 import type { Session } from '../../src/models/index.js';

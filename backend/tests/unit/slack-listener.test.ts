@@ -5,7 +5,7 @@ vi.mock('../../src/db/database.js', () => ({
   getSession: vi.fn(),
 }));
 
-import { SlackListener } from '../../src/services/slack-listener.js';
+import { SlackListener } from '../../src/integration/slack/slack-listener.js';
 import { getSessions, getSession } from '../../src/db/database.js';
 import type { Session } from '../../src/models/index.js';
 

@@ -1,11 +1,11 @@
 import { randomUUID } from 'crypto';
 import type { Logger, LogFn } from 'pino';
 import type { App } from '@microsoft/teams.apps';
-import type { Session, SessionOutput } from '../models/index.js';
-import { loadTeamsConfig } from '../config/teams-config-loader.js';
-import { getTeamsThread, upsertTeamsThread, deleteTeamsThread, getRepository } from '../db/database.js';
-import type { Repository, NotificationIntegration } from '../models/index.js';
-import { MessageQueue } from './message-queue.js';
+import type { Session, SessionOutput } from '../../models/index.js';
+import { loadTeamsConfig } from '../../config/teams-config-loader.js';
+import { getTeamsThread, upsertTeamsThread, deleteTeamsThread, getRepository } from '../../db/database.js';
+import type { Repository, NotificationIntegration } from '../../models/index.js';
+import { MessageQueue } from '../../services/message-queue.js';
 
 export type TeamsLogger = Logger & { teams: LogFn };
 

@@ -1,10 +1,10 @@
 import { SocketModeClient } from '@slack/socket-mode';
 import { WebClient } from '@slack/web-api';
-import type { SlackConfig } from '../models/index.js';
-import { getSessions, getSession } from '../db/database.js';
-import { SessionController } from './session-controller.js';
+import type { SlackConfig } from '../../models/index.js';
+import { getSessions, getSession } from '../../db/database.js';
+import { SessionController } from '../../services/session-controller.js';
 import type { SlackNotifier } from './slack-notifier.js';
-import * as logger from '../utils/logger.js';
+import * as logger from '../../utils/logger.js';
 
 const LOG_TAG = '[SlackListener]';
 

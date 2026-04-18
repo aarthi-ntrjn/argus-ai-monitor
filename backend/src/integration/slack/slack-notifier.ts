@@ -1,10 +1,10 @@
 import { WebClient } from '@slack/web-api';
-import type { SessionMonitor } from './session-monitor.js';
-import type { Session, Repository, SlackConfig, SessionOutput, NotificationIntegration } from '../models/index.js';
+import type { SessionMonitor } from '../../services/session-monitor.js';
+import type { Session, Repository, SlackConfig, SessionOutput, NotificationIntegration } from '../../models/index.js';
 import { randomUUID } from 'crypto';
-import { getRepository, getSlackThread, getSlackThreadByTs, upsertSlackThread, deleteSlackThread } from '../db/database.js';
-import { MessageQueue } from './message-queue.js';
-import { outputEvents } from './output-store.js';
+import { getRepository, getSlackThread, getSlackThreadByTs, upsertSlackThread, deleteSlackThread } from '../../db/database.js';
+import { MessageQueue } from '../../services/message-queue.js';
+import { outputEvents } from '../../services/output-store.js';
 import {
   SESSION_CREATED,
   SESSION_UPDATED,
@@ -12,8 +12,8 @@ import {
   SESSION_AI_RESPONSE,
   REPOSITORY_ADDED,
   REPOSITORY_REMOVED,
-} from '../constants/slack-events.js';
-import * as logger from '../utils/logger.js';
+} from '../../constants/slack-events.js';
+import * as logger from '../../utils/logger.js';
 
 const LOG_TAG = '[SlackNotifier]';
 

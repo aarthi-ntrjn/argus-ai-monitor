@@ -9,7 +9,7 @@ vi.mock('../../src/db/database.js', () => ({
 }));
 
 
-import { SlackNotifier } from '../../src/services/slack-notifier.js';
+import { SlackNotifier } from '../../src/integration/slack/slack-notifier.js';
 import { getSlackThread, upsertSlackThread, deleteSlackThread } from '../../src/db/database.js';
 import type { Session } from '../../src/models/index.js';
 
