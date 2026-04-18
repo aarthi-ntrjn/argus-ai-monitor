@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Argus is your command center for AI coding sessions. Monitor, control, and inspect Claude Code and GitHub Copilot CLI sessions from a single browser tab.">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Argus: Command Center for AI Coding Sessions">
+  <meta property="og:description" content="Monitor, control, and inspect Claude Code and GitHub Copilot CLI sessions from a single browser tab. Free and open source.">
+  <meta property="og:image" content="https://aarthi-ntrjn.github.io/argus/assets/images/argus.png">
+  <meta property="og:url" content="https://aarthi-ntrjn.github.io/argus">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Argus: Command Center for AI Coding Sessions">
+  <meta name="twitter:description" content="Monitor, control, and inspect Claude Code and GitHub Copilot CLI sessions from a single browser tab. Free and open source.">
+  <meta name="twitter:image" content="https://aarthi-ntrjn.github.io/argus/assets/images/argus.png">
+
+  <title>Argus: Command Center for AI Coding Sessions</title>
+  <link rel="icon" href="assets/images/argus-icon.png" type="image/png">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="container nav__inner">
+      <a href="/" class="nav__brand">
+        <img src="assets/images/argus-icon.png" alt="" class="nav__logo" aria-hidden="true" width="32" height="32">
+        <span class="nav__name">Argus</span>
+      </a>
+      <div class="nav__links">
+        <a href="https://github.com/aarthi-ntrjn/argus" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="https://www.npmjs.com/package/argus-ai-hub" target="_blank" rel="noopener noreferrer" class="btn btn--primary btn--sm">Get Started</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <header class="hero" data-testid="hero">
+    <div class="container hero__inner">
+      <div class="hero__content">
+        <h1 class="hero__headline">Your command center for AI coding sessions</h1>
+        <p class="hero__supported">
+          Works with
+          <span class="hero__badge hero__badge--claude">
+            <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" aria-label="Claude"><path d="m4.7144 15.9555 4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.759 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z"/></svg>
+            Claude Code
+          </span>
+          <span class="hero__badge hero__badge--copilot">
+            <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" aria-label="GitHub Copilot"><path d="M23.922 16.997C23.061 18.492 18.063 22.02 12 22.02 5.937 22.02.939 18.492.078 16.997A.641.641 0 0 1 0 16.741v-2.869a.883.883 0 0 1 .053-.22c.372-.935 1.347-2.292 2.605-2.656.167-.429.414-1.055.644-1.517a10.098 10.098 0 0 1-.052-1.086c0-1.331.282-2.499 1.132-3.368.397-.406.89-.717 1.474-.952C7.255 2.937 9.248 1.98 11.978 1.98c2.731 0 4.767.957 6.166 2.093.584.235 1.077.546 1.474.952.85.869 1.132 2.037 1.132 3.368 0 .368-.014.733-.052 1.086.23.462.477 1.088.644 1.517 1.258.364 2.233 1.721 2.605 2.656a.841.841 0 0 1 .053.22v2.869a.641.641 0 0 1-.078.256Zm-11.75-5.992h-.344a4.359 4.359 0 0 1-.355.508c-.77.947-1.918 1.492-3.508 1.492-1.725 0-2.989-.359-3.782-1.259a2.137 2.137 0 0 1-.085-.104L4 11.746v6.585c1.435.779 4.514 2.179 8 2.179 3.486 0 6.565-1.4 8-2.179v-6.585l-.098-.104s-.033.045-.085.104c-.793.9-2.057 1.259-3.782 1.259-1.59 0-2.738-.545-3.508-1.492a4.359 4.359 0 0 1-.355-.508Zm2.328 3.25c.549 0 1 .451 1 1v2c0 .549-.451 1-1 1-.549 0-1-.451-1-1v-2c0-.549.451-1 1-1Zm-5 0c.549 0 1 .451 1 1v2c0 .549-.451 1-1 1-.549 0-1-.451-1-1v-2c0-.549.451-1 1-1Zm3.313-6.185c.136 1.057.403 1.913.878 2.497.442.544 1.134.938 2.344.938 1.573 0 2.292-.337 2.657-.751.384-.435.558-1.15.558-2.361 0-1.14-.243-1.847-.705-2.319-.477-.488-1.319-.862-2.824-1.025-1.487-.161-2.192.138-2.533.529-.269.307-.437.808-.438 1.578v.021c0 .265.021.562.063.893Zm-1.626 0c.042-.331.063-.628.063-.894v-.02c-.001-.77-.169-1.271-.438-1.578-.341-.391-1.046-.69-2.533-.529-1.505.163-2.347.537-2.824 1.025-.462.472-.705 1.179-.705 2.319 0 1.211.175 1.926.558 2.361.365.414 1.084.751 2.657.751 1.21 0 1.902-.394 2.344-.938.475-.584.742-1.44.878-2.497Z"/></svg>
+            GitHub Copilot CLI
+          </span>
+        </p>
+        <p class="hero__supported">
+          Tested on
+          <span class="hero__badge hero__badge--os">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" aria-label="Windows"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+            Windows
+          </span>
+          <span class="hero__badge hero__badge--os">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" aria-label="macOS"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>
+            macOS
+          </span>
+        </p>
+        <p class="hero__subheadline">
+          Monitor and control <strong>Claude Code</strong> and <strong>GitHub Copilot CLI</strong> sessions
+          from a single browser tab. See what your agents are doing, stream their output live,
+          and take back control at any moment.
+        </p>
+        <div class="hero__install">
+          <code class="install-command" id="install-command">npx argus-ai-hub</code>
+          <button
+            class="btn btn--ghost install-copy"
+            id="copy-btn"
+            data-testid="copy-btn"
+            data-copy="npx argus-ai-hub"
+            aria-label="Copy install command"
+          >
+            <span data-testid="copy-feedback" class="copy-label">Copy</span>
+          </button>
+        </div>
+        <div class="hero__ctas">
+          <a
+            href="https://github.com/aarthi-ntrjn/argus"
+            class="btn btn--primary"
+            target="_blank"
+            rel="noopener noreferrer"
+          >View on GitHub</a>
+          <a
+            href="https://www.npmjs.com/package/argus-ai-hub"
+            class="btn btn--outline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >View on npm</a>
+        </div>
+      </div>
+      <div class="hero__image-wrap">
+        <img
+          src="assets/images/argus.png"
+          alt="Argus dashboard showing live Claude Code and Copilot CLI sessions with status badges and elapsed time"
+          class="hero__image"
+          loading="eager"
+          width="900"
+          height="560"
+        >
+      </div>
+    </div>
+  </header>
+
+  <!-- FEATURES -->
+  <section class="features" id="features">
+    <div class="container">
+      <h2 class="section-title">Everything you need to stay in control</h2>
+
+      <div class="feature-block feature-block--image-right" data-testid="feature-monitor">
+        <div class="feature-block__text">
+          <h3>Monitor</h3>
+          <p>
+            See all your running AI sessions at a glance. Each session card shows the tool (Claude Code
+            or Copilot CLI), current status, active model, process ID, and elapsed time. No more
+            switching terminal windows to check what is running.
+          </p>
+        </div>
+        <div class="feature-block__image-wrap">
+          <img
+            src="assets/images/argus-sessions.png"
+            alt="Argus session list showing multiple Claude Code and Copilot sessions with live status badges"
+            loading="lazy"
+            data-testid="feature-img-monitor"
+            class="feature-block__image"
+          >
+        </div>
+      </div>
+
+      <div class="feature-block feature-block--image-left" data-testid="feature-output">
+        <div class="feature-block__image-wrap">
+          <img
+            src="assets/images/argus-session-stream.png"
+            alt="Argus session stream showing color-coded message types: YOU, AI, TOOL, and RESULT"
+            loading="lazy"
+            data-testid="feature-img-output"
+            class="feature-block__image"
+          >
+        </div>
+        <div class="feature-block__text">
+          <h3>Session Output</h3>
+          <p>
+            Stream session output in real time with color-coded message types: YOUR prompts, AI responses,
+            TOOL calls, and RESULTS. Switch between focused mode (AI responses only) and verbose mode
+            (full trace) without leaving the browser.
+          </p>
+        </div>
+      </div>
+
+      <div class="feature-block feature-block--image-right" data-testid="feature-control">
+        <div class="feature-block__text">
+          <h3>Control</h3>
+          <p>
+            Send follow-up prompts directly to any running session, kill runaway agents before they
+            rack up tokens, and focus your terminal on the session you care about most. All from
+            a single keyboard-friendly interface.
+          </p>
+        </div>
+        <div class="feature-block__image-wrap">
+          <img
+            src="assets/images/argus-connected.png"
+            alt="Argus control panel with prompt input and session action buttons"
+            loading="lazy"
+            data-testid="feature-img-control"
+            class="feature-block__image"
+          >
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="how-it-works" id="how-it-works">
+    <div class="container">
+      <h2 class="section-title">How It Works</h2>
+      <p class="section-subtitle">Three steps to full visibility into your AI coding sessions.</p>
+      <div class="steps">
+        <div class="step-card">
+          <div class="step-card__number" aria-hidden="true">1</div>
+          <h3 class="step-card__title">Install</h3>
+          <p class="step-card__body">Run <code>npx argus-ai-hub</code> in any terminal. No global install needed; it starts up instantly.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-card__number" aria-hidden="true">2</div>
+          <h3 class="step-card__title">Add Repositories</h3>
+          <p class="step-card__body">Navigate to <code>http://localhost:7411</code>. Add a repository and Argus immediately starts monitoring all running Claude Code and Copilot CLI sessions within it.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-card__number" aria-hidden="true">3</div>
+          <h3 class="step-card__title">Launch with Argus</h3>
+          <p class="step-card__body">Stream output live, send prompts, kill runaway sessions, or focus your terminal. Stay in control without leaving the dashboard.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SOCIAL PROOF -->
+  <section class="social-proof" id="social-proof" data-testid="social-proof">
+    <div class="container social-proof__inner">
+      <a href="https://github.com/aarthi-ntrjn/argus" target="_blank" rel="noopener noreferrer">
+        <img
+          src="https://img.shields.io/github/stars/aarthi-ntrjn/argus?style=for-the-badge&logo=github&logoColor=white&label=Stars&labelColor=1e40af&color=3b82f6"
+          alt="GitHub Stars"
+          loading="lazy"
+          class="badge"
+          onerror="this.closest('a').style.display='none'"
+        >
+      </a>
+      <a href="https://www.npmjs.com/package/argus-ai-hub" target="_blank" rel="noopener noreferrer">
+        <img
+          src="https://img.shields.io/badge/Weekly%20Downloads-coming%20soon-3b82f6?style=for-the-badge&logo=npm&logoColor=white&labelColor=1e40af"
+          alt="Weekly Downloads"
+          loading="lazy"
+          class="badge"
+        >
+      </a>
+      <a href="https://www.npmjs.com/package/argus-ai-hub" target="_blank" rel="noopener noreferrer">
+        <img
+          src="https://img.shields.io/badge/npm-coming%20soon-3b82f6?style=for-the-badge&logo=npm&logoColor=white&labelColor=1e40af"
+          alt="npm version"
+          loading="lazy"
+          class="badge"
+        >
+      </a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer" data-testid="footer">
+    <div class="container footer__inner">
+      <div class="footer__links">
+        <a href="https://github.com/aarthi-ntrjn/argus" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="https://www.npmjs.com/package/argus-ai-hub" target="_blank" rel="noopener noreferrer">npm</a>
+      </div>
+      <p class="footer__copy">
+        &copy; 2025 Argus. Open source under the MIT License.
+      </p>
+    </div>
+  </footer>
+
+  <script src="assets/js/main.js"></script>
+</body>
+</html>
