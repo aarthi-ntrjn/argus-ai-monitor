@@ -59,9 +59,6 @@ export function getDb(): Database.Database {
     const controlCols = (db.pragma('table_info(control_actions)') as Array<{ name: string }>).map(c => c.name);
     if (!controlCols.includes('source')) db.exec('ALTER TABLE control_actions ADD COLUMN source TEXT');
     if (!sessionCols.includes('slack_thread_ts')) db.exec('ALTER TABLE sessions ADD COLUMN slack_thread_ts TEXT');
-    const teamsCols = (db.pragma('table_info(teams_threads)') as Array<{ name: string }>).map(c => c.name);
-    if (teamsCols.includes('current_output_message_id')) db.exec('ALTER TABLE teams_threads DROP COLUMN current_output_message_id');
-    if (teamsCols.includes('delta_link')) db.exec('ALTER TABLE teams_threads DROP COLUMN delta_link');
   }
   return db;
 }
