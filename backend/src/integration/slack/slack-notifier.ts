@@ -199,7 +199,16 @@ export class SlackNotifier implements NotificationIntegration {
 
     const blocks = buildSessionUpdatedBlocks(session, diff);
     this.queue.enqueue(async () => {
-      const threadTs = this.threadAnchors.get(session.id);
+      // Resolve thread anchor: check in-memory first, then fall back to DB for sessions
+      // detected after server restart where the anchor was persisted but not yet loaded.
+      let threadTs = this.threadAnchors.get(session.id);
+      if (!threadTs) {
+        const stored = getSlackThread(session.id);
+        if (stored) {
+          threadTs = stored.slackThreadTs;
+          this.threadAnchors.set(session.id, threadTs);
+        }
+      }
       if (!threadTs) {
         logger.error(`${LOG_TAG} No thread anchor for ${SESSION_UPDATED} session ${session.id}, cannot post`);
         return;

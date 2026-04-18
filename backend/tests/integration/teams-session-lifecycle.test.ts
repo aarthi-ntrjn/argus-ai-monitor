@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('../../src/db/database.js', () => ({
   getTeamsThread: vi.fn(),
@@ -67,9 +67,11 @@ describe('TeamsNotifier - session lifecycle', () => {
   let storedThread: any;
 
   beforeEach(() => {
+    vi.useFakeTimers();
     vi.clearAllMocks();
     mockActivities.mockReturnValue({ create: mockActivitiesCreate });
     service = new TeamsNotifier(mockTeamsApp as any, mockLogger);
+    (service as any).active = true;
 
     vi.mocked(loadTeamsConfig).mockReturnValue(config);
     storedThread = null;
@@ -79,27 +81,40 @@ describe('TeamsNotifier - session lifecycle', () => {
     mockActivitiesCreate.mockResolvedValue({ id: 'reply-msg' });
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('full lifecycle: created -> output -> ended', async () => {
     await service.onSessionCreated(session);
+    await vi.advanceTimersByTimeAsync(0); // flush microtasks: upsertTeamsThread + lastPostedState
     expect(mockTeamsApp.send).toHaveBeenCalledOnce();
     expect(upsertTeamsThread).toHaveBeenCalledOnce();
+
+    await vi.advanceTimersByTimeAsync(1200); // clear rate-limit timer after session.created
 
     const outputs: SessionOutput[] = [
       { id: '1', sessionId: session.id, timestamp: '', type: 'message', content: 'output line 1', toolName: null, toolCallId: null, role: 'assistant', sequenceNumber: 1 },
       { id: '2', sessionId: session.id, timestamp: '', type: 'message', content: 'output line 2', toolName: null, toolCallId: null, role: 'assistant', sequenceNumber: 2 },
     ];
     await service.onSessionOutput(session.id, outputs);
+    await vi.advanceTimersByTimeAsync(1200); // fire rate-limit timer and process output job
     expect(mockActivitiesCreate).toHaveBeenCalledOnce();
 
     await service.onSessionEnded({ ...session, status: 'completed' });
+    await vi.advanceTimersByTimeAsync(1200); // fire rate-limit timer and process ended job
     expect(mockActivitiesCreate).toHaveBeenCalledTimes(2);
   });
 
   it('reconnect: second onSessionCreated reuses existing thread', async () => {
     await service.onSessionCreated(session);
+    await vi.advanceTimersByTimeAsync(0); // flush microtasks so upsertTeamsThread runs and storedThread is set
     expect(mockTeamsApp.send).toHaveBeenCalledOnce();
 
+    await vi.advanceTimersByTimeAsync(1200); // clear rate-limit timer
     await service.onSessionCreated(session);
-    expect(mockTeamsApp.send).toHaveBeenCalledOnce(); // still 1
+    await vi.advanceTimersByTimeAsync(1200); // process reconnect notification job
+    expect(mockTeamsApp.send).toHaveBeenCalledOnce(); // still 1 — reused thread, no new top-level send
+    expect(mockActivitiesCreate).toHaveBeenCalledOnce(); // reconnect notification posted as reply
   });
 });

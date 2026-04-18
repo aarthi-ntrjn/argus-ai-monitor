@@ -100,11 +100,20 @@ describe('SlackListener.handleArgusQuery', () => {
     });
   });
 
-  describe('send command', () => {
+  describe('prompt dispatch (unrecognized text)', () => {
     it('returns warning when not in a thread', async () => {
       const listener = makeListener();
-      const blocks = await listener.handleArgusQuery('send hello');
-      expect((blocks[0].text as any).text).toContain('must be used inside a session thread');
+      // Any unrecognized text is treated as a prompt to the session in the current thread.
+      // Without a thread context, a warning is returned.
+      const blocks = await listener.handleArgusQuery('hello world');
+      expect((blocks[0].text as any).text).toContain('must be sent inside a session thread');
+    });
+
+    it('returns warning for any unrecognized text without a thread', async () => {
+      const listener = makeListener();
+      const blocks = await listener.handleArgusQuery('foobar');
+      expect(blocks[0].type).toBe('section');
+      expect((blocks[0].text as any).text).toContain('must be sent inside a session thread');
     });
   });
 
@@ -114,12 +123,6 @@ describe('SlackListener.handleArgusQuery', () => {
       const blocks = await listener.handleArgusQuery('help');
       expect(blocks[0].type).toBe('header');
       expect((blocks[0] as any).text.text).toContain('Help');
-    });
-
-    it('returns help blocks for unknown command', async () => {
-      const listener = makeListener();
-      const blocks = await listener.handleArgusQuery('foobar');
-      expect(blocks[0].type).toBe('header');
     });
   });
 });

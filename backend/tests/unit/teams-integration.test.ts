@@ -84,6 +84,9 @@ describe('TeamsNotifier', () => {
     vi.clearAllMocks();
     mockActivities.mockReturnValue({ create: mockActivitiesCreate });
     service = new TeamsNotifier(mockTeamsApp as any, mockLogger);
+    // Mark the service active so tests exercise the real guards (config, thread, etc.)
+    // rather than short-circuiting at the !active early-return.
+    (service as any).active = true;
   });
 
   describe('onSessionCreated', () => {
@@ -199,10 +202,10 @@ describe('TeamsNotifier', () => {
   });
 
   describe('initialize()', () => {
-    it('returns false and logs when enabled is false', () => {
+    it('returns false and logs when enabled is false', async () => {
       vi.mocked(loadTeamsConfig).mockReturnValue({ enabled: false });
 
-      const result = service.initialize();
+      const result = await service.initialize();
 
       expect(result).toBe(false);
       expect(mockLogger.info).toHaveBeenCalledWith(
@@ -211,7 +214,7 @@ describe('TeamsNotifier', () => {
       );
     });
 
-    it('returns false when enabled but teamId/channelId/ownerAadObjectId are missing', () => {
+    it('returns false when enabled but teamId/channelId/ownerAadObjectId are missing', async () => {
       vi.mocked(loadTeamsConfig).mockReturnValue({
         enabled: true,
         teamId: undefined,
@@ -219,15 +222,15 @@ describe('TeamsNotifier', () => {
         ownerAadObjectId: undefined,
       });
 
-      const result = service.initialize();
+      const result = await service.initialize();
 
       expect(result).toBe(false);
     });
 
-    it('returns true when fully configured', () => {
+    it('returns true when fully configured', async () => {
       vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
 
-      const result = service.initialize();
+      const result = await service.initialize();
 
       expect(result).toBe(true);
     });
@@ -242,6 +245,18 @@ describe('TeamsNotifier', () => {
       await service.onSessionUpdated(baseSession);
 
       expect(mockTeamsApp.send).toHaveBeenCalledOnce();
+    });
+
+    it('records baseline and skips posting when no previous state exists (server restart recovery)', async () => {
+      vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
+      vi.mocked(getTeamsThread).mockReturnValue(existingThread);
+      // No lastPostedState set: simulates server restart mid-session
+
+      await service.onSessionUpdated(baseSession);
+
+      expect(mockActivitiesCreate).not.toHaveBeenCalled();
+      // Baseline should now be recorded so future updates can diff against it
+      expect((service as any).lastPostedState.has(baseSession.id)).toBe(true);
     });
 
     it('skips posting when only untracked fields changed (e.g. lastActivityAt)', async () => {

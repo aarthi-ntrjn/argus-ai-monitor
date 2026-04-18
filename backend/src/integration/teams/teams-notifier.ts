@@ -192,6 +192,15 @@ export class TeamsNotifier implements NotificationIntegration {
 
     const prev = this.lastPostedState.get(session.id);
     const curr = extractTrackedState(session);
+
+    if (!prev) {
+      // No baseline recorded (server restart while session was running).
+      // Store current state so future updates have something to diff against.
+      this.lastPostedState.set(session.id, curr);
+      this.logger.teams({ ...this._sessionCtx(session) }, 'teams.session.updated.skipped: no baseline, recording current state');
+      return;
+    }
+
     const changes = this._diffState(prev, curr);
     if (changes.length === 0) {
       const untrackedChanges: string[] = [];
