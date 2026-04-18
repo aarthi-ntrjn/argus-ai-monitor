@@ -5,6 +5,7 @@ import type { Session, SessionOutput } from '../models/index.js';
 import { loadTeamsConfig } from '../config/teams-config-loader.js';
 import { getTeamsThread, upsertTeamsThread, deleteTeamsThread, getRepository } from '../db/database.js';
 import type { Repository } from '../models/index.js';
+import { MessageQueue } from './message-queue.js';
 
 type TeamsLogger = Logger & { teams: LogFn };
 
@@ -56,11 +57,16 @@ export class TeamsIntegrationService {
   private lastPostedState = new Map<string, TrackedSessionState>();
   private lastSeenSnapshot = new Map<string, UntrackedSessionSnapshot>();
   private active = false;
+  private readonly queue: MessageQueue;
 
   constructor(
     private readonly teamsApp: App,
     private readonly logger: TeamsLogger,
-  ) {}
+  ) {
+    this.queue = new MessageQueue((eventType, sessionId) => {
+      this.logger.warn({ ...this._logCtx(), eventType, sessionId }, 'teams: send queue full, dropping oldest message');
+    });
+  }
 
   initialize(): boolean {
     if (!this.isConfigured()) {
@@ -107,35 +113,39 @@ export class TeamsIntegrationService {
     if (existing) {
       this.logger.teams({ ...this._sessionCtx(session), teamsThreadId: existing.teamsThreadId }, 'teams.thread.reused');
       this.lastPostedState.set(session.id, extractTrackedState(session));
-      try {
-        const threadConvId = `${channelId};messageid=${existing.teamsThreadId}`;
-        await this.teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text: this._formatReconnectMessage(session) });
-        this.logger.teams({ ...this._sessionCtx(session), teamsThreadId: existing.teamsThreadId }, 'teams.thread.reused.notified');
-      } catch (err) {
-        this.logger.warn({ ...this._sessionCtx(session), err }, 'teams.thread.reused.notify.failed');
-      }
+      this.queue.enqueue(async () => {
+        try {
+          const threadConvId = `${channelId};messageid=${existing.teamsThreadId}`;
+          await this.teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text: this._formatReconnectMessage(session) });
+          this.logger.teams({ ...this._sessionCtx(session), teamsThreadId: existing.teamsThreadId }, 'teams.thread.reused.notified');
+        } catch (err) {
+          this.logger.warn({ ...this._sessionCtx(session), err }, 'teams.thread.reused.notify.failed');
+        }
+      }, 'session.created', session.id);
       return;
     }
 
     const repo = getRepository(session.repositoryId);
     this.logger.teams({ ...this._sessionCtx(session), repositoryId: session.repositoryId, repoName: repo?.name }, 'teams.thread.creating');
-    try {
-      const sent = await this.teamsApp.send(channelId, { type: 'message', text: this._formatOpeningMessage(session, repo) });
-      this.logger.teams({ ...this._sessionCtx(session), sentId: sent?.id, sentKeys: sent ? Object.keys(sent) : [] }, 'teams.thread.send.response');
-      upsertTeamsThread({
-        id: randomUUID(),
-        sessionId: session.id,
-        teamsThreadId: sent.id,
-        teamsChannelId: channelId,
-        tenantId: process.env.TENANT_ID ?? '',
-        createdAt: new Date().toISOString(),
-      });
-      const stored = getTeamsThread(session.id);
-      this.logger.teams({ ...this._sessionCtx(session), teamsThreadId: sent.id, storedThreadId: stored?.teamsThreadId, stored: !!stored }, 'teams.thread.created');
-      this.lastPostedState.set(session.id, extractTrackedState(session));
-    } catch (err) {
-      this.logger.error({ ...this._sessionCtx(session), err }, 'teams.thread.create.failed');
-    }
+    this.queue.enqueue(async () => {
+      try {
+        const sent = await this.teamsApp.send(channelId, { type: 'message', text: this._formatOpeningMessage(session, repo) });
+        this.logger.teams({ ...this._sessionCtx(session), sentId: sent?.id, sentKeys: sent ? Object.keys(sent) : [] }, 'teams.thread.send.response');
+        upsertTeamsThread({
+          id: randomUUID(),
+          sessionId: session.id,
+          teamsThreadId: sent.id,
+          teamsChannelId: channelId,
+          tenantId: process.env.TENANT_ID ?? '',
+          createdAt: new Date().toISOString(),
+        });
+        const stored = getTeamsThread(session.id);
+        this.logger.teams({ ...this._sessionCtx(session), teamsThreadId: sent.id, storedThreadId: stored?.teamsThreadId, stored: !!stored }, 'teams.thread.created');
+        this.lastPostedState.set(session.id, extractTrackedState(session));
+      } catch (err) {
+        this.logger.error({ ...this._sessionCtx(session), err }, 'teams.thread.create.failed');
+      }
+    }, 'session.created', session.id);
   }
 
   async onSessionUpdated(session: Session): Promise<void> {
@@ -176,14 +186,17 @@ export class TeamsIntegrationService {
 
     const config = loadTeamsConfig();
     const { channelId } = config as { channelId: string };
+    const text = this._formatUpdateMessage(session, changes);
 
-    try {
-      const threadConvId = `${channelId};messageid=${thread.teamsThreadId}`;
-      await this.teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text: this._formatUpdateMessage(session, changes) });
-      this.logger.teams({ ...this._sessionCtx(session), changes: changes.map(c => c.label) }, 'teams.session.updated.posted');
-    } catch (err) {
-      this.logger.error({ ...this._sessionCtx(session), err }, 'teams.session.update.notify.failed');
-    }
+    this.queue.enqueue(async () => {
+      try {
+        const threadConvId = `${channelId};messageid=${thread.teamsThreadId}`;
+        await this.teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text });
+        this.logger.teams({ ...this._sessionCtx(session), changes: changes.map(c => c.label) }, 'teams.session.updated.posted');
+      } catch (err) {
+        this.logger.error({ ...this._sessionCtx(session), err }, 'teams.session.update.notify.failed');
+      }
+    }, 'session.updated', session.id);
   }
 
   async onSessionOutput(sessionId: string, outputs: SessionOutput[]): Promise<void> {
@@ -194,17 +207,20 @@ export class TeamsIntegrationService {
     }
     const assistantMessages = outputs.filter(o => o.role === 'assistant' && o.type === 'message' && o.content.trim());
     if (assistantMessages.length === 0) return;
-    const thread = getTeamsThread(sessionId);
-    if (!thread) return;
     const text = assistantMessages.map(o => o.content).join('\n\n');
     const { channelId } = config as { channelId: string };
-    try {
-      const threadConvId = `${channelId};messageid=${thread.teamsThreadId}`;
-      await this.teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text });
-      this.logger.teams({ ...this._logCtx(), sessionId, chars: text.length }, 'teams.session.output.posted');
-    } catch (err) {
-      this.logger.error({ ...this._logCtx(), err, sessionId }, 'teams.session.output.failed');
-    }
+
+    this.queue.enqueue(async () => {
+      const thread = getTeamsThread(sessionId);
+      if (!thread) return;
+      try {
+        const threadConvId = `${channelId};messageid=${thread.teamsThreadId}`;
+        await this.teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text });
+        this.logger.teams({ ...this._logCtx(), sessionId, chars: text.length }, 'teams.session.output.posted');
+      } catch (err) {
+        this.logger.error({ ...this._logCtx(), err, sessionId }, 'teams.session.output.failed');
+      }
+    }, 'session.output', sessionId);
   }
 
   async onSessionEnded(session: Session): Promise<void> {
@@ -223,17 +239,22 @@ export class TeamsIntegrationService {
       return;
     }
 
-    try {
-      const threadConvId = `${channelId};messageid=${thread.teamsThreadId}`;
-      await this.teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text: this._formatEndedMessage(session) });
-      deleteTeamsThread(session.id);
-      this.logger.teams({ ...this._sessionCtx(session), status: session.status }, 'teams.session.ended');
-    } catch (err) {
-      this.logger.error({ ...this._sessionCtx(session), err }, 'teams.session.end.notify.failed');
-    }
+    const text = this._formatEndedMessage(session);
+    this.queue.enqueue(async () => {
+      try {
+        const threadConvId = `${channelId};messageid=${thread.teamsThreadId}`;
+        await this.teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text });
+        deleteTeamsThread(session.id);
+        this.logger.teams({ ...this._sessionCtx(session), status: session.status }, 'teams.session.ended');
+      } catch (err) {
+        this.logger.error({ ...this._sessionCtx(session), err }, 'teams.session.end.notify.failed');
+      }
+    }, 'session.ended', session.id);
   }
 
-  stop(): void {}
+  stop(): void {
+    this.queue.drain();
+  }
 
   private _diffState(prev: TrackedSessionState | undefined, curr: TrackedSessionState): { label: string; value: string }[] {
     if (!prev) return [];

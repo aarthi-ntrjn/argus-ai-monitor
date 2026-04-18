@@ -3,6 +3,7 @@ import type { SessionMonitor } from './session-monitor.js';
 import type { Session, Repository, SlackConfig, SessionOutput } from '../models/index.js';
 import { randomUUID } from 'crypto';
 import { getRepository, getSlackThread, getSlackThreadByTs, upsertSlackThread, deleteSlackThread } from '../db/database.js';
+import { MessageQueue } from './message-queue.js';
 import { outputEvents } from './output-store.js';
 import {
   SESSION_CREATED,
@@ -15,12 +16,6 @@ import {
 import * as logger from '../utils/logger.js';
 
 const LOG_TAG = '[SlackNotifier]';
-
-interface SendJob {
-  fn: () => Promise<void>;
-  eventType: string;
-  sessionId: string;
-}
 
 export class SlackNotifier {
   private config: SlackConfig;
@@ -35,15 +30,14 @@ export class SlackNotifier {
   // Previous session state for computing diffs on session.updated
   private readonly prevSessions = new Map<string, Session>();
 
-  // Rate-limit queue
-  private readonly sendQueue: SendJob[] = [];
-  private isSending = false;
-  private static readonly MAX_QUEUE_DEPTH = 50;
-  private static readonly MIN_SEND_INTERVAL_MS = 1100;
+  private readonly queue: MessageQueue;
 
   constructor(config: SlackConfig, sessionMonitor: SessionMonitor) {
     this.config = { ...config };
     this.sessionMonitor = sessionMonitor;
+    this.queue = new MessageQueue((eventType, sessionId) => {
+      logger.warn(`${LOG_TAG} Send queue full, dropping ${eventType} for session ${sessionId}`);
+    });
   }
 
   // -------------------------------------------------------------------------
@@ -77,9 +71,7 @@ export class SlackNotifier {
   }
 
   shutdown(): void {
-    // Drain the queue: no new messages will be enqueued after this point.
-    // In-flight messages complete naturally; pending ones are dropped.
-    this.sendQueue.length = 0;
+    this.queue.drain();
     logger.info(`${LOG_TAG} Shutdown complete`);
   }
 
@@ -121,7 +113,7 @@ export class SlackNotifier {
       this.threadAnchors.set(session.id, existingThreadTs);
     }
 
-    this.enqueueMessage(async () => {
+    this.queue.enqueue(async () => {
       try {
         const threadTs = this.threadAnchors.get(session.id);
         const result = await this.client!.chat.postMessage({
@@ -174,7 +166,7 @@ export class SlackNotifier {
 
     const threadTs = this.threadAnchors.get(session.id);
     const blocks = buildSessionEndBlocks(session);
-    this.enqueueMessage(async () => {
+    this.queue.enqueue(async () => {
       try {
         await this.client!.chat.postMessage({
           channel: this.config.channelId,
@@ -202,7 +194,7 @@ export class SlackNotifier {
     if (!diff || Object.keys(diff).length === 0) return;
 
     const blocks = buildSessionUpdatedBlocks(session, diff);
-    this.enqueueMessage(async () => {
+    this.queue.enqueue(async () => {
       const threadTs = this.threadAnchors.get(session.id);
       if (!threadTs) {
         logger.error(`${LOG_TAG} No thread anchor for ${SESSION_UPDATED} session ${session.id}, cannot post`);
@@ -229,7 +221,7 @@ export class SlackNotifier {
     if (assistantMessages.length === 0) return;
 
     const text = assistantMessages.map((o) => o.content).join('\n\n');
-    this.enqueueMessage(async () => {
+    this.queue.enqueue(async () => {
       const threadTs = this.threadAnchors.get(sessionId);
       if (!threadTs) return;
       try {
@@ -253,7 +245,7 @@ export class SlackNotifier {
     if (!this.isEventEnabled(eventType)) return;
 
     const blocks = buildEventBlocks(eventType, payload);
-    this.enqueueMessage(async () => {
+    this.queue.enqueue(async () => {
       // Resolve thread anchor at execution time so any preceding SESSION_CREATED job in the
       // queue has already run and set the anchor before we look it up.
       const threadTs = sessionId ? this.threadAnchors.get(sessionId) : undefined;
@@ -319,32 +311,6 @@ export class SlackNotifier {
     });
   }
 
-  // T014: rate-limit queue
-  private enqueueMessage(fn: () => Promise<void>, eventType: string, sessionId: string): void {
-    if (this.sendQueue.length >= SlackNotifier.MAX_QUEUE_DEPTH) {
-      const dropped = this.sendQueue.shift()!;
-      logger.warn(`${LOG_TAG} Send queue full, dropping ${dropped.eventType} for session ${dropped.sessionId}`);
-    }
-    this.sendQueue.push({ fn, eventType, sessionId });
-    this.processSendQueue();
-  }
-
-  private processSendQueue(): void {
-    if (this.isSending || this.sendQueue.length === 0) return;
-    const job = this.sendQueue.shift()!;
-    this.isSending = true;
-    const start = Date.now();
-    job.fn()
-      .catch(() => { /* errors are handled inside fn() */ })
-      .finally(() => {
-        const elapsed = Date.now() - start;
-        const delay = Math.max(0, SlackNotifier.MIN_SEND_INTERVAL_MS - elapsed);
-        setTimeout(() => {
-          this.isSending = false;
-          this.processSendQueue();
-        }, delay);
-      });
-  }
 }
 
 // -------------------------------------------------------------------------
