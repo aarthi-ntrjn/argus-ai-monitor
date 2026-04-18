@@ -82,12 +82,12 @@ export class TeamsListener implements NotificationListener {
       return this.formatSessionStatus(statusMatch[1]);
     }
 
-    const sendMatch = /^send\s+(.+)/s.exec(normalized);
-    if (sendMatch) {
-      return this.formatSendPrompt(sendMatch[1].trim(), conversationId);
+    if (/^help\s*$/.test(normalized)) {
+      return this.formatHelp();
     }
 
-    return this.formatHelp();
+    // Anything else is sent as a prompt to the session in this thread
+    return this.formatSendPrompt(text.trim(), conversationId);
   }
 
   // -------------------------------------------------------------------------
@@ -160,8 +160,8 @@ export class TeamsListener implements NotificationListener {
       '---',
       '`sessions` - List all active AI sessions',
       '`status <sessionId>` - Show details for a specific session',
-      '`send <message>` - Send a prompt to the session in this thread',
       '`help` - Show this help message',
+      'Anything else is sent as a prompt to the session in this thread.',
     ].join('\n');
   }
 }

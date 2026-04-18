@@ -8,7 +8,7 @@ import * as logger from '../../utils/logger.js';
 
 const LOG_TAG = '[SlackListener]';
 
-const SUPPORTED_COMMANDS = ['sessions', 'session', 'status', 'send', 'help'];
+const SUPPORTED_COMMANDS = ['sessions', 'session', 'status', 'help'];
 
 export class SlackListener implements NotificationListener {
   private readonly config: SlackConfig;
@@ -99,10 +99,8 @@ export class SlackListener implements NotificationListener {
 
   // T020: route parsed query to response blocks
   async handleArgusQuery(text: string, parentThreadTs?: string): Promise<Block[]> {
-    const normalized = text
-      .replace(/<@[A-Z0-9]+>/g, '') // strip @mentions
-      .trim()
-      .toLowerCase();
+    const cleanText = text.replace(/<@[A-Z0-9]+>/g, '').trim();
+    const normalized = cleanText.toLowerCase();
 
     if (/^sessions?\s*$/.test(normalized)) {
       return this.buildSessionListBlocks();
@@ -113,12 +111,12 @@ export class SlackListener implements NotificationListener {
       return this.buildSessionStatusBlocks(statusMatch[1]);
     }
 
-    const sendMatch = /^send\s+(.+)/s.exec(normalized);
-    if (sendMatch) {
-      return this.buildSendPromptBlocks(sendMatch[1].trim(), parentThreadTs);
+    if (/^help\s*$/.test(normalized)) {
+      return this.buildHelpBlocks();
     }
 
-    return this.buildHelpBlocks();
+    // Anything else is sent as a prompt to the session in this thread
+    return this.buildSendPromptBlocks(cleanText, parentThreadTs);
   }
 
   private buildSessionListBlocks(): Block[] {
@@ -208,7 +206,7 @@ export class SlackListener implements NotificationListener {
     }];
   }
 
-  private buildHelpBlocks(): Block[] {    const commands = SUPPORTED_COMMANDS.map((c) => `\`${c}\``).join(', ');
+  private buildHelpBlocks(): Block[] {
     return [
       { type: 'header', text: { type: 'plain_text', text: 'Argus Bot Help', emoji: false } },
       {
@@ -216,15 +214,13 @@ export class SlackListener implements NotificationListener {
         text: {
           type: 'mrkdwn',
           text: [
-            '*Supported commands:*',
             '`sessions` - List all active AI sessions',
             '`status <sessionId>` - Show details for a specific session',
-            '`send <message>` - Send a prompt to the session in this thread',
             '`help` - Show this help message',
+            '_Anything else is sent as a prompt to the session in this thread._',
           ].join('\n'),
         },
       },
-      { type: 'section', text: { type: 'mrkdwn', text: `_Available commands: ${commands}_` } },
     ];
   }
 }
