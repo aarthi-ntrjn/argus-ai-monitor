@@ -1,12 +1,13 @@
 import type { App } from '@microsoft/teams.apps';
 import { getSessions, getSession, getTeamsThreadByTeamsId } from '../../db/database.js';
+import type { NotificationListener } from '../../models/index.js';
 import { SessionController } from '../../services/session-controller.js';
 import { loadTeamsConfig } from '../../config/teams-config-loader.js';
 import type { TeamsLogger } from './teams-notifier.js';
 
 const LOG_TAG = 'teams-listener';
 
-export class TeamsListener {
+export class TeamsListener implements NotificationListener {
   private readonly sessionController: SessionController;
   private active = false;
   private handlerRegistered = false;

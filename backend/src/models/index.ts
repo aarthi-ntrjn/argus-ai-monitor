@@ -186,3 +186,9 @@ export interface NotificationIntegration {
   onSessionOutput(sessionId: string, outputs: SessionOutput[]): Promise<void>;
   shutdown(): void;
 }
+
+export interface NotificationListener {
+  readonly isRunning: boolean;
+  initialize(): void;
+  shutdown(): void;
+}

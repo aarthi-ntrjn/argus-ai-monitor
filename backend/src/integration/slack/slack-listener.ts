@@ -1,6 +1,6 @@
 import { SocketModeClient } from '@slack/socket-mode';
 import { WebClient } from '@slack/web-api';
-import type { SlackConfig } from '../../models/index.js';
+import type { SlackConfig, NotificationListener } from '../../models/index.js';
 import { getSessions, getSession } from '../../db/database.js';
 import { SessionController } from '../../services/session-controller.js';
 import type { SlackNotifier } from './slack-notifier.js';
@@ -10,7 +10,7 @@ const LOG_TAG = '[SlackListener]';
 
 const SUPPORTED_COMMANDS = ['sessions', 'session', 'status', 'send', 'help'];
 
-export class SlackListener {
+export class SlackListener implements NotificationListener {
   private readonly config: SlackConfig;
   private readonly webClient: WebClient;
   private readonly notifier: SlackNotifier;
