@@ -158,48 +158,6 @@ describe('TeamsNotifier', () => {
 
       expect(mockActivitiesCreate).not.toHaveBeenCalled();
     });
-
-    it('posts a question notification when AskUserQuestion tool_use is in the batch', async () => {
-      vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
-      vi.mocked(getTeamsThread).mockReturnValue(existingThread);
-      mockActivitiesCreate.mockResolvedValue({ id: 'question-msg' });
-
-      const outputs = [
-        {
-          id: '1', sessionId: baseSession.id, timestamp: '', type: 'tool_use' as const,
-          content: JSON.stringify({ question: 'Which directory?' }),
-          toolName: 'AskUserQuestion', toolCallId: 'tc-1', role: null, sequenceNumber: 1,
-        },
-      ];
-
-      await service.onSessionOutput(baseSession.id, outputs);
-
-      expect(mockActivitiesCreate).toHaveBeenCalledOnce();
-      const callArg = mockActivitiesCreate.mock.calls[0][0] as { type: string; text: string };
-      expect(callArg.text).toContain('Which directory?');
-      expect(callArg.text).toContain('Claude is asking');
-    });
-
-    it('does not post a question notification when already answered', async () => {
-      vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
-      vi.mocked(getTeamsThread).mockReturnValue(existingThread);
-
-      const outputs = [
-        {
-          id: '1', sessionId: baseSession.id, timestamp: '', type: 'tool_use' as const,
-          content: JSON.stringify({ question: 'Done?' }),
-          toolName: 'AskUserQuestion', toolCallId: 'tc-2', role: null, sequenceNumber: 1,
-        },
-        {
-          id: '2', sessionId: baseSession.id, timestamp: '', type: 'tool_result' as const,
-          content: 'yes', toolName: null, toolCallId: 'tc-2', role: null, sequenceNumber: 2,
-        },
-      ];
-
-      await service.onSessionOutput(baseSession.id, outputs);
-
-      expect(mockActivitiesCreate).not.toHaveBeenCalled();
-    });
   });
 
   describe('onSessionEnded', () => {

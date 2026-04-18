@@ -12,12 +12,9 @@ import {
   SESSION_UPDATED,
   SESSION_ENDED,
   SESSION_AI_RESPONSE,
-  SESSION_QUESTION,
   REPOSITORY_ADDED,
   REPOSITORY_REMOVED,
 } from '../../constants/slack-events.js';
-import { findPendingQuestion } from '../../services/pending-question.js';
-import type { PendingQuestion } from '../../services/pending-question.js';
 import * as logger from '../../utils/logger.js';
 
 const LOG_TAG = '[SlackNotifier]';
@@ -230,48 +227,28 @@ export class SlackNotifier implements NotificationIntegration {
 
   async onSessionOutput(sessionId: string, outputs: SessionOutput[]): Promise<void> {
     if (!this.active || !this.client) return;
+    if (!this.isEventEnabled(SESSION_AI_RESPONSE)) return;
 
-    if (this.isEventEnabled(SESSION_AI_RESPONSE)) {
-      const relevant = outputs.filter((o) => o.type === 'message' && o.content.trim() && !o.isMeta &&
-        (o.role === 'assistant' || o.role === 'user'));
-      if (relevant.length > 0) {
-        const text = relevant.map((o) =>
-          o.role === 'user' ? `*You said:* ${o.content}` : o.content
-        ).join('\n\n');
-        this.queue.enqueue(async () => {
-          const threadTs = this.threadAnchors.get(sessionId);
-          if (!threadTs) return;
-          try {
-            await this.client!.chat.postMessage({
-              channel: this.config.channelId,
-              text,
-              thread_ts: threadTs,
-            });
-          } catch (err) {
-            logger.error(`${LOG_TAG} Failed to post AI response for session ${sessionId}:`, err);
-          }
-        }, SESSION_AI_RESPONSE, sessionId);
-      }
-    }
+    const relevant = outputs.filter((o) => o.type === 'message' && o.content.trim() && !o.isMeta &&
+      (o.role === 'assistant' || o.role === 'user'));
+    if (relevant.length === 0) return;
 
-    if (this.isEventEnabled(SESSION_QUESTION)) {
-      const pending = findPendingQuestion(outputs);
-      if (pending) {
-        this.queue.enqueue(async () => {
-          const threadTs = this.threadAnchors.get(sessionId);
-          if (!threadTs) return;
-          try {
-            await this.client!.chat.postMessage({
-              channel: this.config.channelId,
-              text: formatSlackQuestion(pending),
-              thread_ts: threadTs,
-            });
-          } catch (err) {
-            logger.error(`${LOG_TAG} Failed to post question for session ${sessionId}:`, err);
-          }
-        }, SESSION_QUESTION, sessionId);
+    const text = relevant.map((o) =>
+      o.role === 'user' ? `*You said:* ${o.content}` : o.content
+    ).join('\n\n');
+    this.queue.enqueue(async () => {
+      const threadTs = this.threadAnchors.get(sessionId);
+      if (!threadTs) return;
+      try {
+        await this.client!.chat.postMessage({
+          channel: this.config.channelId,
+          text,
+          thread_ts: threadTs,
+        });
+      } catch (err) {
+        logger.error(`${LOG_TAG} Failed to post AI response for session ${sessionId}:`, err);
       }
-    }
+    }, SESSION_AI_RESPONSE, sessionId);
   }
 
   // -------------------------------------------------------------------------
@@ -425,14 +402,6 @@ function buildEventBlocks(eventType: string, payload: Session | Repository) {
       text: { type: 'mrkdwn', text: `*Event:* \`${eventType}\`\n*Subject:* ${summary}` },
     },
   ];
-}
-
-function formatSlackQuestion(pending: PendingQuestion): string {
-  const lines = [`:question: *Claude is asking:*`, pending.question];
-  if (pending.choices.length > 0) {
-    lines.push('', ...pending.choices.map(c => `\u2022 ${c}`));
-  }
-  return lines.join('\n');
 }
 
 function formatDuration(start: Date, end: Date): string {
