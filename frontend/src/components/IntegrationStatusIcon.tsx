@@ -13,7 +13,14 @@ export function IntegrationStatusIcon({ type, connected, title, onClick, disable
   const src = type === 'teams' ? teamsUrl : slackUrl;
   const inner = (
     <>
-      <img src={src} alt="" width={16} height={16} aria-hidden="true" />
+      <img
+        src={src}
+        alt=""
+        width={16}
+        height={16}
+        aria-hidden="true"
+        className={`transition-opacity ${connected ? 'opacity-90' : 'opacity-30'}`}
+      />
       <span
         className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white ${connected ? 'bg-green-500' : 'bg-gray-300'}`}
         aria-hidden="true"
@@ -29,7 +36,7 @@ export function IntegrationStatusIcon({ type, connected, title, onClick, disable
         disabled={disabled}
         title={title}
         aria-label={title}
-        className={`icon-btn relative flex items-center justify-center transition-opacity ${connected ? 'opacity-80' : 'opacity-25'} disabled:cursor-not-allowed`}
+        className="relative flex items-center justify-center p-1.5 rounded-md border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {inner}
       </button>
@@ -38,11 +45,22 @@ export function IntegrationStatusIcon({ type, connected, title, onClick, disable
 
   return (
     <div
-      className={`relative flex items-center justify-center transition-opacity ${connected ? 'opacity-80' : 'opacity-25'}`}
+      className="relative flex items-center justify-center p-1.5"
       title={title}
       aria-label={title}
     >
-      {inner}
+      <img
+        src={src}
+        alt=""
+        width={16}
+        height={16}
+        aria-hidden="true"
+        className={`transition-opacity ${connected ? 'opacity-90' : 'opacity-30'}`}
+      />
+      <span
+        className={`absolute bottom-0.5 right-0.5 w-2 h-2 rounded-full border border-white ${connected ? 'bg-green-500' : 'bg-gray-300'}`}
+        aria-hidden="true"
+      />
     </div>
   );
 }
