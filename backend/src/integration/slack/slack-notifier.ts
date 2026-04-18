@@ -229,10 +229,13 @@ export class SlackNotifier implements NotificationIntegration {
     if (!this.active || !this.client) return;
     if (!this.isEventEnabled(SESSION_AI_RESPONSE)) return;
 
-    const assistantMessages = outputs.filter((o) => o.role === 'assistant' && o.type === 'message' && o.content);
-    if (assistantMessages.length === 0) return;
+    const relevant = outputs.filter((o) => o.type === 'message' && o.content.trim() && !o.isMeta &&
+      (o.role === 'assistant' || o.role === 'user'));
+    if (relevant.length === 0) return;
 
-    const text = assistantMessages.map((o) => o.content).join('\n\n');
+    const text = relevant.map((o) =>
+      o.role === 'user' ? `You asked: ${o.content}` : o.content
+    ).join('\n\n');
     this.queue.enqueue(async () => {
       const threadTs = this.threadAnchors.get(sessionId);
       if (!threadTs) return;

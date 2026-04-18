@@ -186,9 +186,12 @@ export class TeamsNotifier implements NotificationIntegration {
       this.logger.teams({ sessionId }, 'teams.session.output.skipped: not enabled');
       return;
     }
-    const assistantMessages = outputs.filter(o => o.role === 'assistant' && o.type === 'message' && o.content.trim());
-    if (assistantMessages.length === 0) return;
-    const text = assistantMessages.map(o => o.content).join('\n\n');
+    const relevant = outputs.filter(o => o.type === 'message' && o.content.trim() && !o.isMeta &&
+      (o.role === 'assistant' || o.role === 'user'));
+    if (relevant.length === 0) return;
+    const text = relevant.map(o =>
+      o.role === 'user' ? `You asked: ${o.content}` : o.content
+    ).join('\n\n');
     const { channelId } = config as { channelId: string };
 
     this.queue.enqueue(async () => {
