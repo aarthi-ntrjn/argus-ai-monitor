@@ -23,12 +23,12 @@ const YOLO_FLAGS: Record<ToolCommand, string> = {
 
 // Base command (no --cwd): safe to copy and run manually from any directory.
 function buildLaunchCmdBase(tool: ToolCommand, yoloMode = false): string {
-  const base = `npm --prefix "${ARGUS_ROOT}" run launch --workspace=backend -- ${tool}`;
+  const launchScript = path.join(ARGUS_ROOT, 'backend', 'dist', 'cli', 'launch.js');
+  const base = `node "${launchScript}" ${tool}`;
   return yoloMode ? `${base} ${YOLO_FLAGS[tool]}` : base;
 }
 
 // Full command with --cwd baked in: used when the backend spawns the terminal.
-// npm --workspace changes cwd to the workspace root, so we must pass --cwd explicitly.
 function buildLaunchCmdWithCwd(tool: ToolCommand, repoPath: string, yoloMode = false): string {
   return `${buildLaunchCmdBase(tool, yoloMode)} --cwd "${repoPath}"`;
 }

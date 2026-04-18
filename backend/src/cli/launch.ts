@@ -19,8 +19,6 @@ function log(msg: string) {
 process.stderr.write(`[launch] log: ${logFile}\n`);
 
 // Parse --cwd <path> out of argv before passing the rest to resolveLaunchCommand.
-// This is needed because npm --workspace changes cwd to the workspace root, so we
-// cannot rely on process.cwd() to know which repo the user wants to work in.
 const rawArgs = process.argv.slice(2);
 let cwd = process.cwd();
 const toolArgs: string[] = [];
