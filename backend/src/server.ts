@@ -19,6 +19,7 @@ import repositoriesRoutes, { setMonitor } from './api/routes/repositories.js';
 import sessionsRoutes from './api/routes/sessions.js';
 import hooksRoutes, { setClaudeDetector } from './api/routes/hooks.js';
 import healthRoutes, { setSlackServices } from './api/routes/health.js';
+import integrationsRoutes, { setIntegrationServices } from './api/routes/integrations.js';
 import metricsRoutes from './api/routes/metrics.js';
 import { fsRoutes } from './api/routes/fs.js';
 import todosRoutes from './api/routes/todos.js';
@@ -43,6 +44,7 @@ const __dirname = dirname(__filename);
 let monitor: SessionMonitor | null = null;
 let slackNotifier: SlackNotifier | null = null;
 let slackListener: SlackListener | null = null;
+let teamsNotifier: TeamsNotifier | null = null;
 let teamsListener: TeamsListener | null = null;
 
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
@@ -147,6 +149,7 @@ export async function buildServer() {
   await app.register(settingsRoutes);
   await app.register(teamsSettingsRoutes);
   await app.register(telemetryRoutes);
+  await app.register(integrationsRoutes);
 
   app.register(async (fastify) => {
     fastify.get('/ws', { websocket: true }, (socket) => {
@@ -196,25 +199,27 @@ export async function startServer() {
   await monitor.start();
   startPruningJob();
 
-  const teamsService = new TeamsNotifier(teamsApp, app.log as any);
+  teamsNotifier = new TeamsNotifier(teamsApp, app.log as any);
 
-  if (await teamsService.initialize()) {
+  if (await teamsNotifier.initialize()) {
     monitor.on('session.created', (session: Session) => {
-      teamsService.onSessionCreated(session).catch(err => app.log.error({ err }, 'teams.session.created.error'));
+      teamsNotifier!.onSessionCreated(session).catch(err => app.log.error({ err }, 'teams.session.created.error'));
     });
     monitor.on('session.updated', (session: Session) => {
-      teamsService.onSessionUpdated(session).catch(err => app.log.error({ err }, 'teams.session.updated.error'));
+      teamsNotifier!.onSessionUpdated(session).catch(err => app.log.error({ err }, 'teams.session.updated.error'));
     });
     monitor.on('session.ended', (session: Session) => {
-      teamsService.onSessionEnded(session).catch(err => app.log.error({ err }, 'teams.session.ended.error'));
+      teamsNotifier!.onSessionEnded(session).catch(err => app.log.error({ err }, 'teams.session.ended.error'));
     });
     outputStore.addOutputListener((sessionId, outputs) => {
-      teamsService.onSessionOutput(sessionId, outputs).catch(err => app.log.error({ err }, 'teams.session.output.error'));
+      teamsNotifier!.onSessionOutput(sessionId, outputs).catch(err => app.log.error({ err }, 'teams.session.output.error'));
     });
   }
 
-  process.on('SIGTERM', async () => { telemetryService.sendEvent('app_ended'); teamsService.shutdown(); teamsListener?.shutdown(); slackListener?.shutdown(); slackNotifier?.shutdown(); monitor?.stop(); await app.close(); process.exit(0); });
-  process.on('SIGINT', async () => { telemetryService.sendEvent('app_ended'); teamsService.shutdown(); teamsListener?.shutdown(); slackListener?.shutdown(); slackNotifier?.shutdown(); monitor?.stop(); await app.close(); process.exit(0); });
+  setIntegrationServices(slackNotifier, slackListener, teamsNotifier, teamsListener);
+
+  process.on('SIGTERM', async () => { telemetryService.sendEvent('app_ended'); teamsNotifier?.shutdown(); teamsListener?.shutdown(); slackListener?.shutdown(); slackNotifier?.shutdown(); monitor?.stop(); await app.close(); process.exit(0); });
+  process.on('SIGINT', async () => { telemetryService.sendEvent('app_ended'); teamsNotifier?.shutdown(); teamsListener?.shutdown(); slackListener?.shutdown(); slackNotifier?.shutdown(); monitor?.stop(); await app.close(); process.exit(0); });
 
   await app.listen({ port: config.port, host: '127.0.0.1' });
   app.log.info({ port: config.port }, 'Argus server started');

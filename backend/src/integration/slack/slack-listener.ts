@@ -17,6 +17,10 @@ export class SlackListener {
   private readonly sessionController: SessionController;
   private socketClient: SocketModeClient | null = null;
 
+  get isRunning(): boolean {
+    return this.socketClient !== null;
+  }
+
   constructor(config: SlackConfig, webClient: WebClient, notifier: SlackNotifier) {
     this.config = config;
     this.webClient = webClient;
@@ -29,6 +33,10 @@ export class SlackListener {
   // -------------------------------------------------------------------------
 
   initialize(): void {
+    if (this.socketClient) {
+      logger.info(`${LOG_TAG} Already running, skipping re-initialize`);
+      return;
+    }
     if (!this.config.appToken) {
       logger.info(`${LOG_TAG} Socket Mode disabled: SLACK_APP_TOKEN not configured (inbound routing unavailable)`);
       return;
@@ -62,6 +70,7 @@ export class SlackListener {
       this.socketClient.disconnect().catch((err: unknown) => {
         logger.error(`${LOG_TAG} Error during disconnect:`, err);
       });
+      this.socketClient = null;
       logger.info(`${LOG_TAG} Disconnected`);
     }
   }

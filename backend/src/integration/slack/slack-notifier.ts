@@ -31,6 +31,7 @@ export class SlackNotifier implements NotificationIntegration {
   private readonly prevSessions = new Map<string, Session>();
 
   private readonly queue: MessageQueue;
+  private subscribed = false;
 
   constructor(config: SlackConfig, sessionMonitor: SessionMonitor) {
     this.config = { ...config };
@@ -40,11 +41,16 @@ export class SlackNotifier implements NotificationIntegration {
     });
   }
 
+  get isRunning(): boolean {
+    return !this.disabled;
+  }
+
   // -------------------------------------------------------------------------
   // Lifecycle
   // -------------------------------------------------------------------------
 
   async initialize(): Promise<boolean> {
+    this.disabled = false;
     if (!this.config.botToken || !this.config.channelId) {
       logger.warn(`${LOG_TAG} Slack integration disabled: missing botToken or channelId`);
       this.disabled = true;
@@ -72,6 +78,8 @@ export class SlackNotifier implements NotificationIntegration {
   }
 
   shutdown(): void {
+    this.disabled = true;
+    this.client = null;
     this.queue.drain();
     logger.info(`${LOG_TAG} Shutdown complete`);
   }
@@ -277,6 +285,8 @@ export class SlackNotifier implements NotificationIntegration {
   }
 
   private subscribeToEvents(): void {
+    if (this.subscribed) return;
+    this.subscribed = true;
     // T010, T013: subscribe to all SessionMonitor events
     this.sessionMonitor.on(SESSION_CREATED, (session: Session) => {
       this.prevSessions.set(session.id, session);

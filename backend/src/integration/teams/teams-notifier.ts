@@ -102,6 +102,7 @@ export class TeamsNotifier implements NotificationIntegration {
 
   async onSessionCreated(session: Session): Promise<void> {
     this.logger.teams({ ...this._sessionCtx(session), status: session.status }, 'teams.session.created.received');
+    if (!this.active) return;
     const config = loadTeamsConfig();
     if (!this.isConfigured()) {
       this.logger.warn({ ...this._sessionCtx(session), enabled: config.enabled, hasTeamId: Boolean(config.teamId), hasChannelId: Boolean(config.channelId), hasOwner: Boolean(config.ownerAadObjectId) }, 'teams.session.created.skipped: not configured');
@@ -172,6 +173,7 @@ export class TeamsNotifier implements NotificationIntegration {
 
   async onSessionUpdated(session: Session): Promise<void> {
     this.logger.teams({ ...this._sessionCtx(session), status: session.status, model: session.model, pid: session.pid }, 'teams.session.updated.received');
+    if (!this.active) return;
     if (!this.isConfigured()) {
       this.logger.warn({ ...this._sessionCtx(session) }, 'teams.session.updated.skipped: not configured');
       return;
@@ -222,6 +224,7 @@ export class TeamsNotifier implements NotificationIntegration {
   }
 
   async onSessionOutput(sessionId: string, outputs: SessionOutput[]): Promise<void> {
+    if (!this.active) return;
     const config = loadTeamsConfig();
     if (!config.enabled) {
       this.logger.teams({ sessionId }, 'teams.session.output.skipped: not enabled');
@@ -247,6 +250,7 @@ export class TeamsNotifier implements NotificationIntegration {
 
   async onSessionEnded(session: Session): Promise<void> {
     this.logger.teams({ ...this._sessionCtx(session), status: session.status }, 'teams.session.ended.received');
+    if (!this.active) return;
     const config = loadTeamsConfig();
     if (!this.isConfigured()) {
       this.logger.warn({ ...this._sessionCtx(session) }, 'teams.session.ended.skipped: not configured');
@@ -274,7 +278,12 @@ export class TeamsNotifier implements NotificationIntegration {
     }, 'session.ended', session.id);
   }
 
+  get isRunning(): boolean {
+    return this.active;
+  }
+
   shutdown(): void {
+    this.active = false;
     this.queue.drain();
   }
 

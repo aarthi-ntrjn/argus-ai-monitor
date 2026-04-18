@@ -178,6 +178,7 @@ export interface SlackThread {
 }
 
 export interface NotificationIntegration {
+  readonly isRunning: boolean;
   initialize(): Promise<boolean>;
   onSessionCreated(session: Session): Promise<void>;
   onSessionUpdated(session: Session): Promise<void>;

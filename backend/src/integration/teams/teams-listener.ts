@@ -8,6 +8,8 @@ const LOG_TAG = 'teams-listener';
 
 export class TeamsListener {
   private readonly sessionController: SessionController;
+  private active = false;
+  private handlerRegistered = false;
 
   constructor(
     private readonly teamsApp: App,
@@ -16,12 +18,20 @@ export class TeamsListener {
     this.sessionController = new SessionController();
   }
 
+  get isRunning(): boolean {
+    return this.active;
+  }
+
   // -------------------------------------------------------------------------
   // Lifecycle
   // -------------------------------------------------------------------------
 
   initialize(): void {
+    this.active = true;
+    if (this.handlerRegistered) return;
+    this.handlerRegistered = true;
     this.teamsApp.message(/.*/, async (ctx) => {
+      if (!this.active) return;
       const teamsConfig = loadTeamsConfig();
       const senderAadObjectId = (ctx.activity.from as Record<string, unknown>)?.['aadObjectId'] as string | undefined;
       this.logger.info({ senderAadObjectId, source: LOG_TAG }, 'teams.listener.message.received');
@@ -50,6 +60,7 @@ export class TeamsListener {
   }
 
   shutdown(): void {
+    this.active = false;
     this.logger.info({}, 'teams.listener.shutdown');
   }
 
