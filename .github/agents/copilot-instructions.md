@@ -1,6 +1,6 @@
 # argus2 Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-04-13
+Auto-generated from all feature plans. Last updated: 2026-04-18
 
 ## Active Technologies
 - TypeScript 5.9, Node.js 22 + node-pty (new), Fastify 5, better-sqlite3, ws, @fastify/websocket (020-fix-send-prompts)
@@ -18,6 +18,10 @@ Auto-generated from all feature plans. Last updated: 2026-04-13
 - N/A (reads from existing session output query cache; no new persistence) (028-ai-choice-alert)
 - TypeScript (Node.js 20 backend, React 18 frontend) + Fastify, better-sqlite3, React Query, Tailwind CSS, Vite (032-repo-compare-session-focus)
 - SQLite via better-sqlite3; runtime migration pattern (ALTER TABLE IF NOT EXISTS column) (032-repo-compare-session-focus)
+- [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION] + [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION] (043-marketing-landing-page)
+- [if applicable, e.g., PostgreSQL, CoreData, files or N/A] (043-marketing-landing-page)
+- HTML5, CSS3, JavaScript ES2020 (vanilla, no framework) + None (zero npm dependencies); shields.io CDN for dynamic badges (043-marketing-landing-page)
+- N/A (static files only) (043-marketing-landing-page)
 
 - TypeScript 5.9 (frontend + backend) + Fastify 5.x (backend), React 18 + TailwindCSS 3 + React Query (frontend), better-sqlite3 (storage), pino (logging), vitest + Playwright (testing) (014-engineer-todo-list)
 
@@ -38,9 +42,9 @@ npm test; npm run lint
 TypeScript 5.9 (frontend + backend): Follow standard conventions
 
 ## Recent Changes
+- 043-marketing-landing-page: Added HTML5, CSS3, JavaScript ES2020 (vanilla, no framework) + None (zero npm dependencies); shields.io CDN for dynamic badges
+- 043-marketing-landing-page: Added [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION] + [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]
 - 032-repo-compare-session-focus: Added TypeScript (Node.js 20 backend, React 18 frontend) + Fastify, better-sqlite3, React Query, Tailwind CSS, Vite
-- 028-ai-choice-alert: Added TypeScript 5.x, React 18 + React, Tailwind CSS, Vitest, Playwright
-- 027-kill-session: Added TypeScript 5.x (React 18 frontend, Node.js backend) + React, TanStack React Query, Tailwind CSS, Lucide icons, React Router
 
 
 <!-- MANUAL ADDITIONS START -->

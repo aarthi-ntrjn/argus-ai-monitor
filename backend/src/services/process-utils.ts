@@ -69,7 +69,7 @@ function getProcessName(pid: number): string | null {
 
 function isAiToolName(name: string, type: SessionType): boolean {
   const lower = name.toLowerCase();
-  if (type === 'claude-code') return lower.includes('claude');
+  if (type === 'claude-code') return lower === 'claude' || lower === 'claude.exe';
   return lower === 'copilot' || lower === 'copilot.exe';
 }
 
