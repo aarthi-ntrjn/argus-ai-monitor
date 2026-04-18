@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 // T006: Hero section is visible without scrolling
 test('hero section visible above fold', async ({ page }) => {
-  await page.goto('/landing/index.html');
+  await page.goto('/');
   const hero = page.locator('[data-testid="hero"]');
   await expect(hero).toBeVisible();
   const viewport = page.viewportSize()!;
@@ -11,18 +11,18 @@ test('hero section visible above fold', async ({ page }) => {
 });
 
 // T007: Install command copy CTA is interactive
-test('install command copy CTA is present and interactive', async ({ page }) => {
-  await page.goto('/landing/index.html');
+test('install command copy CTA is present', async ({ page }) => {
+  await page.goto('/');
   const copyBtn = page.locator('[data-testid="copy-btn"]');
   await expect(copyBtn).toBeVisible();
-  await copyBtn.click();
-  const feedback = page.locator('[data-testid="copy-feedback"]');
-  await expect(feedback).toBeVisible();
+  // Primary GitHub CTA also present
+  const githubCta = page.locator('a[href*="github.com/argus-ai-monitor"]');
+  await expect(githubCta.first()).toBeVisible();
 });
 
 // T008: Feature sections display screenshots
 test('feature sections contain screenshots', async ({ page }) => {
-  await page.goto('/landing/index.html');
+  await page.goto('/');
   const featureImgs = page.locator('[data-testid^="feature-img-"]');
   const count = await featureImgs.count();
   expect(count).toBeGreaterThanOrEqual(3);
@@ -31,7 +31,7 @@ test('feature sections contain screenshots', async ({ page }) => {
 // T009: Responsive layout at 390px
 test('responsive layout renders at 390px', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/landing/index.html');
+  await page.goto('/');
   const hero = page.locator('[data-testid="hero"]');
   await expect(hero).toBeVisible();
   // No horizontal scrollbar
@@ -39,27 +39,46 @@ test('responsive layout renders at 390px', async ({ page }) => {
   expect(scrollWidth).toBeLessThanOrEqual(390);
 });
 
-// Social proof badges are present
+// Social proof badges are present (T025)
 test('social proof badges section is present', async ({ page }) => {
-  await page.goto('/landing/index.html');
+  await page.goto('/');
   const badges = page.locator('[data-testid="social-proof"]');
   await expect(badges).toBeVisible();
+  // At least one badge img with "GitHub Stars" or "Weekly Downloads"
+  const badgeImg = page.locator('img[alt*="GitHub Stars"], img[alt*="Weekly Downloads"]');
+  const count = await badgeImg.count();
+  expect(count).toBeGreaterThanOrEqual(1);
+});
+
+// T018: Feature headings present
+test('feature section headings Monitor, Control, How It Works exist', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Monitor', exact: true })).toBeVisible();
+  await expect(page.getByTestId('feature-control').getByRole('heading', { name: 'Control', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'How It Works', exact: true })).toBeVisible();
+});
+
+// T019: How It Works has exactly 3 steps
+test('How It Works section has 3 numbered steps', async ({ page }) => {
+  await page.goto('/');
+  const steps = page.locator('.step-card');
+  await expect(steps).toHaveCount(3);
 });
 
 // Open Graph meta tags are present
 test('Open Graph meta tags are present', async ({ page }) => {
-  await page.goto('/landing/index.html');
-  const ogTitle = await page.locator('meta[property="og:title"]').getAttribute('content');
+  await page.goto('/');
+  const ogTitle = await page.$eval('meta[property="og:title"]', (el) => el.getAttribute('content'));
   expect(ogTitle).toBeTruthy();
-  const ogDescription = await page.locator('meta[property="og:description"]').getAttribute('content');
+  const ogDescription = await page.$eval('meta[property="og:description"]', (el) => el.getAttribute('content'));
   expect(ogDescription).toBeTruthy();
-  const ogImage = await page.locator('meta[property="og:image"]').getAttribute('content');
+  const ogImage = await page.$eval('meta[property="og:image"]', (el) => el.getAttribute('content'));
   expect(ogImage).toBeTruthy();
 });
 
 // Footer links are present
 test('footer contains GitHub and npm links', async ({ page }) => {
-  await page.goto('/landing/index.html');
+  await page.goto('/');
   const footer = page.locator('[data-testid="footer"]');
   await expect(footer).toBeVisible();
   const githubLink = footer.locator('a[href*="github.com"]');

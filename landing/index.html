@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Argus is your command center for AI coding sessions. Monitor, control, and inspect Claude Code and GitHub Copilot CLI sessions from a single browser tab.">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Argus — Command Center for AI Coding Sessions">
+  <meta property="og:description" content="Monitor, control, and inspect Claude Code and GitHub Copilot CLI sessions from a single browser tab. Free and open source.">
+  <meta property="og:image" content="https://argus-ai-monitor.github.io/assets/images/argus.png">
+  <meta property="og:url" content="https://argus-ai-monitor.github.io">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Argus — Command Center for AI Coding Sessions">
+  <meta name="twitter:description" content="Monitor, control, and inspect Claude Code and GitHub Copilot CLI sessions from a single browser tab. Free and open source.">
+  <meta name="twitter:image" content="https://argus-ai-monitor.github.io/assets/images/argus.png">
+
+  <title>Argus — Command Center for AI Coding Sessions</title>
+  <link rel="icon" href="assets/images/argus.png" type="image/png">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+
+  <!-- HERO -->
+  <header class="hero" data-testid="hero">
+    <div class="container hero__inner">
+      <div class="hero__content">
+        <h1 class="hero__headline">Your command center for AI coding sessions</h1>
+        <p class="hero__subheadline">
+          Monitor and control <strong>Claude Code</strong> and <strong>GitHub Copilot CLI</strong> sessions
+          from a single browser tab. See what your agents are doing, stream their output live,
+          and take back control at any moment.
+        </p>
+        <div class="hero__install">
+          <code class="install-command" id="install-command">npx argus-ai-monitor</code>
+          <button
+            class="btn btn--ghost install-copy"
+            id="copy-btn"
+            data-testid="copy-btn"
+            data-copy="npx argus-ai-monitor"
+            aria-label="Copy install command"
+          >
+            <span data-testid="copy-feedback" class="copy-label">Copy</span>
+          </button>
+        </div>
+        <div class="hero__ctas">
+          <a
+            href="https://github.com/argus-ai-monitor/argus-ai-monitor"
+            class="btn btn--primary"
+            target="_blank"
+            rel="noopener noreferrer"
+          >View on GitHub</a>
+          <a
+            href="https://www.npmjs.com/package/argus-ai-monitor"
+            class="btn btn--outline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >View on npm</a>
+        </div>
+      </div>
+      <div class="hero__image-wrap">
+        <img
+          src="assets/images/argus.png"
+          alt="Argus dashboard showing live Claude Code and Copilot CLI sessions with status badges and elapsed time"
+          class="hero__image"
+          loading="eager"
+          width="900"
+          height="560"
+        >
+      </div>
+    </div>
+  </header>
+
+  <!-- SOCIAL PROOF -->
+  <section class="social-proof" id="social-proof" data-testid="social-proof">
+    <div class="container social-proof__inner">
+      <a href="https://github.com/argus-ai-monitor/argus-ai-monitor" target="_blank" rel="noopener noreferrer">
+        <img
+          src="https://img.shields.io/github/stars/argus-ai-monitor/argus-ai-monitor?style=flat&label=GitHub%20Stars&color=4f46e5"
+          alt="GitHub Stars"
+          loading="lazy"
+          class="badge"
+        >
+      </a>
+      <a href="https://www.npmjs.com/package/argus-ai-monitor" target="_blank" rel="noopener noreferrer">
+        <img
+          src="https://img.shields.io/npm/dw/argus-ai-monitor?style=flat&label=Weekly%20Downloads&color=4f46e5"
+          alt="Weekly Downloads"
+          loading="lazy"
+          class="badge"
+        >
+      </a>
+      <a href="https://www.npmjs.com/package/argus-ai-monitor" target="_blank" rel="noopener noreferrer">
+        <img
+          src="https://img.shields.io/npm/v/argus-ai-monitor?style=flat&label=npm&color=4f46e5"
+          alt="npm version"
+          loading="lazy"
+          class="badge"
+        >
+      </a>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="features" id="features">
+    <div class="container">
+      <h2 class="section-title">Everything you need to stay in control</h2>
+
+      <div class="feature-block feature-block--image-right" data-testid="feature-monitor">
+        <div class="feature-block__text">
+          <h3>Monitor</h3>
+          <p>
+            See all your running AI sessions at a glance. Each session card shows the tool (Claude Code
+            or Copilot CLI), current status, active model, process ID, and elapsed time. No more
+            switching terminal windows to check what is running.
+          </p>
+        </div>
+        <div class="feature-block__image-wrap">
+          <img
+            src="assets/images/argus-sessions.png"
+            alt="Argus session list showing multiple Claude Code and Copilot sessions with live status badges"
+            loading="lazy"
+            data-testid="feature-img-monitor"
+            class="feature-block__image"
+          >
+        </div>
+      </div>
+
+      <div class="feature-block feature-block--image-left" data-testid="feature-output">
+        <div class="feature-block__image-wrap">
+          <img
+            src="assets/images/argus-session-stream.png"
+            alt="Argus session stream showing color-coded message types: YOU, AI, TOOL, and RESULT"
+            loading="lazy"
+            data-testid="feature-img-output"
+            class="feature-block__image"
+          >
+        </div>
+        <div class="feature-block__text">
+          <h3>Session Output</h3>
+          <p>
+            Stream session output in real time with color-coded message types: YOUR prompts, AI responses,
+            TOOL calls, and RESULTS. Switch between focused mode (AI responses only) and verbose mode
+            (full trace) without leaving the browser.
+          </p>
+        </div>
+      </div>
+
+      <div class="feature-block feature-block--image-right" data-testid="feature-control">
+        <div class="feature-block__text">
+          <h3>Control</h3>
+          <p>
+            Send follow-up prompts directly to any running session, kill runaway agents before they
+            rack up tokens, and focus your terminal on the session you care about most — all from
+            a single keyboard-friendly interface.
+          </p>
+        </div>
+        <div class="feature-block__image-wrap">
+          <img
+            src="assets/images/argus-connected.png"
+            alt="Argus control panel with prompt input and session action buttons"
+            loading="lazy"
+            data-testid="feature-img-control"
+            class="feature-block__image"
+          >
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="how-it-works" id="how-it-works">
+    <div class="container">
+      <h2 class="section-title">How It Works</h2>
+      <p class="section-subtitle">Three steps to full visibility into your AI coding sessions.</p>
+      <div class="steps">
+        <div class="step-card">
+          <div class="step-card__number" aria-hidden="true">1</div>
+          <h3 class="step-card__title">Install</h3>
+          <p class="step-card__body">Run <code>npx argus-ai-monitor</code> in any terminal. No global install needed — it starts up instantly.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-card__number" aria-hidden="true">2</div>
+          <h3 class="step-card__title">Open Browser</h3>
+          <p class="step-card__body">Navigate to <code>http://localhost:7411</code>. Argus automatically detects all running Claude Code and Copilot CLI sessions.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-card__number" aria-hidden="true">3</div>
+          <h3 class="step-card__title">Watch and Control</h3>
+          <p class="step-card__body">Stream output live, send prompts, kill sessions, or focus your terminal. Stay in control without leaving the dashboard.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer" data-testid="footer">
+    <div class="container footer__inner">
+      <div class="footer__links">
+        <a href="https://github.com/argus-ai-monitor/argus-ai-monitor" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="https://www.npmjs.com/package/argus-ai-monitor" target="_blank" rel="noopener noreferrer">npm</a>
+      </div>
+      <p class="footer__copy">
+        &copy; 2025 Argus. Open source under the MIT License.
+      </p>
+    </div>
+  </footer>
+
+  <script src="assets/js/main.js"></script>
+</body>
+</html>
