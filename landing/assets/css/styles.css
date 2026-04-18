@@ -378,7 +378,9 @@ code {
 }
 
 .badge {
-  height: 20px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  display: block;
 }
 
 /* ============================================================
