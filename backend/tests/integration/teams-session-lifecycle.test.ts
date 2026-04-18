@@ -12,7 +12,7 @@ vi.mock('../../src/config/teams-config-loader.js', () => ({
   loadTeamsConfig: vi.fn(),
 }));
 
-import { TeamsIntegrationService } from '../../src/services/teams-integration.js';
+import { TeamsNotifier } from '../../src/services/teams-integration.js';
 import { getTeamsThread, upsertTeamsThread } from '../../src/db/database.js';
 import { loadTeamsConfig } from '../../src/config/teams-config-loader.js';
 import type { Session, SessionOutput } from '../../src/models/index.js';
@@ -62,14 +62,14 @@ const config = {
   ownerAadObjectId: 'owner-aad-object-id',
 };
 
-describe('TeamsIntegrationService - session lifecycle', () => {
-  let service: TeamsIntegrationService;
+describe('TeamsNotifier - session lifecycle', () => {
+  let service: TeamsNotifier;
   let storedThread: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockActivities.mockReturnValue({ create: mockActivitiesCreate });
-    service = new TeamsIntegrationService(mockTeamsApp as any, mockLogger);
+    service = new TeamsNotifier(mockTeamsApp as any, mockLogger);
 
     vi.mocked(loadTeamsConfig).mockReturnValue(config);
     storedThread = null;

@@ -30,7 +30,7 @@ import telemetryRoutes from './api/routes/telemetry.js';
 import { telemetryService } from './services/telemetry-service.js';
 import { SessionMonitor } from './services/session-monitor.js';
 import { startPruningJob } from './services/pruning-job.js';
-import { TeamsIntegrationService } from './services/teams-integration.js';
+import { TeamsNotifier } from './services/teams-integration.js';
 import { TeamsListener } from './services/teams-listener.js';
 import { FastifyTeamsAdapter } from './services/teams-sdk-adapter.js';
 import { outputStore } from './services/output-store.js';
@@ -196,7 +196,7 @@ export async function startServer() {
   await monitor.start();
   startPruningJob();
 
-  const teamsService = new TeamsIntegrationService(teamsApp, app.log as any);
+  const teamsService = new TeamsNotifier(teamsApp, app.log as any);
 
   if (await teamsService.initialize()) {
     monitor.on('session.created', (session: Session) => {

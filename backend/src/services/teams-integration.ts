@@ -53,7 +53,7 @@ function code(value: string): string {
   return `\`${value}\``;
 }
 
-export class TeamsIntegrationService implements NotificationIntegration {
+export class TeamsNotifier implements NotificationIntegration {
   private lastPostedState = new Map<string, TrackedSessionState>();
   private lastSeenSnapshot = new Map<string, UntrackedSessionSnapshot>();
   private active = false;

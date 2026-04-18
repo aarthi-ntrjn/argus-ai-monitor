@@ -12,7 +12,7 @@ vi.mock('../../src/config/teams-config-loader.js', () => ({
   loadTeamsConfig: vi.fn(),
 }));
 
-import { TeamsIntegrationService } from '../../src/services/teams-integration.js';
+import { TeamsNotifier } from '../../src/services/teams-integration.js';
 import { getTeamsThread, upsertTeamsThread } from '../../src/db/database.js';
 import { loadTeamsConfig } from '../../src/config/teams-config-loader.js';
 import type { Session } from '../../src/models/index.js';
@@ -77,13 +77,13 @@ const existingThread = {
   createdAt: '2024-01-01T00:00:00.000Z',
 };
 
-describe('TeamsIntegrationService', () => {
-  let service: TeamsIntegrationService;
+describe('TeamsNotifier', () => {
+  let service: TeamsNotifier;
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockActivities.mockReturnValue({ create: mockActivitiesCreate });
-    service = new TeamsIntegrationService(mockTeamsApp as any, mockLogger);
+    service = new TeamsNotifier(mockTeamsApp as any, mockLogger);
   });
 
   describe('onSessionCreated', () => {
