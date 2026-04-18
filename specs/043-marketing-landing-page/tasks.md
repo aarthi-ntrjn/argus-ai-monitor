@@ -30,7 +30,7 @@
 
 > **Tests MUST be written first and confirmed FAILING before any HTML content is added.**
 
-- [x] T006 [US1] Write failing Playwright test: hero section headline, subheadline, and install command (`npx argus`) are visible in `tests/landing/landing.spec.ts` — assert elements exist in DOM
+- [x] T006 [US1] Write failing Playwright test: hero section headline, subheadline, and install command (`npx argus-ai-hub`) are visible in `tests/landing/landing.spec.ts` — assert elements exist in DOM
 - [x] T007 [P] [US1] Write failing Playwright test: primary CTA button (`a[href*="github"]`) exists and clipboard copy button exists in `tests/landing/landing.spec.ts`
 - [x] T008 [P] [US4] Write failing Playwright test: `<meta property="og:title">`, `<meta property="og:description">`, `<meta property="og:image">`, `<meta name="twitter:card">` present in `<head>` in `tests/landing/landing.spec.ts`
 - [x] T009 [P] [US1] Write failing Playwright test: on 390px viewport, hero section fully visible with no horizontal scrollbar in `tests/landing/landing.spec.ts`
@@ -53,9 +53,9 @@
 
 ### Implementation for User Story 1
 
-- [x] T012 [US1] Add hero section content to `landing/index.html`: headline ("Your command center for AI coding sessions"), subheadline (names Claude Code and GitHub Copilot CLI), `<code>` block showing `npx argus`
+- [x] T012 [US1] Add hero section content to `landing/index.html`: headline ("Your command center for AI coding sessions"), subheadline (names Claude Code and GitHub Copilot CLI), `<code>` block showing `npx argus-ai-hub`
 - [x] T013 [US1] Add primary CTA button to hero: "View on GitHub" linking to `https://github.com/aarthi-ntrjn/argus`
-- [x] T014 [US1] Add clipboard copy button to hero: `<button id="copy-btn">Copy</button>` with `data-copy="npx argus"` attribute; add visual "Copied!" feedback state via CSS class toggle
+- [x] T014 [US1] Add clipboard copy button to hero: `<button id="copy-btn">Copy</button>` with `data-copy="npx argus-ai-hub"` attribute; add visual "Copied!" feedback state via CSS class toggle
 - [x] T015 [US1] Write `landing/assets/js/main.js` — clipboard copy handler: on button click, call `navigator.clipboard.writeText()`, toggle `copied` CSS class for 2 seconds feedback; wrap in `if (navigator.clipboard)` guard for graceful degradation
 - [x] T016 [US1] Add hero screenshot (`assets/images/argus.png`) to hero section with `loading="eager"` (above fold), descriptive `alt` text, `max-width: 100%` responsive styling
 - [x] T017 [US1] Style hero section in `styles.css`: full-width background, vertically centered content, install command in monospace code block with copy button inline, CTA buttons side-by-side (stack on mobile)
@@ -82,7 +82,7 @@
 - [x] T020 [P] [US2] Add Monitor feature block to `landing/index.html`: heading "Monitor", 2-sentence description (live session cards, status badges, model/PID/elapsed time), screenshot `argus-sessions.png` with `loading="lazy"` and alt text
 - [x] T021 [P] [US2] Add Session Output feature block: heading "Session Output", description (real-time stream, type badges: YOU/AI/TOOL/RESULT, focused/verbose modes), screenshot `argus-session-stream.png` with `loading="lazy"`
 - [x] T022 [P] [US2] Add Control feature block: heading "Control", description (send prompts, kill sessions, focus terminal), screenshot `argus-connected.png` with `loading="lazy"`
-- [x] T023 [US2] Add How It Works section: numbered 3-step layout: 1. Install (`npx argus`), 2. Open browser (`http://localhost:7411`), 3. Watch and control — style as horizontal cards on desktop, vertical stack on mobile
+- [x] T023 [US2] Add How It Works section: numbered 3-step layout: 1. Install (`npx argus-ai-hub`), 2. Open browser (`http://localhost:7411`), 3. Watch and control — style as horizontal cards on desktop, vertical stack on mobile
 - [x] T024 [US2] Style feature blocks in `styles.css`: alternating image-left/image-right layout on desktop, image-above-text on mobile; consistent spacing, screenshot border/shadow for polish
 
 **Checkpoint**: T018, T019 Playwright tests pass. Feature blocks and How It Works section visible and correct.
@@ -124,7 +124,7 @@
 
 - [x] T028 [US4] Add Open Graph meta tags to `<head>` in `landing/index.html`: `og:type` (website), `og:title` (Argus — Command Center for AI Coding Sessions), `og:description` (one-sentence value prop), `og:image` (absolute URL to `assets/images/argus.png`), `og:url` (aarthi-ntrjn.github.io/argus)
 - [x] T029 [P] [US4] Add Twitter Card meta tags to `<head>`: `twitter:card` (summary_large_image), `twitter:title`, `twitter:description`, `twitter:image`
-- [x] T030 [P] [US4] Add `<footer>` to `landing/index.html`: links to GitHub repository and npm package page (`https://www.npmjs.com/package/argus`); copyright line
+- [x] T030 [P] [US4] Add `<footer>` to `landing/index.html`: links to GitHub repository and npm package page (`https://www.npmjs.com/package/argus-ai-hub`); copyright line
 
 **Checkpoint**: T008 Playwright test passes. OG and Twitter Card tags present with correct values. Footer visible.
 

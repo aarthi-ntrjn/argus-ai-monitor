@@ -40,7 +40,7 @@
 
 **Badge URLs**:
 - GitHub stars: `https://img.shields.io/github/stars/aarthi-ntrjn/argus?style=flat&label=GitHub%20Stars`
-- npm downloads: `https://img.shields.io/npm/dw/argus?style=flat&label=Weekly%20Downloads`
+- npm downloads: `https://img.shields.io/npm/dw/argus-ai-hub?style=flat&label=Weekly%20Downloads`
 
 **Alternatives Considered**:
 
