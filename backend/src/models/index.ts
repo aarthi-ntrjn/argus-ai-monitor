@@ -175,3 +175,12 @@ export interface SlackThread {
   workspaceId: string;
   createdAt: string;
 }
+
+export interface NotificationIntegration {
+  initialize(): Promise<boolean>;
+  onSessionCreated(session: Session): Promise<void>;
+  onSessionUpdated(session: Session): Promise<void>;
+  onSessionEnded(session: Session): Promise<void>;
+  onSessionOutput(sessionId: string, outputs: SessionOutput[]): Promise<void>;
+  shutdown(): void;
+}

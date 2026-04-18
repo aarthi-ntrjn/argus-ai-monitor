@@ -246,7 +246,7 @@ export async function startServer() {
 
   const teamsService = new TeamsIntegrationService(teamsApp, app.log as any);
 
-  if (teamsService.initialize()) {
+  if (await teamsService.initialize()) {
     monitor.on('session.created', (session: Session) => {
       teamsService.onSessionCreated(session).catch(err => app.log.error({ err }, 'teams.session.created.error'));
     });
@@ -261,8 +261,8 @@ export async function startServer() {
     });
   }
 
-  process.on('SIGTERM', async () => { telemetryService.sendEvent('app_ended'); teamsService.stop(); slackListener?.shutdown(); slackNotifier?.shutdown(); monitor?.stop(); await app.close(); process.exit(0); });
-  process.on('SIGINT', async () => { telemetryService.sendEvent('app_ended'); teamsService.stop(); slackListener?.shutdown(); slackNotifier?.shutdown(); monitor?.stop(); await app.close(); process.exit(0); });
+  process.on('SIGTERM', async () => { telemetryService.sendEvent('app_ended'); teamsService.shutdown(); slackListener?.shutdown(); slackNotifier?.shutdown(); monitor?.stop(); await app.close(); process.exit(0); });
+  process.on('SIGINT', async () => { telemetryService.sendEvent('app_ended'); teamsService.shutdown(); slackListener?.shutdown(); slackNotifier?.shutdown(); monitor?.stop(); await app.close(); process.exit(0); });
 
   await app.listen({ port: config.port, host: '127.0.0.1' });
   app.log.info({ port: config.port }, 'Argus server started');

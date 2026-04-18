@@ -4,7 +4,7 @@ import type { App } from '@microsoft/teams.apps';
 import type { Session, SessionOutput } from '../models/index.js';
 import { loadTeamsConfig } from '../config/teams-config-loader.js';
 import { getTeamsThread, upsertTeamsThread, deleteTeamsThread, getRepository } from '../db/database.js';
-import type { Repository } from '../models/index.js';
+import type { Repository, NotificationIntegration } from '../models/index.js';
 import { MessageQueue } from './message-queue.js';
 
 type TeamsLogger = Logger & { teams: LogFn };
@@ -53,7 +53,7 @@ function code(value: string): string {
   return `\`${value}\``;
 }
 
-export class TeamsIntegrationService {
+export class TeamsIntegrationService implements NotificationIntegration {
   private lastPostedState = new Map<string, TrackedSessionState>();
   private lastSeenSnapshot = new Map<string, UntrackedSessionSnapshot>();
   private active = false;
@@ -68,7 +68,7 @@ export class TeamsIntegrationService {
     });
   }
 
-  initialize(): boolean {
+  async initialize(): Promise<boolean> {
     if (!this.isConfigured()) {
       const config = loadTeamsConfig();
       this.logger.info({ enabled: config.enabled, hasTeamId: Boolean(config.teamId), hasChannelId: Boolean(config.channelId), hasOwner: Boolean(config.ownerAadObjectId) }, 'teams: not configured, skipping event subscriptions');
@@ -252,7 +252,7 @@ export class TeamsIntegrationService {
     }, 'session.ended', session.id);
   }
 
-  stop(): void {
+  shutdown(): void {
     this.queue.drain();
   }
 

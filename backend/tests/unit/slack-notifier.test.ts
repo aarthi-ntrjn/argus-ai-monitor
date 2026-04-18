@@ -78,7 +78,7 @@ describe('SlackNotifier', () => {
   describe('postSessionStart', () => {
     it('posts a message to the configured channel', async () => {
       const notifier = makeNotifier();
-      await notifier.postSessionStart(baseSession);
+      await notifier.onSessionCreated(baseSession);
       expect(mockPostMessage).toHaveBeenCalledOnce();
       const call = mockPostMessage.mock.calls[0][0];
       expect(call.channel).toBe('C01234');
@@ -86,7 +86,7 @@ describe('SlackNotifier', () => {
 
     it('upserts slack thread after first post', async () => {
       const notifier = makeNotifier();
-      await notifier.postSessionStart(baseSession);
+      await notifier.onSessionCreated(baseSession);
       expect(upsertSlackThread).toHaveBeenCalledWith(expect.objectContaining({
         sessionId: baseSession.id,
         slackThreadTs: 'ts-123',
@@ -103,7 +103,7 @@ describe('SlackNotifier', () => {
         createdAt: '2024-01-01T00:00:00.000Z',
       });
       const notifier = makeNotifier();
-      await notifier.postSessionStart(baseSession);
+      await notifier.onSessionCreated(baseSession);
       const call = mockPostMessage.mock.calls[0][0];
       expect(call.thread_ts).toBe('existing-ts');
     });
@@ -111,7 +111,7 @@ describe('SlackNotifier', () => {
     it('does not post when disabled', async () => {
       const notifier = new SlackNotifier({ botToken: '', channelId: '', enabled: true } as any, mockMonitor);
       notifier.initialize();
-      await notifier.postSessionStart(baseSession);
+      await notifier.onSessionCreated(baseSession);
       expect(mockPostMessage).not.toHaveBeenCalled();
     });
   });
@@ -120,7 +120,7 @@ describe('SlackNotifier', () => {
     it('posts an end message to the thread', async () => {
       const notifier = makeNotifier();
       (notifier as any).threadAnchors.set(baseSession.id, 'thread-ts');
-      await notifier.postSessionEnd(baseSession);
+      await notifier.onSessionEnded(baseSession);
       expect(mockPostMessage).toHaveBeenCalledOnce();
       const call = mockPostMessage.mock.calls[0][0];
       expect(call.thread_ts).toBe('thread-ts');
@@ -129,7 +129,7 @@ describe('SlackNotifier', () => {
     it('deletes slack thread after end', async () => {
       const notifier = makeNotifier();
       (notifier as any).threadAnchors.set(baseSession.id, 'thread-ts');
-      await notifier.postSessionEnd(baseSession);
+      await notifier.onSessionEnded(baseSession);
       expect(deleteSlackThread).toHaveBeenCalledWith(baseSession.id);
     });
   });
@@ -150,7 +150,7 @@ describe('SlackNotifier', () => {
   describe('isEventEnabled', () => {
     it('allows all events when enabledEventTypes is not set', async () => {
       const notifier = makeNotifier();
-      await notifier.postSessionStart(baseSession);
+      await notifier.onSessionCreated(baseSession);
       expect(mockPostMessage).toHaveBeenCalled();
     });
 
@@ -161,7 +161,7 @@ describe('SlackNotifier', () => {
       );
       (notifier as any).client = { chat: { postMessage: mockPostMessage } };
       (notifier as any).disabled = false;
-      await notifier.postSessionStart(baseSession);
+      await notifier.onSessionCreated(baseSession);
       expect(mockPostMessage).not.toHaveBeenCalled();
     });
   });

@@ -1,6 +1,6 @@
 import { WebClient } from '@slack/web-api';
 import type { SessionMonitor } from './session-monitor.js';
-import type { Session, Repository, SlackConfig, SessionOutput } from '../models/index.js';
+import type { Session, Repository, SlackConfig, SessionOutput, NotificationIntegration } from '../models/index.js';
 import { randomUUID } from 'crypto';
 import { getRepository, getSlackThread, getSlackThreadByTs, upsertSlackThread, deleteSlackThread } from '../db/database.js';
 import { MessageQueue } from './message-queue.js';
@@ -17,7 +17,7 @@ import * as logger from '../utils/logger.js';
 
 const LOG_TAG = '[SlackNotifier]';
 
-export class SlackNotifier {
+export class SlackNotifier implements NotificationIntegration {
   private config: SlackConfig;
   private readonly sessionMonitor: SessionMonitor;
   private client: WebClient | null = null;
@@ -44,16 +44,16 @@ export class SlackNotifier {
   // Lifecycle
   // -------------------------------------------------------------------------
 
-  async initialize(): Promise<void> {
+  async initialize(): Promise<boolean> {
     if (!this.config.botToken || !this.config.channelId) {
       logger.warn(`${LOG_TAG} Slack integration disabled: missing botToken or channelId`);
       this.disabled = true;
-      return;
+      return false;
     }
     if (!this.config.enabled) {
       logger.info(`${LOG_TAG} Slack integration disabled by configuration`);
       this.disabled = true;
-      return;
+      return false;
     }
 
     this.client = new WebClient(this.config.botToken);
@@ -68,6 +68,7 @@ export class SlackNotifier {
 
     this.subscribeToEvents();
     logger.info(`${LOG_TAG} Initialized, posting to channel ${this.config.channelId}`);
+    return true;
   }
 
   shutdown(): void {
@@ -100,7 +101,7 @@ export class SlackNotifier {
   // Session lifecycle (T008, T009)
   // -------------------------------------------------------------------------
 
-  async postSessionStart(session: Session): Promise<void> {
+  async onSessionCreated(session: Session): Promise<void> {
     if (this.disabled || !this.client) return;
     if (!this.isEventEnabled(SESSION_CREATED)) return;
 
@@ -160,7 +161,7 @@ export class SlackNotifier {
     }, SESSION_CREATED, session.id);
   }
 
-  async postSessionEnd(session: Session): Promise<void> {
+  async onSessionEnded(session: Session): Promise<void> {
     if (this.disabled || !this.client) return;
     if (!this.isEventEnabled(SESSION_ENDED)) return;
 
@@ -182,7 +183,7 @@ export class SlackNotifier {
     }, SESSION_ENDED, session.id);
   }
 
-  async postSessionUpdate(session: Session): Promise<void> {
+  async onSessionUpdated(session: Session): Promise<void> {
     if (this.disabled || !this.client) return;
     if (!this.isEventEnabled(SESSION_UPDATED)) return;
 
@@ -213,7 +214,7 @@ export class SlackNotifier {
     }, SESSION_UPDATED, session.id);
   }
 
-  async postAiResponse(sessionId: string, outputs: SessionOutput[]): Promise<void> {
+  async onSessionOutput(sessionId: string, outputs: SessionOutput[]): Promise<void> {
     if (this.disabled || !this.client) return;
     if (!this.isEventEnabled(SESSION_AI_RESPONSE)) return;
 
@@ -279,18 +280,18 @@ export class SlackNotifier {
     // T010, T013: subscribe to all SessionMonitor events
     this.sessionMonitor.on(SESSION_CREATED, (session: Session) => {
       this.prevSessions.set(session.id, session);
-      this.postSessionStart(session).catch((err) => {
+      this.onSessionCreated(session).catch((err) => {
         logger.error(`${LOG_TAG} Unhandled error in session.created handler:`, err);
       });
     });
     this.sessionMonitor.on(SESSION_ENDED, (session: Session) => {
       this.prevSessions.delete(session.id);
-      this.postSessionEnd(session).catch((err) => {
+      this.onSessionEnded(session).catch((err) => {
         logger.error(`${LOG_TAG} Unhandled error in session.ended handler:`, err);
       });
     });
     this.sessionMonitor.on(SESSION_UPDATED, (session: Session) => {
-      this.postSessionUpdate(session).catch((err) => {
+      this.onSessionUpdated(session).catch((err) => {
         logger.error(`${LOG_TAG} Unhandled error in session.updated handler:`, err);
       });
     });
@@ -305,7 +306,7 @@ export class SlackNotifier {
       });
     });
     outputEvents.on('session.output.batch', (sessionId: string, outputs: SessionOutput[]) => {
-      this.postAiResponse(sessionId, outputs).catch((err) => {
+      this.onSessionOutput(sessionId, outputs).catch((err) => {
         logger.error(`${LOG_TAG} Unhandled error in session.output.batch handler:`, err);
       });
     });

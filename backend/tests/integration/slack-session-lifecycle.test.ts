@@ -60,7 +60,7 @@ describe('SlackNotifier - session lifecycle', () => {
     const notifier = makeNotifier();
 
     // Session start
-    await notifier.postSessionStart(baseSession);
+    await notifier.onSessionCreated(baseSession);
     await vi.advanceTimersByTimeAsync(0); // flush microtasks: sets thread anchor + upsertSlackThread
     expect(mockPostMessage).toHaveBeenCalledTimes(1);
 
@@ -68,14 +68,14 @@ describe('SlackNotifier - session lifecycle', () => {
     (notifier as any).prevSessions.set(baseSession.id, baseSession);
     const updatedSession = { ...baseSession, status: 'idle' as const };
 
-    await notifier.postSessionUpdate(updatedSession);
+    await notifier.onSessionUpdated(updatedSession);
     await vi.advanceTimersByTimeAsync(1200); // fire rate-limit timer and process update job
     expect(mockPostMessage).toHaveBeenCalledTimes(2);
     const updateCall = mockPostMessage.mock.calls[1][0];
     expect(updateCall.thread_ts).toBe('ts-123');
 
     // Session end
-    await notifier.postSessionEnd({ ...baseSession, status: 'completed' as const });
+    await notifier.onSessionEnded({ ...baseSession, status: 'completed' as const });
     await vi.advanceTimersByTimeAsync(1200); // fire rate-limit timer and process end job
     expect(mockPostMessage).toHaveBeenCalledTimes(3);
     const endCall = mockPostMessage.mock.calls[2][0];
@@ -85,7 +85,7 @@ describe('SlackNotifier - session lifecycle', () => {
   it('thread anchor is upserted after session start', async () => {
     const notifier = makeNotifier();
 
-    await notifier.postSessionStart(baseSession);
+    await notifier.onSessionCreated(baseSession);
     await vi.advanceTimersByTimeAsync(0);
 
     expect(upsertSlackThread).toHaveBeenCalledWith(expect.objectContaining({
@@ -97,10 +97,10 @@ describe('SlackNotifier - session lifecycle', () => {
   it('postSessionEnd deletes slack thread', async () => {
     const notifier = makeNotifier();
 
-    await notifier.postSessionStart(baseSession);
+    await notifier.onSessionCreated(baseSession);
     await vi.advanceTimersByTimeAsync(0);
 
-    await notifier.postSessionEnd({ ...baseSession, status: 'completed' as const });
+    await notifier.onSessionEnded({ ...baseSession, status: 'completed' as const });
     await vi.advanceTimersByTimeAsync(1200);
 
     expect(deleteSlackThread).toHaveBeenCalledWith(baseSession.id);
@@ -109,7 +109,7 @@ describe('SlackNotifier - session lifecycle', () => {
   it('postSessionUpdate with no previous state is a no-op', async () => {
     const notifier = makeNotifier();
 
-    await notifier.postSessionUpdate(baseSession);
+    await notifier.onSessionUpdated(baseSession);
     await vi.advanceTimersByTimeAsync(1200);
 
     expect(mockPostMessage).not.toHaveBeenCalled();
@@ -118,10 +118,10 @@ describe('SlackNotifier - session lifecycle', () => {
   it('rate limiting: second message waits for timer', async () => {
     const notifier = makeNotifier();
 
-    await notifier.postSessionStart(baseSession);
+    await notifier.onSessionCreated(baseSession);
     expect(mockPostMessage).toHaveBeenCalledTimes(1);
 
-    await notifier.postSessionStart(baseSession);
+    await notifier.onSessionCreated(baseSession);
     expect(mockPostMessage).toHaveBeenCalledTimes(1); // still 1
 
     await vi.advanceTimersByTimeAsync(1200);
