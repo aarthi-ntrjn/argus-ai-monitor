@@ -1,6 +1,13 @@
-﻿# Argus
+# Argus
 
 Your command center for Claude Code and GitHub Copilot CLI sessions. Watch every session live, send commands, and stop runaway agents, all from a single browser tab.
+
+## Links
+
+- **Landing Page**: [aarthi-ntrjn.github.io/argus](https://aarthi-ntrjn.github.io/argus)
+- **npm**: [npmjs.com/package/argus-ai-hub](https://www.npmjs.com/package/argus-ai-hub)
+- **GitHub**: [aarthi-ntrjn/argus](https://github.com/aarthi-ntrjn/argus)
+- **Contributor docs**: [docs/README-CONTRIBUTORS.md](docs/README-CONTRIBUTORS.md)
 
 ## Requirements
 
@@ -10,7 +17,7 @@ Your command center for Claude Code and GitHub Copilot CLI sessions. Watch every
 ## Getting Started
 
 ```sh
-npx argus-ai-monitor
+npx argus-ai-hub
 ```
 
 Open **http://localhost:7411** and you're in. The port is configurable in [`~/.argus/config.json`](#storage).
