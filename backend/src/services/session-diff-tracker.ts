@@ -14,7 +14,6 @@ type TrackedState = {
   yoloMode: boolean | null;
   pid: number | null;
   launchMode: string | null;
-  summary: string | null;
 };
 
 const TRACKED_FIELDS: { key: keyof TrackedState; label: string }[] = [
@@ -23,7 +22,7 @@ const TRACKED_FIELDS: { key: keyof TrackedState; label: string }[] = [
   { key: 'yoloMode',   label: 'Yolo'   },
   { key: 'pid',        label: 'PID'    },
   { key: 'launchMode', label: 'Mode'   },
-  { key: 'summary',    label: 'Task'   },
+  // summary is intentionally excluded: it surfaces through the output stream instead
 ];
 
 function extract(session: Session): TrackedState {
@@ -33,7 +32,6 @@ function extract(session: Session): TrackedState {
     yoloMode:   session.yoloMode,
     pid:        session.pid,
     launchMode: session.launchMode,
-    summary:    session.summary,
   };
 }
 
@@ -42,10 +40,6 @@ function format(key: keyof TrackedState, value: unknown): string {
   switch (key) {
     case 'yoloMode':   return value ? 'yes' : 'no';
     case 'launchMode': return value === 'pty' ? 'connected' : 'readonly';
-    case 'summary':
-      return typeof value === 'string' && value.length > 150
-        ? `${value.slice(0, 150)}\u2026`
-        : String(value);
     default: return String(value);
   }
 }
@@ -95,13 +89,7 @@ export class SessionDiffTracker {
 
     const changes: SessionChange[] = [];
     for (const { key, label } of TRACKED_FIELDS) {
-      if (key === 'summary') {
-        // Only report summary when it becomes non-null or changes to a new value.
-        // A null summary means the session has no active task, which is not worth posting.
-        if (curr.summary !== null && prev.summary !== curr.summary) {
-          changes.push({ field: key, label, from: format(key, prev.summary), to: format(key, curr.summary) });
-        }
-      } else if (prev[key] !== curr[key]) {
+      if (prev[key] !== curr[key]) {
         changes.push({ field: key, label, from: format(key, prev[key]), to: format(key, curr[key]) });
       }
     }
