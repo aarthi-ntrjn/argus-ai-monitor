@@ -39,8 +39,8 @@
 **Rationale**: shields.io is the de-facto standard for open source project badges. Badges are rendered as SVG images via a CDN URL — no JavaScript required, no CORS issues. They degrade gracefully (the `<img>` simply fails to load) so no broken UI if shields.io is unavailable.
 
 **Badge URLs**:
-- GitHub stars: `https://img.shields.io/github/stars/argus-ai-monitor/argus-ai-monitor?style=flat&label=GitHub%20Stars`
-- npm downloads: `https://img.shields.io/npm/dw/argus-ai-monitor?style=flat&label=Weekly%20Downloads`
+- GitHub stars: `https://img.shields.io/github/stars/aarthi-ntrjn/argus?style=flat&label=GitHub%20Stars`
+- npm downloads: `https://img.shields.io/npm/dw/argus?style=flat&label=Weekly%20Downloads`
 
 **Alternatives Considered**:
 

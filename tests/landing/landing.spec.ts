@@ -16,7 +16,7 @@ test('install command copy CTA is present', async ({ page }) => {
   const copyBtn = page.locator('[data-testid="copy-btn"]');
   await expect(copyBtn).toBeVisible();
   // Primary GitHub CTA also present
-  const githubCta = page.locator('a[href*="github.com/argus-ai-monitor"]');
+  const githubCta = page.locator('a[href*="github.com/aarthi-ntrjn/argus"]');
   await expect(githubCta.first()).toBeVisible();
 });
 

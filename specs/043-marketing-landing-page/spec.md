@@ -80,7 +80,7 @@ A developer who uses Argus wants to share it with teammates. They need a clean, 
 
 ### Functional Requirements
 
-- **FR-001**: The page MUST display a hero section with a headline, subheadline, and install command (`npx argus-ai-monitor`) visible without scrolling on desktop (1280px+) and mobile (390px+) viewports.
+- **FR-001**: The page MUST display a hero section with a headline, subheadline, and install command (`npx argus`) visible without scrolling on desktop (1280px+) and mobile (390px+) viewports.
 - **FR-002**: The page MUST include a primary call-to-action button that links to the GitHub repository.
 - **FR-003**: The page MUST include a secondary call-to-action that copies the install command to the clipboard with a visual confirmation (e.g., "Copied!").
 - **FR-004**: The page MUST display a features section with separate visual blocks for Monitor, Control, and multi-agent visibility, each including a product screenshot and descriptive text.
@@ -110,14 +110,14 @@ A developer who uses Argus wants to share it with teammates. They need a clean, 
 
 ### Session 2026-04-18
 
-- Q: Where does the landing page source code live? → A: `/landing` subfolder in the private `argus-private` repo (developed alongside the app). When pushed to the public `argus-ai-monitor` repo at milestone, GitHub Actions on the public repo deploys `/landing` to GitHub Pages.
+- Q: Where does the landing page source code live? → A: `/landing` subfolder in the private `argus-private` repo (developed alongside the app). When pushed to the public `argus` repo at milestone, GitHub Actions on the public repo deploys `/landing` to GitHub Pages.
 - Q: What analytics tool will be used? → A: GitHub Pages built-in traffic insights only (no script, no cookie banner). Richer analytics deferred to v2.
 - Q: What color theme should the landing page use? → A: Light theme only, visually consistent with the Argus app (`slate-50` background, clean card UI). No dark mode for v1.
 - Q: When does the GitHub Actions deployment trigger? → A: Auto-deploy on push to `master` when any file under `/landing/**` changes.
 
 ## Assumptions
 
-- The landing page will be a standalone static site, separate from the running Argus app (similar in style to openclaw.ai and authentive.ai). The source code lives in a `/landing` subfolder of the private `argus-private` repository, developed alongside the app. When changes are pushed to the public `argus-ai-monitor` repo at a milestone, a GitHub Actions workflow on the public repo deploys the `/landing` folder to GitHub Pages. A custom domain will be configured once chosen; the site will fall back to `argus-ai-monitor.github.io` until then.
+- The landing page will be a standalone static site, separate from the running Argus app (similar in style to openclaw.ai and authentive.ai). The source code lives in a `/landing` subfolder of the private `argus-private` repository, developed alongside the app. When changes are pushed to the public `argus` repo at a milestone, a GitHub Actions workflow on the public repo deploys the `/landing` folder to GitHub Pages. A custom domain will be configured once chosen; the site will fall back to `aarthi-ntrjn.github.io/argus` until then.
 - Existing product screenshots from `docs/images/` will be used as assets; no new screenshot production is required for v1.
 - The primary audience is software developers who work with Claude Code or GitHub Copilot CLI.
 - There is no backend required; all badge counts and social proof elements are fetched client-side or embedded as static shield.io badges.

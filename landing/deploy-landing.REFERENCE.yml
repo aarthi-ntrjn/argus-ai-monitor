@@ -1,4 +1,4 @@
-# REFERENCE FILE — deploy in the public argus-ai-monitor repo at .github/workflows/deploy-landing.yml
+# REFERENCE FILE — deploy in the public argus repo at .github/workflows/deploy-landing.yml
 #
 # Purpose: Deploy /landing to GitHub Pages on every push to master
 #          when files under landing/ change.

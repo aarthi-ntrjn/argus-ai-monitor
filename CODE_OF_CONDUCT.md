@@ -16,4 +16,4 @@ If you open an issue or otherwise interact with this project, please be respectf
 
 ## Contact
 
-For questions, open an issue on the [GitHub repository](https://github.com/aarthi-ntrjn/argus-ai-monitor/issues).
+For questions, open an issue on the [GitHub repository](https://github.com/aarthi-ntrjn/argus/issues).

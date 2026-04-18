@@ -5,7 +5,7 @@
 
 ## Summary
 
-Build a standalone static marketing/product landing page for Argus, hosted on GitHub Pages, developed in the private `argus-private` repo under `/landing` and deployed from the public `argus-ai-monitor` repo via GitHub Actions. The page communicates Argus's value proposition to developers in the style of openclaw.ai and authentive.ai: hero section with install CTA, feature showcase with product screenshots, How It Works walkthrough, social proof badges, and full OG meta support. No framework, no build step — pure HTML5 + CSS3 + minimal vanilla JavaScript.
+Build a standalone static marketing/product landing page for Argus, hosted on GitHub Pages, developed in the private `argus-private` repo under `/landing` and deployed from the public `argus` repo via GitHub Actions. The page communicates Argus's value proposition to developers in the style of openclaw.ai and authentive.ai: hero section with install CTA, feature showcase with product screenshots, How It Works walkthrough, social proof badges, and full OG meta support. No framework, no build step — pure HTML5 + CSS3 + minimal vanilla JavaScript.
 
 ## Technical Context
 
@@ -76,7 +76,7 @@ tests/
     └── landing.spec.ts         # Playwright e2e tests (test-first)
 ```
 
-**GitHub Actions** (public `argus-ai-monitor` repo — added when milestone sync happens):
+**GitHub Actions** (public `argus` repo — added when milestone sync happens):
 
 ```text
 .github/workflows/

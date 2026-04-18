@@ -29,7 +29,7 @@ What actually happened.
 - OS: (e.g., Windows 11, macOS 15, Ubuntu 24.04)
 - Node.js version: 
 - Browser: (e.g., Chrome 130, Safari 18)
-- Argus version: (run `npx argus-ai-monitor --version` or check package.json)
+- Argus version: (run `npx argus --version` or check package.json)
 
 ## Screenshots
 
