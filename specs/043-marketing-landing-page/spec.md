@@ -2,7 +2,7 @@
 
 **Feature Branch**: `043-marketing-landing-page`
 **Created**: 2026-04-18
-**Status**: Draft
+**Status**: Clarified
 **Input**: User description: "i want to build page for users to learn more about argus - something like https://openclaw.ai/ or https://authentive.ai/ build a proposal"
 
 ## User Scenarios & Testing *(mandatory)*
