@@ -56,6 +56,10 @@ export function getDb(): Database.Database {
       db.exec('ALTER TABLE sessions DROP COLUMN yolo_mode');
       db.exec('ALTER TABLE sessions RENAME COLUMN yolo_mode_new TO yolo_mode');
     }
+    const teamsCols = (db.pragma('table_info(teams_threads)') as Array<{ name: string }>).map(c => c.name);
+    if (!teamsCols.includes('tenant_id')) db.exec("ALTER TABLE teams_threads ADD COLUMN tenant_id TEXT NOT NULL DEFAULT ''");
+    const slackThreadsCols = (db.pragma('table_info(slack_threads)') as Array<{ name: string }>).map(c => c.name);
+    if (!slackThreadsCols.includes('workspace_id')) db.exec("ALTER TABLE slack_threads ADD COLUMN workspace_id TEXT NOT NULL DEFAULT ''");
     const controlCols = (db.pragma('table_info(control_actions)') as Array<{ name: string }>).map(c => c.name);
     if (!controlCols.includes('source')) db.exec('ALTER TABLE control_actions ADD COLUMN source TEXT');
     if (sessionCols.includes('slack_thread_ts')) {
@@ -283,39 +287,39 @@ export function deleteTodo(id: string): boolean {
 
 export function upsertTeamsThread(thread: TeamsThread): void {
   getDb().prepare(`
-    INSERT OR REPLACE INTO teams_threads (id, session_id, teams_thread_id, teams_channel_id, created_at)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(thread.id, thread.sessionId, thread.teamsThreadId, thread.teamsChannelId, thread.createdAt);
+    INSERT OR REPLACE INTO teams_threads (id, session_id, teams_thread_id, teams_channel_id, tenant_id, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(thread.id, thread.sessionId, thread.teamsThreadId, thread.teamsChannelId, thread.tenantId, thread.createdAt);
 }
 
 export function getTeamsThread(sessionId: string): TeamsThread | null {
   return getDb().prepare(
-    'SELECT id, session_id as sessionId, teams_thread_id as teamsThreadId, teams_channel_id as teamsChannelId, created_at as createdAt FROM teams_threads WHERE session_id = ?'
+    'SELECT id, session_id as sessionId, teams_thread_id as teamsThreadId, teams_channel_id as teamsChannelId, tenant_id as tenantId, created_at as createdAt FROM teams_threads WHERE session_id = ?'
   ).get(sessionId) as TeamsThread | null;
 }
 
 export function getTeamsThreadByTeamsId(teamsThreadId: string): TeamsThread | null {
   return getDb().prepare(
-    'SELECT id, session_id as sessionId, teams_thread_id as teamsThreadId, teams_channel_id as teamsChannelId, created_at as createdAt FROM teams_threads WHERE teams_thread_id = ?'
+    'SELECT id, session_id as sessionId, teams_thread_id as teamsThreadId, teams_channel_id as teamsChannelId, tenant_id as tenantId, created_at as createdAt FROM teams_threads WHERE teams_thread_id = ?'
   ).get(teamsThreadId) as TeamsThread | null;
 }
 
 export function upsertSlackThread(thread: SlackThread): void {
   getDb().prepare(`
-    INSERT OR REPLACE INTO slack_threads (id, session_id, slack_thread_ts, slack_channel_id, created_at)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(thread.id, thread.sessionId, thread.slackThreadTs, thread.slackChannelId, thread.createdAt);
+    INSERT OR REPLACE INTO slack_threads (id, session_id, slack_thread_ts, slack_channel_id, workspace_id, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(thread.id, thread.sessionId, thread.slackThreadTs, thread.slackChannelId, thread.workspaceId, thread.createdAt);
 }
 
 export function getSlackThread(sessionId: string): SlackThread | null {
   return getDb().prepare(
-    'SELECT id, session_id as sessionId, slack_thread_ts as slackThreadTs, slack_channel_id as slackChannelId, created_at as createdAt FROM slack_threads WHERE session_id = ?'
+    'SELECT id, session_id as sessionId, slack_thread_ts as slackThreadTs, slack_channel_id as slackChannelId, workspace_id as workspaceId, created_at as createdAt FROM slack_threads WHERE session_id = ?'
   ).get(sessionId) as SlackThread | null;
 }
 
 export function getSlackThreadByTs(threadTs: string): SlackThread | null {
   return getDb().prepare(
-    'SELECT id, session_id as sessionId, slack_thread_ts as slackThreadTs, slack_channel_id as slackChannelId, created_at as createdAt FROM slack_threads WHERE slack_thread_ts = ?'
+    'SELECT id, session_id as sessionId, slack_thread_ts as slackThreadTs, slack_channel_id as slackChannelId, workspace_id as workspaceId, created_at as createdAt FROM slack_threads WHERE slack_thread_ts = ?'
   ).get(threadTs) as SlackThread | null;
 }
 

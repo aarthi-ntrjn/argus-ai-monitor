@@ -27,6 +27,7 @@ export class SlackNotifier {
   private readonly sessionMonitor: SessionMonitor;
   private client: WebClient | null = null;
   private disabled = false;
+  private workspaceId = '';
 
   // Thread anchor map: sessionId -> Slack message ts of the parent message
   private readonly threadAnchors = new Map<string, string>();
@@ -49,7 +50,7 @@ export class SlackNotifier {
   // Lifecycle
   // -------------------------------------------------------------------------
 
-  initialize(): void {
+  async initialize(): Promise<void> {
     if (!this.config.botToken || !this.config.channelId) {
       logger.warn(`${LOG_TAG} Slack integration disabled: missing botToken or channelId`);
       this.disabled = true;
@@ -62,6 +63,15 @@ export class SlackNotifier {
     }
 
     this.client = new WebClient(this.config.botToken);
+
+    try {
+      const auth = await this.client.auth.test();
+      this.workspaceId = (auth.team_id as string | undefined) ?? '';
+      logger.info(`${LOG_TAG} Workspace ID: ${this.workspaceId}`);
+    } catch (err) {
+      logger.warn(`${LOG_TAG} Failed to fetch workspace ID via auth.test:`, err);
+    }
+
     this.subscribeToEvents();
     logger.info(`${LOG_TAG} Initialized, posting to channel ${this.config.channelId}`);
   }
@@ -129,7 +139,7 @@ export class SlackNotifier {
           const isNewTopLevel = !threadTs || !resultThreadTs || resultThreadTs === result.ts;
           if (isNewTopLevel) {
             this.threadAnchors.set(session.id, result.ts);
-            upsertSlackThread({ id: randomUUID(), sessionId: session.id, slackThreadTs: result.ts, slackChannelId: this.config.channelId, createdAt: new Date().toISOString() });
+            upsertSlackThread({ id: randomUUID(), sessionId: session.id, slackThreadTs: result.ts, slackChannelId: this.config.channelId, workspaceId: this.workspaceId, createdAt: new Date().toISOString() });
           }
         }
       } catch (err) {
@@ -146,7 +156,7 @@ export class SlackNotifier {
             });
             if (result.ts) {
               this.threadAnchors.set(session.id, result.ts);
-              upsertSlackThread({ id: randomUUID(), sessionId: session.id, slackThreadTs: result.ts, slackChannelId: this.config.channelId, createdAt: new Date().toISOString() });
+              upsertSlackThread({ id: randomUUID(), sessionId: session.id, slackThreadTs: result.ts, slackChannelId: this.config.channelId, workspaceId: this.workspaceId, createdAt: new Date().toISOString() });
             }
           } catch (retryErr) {
             logger.error(`${LOG_TAG} Failed to re-post session start for ${session.id} after stale anchor:`, retryErr);

@@ -232,7 +232,7 @@ export async function startServer() {
   const slackConfig = loadSlackConfig();
   if (slackConfig) {
     slackNotifier = new SlackNotifier(slackConfig, monitor);
-    slackNotifier.initialize();
+    await slackNotifier.initialize();
 
     if (slackNotifier.webClient) {
       slackListener = new SlackListener(slackConfig, slackNotifier.webClient, slackNotifier);

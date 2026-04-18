@@ -8,6 +8,7 @@ vi.mock('../../src/db/database.js', () => ({
   deleteSlackThread: vi.fn(),
 }));
 
+
 import { SlackNotifier } from '../../src/services/slack-notifier.js';
 import { getSlackThread, upsertSlackThread, deleteSlackThread } from '../../src/db/database.js';
 import type { Session } from '../../src/models/index.js';
@@ -55,21 +56,21 @@ describe('SlackNotifier', () => {
   });
 
   describe('initialize', () => {
-    it('disables when botToken is missing', () => {
+    it('disables when botToken is missing', async () => {
       const notifier = new SlackNotifier({ botToken: '', channelId: 'C01234', enabled: true } as any, mockMonitor);
-      notifier.initialize();
+      await notifier.initialize();
       expect(notifier.isDisabled).toBe(true);
     });
 
-    it('disables when channelId is missing', () => {
+    it('disables when channelId is missing', async () => {
       const notifier = new SlackNotifier({ botToken: 'xoxb-test', channelId: '', enabled: true } as any, mockMonitor);
-      notifier.initialize();
+      await notifier.initialize();
       expect(notifier.isDisabled).toBe(true);
     });
 
-    it('disables when enabled is false', () => {
+    it('disables when enabled is false', async () => {
       const notifier = new SlackNotifier({ ...baseConfig, enabled: false }, mockMonitor);
-      notifier.initialize();
+      await notifier.initialize();
       expect(notifier.isDisabled).toBe(true);
     });
   });

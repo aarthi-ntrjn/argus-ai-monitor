@@ -127,6 +127,7 @@ export class TeamsIntegrationService {
         sessionId: session.id,
         teamsThreadId: sent.id,
         teamsChannelId: channelId,
+        tenantId: process.env.TENANT_ID ?? '',
         createdAt: new Date().toISOString(),
       });
       const stored = getTeamsThread(session.id);
