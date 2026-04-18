@@ -36,6 +36,7 @@ import { TeamsListener } from './integration/teams/teams-listener.js';
 import { FastifyTeamsAdapter } from './integration/teams/teams-sdk-adapter.js';
 import { outputStore } from './services/output-store.js';
 import { loadTeamsConfig } from './config/teams-config-loader.js';
+import { getIntegrationEnabled } from './db/database.js';
 import type { Session, Repository } from './models/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -187,11 +188,13 @@ export async function startServer() {
   const slackConfig = loadSlackConfig();
   if (slackConfig) {
     slackNotifier = new SlackNotifier(slackConfig, monitor);
-    await slackNotifier.initialize();
+    if (getIntegrationEnabled('slack') !== false) {
+      await slackNotifier.initialize();
 
-    if (slackNotifier.webClient) {
-      slackListener = new SlackListener(slackConfig, slackNotifier.webClient, slackNotifier);
-      await slackListener.initialize();
+      if (slackNotifier.webClient) {
+        slackListener = new SlackListener(slackConfig, slackNotifier.webClient, slackNotifier);
+        await slackListener.initialize();
+      }
     }
     setSlackServices(slackNotifier, slackListener);
   }
@@ -201,7 +204,7 @@ export async function startServer() {
 
   teamsNotifier = new TeamsNotifier(teamsApp, app.log as any);
 
-  if (await teamsNotifier.initialize()) {
+  if (getIntegrationEnabled('teams') !== false && await teamsNotifier.initialize()) {
     monitor.on('session.created', (session: Session) => {
       teamsNotifier!.onSessionCreated(session).catch(err => app.log.error({ err }, 'teams.session.created.error'));
     });

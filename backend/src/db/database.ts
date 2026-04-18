@@ -330,3 +330,15 @@ export function getSlackThreadByTs(threadTs: string): SlackThread | null {
 export function deleteSlackThread(sessionId: string): void {
   getDb().prepare('DELETE FROM slack_threads WHERE session_id = ?').run(sessionId);
 }
+
+export function getIntegrationEnabled(id: string): boolean | null {
+  const row = getDb().prepare('SELECT enabled FROM integrations WHERE id = ?').get(id) as { enabled: number } | undefined;
+  if (!row) return null; // never explicitly set — use default (initialize normally)
+  return row.enabled === 1;
+}
+
+export function setIntegrationEnabled(id: string, enabled: boolean): void {
+  getDb().prepare(
+    'INSERT OR REPLACE INTO integrations (id, enabled, updated_at) VALUES (?, ?, ?)'
+  ).run(id, enabled ? 1 : 0, new Date().toISOString());
+}

@@ -55,5 +55,10 @@ CREATE TABLE IF NOT EXISTS slack_threads (
   created_at       TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_slack_threads_session ON slack_threads(session_id);
+CREATE TABLE IF NOT EXISTS integrations (
+  id         TEXT PRIMARY KEY,
+  enabled    INTEGER NOT NULL DEFAULT 1,
+  updated_at TEXT NOT NULL
+);
 `;
 

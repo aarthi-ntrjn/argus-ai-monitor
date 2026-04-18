@@ -3,6 +3,7 @@ import type { SlackNotifier } from '../../integration/slack/slack-notifier.js';
 import type { SlackListener } from '../../integration/slack/slack-listener.js';
 import type { TeamsNotifier } from '../../integration/teams/teams-notifier.js';
 import type { TeamsListener } from '../../integration/teams/teams-listener.js';
+import { setIntegrationEnabled } from '../../db/database.js';
 
 let slackNotifier: SlackNotifier | null = null;
 let slackListener: SlackListener | null = null;
@@ -39,6 +40,7 @@ const integrationsRoutes: FastifyPluginAsync = async (fastify) => {
     if (!slackNotifier) return reply.status(503).send({ error: 'Slack not configured' });
     const started = await slackNotifier.initialize();
     slackListener?.initialize();
+    setIntegrationEnabled('slack', true);
     return reply.send({ started });
   });
 
@@ -46,6 +48,7 @@ const integrationsRoutes: FastifyPluginAsync = async (fastify) => {
     if (!slackNotifier) return reply.status(503).send({ error: 'Slack not configured' });
     slackListener?.shutdown();
     slackNotifier.shutdown();
+    setIntegrationEnabled('slack', false);
     return reply.send({ stopped: true });
   });
 
@@ -53,6 +56,7 @@ const integrationsRoutes: FastifyPluginAsync = async (fastify) => {
     if (!teamsNotifier) return reply.status(503).send({ error: 'Teams not configured' });
     const started = await teamsNotifier.initialize();
     teamsListener?.initialize();
+    setIntegrationEnabled('teams', true);
     return reply.send({ started });
   });
 
@@ -60,6 +64,7 @@ const integrationsRoutes: FastifyPluginAsync = async (fastify) => {
     if (!teamsNotifier) return reply.status(503).send({ error: 'Teams not configured' });
     teamsListener?.shutdown();
     teamsNotifier.shutdown();
+    setIntegrationEnabled('teams', false);
     return reply.send({ stopped: true });
   });
 };
