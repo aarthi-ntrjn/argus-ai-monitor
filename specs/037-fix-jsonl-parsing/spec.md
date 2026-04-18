@@ -11,6 +11,7 @@
 
 - Q: How should file positions be persisted across restarts to avoid re-parsing the full file? → A: No persistent byte-offset storage. On restart, both watchers apply the tail-read (last X bytes) without clearing stored output. INSERT OR IGNORE deduplication handles any overlap between the tail window and already-stored entries.
 - Q: What should uniquely identify a Copilot output entry for deduplication purposes? → A: The file byte offset of the line (stable, append-only file guarantee, no dependency on Copilot event format).
+- Q: How should sequence numbers be assigned when a watcher re-attaches and picks up new entries from the tail? → A: Resume from `max(stored sequence for session) + 1`, ensuring new entries always sort after all existing ones.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -153,6 +154,7 @@ Today the watchers differ in: read style (async for Claude, blocking sync for Co
 - **FR-013**: Both watchers MUST use the same database insertion strategy: insert new entries and skip any entry whose ID already exists in the store (no delete-then-reinsert pattern). For Claude entries, the ID is derived from the entry's native `uuid` field. For Copilot entries, the ID is derived from the byte offset of the line within the `events.jsonl` file, ensuring stability across tail re-reads.
 - **FR-014**: Both watchers MUST apply the tail-read optimization on every attach (first-ever and restart): read only the last X bytes of the JSONL file, regardless of whether stored output exists. INSERT OR IGNORE deduplication ensures previously stored entries are not duplicated. No persistent byte-offset storage is required.
 - **FR-015**: The Copilot watcher MUST use non-blocking async file I/O consistent with the Claude watcher, so that file reads do not block the scan cycle thread.
+- **FR-016**: On every watcher re-attach (restart or reconnect), both watchers MUST initialize their sequence counter to `max(sequence_number for session in store) + 1`, so that newly appended entries always sort after all previously stored entries.
 
 ### Key Entities
 
@@ -160,7 +162,8 @@ Today the watchers differ in: read style (async for Claude, blocking sync for Co
 - **JSONL Event (Copilot format)**: An object with dot-notation `type` (e.g., `assistant.message`, `tool.execution_start`), optional flat `content`/`model` fields, and a nested `data` object holding the real payload.
 - **OutputEntry**: The normalized, parser-agnostic record stored in Argus representing a single message, tool_use, or tool_result output with `role`, `content`, and `toolName` fields. Each entry has a stable unique ID: for Claude entries this is the native `uuid` from the JSONL; for Copilot entries this is derived from the byte offset of the source line in `events.jsonl`.
 - **Session record**: The in-memory and persisted state for a monitored session, including `model`, `summary`, `lastActivityAt`, and the list of `OutputEntry` items.
-- **File position**: The byte offset up to which a watcher has already read a JSONL file. Used to read only new bytes on each change event and to resume after restart. Currently in-memory only; this feature may require it to be persisted.
+- **File position**: The byte offset up to which a watcher has already read a JSONL file. Used to read only new bytes on each change event. On re-attach, the position is set to the tail window start (file size minus tail bytes); no persistent storage of byte offsets is needed.
+- **Sequence counter**: A per-session integer that assigns ordering to output entries. On first attach it starts at 0. On re-attach it resumes from `max(stored sequence for session) + 1` so new entries always sort after existing ones.
 - **Tail window**: The maximum number of bytes read from a JSONL file on first attach when no stored output exists for the session. Prevents reading megabytes of historical events for long-running sessions.
 
 ## Success Criteria *(mandatory)*
@@ -176,6 +179,7 @@ Today the watchers differ in: read style (async for Claude, blocking sync for Co
 - **SC-007**: After a backend restart, a Copilot session that had 20 stored output entries still shows all 20 entries; none are deleted by the restart.
 - **SC-008**: After a backend restart, a Claude Code session does not re-insert any output entry that was already in the database before the restart (zero duplicates added).
 - **SC-009**: The Copilot file watcher performs no synchronous blocking I/O during normal operation (verified by code review of the readNewLines implementation).
+- **SC-010**: After a backend restart, any new output entries appended to a session appear in the correct order after all pre-restart entries in the output panel; no entries appear out of sequence.
 
 ## Assumptions
 
