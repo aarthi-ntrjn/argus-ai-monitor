@@ -285,6 +285,11 @@ code {
   color: #3b0764;            /* purple-800 */
 }
 
+.hero__badge--os {
+  background-color: #f1f5f9; /* slate-100 */
+  color: #334155;            /* slate-700 */
+}
+
 .hero__subheadline {
   font-size: 1.125rem;
   color: var(--color-text-muted);
