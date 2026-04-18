@@ -3,7 +3,7 @@ import type { Logger, LogFn } from 'pino';
 import type { App } from '@microsoft/teams.apps';
 import type { Session, SessionOutput } from '../models/index.js';
 import { loadTeamsConfig } from '../config/teams-config-loader.js';
-import { getTeamsThread, upsertTeamsThread, getRepository } from '../db/database.js';
+import { getTeamsThread, upsertTeamsThread, deleteTeamsThread, getRepository } from '../db/database.js';
 import type { Repository } from '../models/index.js';
 
 type TeamsLogger = Logger & { teams: LogFn };
@@ -226,6 +226,7 @@ export class TeamsIntegrationService {
     try {
       const threadConvId = `${channelId};messageid=${thread.teamsThreadId}`;
       await this.teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text: this._formatEndedMessage(session) });
+      deleteTeamsThread(session.id);
       this.logger.teams({ ...this._sessionCtx(session), status: session.status }, 'teams.session.ended');
     } catch (err) {
       this.logger.error({ ...this._sessionCtx(session), err }, 'teams.session.end.notify.failed');

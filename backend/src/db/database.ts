@@ -304,6 +304,10 @@ export function getTeamsThreadByTeamsId(teamsThreadId: string): TeamsThread | nu
   ).get(teamsThreadId) as TeamsThread | null;
 }
 
+export function deleteTeamsThread(sessionId: string): void {
+  getDb().prepare('DELETE FROM teams_threads WHERE session_id = ?').run(sessionId);
+}
+
 export function upsertSlackThread(thread: SlackThread): void {
   getDb().prepare(`
     INSERT OR REPLACE INTO slack_threads (id, session_id, slack_thread_ts, slack_channel_id, workspace_id, created_at)
