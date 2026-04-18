@@ -159,6 +159,28 @@ export async function getSlackSettings(): Promise<SlackSettings> {
   return apiFetch<SlackSettings>('/settings/slack');
 }
 
+export interface IntegrationRunState {
+  notifier: { running: boolean } | null;
+  listener: { running: boolean } | null;
+}
+
+export interface IntegrationStatus {
+  slack: IntegrationRunState;
+  teams: IntegrationRunState;
+}
+
+export async function getIntegrationStatus(): Promise<IntegrationStatus> {
+  return apiFetch<IntegrationStatus>('/integrations');
+}
+
+export async function startIntegration(platform: 'slack' | 'teams'): Promise<void> {
+  await apiFetch<unknown>(`/integrations/${platform}/start`, { method: 'POST' });
+}
+
+export async function stopIntegration(platform: 'slack' | 'teams'): Promise<void> {
+  await apiFetch<unknown>(`/integrations/${platform}/stop`, { method: 'POST' });
+}
+
 export function postTelemetryEvent(type: string): void {
   void fetch(`${BASE}/telemetry/event`, {
     method: 'POST',

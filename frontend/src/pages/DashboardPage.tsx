@@ -5,8 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { getSessions, getRepositories } from '../services/api';
 import { useSettings } from '../hooks/useSettings';
 import { useArgusSettings } from '../hooks/useArgusSettings';
-import { useTeamsSettings } from '../hooks/useTeamsSettings';
-import { useSlackSettings } from '../hooks/useSlackSettings';
+import { useIntegrationControl } from '../hooks/useIntegrationControl';
 import { useOnboarding } from '../hooks/useOnboarding';
 import { useRepositoryManagement } from '../hooks/useRepositoryManagement';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -51,8 +50,7 @@ export default function DashboardPage() {
 
   const [settings, updateSetting] = useSettings();
   const { settings: argusSettings, patchSetting } = useArgusSettings();
-  const { config: teamsConfig } = useTeamsSettings();
-  const { config: slackConfig } = useSlackSettings();
+  const { teamsRunning, slackRunning, teamsConfigured, slackConfigured, toggle, isPending } = useIntegrationControl();
   const { tourStatus, seenRepoSteps, startTour, skipTour, completeTour, markRepoStepsSeen, resetOnboarding } = useOnboarding();
   const [tourRun, setTourRun] = useState(false);
   const [catchUpRun, setCatchUpRun] = useState(false);
@@ -215,13 +213,29 @@ export default function DashboardPage() {
             <div className="flex items-center gap-3">
               <IntegrationStatusIcon
                 type="teams"
-                connected={teamsConfig?.connectionStatus === 'connected'}
-                title={`Microsoft Teams: ${teamsConfig?.connectionStatus ?? 'unconfigured'}`}
+                connected={teamsRunning}
+                title={
+                  !teamsConfigured
+                    ? 'Microsoft Teams: not configured'
+                    : teamsRunning
+                      ? 'Microsoft Teams: running — click to stop'
+                      : 'Microsoft Teams: stopped — click to start'
+                }
+                onClick={teamsConfigured ? () => toggle('teams') : undefined}
+                disabled={isPending}
               />
               <IntegrationStatusIcon
                 type="slack"
-                connected={slackConfig?.enabled === true}
-                title={`Slack: ${slackConfig?.enabled ? 'connected' : 'disconnected'}`}
+                connected={slackRunning}
+                title={
+                  !slackConfigured
+                    ? 'Slack: not configured'
+                    : slackRunning
+                      ? 'Slack: running — click to stop'
+                      : 'Slack: stopped — click to start'
+                }
+                onClick={slackConfigured ? () => toggle('slack') : undefined}
+                disabled={isPending}
               />
             </div>
             <div className="relative" ref={settingsRef}>
