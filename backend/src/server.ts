@@ -102,7 +102,7 @@ export async function buildServer() {
     tenantId: process.env.TENANT_ID,
   });
   teamsListener = new TeamsListener(teamsApp, app.log as any);
-  teamsListener.initialize();
+  await teamsListener.initialize();
   await teamsApp.initialize();
 
   const frontendDist = join(__dirname, '..', '..', 'frontend', 'dist');
@@ -191,7 +191,7 @@ export async function startServer() {
 
     if (slackNotifier.webClient) {
       slackListener = new SlackListener(slackConfig, slackNotifier.webClient, slackNotifier);
-      slackListener.initialize();
+      await slackListener.initialize();
     }
     setSlackServices(slackNotifier, slackListener);
   }

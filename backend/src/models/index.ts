@@ -189,6 +189,6 @@ export interface NotificationIntegration {
 
 export interface NotificationListener {
   readonly isRunning: boolean;
-  initialize(): void;
+  initialize(): Promise<boolean>;
   shutdown(): void;
 }

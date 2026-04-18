@@ -32,14 +32,14 @@ export class SlackListener implements NotificationListener {
   // Lifecycle
   // -------------------------------------------------------------------------
 
-  initialize(): void {
+  async initialize(): Promise<boolean> {
     if (this.socketClient) {
       logger.info(`${LOG_TAG} Already running, skipping re-initialize`);
-      return;
+      return true;
     }
     if (!this.config.appToken) {
       logger.info(`${LOG_TAG} Socket Mode disabled: SLACK_APP_TOKEN not configured (inbound routing unavailable)`);
-      return;
+      return false;
     }
 
     this.socketClient = new SocketModeClient({ appToken: this.config.appToken });
@@ -63,6 +63,7 @@ export class SlackListener implements NotificationListener {
     }).catch((err: unknown) => {
       logger.error(`${LOG_TAG} Failed to start Socket Mode client:`, err);
     });
+    return true;
   }
 
   shutdown(): void {

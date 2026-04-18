@@ -27,9 +27,9 @@ export class TeamsListener implements NotificationListener {
   // Lifecycle
   // -------------------------------------------------------------------------
 
-  initialize(): void {
+  async initialize(): Promise<boolean> {
     this.active = true;
-    if (this.handlerRegistered) return;
+    if (this.handlerRegistered) return true;
     this.handlerRegistered = true;
     this.teamsApp.message(/.*/, async (ctx) => {
       if (!this.active) return;
@@ -58,6 +58,7 @@ export class TeamsListener implements NotificationListener {
         this.logger.error({ err, source: LOG_TAG }, 'teams.listener.message.failed');
       }
     });
+    return true;
   }
 
   shutdown(): void {
