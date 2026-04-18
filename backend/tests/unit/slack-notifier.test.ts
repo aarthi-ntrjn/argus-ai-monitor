@@ -147,6 +147,58 @@ describe('SlackNotifier', () => {
     });
   });
 
+  describe('onSessionOutput - AskUserQuestion', () => {
+    it('posts a question notification to the thread when AskUserQuestion tool_use is in the batch', async () => {
+      vi.useFakeTimers();
+      const notifier = makeNotifier();
+      (notifier as any).threadAnchors.set(baseSession.id, 'thread-ts');
+
+      const outputs = [
+        {
+          id: '1', sessionId: baseSession.id, timestamp: '', type: 'tool_use' as const,
+          content: JSON.stringify({ question: 'Which directory?' }),
+          toolName: 'AskUserQuestion', toolCallId: 'tc-1', role: null, sequenceNumber: 1,
+        },
+      ];
+
+      await notifier.onSessionOutput(baseSession.id, outputs);
+      await vi.advanceTimersByTimeAsync(1200);
+
+      expect(mockPostMessage).toHaveBeenCalledOnce();
+      const call = mockPostMessage.mock.calls[0][0];
+      expect(call.thread_ts).toBe('thread-ts');
+      expect(call.text).toContain('Which directory?');
+      expect(call.text).toContain('Claude is asking');
+
+      vi.useRealTimers();
+    });
+
+    it('does not post a question notification when already answered', async () => {
+      vi.useFakeTimers();
+      const notifier = makeNotifier();
+      (notifier as any).threadAnchors.set(baseSession.id, 'thread-ts');
+
+      const outputs = [
+        {
+          id: '1', sessionId: baseSession.id, timestamp: '', type: 'tool_use' as const,
+          content: JSON.stringify({ question: 'Done?' }),
+          toolName: 'AskUserQuestion', toolCallId: 'tc-2', role: null, sequenceNumber: 1,
+        },
+        {
+          id: '2', sessionId: baseSession.id, timestamp: '', type: 'tool_result' as const,
+          content: 'yes', toolName: null, toolCallId: 'tc-2', role: null, sequenceNumber: 2,
+        },
+      ];
+
+      await notifier.onSessionOutput(baseSession.id, outputs);
+      await vi.advanceTimersByTimeAsync(1200);
+
+      expect(mockPostMessage).not.toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+  });
+
   describe('isEventEnabled', () => {
     it('allows all events when enabledEventTypes is not set', async () => {
       const notifier = makeNotifier();

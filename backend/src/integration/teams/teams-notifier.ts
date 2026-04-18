@@ -8,6 +8,8 @@ import type { Repository, NotificationIntegration } from '../../models/index.js'
 import { MessageQueue } from '../../services/message-queue.js';
 import { SessionDiffTracker } from '../../services/session-diff-tracker.js';
 import type { SessionChange } from '../../services/session-diff-tracker.js';
+import { findPendingQuestion } from '../../services/pending-question.js';
+import type { PendingQuestion } from '../../services/pending-question.js';
 
 export type TeamsLogger = Logger & { teams: LogFn };
 
@@ -186,25 +188,41 @@ export class TeamsNotifier implements NotificationIntegration {
       this.logger.teams({ sessionId }, 'teams.session.output.skipped: not enabled');
       return;
     }
-    const relevant = outputs.filter(o => o.type === 'message' && o.content.trim() && !o.isMeta &&
-      (o.role === 'assistant' || o.role === 'user'));
-    if (relevant.length === 0) return;
-    const text = relevant.map(o =>
-      o.role === 'user' ? `**You said:** ${o.content}` : o.content
-    ).join('\n\n');
     const { channelId } = config as { channelId: string };
 
-    this.queue.enqueue(async () => {
-      const thread = getTeamsThread(sessionId);
-      if (!thread) return;
-      try {
-        const threadConvId = `${channelId};messageid=${thread.teamsThreadId}`;
-        await this.teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text });
-        this.logger.teams({ ...this._logCtx(), sessionId, chars: text.length }, 'teams.session.output.posted');
-      } catch (err) {
-        this.logger.error({ ...this._logCtx(), err, sessionId }, 'teams.session.output.failed');
-      }
-    }, 'session.output', sessionId);
+    const relevant = outputs.filter(o => o.type === 'message' && o.content.trim() && !o.isMeta &&
+      (o.role === 'assistant' || o.role === 'user'));
+    if (relevant.length > 0) {
+      const text = relevant.map(o =>
+        o.role === 'user' ? `**You said:** ${o.content}` : o.content
+      ).join('\n\n');
+      this.queue.enqueue(async () => {
+        const thread = getTeamsThread(sessionId);
+        if (!thread) return;
+        try {
+          const threadConvId = `${channelId};messageid=${thread.teamsThreadId}`;
+          await this.teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text });
+          this.logger.teams({ ...this._logCtx(), sessionId, chars: text.length }, 'teams.session.output.posted');
+        } catch (err) {
+          this.logger.error({ ...this._logCtx(), err, sessionId }, 'teams.session.output.failed');
+        }
+      }, 'session.output', sessionId);
+    }
+
+    const pending = findPendingQuestion(outputs);
+    if (pending) {
+      this.queue.enqueue(async () => {
+        const thread = getTeamsThread(sessionId);
+        if (!thread) return;
+        try {
+          const threadConvId = `${channelId};messageid=${thread.teamsThreadId}`;
+          await this.teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text: this._formatPendingQuestion(pending) });
+          this.logger.teams({ ...this._logCtx(), sessionId }, 'teams.session.question.posted');
+        } catch (err) {
+          this.logger.error({ ...this._logCtx(), err, sessionId }, 'teams.session.question.failed');
+        }
+      }, 'session.question', sessionId);
+    }
   }
 
   async onSessionEnded(session: Session): Promise<void> {
@@ -287,6 +305,14 @@ export class TeamsNotifier implements NotificationIntegration {
       field('Status', session.status),
       field('Ended', session.endedAt ?? new Date().toISOString()),
     ].join('\n');
+  }
+
+  _formatPendingQuestion(pending: PendingQuestion): string {
+    const lines = ['**Claude is asking:**', '---', pending.question];
+    if (pending.choices.length > 0) {
+      lines.push('', ...pending.choices.map(c => `- ${c}`));
+    }
+    return lines.join('\n');
   }
 }
 
