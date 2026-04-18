@@ -56,8 +56,6 @@ export function getDb(): Database.Database {
       db.exec('ALTER TABLE sessions DROP COLUMN yolo_mode');
       db.exec('ALTER TABLE sessions RENAME COLUMN yolo_mode_new TO yolo_mode');
     }
-    const teamsCols = (db.pragma('table_info(teams_threads)') as Array<{ name: string }>).map(c => c.name);
-    if (!teamsCols.includes('delta_link')) db.exec('ALTER TABLE teams_threads ADD COLUMN delta_link TEXT');
     const controlCols = (db.pragma('table_info(control_actions)') as Array<{ name: string }>).map(c => c.name);
     if (!controlCols.includes('source')) db.exec('ALTER TABLE control_actions ADD COLUMN source TEXT');
     if (!sessionCols.includes('slack_thread_ts')) db.exec('ALTER TABLE sessions ADD COLUMN slack_thread_ts TEXT');
@@ -123,14 +121,16 @@ export function deleteRepository(id: string): void {
 
   const caResult = db.prepare('DELETE FROM control_actions WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
   const soResult = db.prepare('DELETE FROM session_output WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
-  console.log(`[deleteRepository] deleted control_actions=${caResult.changes}, session_output=${soResult.changes}`);
+  const ttResult = db.prepare('DELETE FROM teams_threads WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
+  console.log(`[deleteRepository] deleted control_actions=${caResult.changes}, session_output=${soResult.changes}, teams_threads=${ttResult.changes}`);
 
   // Verify no child records remain before deleting sessions
   if (sessionIds.length > 0) {
     const placeholders = sessionIds.map(() => '?').join(',');
     const caRemaining = (db.prepare(`SELECT COUNT(*) as n FROM control_actions WHERE session_id IN (${placeholders})`).get(...sessionIds) as { n: number }).n;
     const soRemaining = (db.prepare(`SELECT COUNT(*) as n FROM session_output WHERE session_id IN (${placeholders})`).get(...sessionIds) as { n: number }).n;
-    console.log(`[deleteRepository] remaining after cleanup: control_actions=${caRemaining}, session_output=${soRemaining}`);
+    const ttRemaining = (db.prepare(`SELECT COUNT(*) as n FROM teams_threads WHERE session_id IN (${placeholders})`).get(...sessionIds) as { n: number }).n;
+    console.log(`[deleteRepository] remaining after cleanup: control_actions=${caRemaining}, session_output=${soRemaining}, teams_threads=${ttRemaining}`);
   }
 
   db.prepare('DELETE FROM sessions WHERE repository_id = ?').run(id);
@@ -273,20 +273,20 @@ export function deleteTodo(id: string): boolean {
 
 export function upsertTeamsThread(thread: TeamsThread): void {
   getDb().prepare(`
-    INSERT OR REPLACE INTO teams_threads (id, session_id, teams_thread_id, teams_channel_id, current_output_message_id, delta_link, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(thread.id, thread.sessionId, thread.teamsThreadId, thread.teamsChannelId, thread.currentOutputMessageId, thread.deltaLink ?? null, thread.createdAt);
+    INSERT OR REPLACE INTO teams_threads (id, session_id, teams_thread_id, teams_channel_id, current_output_message_id, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(thread.id, thread.sessionId, thread.teamsThreadId, thread.teamsChannelId, thread.currentOutputMessageId, thread.createdAt);
 }
 
 export function getTeamsThread(sessionId: string): TeamsThread | null {
   return getDb().prepare(
-    'SELECT id, session_id as sessionId, teams_thread_id as teamsThreadId, teams_channel_id as teamsChannelId, current_output_message_id as currentOutputMessageId, delta_link as deltaLink, created_at as createdAt FROM teams_threads WHERE session_id = ?'
+    'SELECT id, session_id as sessionId, teams_thread_id as teamsThreadId, teams_channel_id as teamsChannelId, current_output_message_id as currentOutputMessageId, created_at as createdAt FROM teams_threads WHERE session_id = ?'
   ).get(sessionId) as TeamsThread | null;
 }
 
 export function getTeamsThreadByTeamsId(teamsThreadId: string): TeamsThread | null {
   return getDb().prepare(
-    'SELECT id, session_id as sessionId, teams_thread_id as teamsThreadId, teams_channel_id as teamsChannelId, current_output_message_id as currentOutputMessageId, delta_link as deltaLink, created_at as createdAt FROM teams_threads WHERE teams_thread_id = ?'
+    'SELECT id, session_id as sessionId, teams_thread_id as teamsThreadId, teams_channel_id as teamsChannelId, current_output_message_id as currentOutputMessageId, created_at as createdAt FROM teams_threads WHERE teams_thread_id = ?'
   ).get(teamsThreadId) as TeamsThread | null;
 }
 
@@ -296,10 +296,6 @@ export function updateTeamsThreadOutputMessageId(sessionId: string, messageId: s
 
 export function clearTeamsThreadOutputMessageId(sessionId: string): void {
   getDb().prepare('UPDATE teams_threads SET current_output_message_id = NULL WHERE session_id = ?').run(sessionId);
-}
-
-export function updateTeamsThreadDeltaLink(sessionId: string, deltaLink: string): void {
-  getDb().prepare('UPDATE teams_threads SET delta_link = ? WHERE session_id = ?').run(deltaLink, sessionId);
 }
 
 export function getSlackThreadTs(sessionId: string): string | null {

@@ -164,6 +164,5 @@ export interface TeamsThread {
   teamsThreadId: string;
   teamsChannelId: string;
   currentOutputMessageId: string | null;
-  deltaLink: string | null;
   createdAt: string;
 }

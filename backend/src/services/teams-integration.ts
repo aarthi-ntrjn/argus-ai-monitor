@@ -132,7 +132,6 @@ export class TeamsIntegrationService {
         teamsThreadId: sent.id,
         teamsChannelId: channelId,
         currentOutputMessageId: null,
-        deltaLink: null,
         createdAt: new Date().toISOString(),
       });
       const stored = getTeamsThread(session.id);
