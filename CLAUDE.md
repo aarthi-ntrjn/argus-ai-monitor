@@ -44,6 +44,8 @@ The Teams and Slack integrations live under `backend/src/integration/{teams,slac
 
 **Layering:** Notifiers handle outbound notifications only. Listeners handle inbound commands only. Notifiers do not parse commands. Listeners do not send session notifications. Cross-cutting concerns (rate limiting, DB access) go through shared services in `backend/src/services/`, not duplicated in each integration.
 
+**Session diff logic lives in `SessionDiffTracker` (`backend/src/services/session-diff-tracker.ts`), not in notifiers.** Notifiers own one `SessionDiffTracker` instance each. In `onSessionCreated`, call `diffTracker.seed(session)` after the thread is created. In `onSessionUpdated`, call `diffTracker.update(session)` — it returns `null` (no baseline, skip), `[]` (no changes, skip), or a `SessionChange[]` to format and send. In `onSessionEnded`, call `diffTracker.clear(session.id)` after posting. Notifiers must not contain their own field comparison logic, baseline maps, or formatting of "what changed" — only platform-specific message formatting and network calls.
+
 **API:** Start/stop endpoints live in `backend/src/api/routes/integrations.ts`. Any new integration must be registered there.
 
 ## Error Handling

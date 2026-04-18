@@ -6,44 +6,10 @@ import { loadTeamsConfig } from '../../config/teams-config-loader.js';
 import { getTeamsThread, upsertTeamsThread, deleteTeamsThread, getRepository } from '../../db/database.js';
 import type { Repository, NotificationIntegration } from '../../models/index.js';
 import { MessageQueue } from '../../services/message-queue.js';
+import { SessionDiffTracker } from '../../services/session-diff-tracker.js';
+import type { SessionChange } from '../../services/session-diff-tracker.js';
 
 export type TeamsLogger = Logger & { teams: LogFn };
-
-type TrackedSessionState = {
-  status: string;
-  model: string | null;
-  yoloMode: boolean | null;
-  pid: number | null;
-  launchMode: string | null;
-  summary: string | null;
-};
-
-type UntrackedSessionSnapshot = {
-  lastActivityAt: string | null;
-  hostPid: number | null;
-  pidSource: string | null;
-  endedAt: string | null;
-};
-
-function extractTrackedState(session: Session): TrackedSessionState {
-  return {
-    status: session.status,
-    model: session.model,
-    yoloMode: session.yoloMode,
-    pid: session.pid,
-    launchMode: session.launchMode,
-    summary: session.summary,
-  };
-}
-
-function extractUntrackedSnapshot(session: Session): UntrackedSessionSnapshot {
-  return {
-    lastActivityAt: session.lastActivityAt,
-    hostPid: session.hostPid ?? null,
-    pidSource: session.pidSource ?? null,
-    endedAt: session.endedAt,
-  };
-}
 
 function field(label: string, value: string): string {
   return `**${label}:** ${value}`;
@@ -54,8 +20,7 @@ function code(value: string): string {
 }
 
 export class TeamsNotifier implements NotificationIntegration {
-  private lastPostedState = new Map<string, TrackedSessionState>();
-  private lastSeenSnapshot = new Map<string, UntrackedSessionSnapshot>();
+  private readonly diffTracker = new SessionDiffTracker();
   private active = false;
   private readonly queue: MessageQueue;
 
@@ -113,7 +78,7 @@ export class TeamsNotifier implements NotificationIntegration {
     const existing = getTeamsThread(session.id);
     if (existing) {
       this.logger.teams({ ...this._sessionCtx(session), teamsThreadId: existing.teamsThreadId }, 'teams.thread.reused');
-      this.lastPostedState.set(session.id, extractTrackedState(session));
+      this.diffTracker.seed(session);
       this.queue.enqueue(async () => {
         try {
           const threadConvId = `${channelId};messageid=${existing.teamsThreadId}`;
@@ -135,7 +100,7 @@ export class TeamsNotifier implements NotificationIntegration {
                 tenantId: process.env.TENANT_ID ?? '',
                 createdAt: new Date().toISOString(),
               });
-              this.lastPostedState.set(session.id, extractTrackedState(session));
+              this.diffTracker.seed(session);
               this.logger.teams({ ...this._sessionCtx(session), teamsThreadId: sent.id }, 'teams.thread.stale.recovered');
             } catch (retryErr) {
               this.logger.error({ ...this._sessionCtx(session), err: retryErr }, 'teams.thread.stale.recover.failed');
@@ -164,7 +129,7 @@ export class TeamsNotifier implements NotificationIntegration {
         });
         const stored = getTeamsThread(session.id);
         this.logger.teams({ ...this._sessionCtx(session), teamsThreadId: sent.id, storedThreadId: stored?.teamsThreadId, stored: !!stored }, 'teams.thread.created');
-        this.lastPostedState.set(session.id, extractTrackedState(session));
+        this.diffTracker.seed(session);
       } catch (err) {
         this.logger.error({ ...this._sessionCtx(session), err }, 'teams.thread.create.failed');
       }
@@ -187,35 +152,17 @@ export class TeamsNotifier implements NotificationIntegration {
       return;
     }
 
-    const prevSnap = this.lastSeenSnapshot.get(session.id);
-    this.lastSeenSnapshot.set(session.id, extractUntrackedSnapshot(session));
-
-    const prev = this.lastPostedState.get(session.id);
-    const curr = extractTrackedState(session);
-
-    if (!prev) {
-      // No baseline recorded (server restart while session was running).
-      // Store current state so future updates have something to diff against.
-      this.lastPostedState.set(session.id, curr);
+    const changes = this.diffTracker.update(session);
+    if (changes === null) {
       this.logger.teams({ ...this._sessionCtx(session) }, 'teams.session.updated.skipped: no baseline, recording current state');
       return;
     }
-
-    const changes = this._diffState(prev, curr);
     if (changes.length === 0) {
-      const untrackedChanges: string[] = [];
-      if (prevSnap) {
-        if (prevSnap.lastActivityAt !== session.lastActivityAt) untrackedChanges.push('lastActivityAt');
-        if (prevSnap.hostPid !== (session.hostPid ?? null)) untrackedChanges.push('hostPid');
-        if (prevSnap.pidSource !== (session.pidSource ?? null)) untrackedChanges.push('pidSource');
-        if (prevSnap.endedAt !== session.endedAt) untrackedChanges.push('endedAt');
-      }
-      this.logger.teams({ ...this._sessionCtx(session), untrackedChanges }, 'teams.session.updated.skipped: no meaningful changes');
+      this.logger.teams({ ...this._sessionCtx(session) }, 'teams.session.updated.skipped: no meaningful changes');
       return;
     }
 
-    this.logger.teams({ ...this._sessionCtx(session), changes: changes.map(c => c.label), prev, curr }, 'teams.session.updated.posting');
-    this.lastPostedState.set(session.id, curr);
+    this.logger.teams({ ...this._sessionCtx(session), changes: changes.map(c => c.label) }, 'teams.session.updated.posting');
 
     const config = loadTeamsConfig();
     const { channelId } = config as { channelId: string };
@@ -280,6 +227,7 @@ export class TeamsNotifier implements NotificationIntegration {
         const threadConvId = `${channelId};messageid=${thread.teamsThreadId}`;
         await this.teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text });
         deleteTeamsThread(session.id);
+        this.diffTracker.clear(session.id);
         this.logger.teams({ ...this._sessionCtx(session), status: session.status }, 'teams.session.ended');
       } catch (err) {
         this.logger.error({ ...this._sessionCtx(session), err }, 'teams.session.end.notify.failed');
@@ -294,24 +242,6 @@ export class TeamsNotifier implements NotificationIntegration {
   shutdown(): void {
     this.active = false;
     this.queue.drain();
-  }
-
-  private _diffState(prev: TrackedSessionState | undefined, curr: TrackedSessionState): { label: string; value: string }[] {
-    if (!prev) return [];
-    const changes: { label: string; value: string }[] = [];
-    if (prev.status !== curr.status)
-      changes.push({ label: 'Status', value: curr.status });
-    if (prev.model !== curr.model)
-      changes.push({ label: 'Model', value: curr.model ?? '(unknown)' });
-    if (prev.yoloMode !== curr.yoloMode)
-      changes.push({ label: 'Yolo', value: curr.yoloMode ? 'on' : 'off' });
-    if (prev.pid !== curr.pid)
-      changes.push({ label: 'PID', value: curr.pid != null ? String(curr.pid) : '(unknown)' });
-    if (prev.launchMode !== curr.launchMode)
-      changes.push({ label: 'Mode', value: curr.launchMode === 'pty' ? 'connected' : 'readonly' });
-    if (curr.summary !== null && prev.summary !== curr.summary)
-      changes.push({ label: 'Task', value: curr.summary });
-    return changes;
   }
 
   _formatOpeningMessage(session: Session, repo: Repository | undefined): string {
@@ -339,11 +269,11 @@ export class TeamsNotifier implements NotificationIntegration {
     ].join('\n');
   }
 
-  _formatUpdateMessage(_session: Session, changes: { label: string; value: string }[]): string {
+  _formatUpdateMessage(_session: Session, changes: SessionChange[]): string {
     return [
       '**Session Updated**',
       '---',
-      ...changes.map(({ label, value }) => field(label, value)),
+      ...changes.map(({ label, to }) => field(label, to)),
     ].join('\n');
   }
 

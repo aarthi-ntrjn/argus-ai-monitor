@@ -64,8 +64,8 @@ describe('SlackNotifier - session lifecycle', () => {
     await vi.advanceTimersByTimeAsync(0); // flush microtasks: sets thread anchor + upsertSlackThread
     expect(mockPostMessage).toHaveBeenCalledTimes(1);
 
-    // Set up for update: inject previous state so diff produces changes
-    (notifier as any).prevSessions.set(baseSession.id, baseSession);
+    // Set up for update: seed baseline so diff produces changes
+    (notifier as any).diffTracker.seed(baseSession);
     const updatedSession = { ...baseSession, status: 'idle' as const };
 
     await notifier.onSessionUpdated(updatedSession);

@@ -4,6 +4,8 @@ import type { Session, Repository, SlackConfig, SessionOutput, NotificationInteg
 import { randomUUID } from 'crypto';
 import { getRepository, getSlackThread, getSlackThreadByTs, upsertSlackThread, deleteSlackThread } from '../../db/database.js';
 import { MessageQueue } from '../../services/message-queue.js';
+import { SessionDiffTracker } from '../../services/session-diff-tracker.js';
+import type { SessionChange } from '../../services/session-diff-tracker.js';
 import { outputEvents } from '../../services/output-store.js';
 import {
   SESSION_CREATED,
@@ -27,9 +29,7 @@ export class SlackNotifier implements NotificationIntegration {
   // Thread anchor map: sessionId -> Slack message ts of the parent message
   private readonly threadAnchors = new Map<string, string>();
 
-  // Previous session state for computing diffs on session.updated
-  private readonly prevSessions = new Map<string, Session>();
-
+  private readonly diffTracker = new SessionDiffTracker();
   private readonly queue: MessageQueue;
   private subscribed = false;
 
@@ -101,7 +101,7 @@ export class SlackNotifier implements NotificationIntegration {
   }
 
   // -------------------------------------------------------------------------
-  // Session lifecycle (T008, T009)
+  // Session lifecycle
   // -------------------------------------------------------------------------
 
   async onSessionCreated(session: Session): Promise<void> {
@@ -137,6 +137,7 @@ export class SlackNotifier implements NotificationIntegration {
             this.threadAnchors.set(session.id, result.ts);
             upsertSlackThread({ id: randomUUID(), sessionId: session.id, slackThreadTs: result.ts, slackChannelId: this.config.channelId, workspaceId: this.workspaceId, createdAt: new Date().toISOString() });
           }
+          this.diffTracker.seed(session);
         }
       } catch (err) {
         if ((err as any)?.data?.error === 'message_not_found') {
@@ -153,6 +154,7 @@ export class SlackNotifier implements NotificationIntegration {
             if (result.ts) {
               this.threadAnchors.set(session.id, result.ts);
               upsertSlackThread({ id: randomUUID(), sessionId: session.id, slackThreadTs: result.ts, slackChannelId: this.config.channelId, workspaceId: this.workspaceId, createdAt: new Date().toISOString() });
+              this.diffTracker.seed(session);
             }
           } catch (retryErr) {
             logger.error(`${LOG_TAG} Failed to re-post session start for ${session.id} after stale anchor:`, retryErr);
@@ -179,6 +181,7 @@ export class SlackNotifier implements NotificationIntegration {
           ...(threadTs ? { thread_ts: threadTs } : {}),
         });
         this.threadAnchors.delete(session.id);
+        this.diffTracker.clear(session.id);
         deleteSlackThread(session.id);
       } catch (err) {
         logger.error(`${LOG_TAG} Failed to post session end for ${session.id}:`, err);
@@ -190,14 +193,10 @@ export class SlackNotifier implements NotificationIntegration {
     if (!this.active || !this.client) return;
     if (!this.isEventEnabled(SESSION_UPDATED)) return;
 
-    const prev = this.prevSessions.get(session.id);
-    const diff = prev ? diffSessions(prev, session) : null;
-    this.prevSessions.set(session.id, session);
+    const changes = this.diffTracker.update(session);
+    if (changes === null || changes.length === 0) return;
 
-    // No previous state (e.g. server restart mid-session) or only untracked fields changed
-    if (!diff || Object.keys(diff).length === 0) return;
-
-    const blocks = buildSessionUpdatedBlocks(session, diff);
+    const blocks = buildSessionUpdatedBlocks(session, changes);
     this.queue.enqueue(async () => {
       // Resolve thread anchor: check in-memory first, then fall back to DB for sessions
       // detected after server restart where the anchor was persisted but not yet loaded.
@@ -250,7 +249,7 @@ export class SlackNotifier implements NotificationIntegration {
   }
 
   // -------------------------------------------------------------------------
-  // Generic event (T012)
+  // Generic event
   // -------------------------------------------------------------------------
 
   async postEvent(sessionId: string, eventType: string, payload: Session | Repository): Promise<void> {
@@ -291,15 +290,12 @@ export class SlackNotifier implements NotificationIntegration {
   private subscribeToEvents(): void {
     if (this.subscribed) return;
     this.subscribed = true;
-    // T010, T013: subscribe to all SessionMonitor events
     this.sessionMonitor.on(SESSION_CREATED, (session: Session) => {
-      this.prevSessions.set(session.id, session);
       this.onSessionCreated(session).catch((err) => {
         logger.error(`${LOG_TAG} Unhandled error in session.created handler:`, err);
       });
     });
     this.sessionMonitor.on(SESSION_ENDED, (session: Session) => {
-      this.prevSessions.delete(session.id);
       this.onSessionEnded(session).catch((err) => {
         logger.error(`${LOG_TAG} Unhandled error in session.ended handler:`, err);
       });
@@ -380,37 +376,9 @@ function buildSessionEndBlocks(session: Session) {
   ];
 }
 
-// Fields diffed for session.updated notifications. lastActivityAt is intentionally
-// excluded as it changes on every scan cycle and produces noise without signal.
-const TRACKED_UPDATE_FIELDS: (keyof Session)[] = ['model', 'summary', 'status', 'yoloMode'];
-
-type SessionFieldDiff = Record<string, { from: string; to: string }>;
-
-function diffSessions(prev: Session, curr: Session): SessionFieldDiff {
-  const diff: SessionFieldDiff = {};
-  for (const field of TRACKED_UPDATE_FIELDS) {
-    if (prev[field] !== curr[field]) {
-      diff[field] = {
-        from: formatSessionFieldValue(field, prev[field]),
-        to: formatSessionFieldValue(field, curr[field]),
-      };
-    }
-  }
-  return diff;
-}
-
-function formatSessionFieldValue(field: keyof Session, value: unknown): string {
-  if (value == null) return 'none';
-  if (field === 'yoloMode') return value ? 'yes' : 'no';
-  if (field === 'summary' && typeof value === 'string' && value.length > 150) {
-    return `${value.slice(0, 150)}…`;
-  }
-  return String(value);
-}
-
-function buildSessionUpdatedBlocks(session: Session, diff: SessionFieldDiff) {
-  const lines = Object.entries(diff).map(([field, { from, to }]) =>
-    `• *${field}:* ${from} → ${to}`
+function buildSessionUpdatedBlocks(session: Session, changes: SessionChange[]) {
+  const lines = changes.map(({ label, from, to }) =>
+    `\u2022 *${label}:* ${from} \u2192 ${to}`
   );
   return [
     {

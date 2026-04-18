@@ -250,26 +250,19 @@ describe('TeamsNotifier', () => {
     it('records baseline and skips posting when no previous state exists (server restart recovery)', async () => {
       vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
       vi.mocked(getTeamsThread).mockReturnValue(existingThread);
-      // No lastPostedState set: simulates server restart mid-session
+      // No baseline seeded: simulates server restart mid-session
 
       await service.onSessionUpdated(baseSession);
 
       expect(mockActivitiesCreate).not.toHaveBeenCalled();
       // Baseline should now be recorded so future updates can diff against it
-      expect((service as any).lastPostedState.has(baseSession.id)).toBe(true);
+      expect((service as any).diffTracker.hasBaseline(baseSession.id)).toBe(true);
     });
 
     it('skips posting when only untracked fields changed (e.g. lastActivityAt)', async () => {
       vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
       vi.mocked(getTeamsThread).mockReturnValue(existingThread);
-      (service as any).lastPostedState.set(baseSession.id, {
-        status: baseSession.status,
-        model: baseSession.model,
-        yoloMode: baseSession.yoloMode,
-        pid: baseSession.pid,
-        launchMode: baseSession.launchMode,
-        summary: baseSession.summary,
-      });
+      (service as any).diffTracker.seed(baseSession);
 
       const updatedSession = { ...baseSession, lastActivityAt: '2024-06-01T00:00:00.000Z' };
       await service.onSessionUpdated(updatedSession);
@@ -280,14 +273,7 @@ describe('TeamsNotifier', () => {
     it('posts a reply with changed fields when status changes', async () => {
       vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
       vi.mocked(getTeamsThread).mockReturnValue(existingThread);
-      (service as any).lastPostedState.set(baseSession.id, {
-        status: 'active',
-        model: null,
-        yoloMode: null,
-        pid: null,
-        launchMode: null,
-        summary: null,
-      });
+      (service as any).diffTracker.seed(baseSession); // baseline: status = 'active'
       mockActivitiesCreate.mockResolvedValue({ id: 'update-msg' });
 
       await service.onSessionUpdated({ ...baseSession, status: 'completed' });
