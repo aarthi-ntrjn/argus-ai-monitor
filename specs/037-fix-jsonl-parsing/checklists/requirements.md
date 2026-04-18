@@ -25,7 +25,7 @@
 ## Feature Readiness
 
 - [x] All functional requirements have clear acceptance criteria
-- [x] User scenarios cover primary flows
+- [x] User scenarios cover primary flows (parsing correctness, model detection, restart behavior, I/O consistency)
 - [x] Feature meets measurable outcomes defined in Success Criteria
 - [x] No implementation details leak into specification
 

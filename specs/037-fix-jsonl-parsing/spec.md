@@ -3,7 +3,7 @@
 **Feature Branch**: `037-fix-jsonl-parsing`
 **Created**: 2026-04-18
 **Status**: Draft
-**Input**: User description: "i want to work on a branch to fix the jsonl parsing logic differences between claude and copilot"
+**Input**: User description: "i want to work on a branch to fix the jsonl parsing logic differences between claude and copilot, including what is loaded on start and how much is loaded and how it is loaded"
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -77,6 +77,46 @@ As a developer viewing session output, I want only meaningful messages to appear
 
 ---
 
+---
+
+### User Story 5 - Correct and Consistent Session Output After Restart (Priority: P1)
+
+As a developer using Argus continuously across backend restarts or reconnects, I want to see the same session output after a restart that I saw before, with no output disappearing or being duplicated, regardless of whether the session is Claude Code or Copilot.
+
+Today, the two watchers behave very differently on startup. The Claude watcher re-reads the entire JSONL file from position zero every time it attaches, relying on deduplication to avoid duplicates. The Copilot watcher deletes all stored output and then reads only the most recent 16 KB of the events file, discarding all historical output on every restart. Neither has persistent file position tracking, so both must do extra work on restart to recover state.
+
+**Why this priority**: Output disappearing after a restart destroys trust in the tool. A user who sees a long conversation in Argus and then restarts the backend should not come back to a blank or truncated panel.
+
+**Independent Test**: Let both a Claude Code session and a Copilot session accumulate several exchanges (enough to exceed 16 KB in the events file). Restart the Argus backend. Verify that the full output for the Claude session is still shown and that the Copilot session shows at minimum all output that was visible before the restart.
+
+**Acceptance Scenarios**:
+
+1. **Given** a Copilot session with stored output in the Argus database, **When** the Argus backend restarts and re-attaches the file watcher, **Then** the previously stored output is not deleted and remains visible in the output panel.
+2. **Given** a Claude Code session with a large JSONL file (hundreds of entries), **When** the Argus backend restarts, **Then** only lines added since the last known read position are re-parsed; lines already in the database are not re-processed.
+3. **Given** a Copilot session whose `events.jsonl` has grown beyond the tail window, **When** Argus re-attaches after a restart, **Then** events already stored in the database are retained, and only new events (since the last read position) are appended.
+4. **Given** any session where Argus was offline while new JSONL lines were written, **When** Argus restarts, **Then** the lines written during the offline period are detected and appended to the stored output without duplicating lines that were already stored.
+5. **Given** a Copilot session being watched for the very first time (no existing database records), **When** Argus attaches the file watcher, **Then** the tail-read optimization still applies so large historical files are not fully re-processed.
+
+---
+
+### User Story 6 - Consistent File Read Strategy (Priority: P2)
+
+As a developer maintaining the Argus backend, I want both the Claude and Copilot watchers to use the same approach for reading JSONL files: an incremental, append-only read that never re-reads already-processed bytes and never blocks the scan cycle.
+
+Today the watchers differ in: read style (async for Claude, blocking sync for Copilot), DB insertion strategy (INSERT OR IGNORE for Claude, delete-then-insert for Copilot), and tail behavior (none for Claude, 16 KB for Copilot). This inconsistency creates hidden performance risks and makes the code harder to reason about.
+
+**Why this priority**: Consistency reduces the risk of new bugs being introduced in one watcher but not the other, and eliminates a blocking sync read from the scan cycle.
+
+**Independent Test**: Code review of both `readNewLines` implementations after the fix: both should use async I/O, both should use the same DB insertion strategy, and neither should clear previously stored output.
+
+**Acceptance Scenarios**:
+
+1. **Given** the Copilot `readNewLines` method, **When** it reads new bytes from `events.jsonl`, **Then** it uses non-blocking async I/O consistent with the Claude watcher.
+2. **Given** both watchers inserting parsed outputs into the database, **When** an output entry with the same ID is encountered again (e.g., due to a position reset), **Then** neither watcher inserts a duplicate.
+3. **Given** the scan cycle running on its regular interval, **When** the Copilot file watcher reads new lines, **Then** no synchronous blocking I/O occurs on the main scan loop thread.
+
+---
+
 ### Edge Cases
 
 - What happens when a JSONL line is malformed (invalid JSON)? The line is skipped and the error is logged; subsequent valid lines continue to be processed.
@@ -84,6 +124,8 @@ As a developer viewing session output, I want only meaningful messages to appear
 - What happens when `data.content` is an empty array or empty string? The event is treated as having no extractable content and, if it is a message-role event, it is suppressed.
 - What happens when model detection finds conflicting values across events in the same session? The first non-null value wins and subsequent detections are ignored (existing model is preserved).
 - What happens when the `events.jsonl` file is truncated or rotated by Copilot? The watcher detects the smaller file size and resets its read position to the beginning.
+- What happens when Argus restarts and a JSONL file has been deleted? The watcher does not re-attach, and the session is treated as ended with its previously stored output preserved.
+- What happens when a session's JSONL file is very large (several MB) and Argus has no stored output for it? The tail-read optimization applies: only the most recent bytes up to the configured tail window are read on first attach.
 
 ## Requirements *(mandatory)*
 
@@ -99,6 +141,11 @@ As a developer viewing session output, I want only meaningful messages to appear
 - **FR-008**: The Copilot parser MUST suppress `turn.start` and similarly bookkeeping-only events, producing no output entry.
 - **FR-009**: Both parsers MUST handle malformed JSONL lines (invalid JSON) by logging a warning and skipping the line without crashing.
 - **FR-010**: Both parsers MUST skip entries whose type is not recognized and that carry no meaningful content (no silent data loss, but no spurious output either).
+- **FR-011**: On Argus restart, the Copilot watcher MUST NOT delete previously stored session output; it MUST only append newly written lines to the existing stored output.
+- **FR-012**: On Argus restart, the Claude watcher MUST NOT re-parse lines already present in the database; it MUST read only bytes written after the last known file position.
+- **FR-013**: Both watchers MUST use the same database insertion strategy: insert new entries and skip any entry whose ID already exists in the store (no delete-then-reinsert pattern).
+- **FR-014**: The tail-read optimization (reading only the most recent bytes on first attach) MUST apply only when a session has no existing stored output; if stored output already exists, the watcher MUST resume from the last recorded file position rather than re-reading the tail.
+- **FR-015**: The Copilot watcher MUST use non-blocking async file I/O consistent with the Claude watcher, so that file reads do not block the scan cycle thread.
 
 ### Key Entities
 
@@ -106,6 +153,8 @@ As a developer viewing session output, I want only meaningful messages to appear
 - **JSONL Event (Copilot format)**: An object with dot-notation `type` (e.g., `assistant.message`, `tool.execution_start`), optional flat `content`/`model` fields, and a nested `data` object holding the real payload.
 - **OutputEntry**: The normalized, parser-agnostic record stored in Argus representing a single message, tool_use, or tool_result output with `role`, `content`, and `toolName` fields.
 - **Session record**: The in-memory and persisted state for a monitored session, including `model`, `summary`, `lastActivityAt`, and the list of `OutputEntry` items.
+- **File position**: The byte offset up to which a watcher has already read a JSONL file. Used to read only new bytes on each change event and to resume after restart. Currently in-memory only; this feature may require it to be persisted.
+- **Tail window**: The maximum number of bytes read from a JSONL file on first attach when no stored output exists for the session. Prevents reading megabytes of historical events for long-running sessions.
 
 ## Success Criteria *(mandatory)*
 
@@ -117,6 +166,9 @@ As a developer viewing session output, I want only meaningful messages to appear
 - **SC-004**: Restarting the Argus backend does not cause previously displayed output for an in-progress Copilot session to disappear.
 - **SC-005**: Zero blank or whitespace-only message entries appear in the output panel for either session type under normal operation.
 - **SC-006**: Existing unit tests for both parsers pass without modification, and new tests cover each fixed behavior.
+- **SC-007**: After a backend restart, a Copilot session that had 20 stored output entries still shows all 20 entries; none are deleted by the restart.
+- **SC-008**: After a backend restart, a Claude Code session does not re-insert any output entry that was already in the database before the restart (zero duplicates added).
+- **SC-009**: The Copilot file watcher performs no synchronous blocking I/O during normal operation (verified by code review of the readNewLines implementation).
 
 ## Assumptions
 
@@ -125,3 +177,7 @@ As a developer viewing session output, I want only meaningful messages to appear
 - The parsers are intentionally separate modules (`claude-code-jsonl-parser.ts` and `events-parser.ts`) because the two formats differ significantly; this feature aligns their behavior without merging them into a single parser.
 - Both parsers share the same `OutputEntry` type as their output contract; this type is not changed as part of this feature.
 - Model detection correctness is defined as: the session record shows the value reported by the agent in its events. If the agent never reports a model, the field remains null, and that is correct behavior.
+- Persistent file position tracking (surviving a backend restart) is the correct long-term fix for the restart behavior gaps. The spec treats this as the target; the plan phase will decide whether to store positions in the database or derive them from the count of stored output bytes.
+- The tail-read window size (currently 16 KB for Copilot) is assumed to be an appropriate default for sessions with no prior stored output. Changing its value is out of scope; applying it correctly (only when no stored output exists) is in scope.
+- The Claude watcher's full-file read on first attach is acceptable for sessions with no stored output but is wasteful on restart. Fixing the restart behavior to use position-based resumption rather than full re-parse is in scope for FR-012.
+- Both watchers are assumed to own a single file per session; multi-file or rotated-file scenarios are out of scope.
