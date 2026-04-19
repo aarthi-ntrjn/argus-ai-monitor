@@ -112,55 +112,72 @@ const client = new ArgusLaunchClient('ws://127.0.0.1:7411/launcher', ptyLaunchId
 log(`registering session: hostPid=${pty.pid} pid=${isWin ? null : pty.pid} sessionType=${sessionType}`);
 client.setRegisterInfo({ hostPid: pty.pid, pid: isWin ? null : pty.pid, sessionType, cwd });
 
-// // Yield Win32 input mode sequences(ESC[Vk;Sc;Uc;Kd;Cs;Rc_) for a single character,
-// // one buffer per event: key-down first, then key-up.
-// function* win32InputEvents(ch: string): Generator<Buffer> {
-//   // [VirtualKey, ScanCode] for US QWERTY layout
-//   const keyInfo: Record<string, [number, number]> = {
-//     'a': [65, 30], 'b': [66, 48], 'c': [67, 46], 'd': [68, 32], 'e': [69, 18],
-//     'f': [70, 33], 'g': [71, 34], 'h': [72, 35], 'i': [73, 23], 'j': [74, 36],
-//     'k': [75, 37], 'l': [76, 38], 'm': [77, 50], 'n': [78, 49], 'o': [79, 24],
-//     'p': [80, 25], 'q': [81, 16], 'r': [82, 19], 's': [83, 31], 't': [84, 20],
-//     'u': [85, 22], 'v': [86, 47], 'w': [87, 17], 'x': [88, 45], 'y': [89, 21],
-//     'z': [90, 44], ' ': [32, 57], '\r': [13, 28],
-//     '0': [48, 11], '1': [49, 2], '2': [50, 3], '3': [51, 4], '4': [52, 5],
-//     '5': [53, 6], '6': [54, 7], '7': [55, 8], '8': [56, 9], '9': [57, 10],
-//     '-': [189, 12], '=': [187, 13], '[': [219, 26], ']': [221, 27],
-//     ';': [186, 39], "'": [222, 40], ',': [188, 51], '.': [190, 52], '/': [191, 53],
-//   };
-//   const lower = ch.toLowerCase();
-//   const [vk, sc] = keyInfo[lower] ?? [ch.charCodeAt(0), 0];
-//   const uc = ch.charCodeAt(0);
-//   yield Buffer.from(`\x1b[${vk};${sc};${uc};1;0;1_`); // key down
-//   yield Buffer.from(`\x1b[${vk};${sc};${uc};0;0;1_`); // key up
-// }
-//
-// // Delay between Win32 keystroke pairs so Copilot CLI can process each character
-// // before the next arrives. Without this, all pushes land in a single event-loop
-// // tick and the PTY drops or merges them.
-// const KEYSTROKE_DELAY_MS = 10;
-//
-// // Push a buffer to stdin then wait KEYSTROKE_DELAY_MS before returning.
-// // Every Win32 input event goes through this so the PTY sees a natural
-// // inter-event gap and does not drop or merge simultaneous arrivals.
-// const pushStdin = (buf: Buffer): Promise<void> => {
-//   process.stdin.push(buf);
-//   return new Promise<void>((resolve) => setTimeout(resolve, KEYSTROKE_DELAY_MS));
-// };
+// Yield Win32 input mode sequences(ESC[Vk;Sc;Uc;Kd;Cs;Rc_) for a single character,
+// one buffer per event: key-down first, then key-up.
+function* win32InputEvents(ch: string): Generator<Buffer> {
+  // [VirtualKey, ScanCode] for US QWERTY layout
+  const keyInfo: Record<string, [number, number]> = {
+    'a': [65, 30], 'b': [66, 48], 'c': [67, 46], 'd': [68, 32], 'e': [69, 18],
+    'f': [70, 33], 'g': [71, 34], 'h': [72, 35], 'i': [73, 23], 'j': [74, 36],
+    'k': [75, 37], 'l': [76, 38], 'm': [77, 50], 'n': [78, 49], 'o': [79, 24],
+    'p': [80, 25], 'q': [81, 16], 'r': [82, 19], 's': [83, 31], 't': [84, 20],
+    'u': [85, 22], 'v': [86, 47], 'w': [87, 17], 'x': [88, 45], 'y': [89, 21],
+    'z': [90, 44], ' ': [32, 57], '\r': [13, 28],
+    '0': [48, 11], '1': [49, 2], '2': [50, 3], '3': [51, 4], '4': [52, 5],
+    '5': [53, 6], '6': [54, 7], '7': [55, 8], '8': [56, 9], '9': [57, 10],
+    '-': [189, 12], '=': [187, 13], '[': [219, 26], ']': [221, 27],
+    ';': [186, 39], "'": [222, 40], ',': [188, 51], '.': [190, 52], '/': [191, 53],
+  };
+  const lower = ch.toLowerCase();
+  const [vk, sc] = keyInfo[lower] ?? [ch.charCodeAt(0), 0];
+  const uc = ch.charCodeAt(0);
+  yield Buffer.from(`\x1b[${vk};${sc};${uc};1;0;1_`); // key down
+  yield Buffer.from(`\x1b[${vk};${sc};${uc};0;0;1_`); // key up
+}
+
+// Delay between Win32 keystroke pairs so Copilot CLI can process each character
+// before the next arrives. Without this, all pushes land in a single event-loop
+// tick and the PTY drops or merges them.
+const KEYSTROKE_DELAY_MS = 10;
+
+// Push a buffer to stdin then wait KEYSTROKE_DELAY_MS before returning.
+// Every Win32 input event goes through this so the PTY sees a natural
+// inter-event gap and does not drop or merge simultaneous arrivals.
+const pushStdin = (buf: Buffer): Promise<void> => {
+  process.stdin.push(buf);
+  return new Promise<void>((resolve) => setTimeout(resolve, KEYSTROKE_DELAY_MS));
+};
 
 // When Argus sends a prompt, deliver it to the PTY.
-// Write focus-in (\x1b[I), the prompt, then focus-out (\x1b[O) directly to the PTY master.
-// The focus sequences are standard xterm and signal to the app that the terminal has
-// regained focus before input arrives.
-// NOTE: Previously on Windows this used Win32 keyboard input sequences (ESC[Vk;Sc;Uc;...)
-// with a 10ms per-keystroke delay. Trying pty.write directly to see if it works for Claude.
+// On Windows: encode as Win32 keyboard input sequences and push to stdin.
+//   Both claude-code and copilot-cli read input via the Windows Console API, so
+//   process.stdin.push() with Win32 sequences is the correct path.
+//   pty.write() does not work for interactive prompts (e.g. AskUserQuestion in
+//   claude-code) because the PTY may be in raw/char mode waiting for a single keystroke.
+// On POSIX (Linux/Mac): write focus-in (\x1b[I), the prompt, then focus-out (\x1b[O)
+//   directly to the PTY master. The focus sequences are standard xterm and signal to
+//   the app that the terminal has regained focus before input arrives.
 client.onSendPrompt(async (actionId: string, prompt: string) => {
   log(`onSendPrompt actionId=${actionId} promptLen=${prompt.length}`);
   try {
-    log(`pty.write promptLen=${prompt.length}`);
-    pty.write('\x1b[I');
-    pty.write(prompt + '\r');
-    pty.write('\x1b[O');
+    if (isWin) {
+      log(`win32 focus-in`);
+      await pushStdin(Buffer.from('\x1b[I'));
+      for (const ch of prompt) {
+        for (const buf of win32InputEvents(ch)) {
+          await pushStdin(buf);
+        }
+      }
+      for (const buf of win32InputEvents('\r')) {
+        await pushStdin(buf);
+      }
+      await pushStdin(Buffer.from('\x1b[O'));
+    } else {
+      log(`posix pty.write promptLen=${prompt.length}`);
+      pty.write('\x1b[I');
+      pty.write(prompt + '\r');
+      pty.write('\x1b[O');
+    }
     client.ackDelivered(actionId);
   } catch (err) {
     log(`prompt delivery failed: ${err}`);
