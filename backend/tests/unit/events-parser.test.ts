@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseJsonlLine, parseModelFromEvent } from '../../src/services/events-parser.js';
+import { parseJsonlLine, parseModelFromEvent } from '../../src/services/copilot-cli-jsonl-parser.js';
 
 // T008/T009 — 019 US2: mixed content-block array and multi-text-block joining
 describe('EventsParser 019 US2 — content-block array edge cases', () => {

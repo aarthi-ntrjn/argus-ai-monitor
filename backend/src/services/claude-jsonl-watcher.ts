@@ -1,14 +1,13 @@
 import { existsSync } from 'fs';
-import * as logger from '../utils/logger.js';
 import { open as fsOpen, stat as fsStat } from 'fs/promises';
 import { join } from 'path';
 import { homedir } from 'os';
 
 import chokidar, { type FSWatcher } from 'chokidar';
-import { getSession, upsertSession } from '../db/database.js';
+import { getSession } from '../db/database.js';
 import { OutputStore } from './output-store.js';
-import { broadcast } from '../api/ws/event-dispatcher.js';
 import { parseClaudeJsonlLine, parseModel } from './claude-code-jsonl-parser.js';
+import { applyActivityUpdate, applyModelUpdate, applySummaryUpdate } from './watcher-session-helpers.js';
 
 function claudeProjectDirName(repoPath: string): string {
   return repoPath.replace(/[:\\/]/g, '-');
@@ -62,7 +61,7 @@ export class ClaudeJsonlWatcher {
         if (needsModel) {
           const model = parseModel(line);
           if (model) {
-            this.applyModelUpdate(sessionId, model);
+            applyModelUpdate(sessionId, model, '[ClaudeDetector]');
             needsModel = false;
           }
         }
@@ -71,41 +70,10 @@ export class ClaudeJsonlWatcher {
       this.sequenceCounters.set(sessionId, seq);
       if (outputs.length > 0) {
         this.outputStore.insertOutput(sessionId, outputs);
-        this.applyActivityUpdate(sessionId);
+        applyActivityUpdate(sessionId);
       }
-      this.applySummaryUpdate(sessionId, outputs);
+      applySummaryUpdate(sessionId, outputs, '[ClaudeDetector]');
     } catch { /* ignore */ }
-  }
-
-  private applyModelUpdate(sessionId: string, model: string): void {
-    const existing = getSession(sessionId);
-    if (!existing) return;
-    logger.info(`[ClaudeDetector] model detected sessionId=${sessionId} model=${model}`);
-    const updated = { ...existing, model };
-    upsertSession(updated);
-    broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: updated as unknown as Record<string, unknown> });
-  }
-
-  private applyActivityUpdate(sessionId: string): void {
-    const now = new Date().toISOString();
-    const active = getSession(sessionId);
-    if (!active) return;
-    const updated = { ...active, lastActivityAt: now };
-    upsertSession(updated);
-    broadcast({ type: 'session.updated', timestamp: now, data: updated as unknown as Record<string, unknown> });
-  }
-
-  private applySummaryUpdate(sessionId: string, outputs: ReturnType<typeof parseClaudeJsonlLine>): void {
-    const lastUserMsg = [...outputs].reverse().find(o => o.role === 'user' && o.type === 'message' && !o.isMeta);
-    if (!lastUserMsg?.content) return;
-    const existing = getSession(sessionId);
-    if (!existing) return;
-    const summary = lastUserMsg.content.slice(0, 120);
-    if (existing.summary === summary) return;
-    logger.info(`[ClaudeDetector] summary updated sessionId=${sessionId}`);
-    const updated = { ...existing, summary };
-    upsertSession(updated);
-    broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: updated as unknown as Record<string, unknown> });
   }
 
   closeWatcher(sessionId: string): void {

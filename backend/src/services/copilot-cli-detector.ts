@@ -6,10 +6,10 @@ import { load as yamlLoad } from 'js-yaml';
 import { randomUUID } from 'crypto';
 import chokidar, { type FSWatcher } from 'chokidar';
 import { upsertSession, getRepositoryByPath, deleteSessionOutput, getSession } from '../db/database.js';
-import { broadcast } from '../api/ws/event-dispatcher.js';
 import { ptyRegistry } from './pty-registry.js';
 import { OutputStore } from './output-store.js';
-import { parseJsonlLine, parseModelFromEvent } from './events-parser.js';
+import { parseJsonlLine, parseModelFromEvent } from './copilot-cli-jsonl-parser.js';
+import { applyActivityUpdate, applyModelUpdate, applySummaryUpdate } from './watcher-session-helpers.js';
 import { detectYoloModeFromPids, isPidRunning, isExpectedProcess } from './process-utils.js';
 import { SessionTypes } from '../models/index.js';
 import type { Session, PidSource } from '../models/index.js';
@@ -286,37 +286,10 @@ export class CopilotCliDetector {
       this.sequenceCounters.set(sessionId, seq);
       if (outputs.length > 0) {
         this.outputStore.insertOutput(sessionId, outputs);
-        const now = new Date().toISOString();
-        const active = getSession(sessionId);
-        if (active) {
-          const updated = { ...active, lastActivityAt: now };
-          upsertSession(updated);
-          broadcast({ type: 'session.updated', timestamp: now, data: updated as unknown as Record<string, unknown> });
-        }
+        applyActivityUpdate(sessionId);
       }
-
-      if (detectedModel && !getSession(sessionId)?.model) {
-        const existing = getSession(sessionId);
-        if (existing) {
-          const updated = { ...existing, model: detectedModel };
-          upsertSession(updated);
-          broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: updated as unknown as Record<string, unknown> });
-        }
-      }
-
-      // Update summary with the most recent user prompt in this batch
-      const lastUserMsg = [...outputs].reverse().find(o => o.role === 'user' && o.type === 'message' && !o.isMeta);
-      if (lastUserMsg?.content) {
-        const existing = getSession(sessionId);
-        if (existing) {
-          const summary = lastUserMsg.content.slice(0, 120);
-          if (existing.summary !== summary) {
-            const updated = { ...existing, summary };
-            upsertSession(updated);
-            broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: updated as unknown as Record<string, unknown> });
-          }
-        }
-      }
+      if (detectedModel) applyModelUpdate(sessionId, detectedModel, '[CopilotDetector]');
+      applySummaryUpdate(sessionId, outputs, '[CopilotDetector]');
     } catch { /* ignore */ }
   }
 
