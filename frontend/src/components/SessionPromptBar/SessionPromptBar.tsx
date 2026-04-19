@@ -85,10 +85,11 @@ export default function SessionPromptBar({ session }: Props) {
         />
         <Button
           size="sm"
+          aria-label={sending ? 'Sending…' : 'Send'}
           onClick={handleSend}
           disabled={sending || isConnecting || !prompt.trim()}
         >
-          {sending ? '…' : '↵'}
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
         </Button>
       </div>
       {error && <p role="alert" className="text-xs text-red-600 mt-0.5">{error}</p>}
