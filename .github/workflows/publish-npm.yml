@@ -1,0 +1,60 @@
+# Publish the argus-ai-hub package to npm.
+# Triggered by a version tag push (e.g. v0.1.1) from the private repo,
+# or manually via workflow_dispatch.
+#
+# Authentication: requires NPM_TOKEN secret (a Granular Access Token scoped to argus-ai-hub).
+# Create one at npmjs.com > Access Tokens > Generate New Token > Granular Access Token,
+# then add it as NPM_TOKEN in the public repo's Actions secrets.
+
+name: Publish to npm
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies (lockfile-enforced, scripts suppressed)
+        run: npm ci --ignore-scripts
+
+      - name: Rebuild allowlisted lifecycle packages
+        run: |
+          python3 -c "
+          import yaml, subprocess
+          with open('.github/supply-chain/lifecycle-allowlist.yml') as f:
+              data = yaml.safe_load(f)
+          for entry in data.get('allowed', []):
+              if 'ci' in entry.get('environments', []):
+                  print(f'Rebuilding {entry[\"package\"]}...')
+                  subprocess.run(['npm', 'rebuild', entry['package']], check=True)
+          "
+
+      - name: Build backend and frontend
+        run: npm run build --workspaces
+
+      - name: Publish to npm
+        # --ignore-scripts skips prepublishOnly since we already built above.
+        # --provenance attaches a signed build attestation linked to this workflow run.
+        # NPM_TOKEN must be a Granular Access Token scoped to argus-ai-hub (publish only).
+        # Create one at npmjs.com > Access Tokens > Generate New Token > Granular Access Token.
+        run: npm publish --ignore-scripts --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

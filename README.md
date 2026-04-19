@@ -400,3 +400,29 @@ Configure this URL in your bot's messaging endpoint in the Azure portal.
 
 
 See [docs/README-CONTRIBUTORS.md](docs/README-CONTRIBUTORS.md) for architecture, dev setup, API reference, security model, CI pipeline, and development guides.
+
+## Uninstall and Cleanup
+
+### Remove the package
+
+If you installed Argus globally via npm:
+
+```bash
+npm uninstall -g argus-ai-hub
+```
+
+If you only ever ran Argus with `npx`, no persistent package is installed. You can optionally clear the npx cache:
+
+```bash
+npx clear-npx-cache
+```
+
+### Remove Argus data
+
+Argus stores all its data under `~/.argus/`. To delete it completely:
+
+```bash
+rm -rf ~/.argus
+```
+
+This removes the SQLite database, config file, and telemetry ID. After this, a fresh run will start with default settings.
