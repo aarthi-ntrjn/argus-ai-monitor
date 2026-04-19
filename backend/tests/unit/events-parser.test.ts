@@ -19,9 +19,9 @@ describe('EventsParser 019 US2 — content-block array edge cases', () => {
       },
     });
     const result = parseJsonlLine(line, 'session-1', 1);
-    expect(result?.content).toBe('Let me check.');
-    expect(result?.content).not.toContain('tool_use');
-    expect(result?.content).not.toContain('bash');
+    expect(result[0]?.content).toBe('Let me check.');
+    expect(result[0]?.content).not.toContain('tool_use');
+    expect(result[0]?.content).not.toContain('bash');
   });
 
   it('T009: should join multiple text blocks with newline', () => {
@@ -40,7 +40,7 @@ describe('EventsParser 019 US2 — content-block array edge cases', () => {
       },
     });
     const result = parseJsonlLine(line, 'session-1', 2);
-    expect(result?.content).toBe('Part 1.\nPart 2.');
+    expect(result[0]?.content).toBe('Part 1.\nPart 2.');
   });
 });
 
@@ -55,7 +55,7 @@ describe('EventsParser 019 — blank MSG row fix', () => {
       data: { messageId: 'msg-x', content: null, toolRequests: [{ toolCallId: 'tc-1', toolName: 'bash' }] },
     });
     const result = parseJsonlLine(line, 'session-1', 1);
-    expect(result).toBeNull();
+    expect(result).toEqual([]);
   });
 
   it('T001c: should suppress assistant.message with empty string data.content', () => {
@@ -67,7 +67,7 @@ describe('EventsParser 019 — blank MSG row fix', () => {
       data: { messageId: 'msg-y', content: '', toolRequests: [] },
     });
     const result = parseJsonlLine(line, 'session-1', 2);
-    expect(result).toBeNull();
+    expect(result).toEqual([]);
   });
 
   it('T001: should suppress unrecognised copilot event types (e.g. turn/interaction bookkeeping)', () => {
@@ -80,7 +80,7 @@ describe('EventsParser 019 — blank MSG row fix', () => {
     });
     const result = parseJsonlLine(line, 'session-1', 1);
     // Lifecycle/bookkeeping events with no human-readable content must be suppressed
-    expect(result).toBeNull();
+    expect(result).toEqual([]);
   });
 
   it('T002: should extract text from assistant.message with data.content as content-block array', () => {
@@ -96,9 +96,9 @@ describe('EventsParser 019 — blank MSG row fix', () => {
       },
     });
     const result = parseJsonlLine(line, 'session-1', 2);
-    expect(result).not.toBeNull();
-    expect(result?.role).toBe('assistant');
-    expect(result?.content).toBe('Here is my answer.');
+    expect(result).not.toEqual([]);
+    expect(result[0]?.role).toBe('assistant');
+    expect(result[0]?.content).toBe('Here is my answer.');
   });
 
   it('T003: should extract text from user.message with data.content as content-block array', () => {
@@ -114,9 +114,9 @@ describe('EventsParser 019 — blank MSG row fix', () => {
       },
     });
     const result = parseJsonlLine(line, 'session-1', 3);
-    expect(result).not.toBeNull();
-    expect(result?.role).toBe('user');
-    expect(result?.content).toBe('Fix the bug.');
+    expect(result).not.toEqual([]);
+    expect(result[0]?.role).toBe('user');
+    expect(result[0]?.content).toBe('Fix the bug.');
   });
 });
 
@@ -128,11 +128,11 @@ describe('EventsParser', () => {
       content: 'Hello!',
     });
     const result = parseJsonlLine(line, 'session-1', 1);
-    expect(result).not.toBeNull();
-    expect(result?.type).toBe('message');
-    expect(result?.content).toBe('Hello!');
-    expect(result?.sequenceNumber).toBe(1);
-    expect(result?.role).toBe('assistant');
+    expect(result).not.toEqual([]);
+    expect(result[0]?.type).toBe('message');
+    expect(result[0]?.content).toBe('Hello!');
+    expect(result[0]?.sequenceNumber).toBe(1);
+    expect(result[0]?.role).toBe('assistant');
   });
 
   it('maps tool.execution_start to tool_use type', () => {
@@ -143,9 +143,9 @@ describe('EventsParser', () => {
       content: 'Running bash command',
     });
     const result = parseJsonlLine(line, 'session-1', 2);
-    expect(result?.type).toBe('tool_use');
-    expect(result?.toolName).toBe('bash');
-    expect(result?.role).toBeNull();
+    expect(result[0]?.type).toBe('tool_use');
+    expect(result[0]?.toolName).toBe('bash');
+    expect(result[0]?.role).toBeNull();
   });
 
   it('maps tool.execution_complete to tool_result type', () => {
@@ -155,8 +155,8 @@ describe('EventsParser', () => {
       content: 'Done',
     });
     const result = parseJsonlLine(line, 'session-1', 3);
-    expect(result?.type).toBe('tool_result');
-    expect(result?.role).toBeNull();
+    expect(result[0]?.type).toBe('tool_result');
+    expect(result[0]?.role).toBeNull();
   });
 
   it('maps session.start to status_change type', () => {
@@ -166,8 +166,8 @@ describe('EventsParser', () => {
       content: 'Session started',
     });
     const result = parseJsonlLine(line, 'session-1', 4);
-    expect(result?.type).toBe('status_change');
-    expect(result?.role).toBeNull();
+    expect(result[0]?.type).toBe('status_change');
+    expect(result[0]?.role).toBeNull();
   });
 
   it('maps user.message to message type', () => {
@@ -177,8 +177,8 @@ describe('EventsParser', () => {
       content: 'User prompt',
     });
     const result = parseJsonlLine(line, 'session-1', 5);
-    expect(result?.type).toBe('message');
-    expect(result?.role).toBe('user');
+    expect(result[0]?.type).toBe('message');
+    expect(result[0]?.role).toBe('user');
   });
 
   it('suppresses unknown event types', () => {
@@ -188,23 +188,23 @@ describe('EventsParser', () => {
       content: 'Unknown content',
     });
     const result = parseJsonlLine(line, 'session-1', 6);
-    expect(result).toBeNull();
+    expect(result).toEqual([]);
   });
 
-  it('returns null for invalid JSON', () => {
+  it('returns empty array for invalid JSON', () => {
     const result = parseJsonlLine('not-json', 'session-1', 7);
-    expect(result).toBeNull();
+    expect(result).toEqual([]);
   });
 
-  it('returns null for empty line', () => {
+  it('returns empty array for empty line', () => {
     const result = parseJsonlLine('', 'session-1', 8);
-    expect(result).toBeNull();
+    expect(result).toEqual([]);
   });
 
   it('generates a UUID id', () => {
     const line = JSON.stringify({ type: 'assistant.message', timestamp: '2024-01-01T00:00:00.000Z', content: 'test' });
     const result = parseJsonlLine(line, 'session-1', 1);
-    expect(result?.id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(result[0]?.id).toMatch(/^[0-9a-f-]{36}$/);
   });
 
   // T085 regression tests — tool events without a content field must not dump raw JSON
@@ -218,12 +218,12 @@ describe('EventsParser', () => {
     });
     const result = parseJsonlLine(line, 'session-1', 9);
     // content must NOT contain the raw event fields already shown elsewhere
-    expect(result?.content).not.toContain('"type"');
-    expect(result?.content).not.toContain('"timestamp"');
-    expect(result?.content).not.toContain('"tool_name"');
+    expect(result[0]?.content).not.toContain('"type"');
+    expect(result[0]?.content).not.toContain('"timestamp"');
+    expect(result[0]?.content).not.toContain('"tool_name"');
     // content SHOULD contain the meaningful remaining fields
-    expect(result?.content).toContain('path');
-    expect(result?.content).toContain('/src/foo.ts');
+    expect(result[0]?.content).toContain('path');
+    expect(result[0]?.content).toContain('/src/foo.ts');
   });
 
   it('should return empty string when tool event has no content field and no extra fields', () => {
@@ -233,7 +233,7 @@ describe('EventsParser', () => {
       tool_name: null,
     });
     const result = parseJsonlLine(line, 'session-1', 10);
-    expect(result?.content).toBe('');
+    expect(result[0]?.content).toBe('');
   });
 
   it('should use string value directly when single remaining field is a string', () => {
@@ -244,7 +244,7 @@ describe('EventsParser', () => {
       output: 'exit code 0',
     });
     const result = parseJsonlLine(line, 'session-1', 11);
-    expect(result?.content).toBe('exit code 0');
+    expect(result[0]?.content).toBe('exit code 0');
   });
 });
 
@@ -257,8 +257,8 @@ describe('EventsParser T088 — nested data format', () => {
       id: 'abc', timestamp: '2024-01-01T00:00:00.000Z', parentId: null,
     });
     const result = parseJsonlLine(line, 'session-1', 1);
-    expect(result?.content).toBe('hello world');
-    expect(result?.role).toBe('user');
+    expect(result[0]?.content).toBe('hello world');
+    expect(result[0]?.role).toBe('user');
   });
 
   it('should extract content from assistant.message data.content', () => {
@@ -268,8 +268,8 @@ describe('EventsParser T088 — nested data format', () => {
       id: 'abc', timestamp: '2024-01-01T00:00:00.000Z', parentId: null,
     });
     const result = parseJsonlLine(line, 'session-1', 2);
-    expect(result?.content).toBe('Here is my answer');
-    expect(result?.role).toBe('assistant');
+    expect(result[0]?.content).toBe('Here is my answer');
+    expect(result[0]?.role).toBe('assistant');
   });
 
   it('should extract toolName from tool.execution_start data.toolName', () => {
@@ -279,8 +279,8 @@ describe('EventsParser T088 — nested data format', () => {
       id: 'abc', timestamp: '2024-01-01T00:00:00.000Z', parentId: null,
     });
     const result = parseJsonlLine(line, 'session-1', 3);
-    expect(result?.toolName).toBe('bash');
-    expect(result?.content).toBe('ls -la');
+    expect(result[0]?.toolName).toBe('bash');
+    expect(result[0]?.content).toBe('ls -la');
   });
 
   it('should extract result.content from tool.execution_complete', () => {
@@ -290,8 +290,8 @@ describe('EventsParser T088 — nested data format', () => {
       id: 'abc', timestamp: '2024-01-01T00:00:00.000Z', parentId: null,
     });
     const result = parseJsonlLine(line, 'session-1', 4);
-    expect(result?.content).toBe('Intent logged');
-    expect(result?.type).toBe('tool_result');
+    expect(result[0]?.content).toBe('Intent logged');
+    expect(result[0]?.type).toBe('tool_result');
   });
 
   it('should not show raw JSON for real Copilot CLI events', () => {
@@ -301,10 +301,10 @@ describe('EventsParser T088 — nested data format', () => {
       id: 'evt-1', timestamp: '2024-01-01T00:00:00.000Z', parentId: null,
     });
     const result = parseJsonlLine(line, 'session-1', 5);
-    expect(result?.content).not.toContain('"type"');
-    expect(result?.content).not.toContain('"id"');
-    expect(result?.content).not.toContain('"parentId"');
-    expect(result?.content).toBe('my prompt');
+    expect(result[0]?.content).not.toContain('"type"');
+    expect(result[0]?.content).not.toContain('"id"');
+    expect(result[0]?.content).not.toContain('"parentId"');
+    expect(result[0]?.content).toBe('my prompt');
   });
 });
 
@@ -373,7 +373,7 @@ describe('parseModel', () => {
       id: 'abc', timestamp: '2024-01-01T00:00:00.000Z', parentId: null,
     });
     const result = parseJsonlLine(line, 'session-1', 3);
-    expect(result?.toolCallId).toBe('tc-99');
+    expect(result[0]?.toolCallId).toBe('tc-99');
   });
 
   it('should extract toolCallId from tool.execution_complete data.toolCallId', () => {
@@ -383,7 +383,7 @@ describe('parseModel', () => {
       id: 'abc', timestamp: '2024-01-01T00:00:00.000Z', parentId: null,
     });
     const result = parseJsonlLine(line, 'session-1', 4);
-    expect(result?.toolCallId).toBe('tc-99');
+    expect(result[0]?.toolCallId).toBe('tc-99');
   });
 });
 
@@ -395,11 +395,11 @@ describe('EventsParser', () => {
       content: 'Hello!',
     });
     const result = parseJsonlLine(line, 'session-1', 1);
-    expect(result).not.toBeNull();
-    expect(result?.type).toBe('message');
-    expect(result?.content).toBe('Hello!');
-    expect(result?.sequenceNumber).toBe(1);
-    expect(result?.role).toBe('assistant');
+    expect(result).not.toEqual([]);
+    expect(result[0]?.type).toBe('message');
+    expect(result[0]?.content).toBe('Hello!');
+    expect(result[0]?.sequenceNumber).toBe(1);
+    expect(result[0]?.role).toBe('assistant');
   });
 
   it('maps tool.execution_start to tool_use type', () => {
@@ -410,9 +410,9 @@ describe('EventsParser', () => {
       content: 'Running bash command',
     });
     const result = parseJsonlLine(line, 'session-1', 2);
-    expect(result?.type).toBe('tool_use');
-    expect(result?.toolName).toBe('bash');
-    expect(result?.role).toBeNull();
+    expect(result[0]?.type).toBe('tool_use');
+    expect(result[0]?.toolName).toBe('bash');
+    expect(result[0]?.role).toBeNull();
   });
 
   it('maps tool.execution_complete to tool_result type', () => {
@@ -422,8 +422,8 @@ describe('EventsParser', () => {
       content: 'Done',
     });
     const result = parseJsonlLine(line, 'session-1', 3);
-    expect(result?.type).toBe('tool_result');
-    expect(result?.role).toBeNull();
+    expect(result[0]?.type).toBe('tool_result');
+    expect(result[0]?.role).toBeNull();
   });
 
   it('maps session.start to status_change type', () => {
@@ -433,8 +433,8 @@ describe('EventsParser', () => {
       content: 'Session started',
     });
     const result = parseJsonlLine(line, 'session-1', 4);
-    expect(result?.type).toBe('status_change');
-    expect(result?.role).toBeNull();
+    expect(result[0]?.type).toBe('status_change');
+    expect(result[0]?.role).toBeNull();
   });
 
   it('maps user.message to message type', () => {
@@ -444,8 +444,8 @@ describe('EventsParser', () => {
       content: 'User prompt',
     });
     const result = parseJsonlLine(line, 'session-1', 5);
-    expect(result?.type).toBe('message');
-    expect(result?.role).toBe('user');
+    expect(result[0]?.type).toBe('message');
+    expect(result[0]?.role).toBe('user');
   });
 
   it('suppresses unknown event types', () => {
@@ -455,22 +455,22 @@ describe('EventsParser', () => {
       content: 'Unknown content',
     });
     const result = parseJsonlLine(line, 'session-1', 6);
-    expect(result).toBeNull();
+    expect(result).toEqual([]);
   });
 
-  it('returns null for invalid JSON', () => {
+  it('returns empty array for invalid JSON', () => {
     const result = parseJsonlLine('not-json', 'session-1', 7);
-    expect(result).toBeNull();
+    expect(result).toEqual([]);
   });
 
-  it('returns null for empty line', () => {
+  it('returns empty array for empty line', () => {
     const result = parseJsonlLine('', 'session-1', 8);
-    expect(result).toBeNull();
+    expect(result).toEqual([]);
   });
 
   it('generates a UUID id', () => {
     const line = JSON.stringify({ type: 'assistant.message', timestamp: '2024-01-01T00:00:00.000Z', content: 'test' });
     const result = parseJsonlLine(line, 'session-1', 1);
-    expect(result?.id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(result[0]?.id).toMatch(/^[0-9a-f-]{36}$/);
   });
 });

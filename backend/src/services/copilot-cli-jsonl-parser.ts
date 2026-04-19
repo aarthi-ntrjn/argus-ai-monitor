@@ -84,20 +84,22 @@ export function parseModel(line: string): string | null {
   } catch { return null; }
 }
 
-export function parseJsonlLine(line: string, sessionId: string, sequenceNumber: number, makeId?: (blockIndex: number) => string): SessionOutput | null {
-  if (!line.trim()) return null;
+// Copilot emits exactly one event per JSONL line, so this function always returns
+// an array of zero or one elements.
+export function parseJsonlLine(line: string, sessionId: string, sequenceNumber: number, makeId?: (blockIndex: number) => string): SessionOutput[] {
+  if (!line.trim()) return [];
   try {
     const event = JSON.parse(line) as JsonlEvent;
     const outputType: OutputType = EVENT_TYPE_MAP[event.type] ?? 'message';
     const role: OutputRole | null = event.type in EVENT_ROLE_MAP ? EVENT_ROLE_MAP[event.type] : null;
     // Suppress unrecognised event types entirely (e.g. turn.start, interaction bookkeeping).
     // These have role: null and no human-readable content — showing them as MSG rows is noise.
-    if (outputType === 'message' && role === null) return null;
+    if (outputType === 'message' && role === null) return [];
     const content = extractContent(event);
     // Suppress message rows with no extractable content (e.g. tool-call-only assistant turns
     // where data.content is null/empty — the tool calls appear as separate TOOL rows).
-    if (outputType === 'message' && !content) return null;
-    return {
+    if (outputType === 'message' && !content) return [];
+    return [{
       id: makeId ? makeId(0) : randomUUID(),
       sessionId,
       timestamp: event.timestamp ?? new Date().toISOString(),
@@ -110,9 +112,9 @@ export function parseJsonlLine(line: string, sessionId: string, sequenceNumber: 
       role,
       sequenceNumber,
       isMeta: event.isMeta === true ? true : undefined,
-    };
+    }];
   } catch {
-    return null;
+    return [];
   }
 }
 

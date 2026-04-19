@@ -7,8 +7,7 @@ export class CopilotJsonlWatcher extends JsonlWatcherBase {
   protected readonly tag = '[CopilotDetector]';
 
   protected parseLine(line: string, sessionId: string, seq: number, makeId: (blockIndex: number) => string): SessionOutput[] {
-    const output = parseJsonlLine(line, sessionId, seq, makeId);
-    return output ? [output] : [];
+    return parseJsonlLine(line, sessionId, seq, makeId);
   }
 
   async watchFile(sessionId: string, dirPath: string): Promise<void> {
