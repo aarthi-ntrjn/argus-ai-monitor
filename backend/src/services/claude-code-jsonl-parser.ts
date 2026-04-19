@@ -30,15 +30,17 @@ function stringifyContent(content: unknown): string {
   return JSON.stringify(content);
 }
 
-function parseUserEntry(entry: ClaudeEntry, sessionId: string, sequenceNumber: number): SessionOutput[] {
+function parseUserEntry(entry: ClaudeEntry, sessionId: string, sequenceNumber: number, makeId?: (blockIndex: number) => string): SessionOutput[] {
   const content = entry.message?.content;
   const timestamp = entry.timestamp ?? new Date().toISOString();
   const isMeta = entry.isMeta === true ? true : undefined;
   const results: SessionOutput[] = [];
+  let blockIndex = 0;
+  const nextId = () => makeId ? makeId(blockIndex++) : randomUUID();
 
   if (typeof content === 'string') {
     results.push({
-      id: randomUUID(), sessionId, timestamp,
+      id: nextId(), sessionId, timestamp,
       type: 'message', role: 'user', content, toolName: null, toolCallId: null, sequenceNumber, isMeta,
     });
     return results;
@@ -46,7 +48,7 @@ function parseUserEntry(entry: ClaudeEntry, sessionId: string, sequenceNumber: n
 
   if (!Array.isArray(content)) {
     results.push({
-      id: randomUUID(), sessionId, timestamp,
+      id: nextId(), sessionId, timestamp,
       type: 'message', role: 'user', content: '', toolName: null, toolCallId: null, sequenceNumber, isMeta,
     });
     return results;
@@ -55,12 +57,12 @@ function parseUserEntry(entry: ClaudeEntry, sessionId: string, sequenceNumber: n
   for (const block of content) {
     if (block.type === 'text') {
       results.push({
-        id: randomUUID(), sessionId, timestamp,
+        id: nextId(), sessionId, timestamp,
         type: 'message', role: 'user', content: block.text ?? '', toolName: null, toolCallId: null, sequenceNumber, isMeta,
       });
     } else if (block.type === 'tool_result') {
       results.push({
-        id: randomUUID(), sessionId, timestamp,
+        id: nextId(), sessionId, timestamp,
         type: 'tool_result', role: null,
         content: stringifyContent(block.content),
         toolName: null,
@@ -73,22 +75,24 @@ function parseUserEntry(entry: ClaudeEntry, sessionId: string, sequenceNumber: n
   return results;
 }
 
-function parseAssistantEntry(entry: ClaudeEntry, sessionId: string, sequenceNumber: number): SessionOutput[] {
+function parseAssistantEntry(entry: ClaudeEntry, sessionId: string, sequenceNumber: number, makeId?: (blockIndex: number) => string): SessionOutput[] {
   const content = entry.message?.content;
   const timestamp = entry.timestamp ?? new Date().toISOString();
   const results: SessionOutput[] = [];
+  let blockIndex = 0;
+  const nextId = () => makeId ? makeId(blockIndex++) : randomUUID();
 
   if (!Array.isArray(content)) return results;
 
   for (const block of content) {
     if (block.type === 'text') {
       results.push({
-        id: randomUUID(), sessionId, timestamp,
+        id: nextId(), sessionId, timestamp,
         type: 'message', role: 'assistant' as OutputRole, content: block.text ?? '', toolName: null, toolCallId: null, sequenceNumber,
       });
     } else if (block.type === 'tool_use') {
       results.push({
-        id: randomUUID(), sessionId, timestamp,
+        id: nextId(), sessionId, timestamp,
         type: 'tool_use', role: null,
         content: JSON.stringify(block.input ?? {}),
         toolName: block.name ?? null,
@@ -105,13 +109,13 @@ function parseAssistantEntry(entry: ClaudeEntry, sessionId: string, sequenceNumb
  * Parse a single line from a Claude Code JSONL conversation file.
  * Returns an array because one entry (e.g. assistant with text + tool_use) can yield multiple outputs.
  */
-export function parseClaudeJsonlLine(line: string, sessionId: string, sequenceNumber: number): SessionOutput[] {
+export function parseClaudeJsonlLine(line: string, sessionId: string, sequenceNumber: number, makeId?: (blockIndex: number) => string): SessionOutput[] {
   if (!line.trim()) return [];
   try {
     const entry = JSON.parse(line) as ClaudeEntry;
     if (entry.type === 'file-history-snapshot') return [];
-    if (entry.type === 'user') return parseUserEntry(entry, sessionId, sequenceNumber);
-    if (entry.type === 'assistant') return parseAssistantEntry(entry, sessionId, sequenceNumber);
+    if (entry.type === 'user') return parseUserEntry(entry, sessionId, sequenceNumber, makeId);
+    if (entry.type === 'assistant') return parseAssistantEntry(entry, sessionId, sequenceNumber, makeId);
     return [];
   } catch {
     return [];

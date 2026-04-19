@@ -43,28 +43,67 @@ function isCopilotInstalled(): boolean {
   return isInstalled(ToolCommands.COPILOT);
 }
 
+// Detect whether the server can open a GUI terminal window.
+// Returns false in headless environments (Codespaces, SSH-only, no display server).
+function canLaunchTerminal(): boolean {
+  const os = platform();
+  if (os === 'win32') return true;
+  if (os === 'darwin') {
+    // SSH session without a local display = no GUI terminal
+    return !process.env.SSH_CLIENT && !process.env.SSH_TTY;
+  }
+  // Linux: need a display server; Codespaces is always headless
+  if (process.env.CODESPACES === 'true') return false;
+  return !!(process.env.DISPLAY || process.env.WAYLAND_DISPLAY);
+}
+
+function spawnDetached(file: string, args: string[]): void {
+  const child = spawn(file, args, { detached: true, stdio: 'ignore' });
+  child.on('error', (err) => {
+    logger.warn(`[LaunchTerminal] spawn ${file} failed: ${err.message}`);
+  });
+  child.unref();
+}
+
 function openTerminalWithCommand(cmd: string): void {
   logger.info(`[LaunchTerminal] opening terminal with command: ${cmd}`);
-  if (platform() === 'win32') {
+  const os = platform();
+
+  if (os === 'win32') {
     // Prefer Windows Terminal; fall back to a plain PowerShell window.
     const wtAvailable = spawnSync('where', ['wt.exe'], { encoding: 'utf-8', timeout: 2000 }).status === 0;
     if (wtAvailable) {
-      // wt.exe new-tab opens a new tab running PowerShell with the launch command.
-      spawn('wt.exe', ['new-tab', '--', 'powershell', '-NoExit', '-Command', cmd], {
-        detached: true, stdio: 'ignore',
-      }).unref();
+      spawnDetached('wt.exe', ['new-tab', '--', 'powershell', '-NoExit', '-Command', cmd]);
     } else {
-      spawn('cmd.exe', ['/c', 'start', 'powershell', '-NoExit', '-Command', cmd], {
-        detached: true, stdio: 'ignore', shell: false,
-      }).unref();
+      spawnDetached('cmd.exe', ['/c', 'start', 'powershell', '-NoExit', '-Command', cmd]);
     }
-  } else {
-    // macOS: open a new Terminal window running the command.
-    // Escape double-quotes inside the AppleScript string literal.
+    return;
+  }
+
+  if (os === 'darwin') {
+    // macOS: open a new Terminal window via AppleScript.
     const escaped = cmd.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
     const script = `tell application "Terminal"\n  do script "${escaped}"\n  activate\nend tell`;
-    spawn('osascript', ['-e', script], { detached: true, stdio: 'ignore' }).unref();
+    spawnDetached('osascript', ['-e', script]);
+    return;
   }
+
+  // Linux: try common terminal emulators in order of preference.
+  const terminals = [
+    { bin: 'x-terminal-emulator', args: ['-e', cmd] },
+    { bin: 'gnome-terminal',      args: ['--', 'bash', '-c', `${cmd}; exec bash`] },
+    { bin: 'xterm',               args: ['-e', cmd] },
+    { bin: 'konsole',             args: ['--noclose', '-e', cmd] },
+  ];
+  for (const t of terminals) {
+    if (spawnSync('which', [t.bin], { encoding: 'utf-8', timeout: 2000 }).status === 0) {
+      spawnDetached(t.bin, t.args);
+      return;
+    }
+  }
+
+  // No GUI terminal found (e.g. headless / Codespaces).
+  throw new Error(`No GUI terminal emulator found. Run this command manually in your terminal:\n${cmd}`);
 }
 
 const toolsRoutes: FastifyPluginAsync = async (app) => {
@@ -75,6 +114,7 @@ const toolsRoutes: FastifyPluginAsync = async (app) => {
     return reply.send({
       claude: hasClaude,
       copilot: hasCopilot,
+      terminalAvailable: canLaunchTerminal(),
       claudeCmd: hasClaude ? buildLaunchCmdBase(ToolCommands.CLAUDE, yoloMode) : undefined,
       copilotCmd: hasCopilot ? buildLaunchCmdBase(ToolCommands.COPILOT, yoloMode) : undefined,
     });
@@ -100,8 +140,14 @@ const toolsRoutes: FastifyPluginAsync = async (app) => {
       const cmd = repoPath
         ? buildLaunchCmdWithCwd(tool, repoPath, yoloMode)
         : buildLaunchCmdBase(tool, yoloMode);
-      openTerminalWithCommand(cmd);
-      return reply.status(202).send({ status: 'launched' });
+      try {
+        openTerminalWithCommand(cmd);
+        return reply.status(202).send({ status: 'launched' });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        logger.warn(`[LaunchTerminal] ${message}`);
+        return reply.status(422).send({ status: 'no-terminal', message, cmd });
+      }
     }
   );
 };

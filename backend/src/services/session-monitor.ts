@@ -101,11 +101,17 @@ export class SessionMonitor extends EventEmitter {
       // Source 2b: Copilot lock file registry (session ID → PID)
       const copilotLockEntries = this.cliDetector.scanLockEntries();
 
-      // Source 3: Running OS processes (filtered to AI tools only to avoid PID reuse false-positives)
+      // Source 3: Running OS processes (filtered to AI tools only to avoid PID reuse false-positives).
+      // On Linux/Mac the copilot binary is often a Node.js script: ps-list name is "node" but
+      // the cmd (full command line) contains the copilot path. Check both.
       const processes = await psList();
       const runningPids = new Set(
         processes
-          .filter((p) => isAiToolProcess(p.name, SessionTypes.CLAUDE_CODE) || isAiToolProcess(p.name, SessionTypes.COPILOT_CLI))
+          .filter((p) => {
+            if (isAiToolProcess(p.name, SessionTypes.CLAUDE_CODE) || isAiToolProcess(p.name, SessionTypes.COPILOT_CLI)) return true;
+            const cmd = (p.cmd ?? '').toLowerCase();
+            return /[/\\]copilot(\s|$)/.test(cmd) || cmd.includes('claude');
+          })
           .map((p) => p.pid)
       );
 

@@ -13,31 +13,18 @@ export interface OutputPage {
 }
 
 export class OutputStore {
-  private outputListeners = new Set<(sessionId: string, outputs: SessionOutput[]) => void>();
-
-  addOutputListener(fn: (sessionId: string, outputs: SessionOutput[]) => void): void {
-    this.outputListeners.add(fn);
-  }
-
-  removeOutputListener(fn: (sessionId: string, outputs: SessionOutput[]) => void): void {
-    this.outputListeners.delete(fn);
-  }
-
-  insertOutput(sessionId: string, outputs: SessionOutput[], options?: { skipNotifications?: boolean }): void {
-    for (const output of outputs) {
-      dbInsertOutput(output);
-    }
-    if (outputs.length > 0 && !options?.skipNotifications) {
-      for (const listener of this.outputListeners) {
-        try { listener(sessionId, outputs); } catch { /* listeners must not crash the store */ }
-      }
+  /** Returns true if at least one output was newly inserted (not a duplicate). */
+  insertOutput(sessionId: string, outputs: SessionOutput[]): boolean {
+    const inserted = outputs.filter(o => dbInsertOutput(o));
+    if (inserted.length > 0) {
       broadcast({
         type: 'session.output.batch',
         timestamp: new Date().toISOString(),
-        data: { sessionId, outputs: outputs as unknown as Record<string, unknown>[] },
+        data: { sessionId, outputs: inserted as unknown as Record<string, unknown>[] },
       });
       outputEvents.emit('session.output.batch', sessionId, outputs);
     }
+    return inserted.length > 0;
   }
 
   getOutputPage(sessionId: string, limit: number, before?: string): OutputPage {
