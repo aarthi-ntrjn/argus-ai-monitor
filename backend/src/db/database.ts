@@ -79,16 +79,20 @@ export function getRepository(id: string): Repository | undefined {
   ).get(id) as Repository | undefined;
 }
 
+function normalizeRepoPath(p: string): string {
+  return normalize(p.trimEnd().replace(/[/\\]+$/, ''));
+}
+
 export function getRepositoryByPath(path: string): Repository | undefined {
   return getDb().prepare(
     'SELECT id, path, name, source, added_at as addedAt, last_scanned_at as lastScannedAt, branch, remote_url as remoteUrl FROM repositories WHERE LOWER(path) = LOWER(?)'
-  ).get(path) as Repository | undefined;
+  ).get(normalizeRepoPath(path)) as Repository | undefined;
 }
 
 export function insertRepository(repo: Repository): void {
   getDb().prepare(
     'INSERT INTO repositories (id, path, name, source, added_at, last_scanned_at, branch, remote_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-  ).run(repo.id, normalize(repo.path), repo.name, repo.source, repo.addedAt, repo.lastScannedAt, repo.branch ?? null, repo.remoteUrl ?? null);
+  ).run(repo.id, normalizeRepoPath(repo.path), repo.name, repo.source, repo.addedAt, repo.lastScannedAt, repo.branch ?? null, repo.remoteUrl ?? null);
 }
 
 export function updateRepositoryBranch(id: string, branch: string | null, remoteUrl?: string | null): void {
