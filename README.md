@@ -16,27 +16,20 @@ Your command center for Claude Code and GitHub Copilot CLI sessions. Watch every
 
 ## Getting Started
 
+Run with npx (no install required):
+
 ```sh
 npx argus-ai-hub
 ```
 
-Open **http://localhost:7411** and you're in. The port is configurable in [`~/.argus/config.json`](#storage).
-
-### Development Setup
-
-If you want to run from source:
+Or install globally so `argus` is always on your path:
 
 ```sh
-# 1. Install dependencies (once)
-npm install
-
-# 2. Build the frontend (once, or after frontend changes)
-npm run build --workspace=frontend
-
-# 3. Start the server
-npm run dev
-
+npm install -g argus-ai-hub
+argus
 ```
+
+Open **http://localhost:7411** and you're in. The port is configurable in [`~/.argus/config.json`](#storage).
 
 ## Monitor
 
@@ -121,18 +114,6 @@ To send prompts to a session, start it through Argus.This gives Argus a direct P
 
 The easiest way is to click the **Launch with Argus** dropdown in any repo card header and select **Launch Claude** or **Launch Copilot**.
 
-Alternatively, use the CLI:
-
-```sh
-# Claude Code (specify the repo with --cwd)
-npm run launch --workspace=backend -- claude --cwd /path/to/repo
-
-# GitHub Copilot CLI
-npm run launch --workspace=backend -- copilot --cwd /path/to/repo
-```
-
-Run this in any terminal: VS Code integrated terminal, Windows Terminal, iTerm2, or any other terminal emulator. The session appears in the Argus dashboard with a **live** badge and the prompt bar is enabled.
-
 #### Headless Environments (Codespaces, SSH, no TTY)
 
 When Argus detects it is running in a headless environment (no interactive terminal available, such as GitHub Codespaces or a remote SSH session), the launch dropdown switches to copy mode. Each row shows a **copy icon** and clicking anywhere on the row copies the launch command to your clipboard. A note at the bottom of the menu reads "No terminal available. Copy and run manually." Paste the copied command into your own terminal to start the session.
@@ -170,6 +151,8 @@ Click **Add Repository**, type or paste a root folder path (e.g. `C:\source` or 
 <img src="docs/images/argus-addrepo.png" alt="Add Repository Dialog" height="300">
 
 Argus scans that folder recursively for git repos and registers all new ones in one go. Already-registered repos are skipped automatically.
+
+Paths are normalized on entry: trailing slashes and mixed separators are stripped, and spaces in paths (common on Linux) are handled correctly. Both the path you type and the working directory reported by Claude/Copilot are normalized the same way, so sessions always match their registered repo.
 
 Each repo card shows the current branch name and, when the remote is a GitHub repository, a **compare link icon** (external link) next to the branch badge. Clicking it opens the GitHub compare page for that branch against master in a new tab. On the default branch (master or main), the link opens the repository's compare page directly.
 

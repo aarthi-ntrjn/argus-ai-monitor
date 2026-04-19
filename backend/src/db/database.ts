@@ -79,16 +79,20 @@ export function getRepository(id: string): Repository | undefined {
   ).get(id) as Repository | undefined;
 }
 
+function normalizeRepoPath(p: string): string {
+  return normalize(p.trimEnd().replace(/[/\\]+$/, ''));
+}
+
 export function getRepositoryByPath(path: string): Repository | undefined {
   return getDb().prepare(
     'SELECT id, path, name, source, added_at as addedAt, last_scanned_at as lastScannedAt, branch, remote_url as remoteUrl FROM repositories WHERE LOWER(path) = LOWER(?)'
-  ).get(path) as Repository | undefined;
+  ).get(normalizeRepoPath(path)) as Repository | undefined;
 }
 
 export function insertRepository(repo: Repository): void {
   getDb().prepare(
     'INSERT INTO repositories (id, path, name, source, added_at, last_scanned_at, branch, remote_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-  ).run(repo.id, normalize(repo.path), repo.name, repo.source, repo.addedAt, repo.lastScannedAt, repo.branch ?? null, repo.remoteUrl ?? null);
+  ).run(repo.id, normalizeRepoPath(repo.path), repo.name, repo.source, repo.addedAt, repo.lastScannedAt, repo.branch ?? null, repo.remoteUrl ?? null);
 }
 
 export function updateRepositoryBranch(id: string, branch: string | null, remoteUrl?: string | null): void {
@@ -189,10 +193,19 @@ export function deleteSessionOutput(sessionId: string): void {
   getDb().prepare('DELETE FROM session_output WHERE session_id = ?').run(sessionId);
 }
 
-export function insertOutput(output: SessionOutput): void {
-  getDb().prepare(
+/** Returns true if the row was inserted, false if it was a duplicate (INSERT OR IGNORE skipped it). */
+export function insertOutput(output: SessionOutput): boolean {
+  const result = getDb().prepare(
     'INSERT OR IGNORE INTO session_output (id, session_id, timestamp, type, content, tool_name, tool_call_id, sequence_number, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
   ).run(output.id, output.sessionId, output.timestamp, output.type, output.content, output.toolName, output.toolCallId ?? null, output.sequenceNumber, output.role ?? null);
+  return result.changes > 0;
+}
+
+export function getMaxSequenceNumber(sessionId: string): number {
+  const row = getDb()
+    .prepare('SELECT COALESCE(MAX(sequence_number), 0) AS maxSeq FROM session_output WHERE session_id = ?')
+    .get(sessionId) as { maxSeq: number };
+  return row.maxSeq;
 }
 
 export function insertControlAction(action: ControlAction): void {

@@ -117,11 +117,6 @@ export class ClaudeCodeDetector {
     );
   }
 
-  // Claude names project dirs by replacing path separators (:, \, /) with hyphens.
-  static projectDirName(repoPath: string): string {
-    return repoPath.replace(/[:\\/]/g, '-');
-  }
-
   async scanExistingSessions(): Promise<void> {
     const registry = new ClaudeSessionRegistry();
     const registryEntries = registry.scanEntries();
@@ -142,7 +137,7 @@ export class ClaudeCodeDetector {
 
       const normalizedCwd = normalize(entry.cwd.trimEnd().replace(/[/\\]+$/, ''));
       const repo = getRepositoryByPath(normalizedCwd);
-      if (!repo) continue;
+      if (!repo) { logger.warn(`[ClaudeDetector] no repo for cwd="${normalizedCwd}" sessionId=${entry.sessionId} — session ignored`); continue; }
 
       await this.activateFoundSession(entry.sessionId, repo, null);
     }
@@ -155,7 +150,7 @@ export class ClaudeCodeDetector {
 
     const normalizedCwd = cwd ? normalize(cwd.trimEnd().replace(/[/\\]+$/, '')) : null;
     const repo = normalizedCwd ? getRepositoryByPath(normalizedCwd) : null;
-    if (!repo) return;
+    if (!repo) { logger.warn(`[ClaudeDetector] no repo for cwd="${normalizedCwd ?? 'none'}" sessionId=${session_id} hook=${hook_event_name} — hook ignored`); return; }
 
     const existing = getSession(session_id);
     const now = new Date().toISOString();

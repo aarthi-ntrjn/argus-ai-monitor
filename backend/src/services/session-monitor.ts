@@ -270,7 +270,7 @@ export class SessionMonitor extends EventEmitter {
 
   private createSessionFromRegistryEntry(entry: ClaudeSessionRegistryEntry, now: string): void {
     const repo = getRepositoryByPath(entry.cwd);
-    if (!repo) return;
+    if (!repo) { logger.warn(`[ClaudeRegistry] no repo for cwd="${entry.cwd}" sessionId=${entry.sessionId} — session ignored`); return; }
     logger.info(`[ClaudeRegistry] session created sessionId=${entry.sessionId} pid=${entry.pid} cwd="${entry.cwd}"`);
     const session: Session = {
       id: entry.sessionId,
