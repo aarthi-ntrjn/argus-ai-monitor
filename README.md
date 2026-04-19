@@ -285,6 +285,10 @@ Each event includes: an anonymous installation ID (a random UUID stored in `~/.a
 
 See [docs/README-CONTRIBUTORS.md](docs/README-CONTRIBUTORS.md) for architecture, dev setup, API reference, security model, CI pipeline, and development guides.
 
+## Feedback
+
+Found a bug or have a feature idea? Use the **Feedback** dropdown in the top-right corner of the dashboard, or go directly to the [GitHub Issues page](https://github.com/aarthi-ntrjn/argus/issues).
+
 ## Uninstall and Cleanup
 
 ### Remove the package

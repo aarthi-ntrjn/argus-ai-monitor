@@ -565,6 +565,29 @@ code {
   color: var(--color-accent);
 }
 
+.privacy-pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.625rem;
+  list-style: none;
+  padding: 0;
+  margin: 2rem 0 0;
+}
+
+.privacy-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+}
+
 /* ============================================================
    Footer
    ============================================================ */
