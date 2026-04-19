@@ -200,7 +200,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Sticky header */}
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
+      <header className="bg-white border-b border-gray-200">
         <div className="mx-auto max-w-screen-xl px-4 md:px-8 py-3 flex justify-between items-center">
           <h1 data-tour-id="dashboard-header" className="flex items-center gap-2 text-xl font-semibold text-gray-900">
             <ArgusLogo size={28} />
@@ -300,7 +300,7 @@ export default function DashboardPage() {
                 {repoList}
               </div>
               {(!settings.hideTodoPanel || selectedSessionId) && (
-                <div className={`${selectedSessionId ? 'w-[640px]' : 'w-[400px]'} shrink-0 sticky top-[53px] flex flex-col gap-4${selectedSessionId ? '' : ' h-auto'}`} style={selectedSessionId ? { height: 'calc(100vh - 53px - 2rem)' } : undefined}>
+                <div className={`${selectedSessionId ? 'w-[640px]' : 'w-[400px]'} shrink-0 sticky top-8 flex flex-col gap-4${selectedSessionId ? '' : ' h-auto'}`} style={selectedSessionId ? { height: 'calc(100vh - 9rem)' } : undefined}>
                   {selectedSessionId && (() => {
                     const selectedSession = sessions.find(s => s.id === selectedSessionId);
                     return selectedSession ? (
