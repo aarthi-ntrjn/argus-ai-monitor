@@ -2,9 +2,35 @@
 description: Tag the current version, push to both remotes, and monitor the npm publish workflow on the public repo until it succeeds or fails.
 ---
 
+## Invocation rules
+
+**ONLY execute this skill when the user explicitly types `/publish-npm` as a standalone command.**
+Do NOT execute it in response to any of the following:
+- Phrases like "publish npm", "release the package", "push to npm", or any paraphrase
+- Being asked to "run the next step" when an npm release is implied
+- Any autonomous or inferred intent — the user must type the exact slash command `/publish-npm`
+
+If this skill was not triggered by the exact command `/publish-npm`, stop immediately without taking any action.
+
+---
+
 ## Outline
 
 You are releasing the npm package for this project. Follow these steps exactly.
+
+---
+
+### Step 0 — Verify we are on master
+
+Run:
+```
+git branch --show-current
+```
+
+If not on `master`, **stop immediately** and tell the user:
+"This skill must be run from `master`. You are currently on `<branch>`. Run: `git checkout master` first."
+
+Do not proceed past this step unless the branch is exactly `master`.
 
 ---
 
