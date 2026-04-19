@@ -257,6 +257,7 @@ code {
   font-weight: 700;
   color: var(--color-text);
   margin-bottom: 1rem;
+  text-align: center;
 }
 
 .hero__supported {
