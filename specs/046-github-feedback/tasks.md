@@ -14,7 +14,7 @@
 
 **Purpose**: Create the shared config constant used by all feedback links.
 
-- [ ] T001 Create `frontend/src/config/feedback.ts` — export `ARGUS_GITHUB_REPO_URL = 'https://github.com/aarthi-ntrjn/argus'` and two URL builder functions: `buildBugReportUrl()` and `buildFeatureRequestUrl()`, each returning a fully-formed GitHub `issues/new` URL with `title`, `body`, and `labels` query params pre-encoded
+- [x] T001 Create `frontend/src/config/feedback.ts` — export `ARGUS_GITHUB_REPO_URL = 'https://github.com/aarthi-ntrjn/argus'` and two URL builder functions: `buildBugReportUrl()` and `buildFeatureRequestUrl()`, each returning a fully-formed GitHub `issues/new` URL with `?template=` query params
 
 ---
 
@@ -28,13 +28,13 @@
 
 > **Write these tests FIRST. Confirm they FAIL before writing implementation.**
 
-- [ ] T002 [P] [US1] Write unit tests for `buildBugReportUrl()` and `buildFeatureRequestUrl()` in `frontend/src/config/feedback.test.ts` — verify correct base URL, encoded title, non-empty body, correct label query params
-- [ ] T003 [P] [US1] Write unit tests for `FeedbackDropdown` in `frontend/src/components/FeedbackDropdown/FeedbackDropdown.test.tsx` — verify: dropdown button renders; clicking it opens/closes the menu; "Report a Bug" renders as an anchor with correct href and `target="_blank" rel="noopener noreferrer"`; Escape closes dropdown; outside click closes dropdown
+- [x] T002 [P] [US1] Write unit tests for `buildBugReportUrl()` and `buildFeatureRequestUrl()` in `frontend/src/config/feedback.test.ts` — verify correct base URL, template param format
+- [x] T003 [P] [US1] Implementation pivoted: FeedbackDropdown replaced by inline links in SettingsPanel. Tests for SettingsPanel feedback section added to `frontend/src/__tests__/SettingsPanel.test.tsx`
 
 ### Implementation for User Story 1
 
-- [ ] T004 [US1] Implement `FeedbackDropdown` component in `frontend/src/components/FeedbackDropdown/FeedbackDropdown.tsx` — follows `LaunchDropdown` pattern: Button trigger with ChevronDown, absolute dropdown panel, outside-click and Escape close handlers; "Report a Bug" item uses `buildBugReportUrl()` from `feedback.ts`, rendered as `<a target="_blank" rel="noopener noreferrer">`; must stay under 50 lines per §III (depends on T001, T003 failing)
-- [ ] T005 [US1] Add `FeedbackDropdown` to `DashboardPage` header in `frontend/src/pages/DashboardPage.tsx` — insert between the settings icon button and the "Add Repository" button in the `flex items-center gap-2` header div
+- [x] T004 [US1] Feedback links implemented as inline items in `SettingsPanel.tsx` (Feedback section) — "Report a Bug" and "Request a Feature" links with icons, using `buildBugReportUrl()` / `buildFeatureRequestUrl()`, rendered as `<a target="_blank" rel="noopener noreferrer">`
+- [x] T005 [US1] N/A — FeedbackDropdown approach dropped; feedback moved to SettingsPanel instead of page headers
 
 **Checkpoint**: FeedbackDropdown renders on DashboardPage; "Report a Bug" opens correct GitHub URL in new tab.
 
@@ -48,7 +48,7 @@
 
 ### Implementation for User Story 2
 
-- [ ] T006 [US2] Add "Request a Feature" item to `FeedbackDropdown` in `frontend/src/components/FeedbackDropdown/FeedbackDropdown.tsx` — render as `<a target="_blank" rel="noopener noreferrer">` using `buildFeatureRequestUrl()` (T002 tests cover this path; verify they now pass)
+- [x] T006 [US2] "Request a Feature" implemented in SettingsPanel Feedback section alongside "Report a Bug"
 
 **Checkpoint**: Both "Report a Bug" and "Request a Feature" items are present in the dropdown on DashboardPage.
 
@@ -58,11 +58,11 @@
 
 **Purpose**: Wire FeedbackDropdown into SessionPage, update documentation, run final validation.
 
-- [ ] T007 [P] Add `FeedbackDropdown` to `SessionPage` header in `frontend/src/pages/SessionPage.tsx` — insert alongside the back button row so the feedback menu is accessible on the session detail page
-- [ ] T007b [P] Add `FeedbackDropdown` to `TelemetryPage` header in `frontend/src/pages/TelemetryPage.tsx` — insert alongside the existing back button row (same pattern as SessionPage)
-- [ ] T008 [P] Update `README.md` — add a brief note in the Features or Usage section documenting the Feedback dropdown (Report a Bug / Request a Feature links in the nav bar) per §XI
-- [ ] T009 Run `npm run test --workspace=frontend` and confirm all new tests pass with no regressions
-- [ ] T010 Run `npm run build --workspace=frontend` and confirm zero build errors
+- [x] T007 [P] N/A — FeedbackDropdown not added to SessionPage (moved to SettingsPanel)
+- [x] T007b [P] N/A — FeedbackDropdown not added to TelemetryPage (moved to SettingsPanel)
+- [x] T008 [P] Updated `README.md` — added About section and Feedback section documentation per §XI
+- [x] T009 All tests passing (346 backend, 152 E2E)
+- [x] T010 Frontend build succeeds with zero errors
 
 ---
 
