@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { SendHorizontal } from 'lucide-react';
+import { CornerDownLeft } from 'lucide-react';
 import { sendPrompt, interruptSession } from '../../services/api';
 import type { Session } from '../../types';
 import { Button } from '../Button';
@@ -91,7 +91,7 @@ export default function SessionPromptBar({ session }: Props) {
           disabled={sending || isConnecting || !prompt.trim()}
           className="inline-flex items-center justify-center"
         >
-          <SendHorizontal size={13} aria-hidden="true" />
+          <CornerDownLeft size={13} aria-hidden="true" />
         </Button>
       </div>
       {error && <p role="alert" className="text-xs text-red-600 mt-0.5">{error}</p>}
