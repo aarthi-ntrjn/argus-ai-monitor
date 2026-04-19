@@ -23,7 +23,8 @@ function step(msg) { console.log(`\n==> ${msg}`); }
 function ok(msg) { console.log(`    ${msg}`); }
 function fail(msg) { console.error(`    ERROR: ${msg}`); process.exit(1); }
 function run(cmd, opts = {}) {
-  return execSync(cmd, { encoding: 'utf8', stdio: opts.inherit ? 'inherit' : 'pipe' }).trim();
+  const result = execSync(cmd, { encoding: 'utf8', stdio: opts.inherit ? 'inherit' : 'pipe' });
+  return opts.inherit ? '' : result.trim();
 }
 
 // 1. Verify on master
