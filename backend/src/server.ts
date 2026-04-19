@@ -34,12 +34,12 @@ import { startPruningJob } from './services/pruning-job.js';
 import { TeamsNotifier } from './integration/teams/teams-notifier.js';
 import { TeamsListener } from './integration/teams/teams-listener.js';
 import { FastifyTeamsAdapter } from './integration/teams/teams-sdk-adapter.js';
-import { outputStore } from './services/output-store.js';
+import { outputEvents } from './services/output-store.js';
 import { loadTeamsConfig } from './config/teams-config-loader.js';
 import { getIntegrationEnabled } from './db/database.js';
 import { pendingChoiceEvents } from './services/pending-choice-events.js';
 import type { PendingChoice } from './services/pending-choice-events.js';
-import type { Session, Repository } from './models/index.js';
+import type { Session, Repository, SessionOutput } from './models/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -216,7 +216,7 @@ export async function startServer() {
     monitor.on('session.ended', (session: Session) => {
       teamsNotifier!.onSessionEnded(session).catch(err => app.log.error({ err }, 'teams.session.ended.error'));
     });
-    outputStore.addOutputListener((sessionId, outputs) => {
+    outputEvents.on('session.output.batch', (sessionId: string, outputs: SessionOutput[]) => {
       teamsNotifier!.onSessionOutput(sessionId, outputs).catch(err => app.log.error({ err }, 'teams.session.output.error'));
     });
     pendingChoiceEvents.on('session.pending_choice', (choice: PendingChoice) => {
