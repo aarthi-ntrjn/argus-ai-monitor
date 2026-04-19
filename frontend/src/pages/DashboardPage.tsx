@@ -289,7 +289,7 @@ export default function DashboardPage() {
             <div className="flex gap-6 items-start">
               <div className="flex-1">{emptyState}</div>
               {!settings.hideTodoPanel && (
-                <div className="w-[400px] shrink-0 sticky top-8">
+                <div className="w-[400px] shrink-0 sticky top-8 flex flex-col" style={{ height: 'calc(100vh - 3rem)' }}>
                   <TodoPanel />
                 </div>
               )}
@@ -300,7 +300,7 @@ export default function DashboardPage() {
                 {repoList}
               </div>
               {(!settings.hideTodoPanel || selectedSessionId) && (
-                <div className={`${selectedSessionId ? 'w-[640px]' : 'w-[400px]'} shrink-0 sticky top-8 flex flex-col gap-4`} style={{ height: 'calc(100vh - 9rem)' }}>
+                <div className={`${selectedSessionId ? 'w-[640px]' : 'w-[400px]'} shrink-0 sticky top-8 flex flex-col gap-4`} style={{ height: 'calc(100vh - 3rem)' }}>
                   {selectedSessionId && (() => {
                     const selectedSession = sessions.find(s => s.id === selectedSessionId);
                     return selectedSession ? (
