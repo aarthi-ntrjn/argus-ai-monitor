@@ -46,25 +46,25 @@ describe('SessionPromptBar — input and send', () => {
 
   it('Enter button is disabled when the input is empty', () => {
     render(<SessionPromptBar session={SESSION} />);
-    expect(screen.getByRole('button', { name: '↵' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
   });
 
   it('Enter button becomes enabled once text is typed', async () => {
     render(<SessionPromptBar session={SESSION} />);
     await userEvent.type(screen.getByPlaceholderText('Send a prompt…'), 'hello');
-    expect(screen.getByRole('button', { name: '↵' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Send' })).toBeEnabled();
   });
 
   it('Enter button stays disabled when input contains only whitespace', async () => {
     render(<SessionPromptBar session={SESSION} />);
     await userEvent.type(screen.getByPlaceholderText('Send a prompt…'), '   ');
-    expect(screen.getByRole('button', { name: '↵' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
   });
 
   it('calls sendPrompt with the session id and trimmed text on button click', async () => {
     render(<SessionPromptBar session={SESSION} />);
     await userEvent.type(screen.getByPlaceholderText('Send a prompt…'), '  do something  ');
-    await userEvent.click(screen.getByRole('button', { name: '↵' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
     expect(mockSendPrompt).toHaveBeenCalledWith(SESSION.id, 'do something');
   });
 
@@ -78,7 +78,7 @@ describe('SessionPromptBar — input and send', () => {
     render(<SessionPromptBar session={SESSION} />);
     const input = screen.getByPlaceholderText('Send a prompt…');
     await userEvent.type(input, 'hello');
-    await userEvent.click(screen.getByRole('button', { name: '↵' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
     await waitFor(() => expect(input).toHaveValue(''));
   });
 
@@ -86,7 +86,7 @@ describe('SessionPromptBar — input and send', () => {
     mockSendPrompt.mockRejectedValue(new Error('Network error'));
     render(<SessionPromptBar session={SESSION} />);
     await userEvent.type(screen.getByPlaceholderText('Send a prompt…'), 'hello');
-    await userEvent.click(screen.getByRole('button', { name: '↵' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
     await waitFor(() => expect(screen.getByText('Network error')).toBeInTheDocument());
   });
 
@@ -106,7 +106,7 @@ describe('SessionPromptBar — focus restoration', () => {
     render(<SessionPromptBar session={SESSION} />);
     const input = screen.getByPlaceholderText('Send a prompt…');
     await userEvent.type(input, 'hello');
-    await userEvent.click(screen.getByRole('button', { name: '↵' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
     // Wait for the input to clear (send completed) then check focus
     await waitFor(() => expect(input).toHaveValue(''));
     await waitFor(() => expect(document.activeElement).toBe(input));
@@ -126,7 +126,7 @@ describe('SessionPromptBar — read-only mode', () => {
 
   it('hides the enter button when session is not PTY-launched', () => {
     render(<SessionPromptBar session={READ_ONLY_SESSION} />);
-    expect(screen.queryByRole('button', { name: '↵' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Send' })).not.toBeInTheDocument();
   });
 
   it('shows a read-only message with a tooltip explaining how to enable prompts', () => {
@@ -140,3 +140,4 @@ describe('SessionPromptBar — read-only mode', () => {
     expect(mockSendPrompt).not.toHaveBeenCalled();
   });
 });
+

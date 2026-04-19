@@ -6,11 +6,12 @@ import { useRepositoryManagement } from '../../src/hooks/useRepositoryManagement
 
 const mockScanFolder = vi.fn();
 const mockAddRepository = vi.fn();
+const mockRemoveRepository = vi.fn();
 
 vi.mock('../../src/services/api', () => ({
   scanFolder: (...args: unknown[]) => mockScanFolder(...args),
   addRepository: (...args: unknown[]) => mockAddRepository(...args),
-  removeRepository: vi.fn().mockResolvedValue(undefined),
+  removeRepository: (...args: unknown[]) => mockRemoveRepository(...args),
 }));
 
 function createWrapper() {
@@ -25,6 +26,7 @@ describe('useRepositoryManagement — folder input flow', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    mockRemoveRepository.mockResolvedValue(undefined);
   });
 
   it('handleAddRepo shows the folder input (showFolderInput becomes true)', () => {
@@ -152,5 +154,48 @@ describe('useRepositoryManagement — folder input flow', () => {
     expect(result.current.addInfo).not.toBeNull();
     act(() => { result.current.clearAddInfo(); });
     expect(result.current.addInfo).toBeNull();
+  });
+});
+
+describe('useRepositoryManagement — remove repository', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    mockRemoveRepository.mockResolvedValue(undefined);
+  });
+
+  it('sets a user-friendly error message when removeRepository fails', async () => {
+    mockRemoveRepository.mockRejectedValue(new Error('FOREIGN KEY constraint failed'));
+    const { result } = renderHook(() => useRepositoryManagement(), { wrapper: createWrapper() });
+    await act(async () => { await result.current.handleRemoveRepoById('r1'); });
+    expect(result.current.addError).toBe(
+      'Sorry, removing the repository failed. Details: FOREIGN KEY constraint failed'
+    );
+  });
+
+  it('sets a user-friendly error message when removeRepository rejects with non-Error', async () => {
+    mockRemoveRepository.mockRejectedValue('unexpected');
+    const { result } = renderHook(() => useRepositoryManagement(), { wrapper: createWrapper() });
+    await act(async () => { await result.current.handleRemoveRepoById('r1'); });
+    expect(result.current.addError).toBe(
+      'Sorry, removing the repository failed. Details: Unknown error'
+    );
+  });
+
+  it('clears removeConfirmId after a failed remove', async () => {
+    mockRemoveRepository.mockRejectedValue(new Error('oops'));
+    const { result } = renderHook(() => useRepositoryManagement(), { wrapper: createWrapper() });
+    act(() => { result.current.setRemoveConfirmId('r1'); });
+    await act(async () => { await result.current.handleRemoveRepoById('r1'); });
+    expect(result.current.removeConfirmId).toBeNull();
+  });
+
+  it('clears addError when clearAddError is called', async () => {
+    mockRemoveRepository.mockRejectedValue(new Error('oops'));
+    const { result } = renderHook(() => useRepositoryManagement(), { wrapper: createWrapper() });
+    await act(async () => { await result.current.handleRemoveRepoById('r1'); });
+    expect(result.current.addError).not.toBeNull();
+    act(() => { result.current.clearAddError(); });
+    expect(result.current.addError).toBeNull();
   });
 });

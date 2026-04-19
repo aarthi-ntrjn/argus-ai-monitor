@@ -176,6 +176,28 @@ describe('SettingsPanel', () => {
     });
   });
 
+  describe('about section', () => {
+    it('renders website, GitHub, and npm links', () => {
+      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
+      expect(screen.getByRole('link', { name: /website/i })).toHaveAttribute('href', 'https://aarthi-ntrjn.github.io/argus');
+      expect(screen.getByRole('link', { name: /github/i })).toHaveAttribute('href', 'https://github.com/aarthi-ntrjn/argus');
+      expect(screen.getByRole('link', { name: /npm/i })).toHaveAttribute('href', 'https://www.npmjs.com/package/argus-ai-hub');
+    });
+
+    it('all about links open in a new tab', () => {
+      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
+      const links = [
+        screen.getByRole('link', { name: /website/i }),
+        screen.getByRole('link', { name: /github/i }),
+        screen.getByRole('link', { name: /npm/i }),
+      ];
+      for (const link of links) {
+        expect(link).toHaveAttribute('target', '_blank');
+        expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+      }
+    });
+  });
+
   describe('yolo mode toggle', () => {
     it('renders the yolo mode checkbox', async () => {
       renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);

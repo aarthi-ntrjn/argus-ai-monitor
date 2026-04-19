@@ -94,9 +94,9 @@ export function useRepositoryManagement(): RepositoryManagement {
       await removeRepository(id);
       queryClient.setQueryData<Repository[]>(['repositories'], (old = []) => old.filter(r => r.id !== id));
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to remove repository';
-      setAddError(msg);
-    } finally {
+      const rawMsg = err instanceof Error ? err.message : 'Unknown error';
+      setAddError(`Sorry, removing the repository failed. Details: ${rawMsg}`);
+    }finally {
       setRemoving(false);
       setRemoveConfirmId(null);
     }
