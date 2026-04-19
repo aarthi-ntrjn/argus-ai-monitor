@@ -1,5 +1,4 @@
 import { execSync } from 'child_process';
-import { readFileSync } from 'fs';
 import { platform } from 'os';
 import type { SessionType } from '../models/index.js';
 
@@ -43,21 +42,11 @@ function getProcessCommandLine(pid: number): string | null {
 }
 
 /**
- * Get the base process name (not full path) for the given PID.
- * Uses /proc/<pid>/comm on Linux (zero-subprocess), ps on Mac, Get-Process on Windows.
- * Returns null if the process cannot be found or the name cannot be read.
+ * Get the base process name for the given PID on Windows only.
+ * Uses Get-Process (Win32 API, no WMI).
  */
 function getProcessName(pid: number): string | null {
   try {
-    if (platform() === 'linux') {
-      try {
-        return readFileSync(`/proc/${pid}/comm`, 'utf-8').trim() || null;
-      } catch { /* fall through to ps */ }
-    }
-    if (platform() !== 'win32') {
-      return execSync(`ps -o comm= -p ${pid}`, { encoding: 'utf-8', timeout: 3000 }).trim() || null;
-    }
-    // Windows: Get-Process uses Win32 API directly (no WMI, faster than Get-CimInstance)
     return execSync(
       `powershell -NoProfile -Command "(Get-Process -Id ${pid} -ErrorAction SilentlyContinue).Name"`,
       { encoding: 'utf-8', timeout: 3000 }
@@ -67,6 +56,14 @@ function getProcessName(pid: number): string | null {
   }
 }
 
+function isAiToolCmdLine(cmdLine: string, type: SessionType): boolean {
+  const lower = cmdLine.toLowerCase();
+  if (type === 'claude-code') return lower.includes('claude');
+  // Match the copilot path segment to avoid false positives from strings like
+  // "github-copilot-extension". Accepts /usr/local/bin/copilot and C:\...\copilot.exe.
+  return /[/\\]copilot(\.exe)?(\s|$)/.test(lower);
+}
+
 function isAiToolName(name: string, type: SessionType): boolean {
   const lower = name.toLowerCase();
   if (type === 'claude-code') return lower === 'claude' || lower === 'claude.exe';
@@ -74,14 +71,25 @@ function isAiToolName(name: string, type: SessionType): boolean {
 }
 
 /**
- * Guard 3: verify the process at the given PID has the expected name for the session type.
- * Fails open (returns true) when the process name cannot be read, so a missing WMI/proc entry
- * does not incorrectly block a legitimate session.
+ * Guard 3: verify the process at the given PID is the expected AI tool.
+ * Fails open (returns true) when the command line cannot be read.
+ *
+ * On Linux/Mac we use the full command line (ps -o args=) rather than the short
+ * kernel name (/proc/pid/comm). The kernel name is useless here: it returns "node"
+ * for any Node.js binary regardless of the script being run (e.g. /usr/local/bin/copilot).
+ * On Windows we fall back to the short process name from Get-Process because
+ * Get-CimInstance CommandLine is slower and less reliable for this check.
  */
 export function isExpectedProcess(pid: number, type: SessionType): boolean {
-  const name = getProcessName(pid);
-  if (!name) return true; // cannot verify — fail open rather than blocking a real session
-  return isAiToolName(name, type);
+  if (platform() === 'win32') {
+    const name = getProcessName(pid);
+    if (!name) return true; // cannot verify — fail open
+    return isAiToolName(name, type);
+  }
+  // Linux/Mac: use the full command line — handles node-wrapped binaries like copilot.
+  const cmdLine = getProcessCommandLine(pid);
+  if (!cmdLine) return true; // cannot verify — fail open
+  return isAiToolCmdLine(cmdLine, type);
 }
 
 
