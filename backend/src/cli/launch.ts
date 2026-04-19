@@ -154,8 +154,9 @@ const pushStdin = (buf: Buffer): Promise<void> => {
 //   process.stdin.push() with Win32 sequences is the correct path.
 //   pty.write() does not work for interactive prompts (e.g. AskUserQuestion in
 //   claude-code) because the PTY may be in raw/char mode waiting for a single keystroke.
-// On POSIX (Linux/Mac): write directly to the PTY master — Win32 sequences are
-//   meaningless to a POSIX PTY and will not be understood by the tool.
+// On POSIX (Linux/Mac): write focus-in (\x1b[I), the prompt, then focus-out (\x1b[O)
+//   directly to the PTY master. The focus sequences are standard xterm and signal to
+//   the app that the terminal has regained focus before input arrives.
 client.onSendPrompt(async (actionId: string, prompt: string) => {
   log(`onSendPrompt actionId=${actionId} promptLen=${prompt.length}`);
   try {
@@ -173,7 +174,9 @@ client.onSendPrompt(async (actionId: string, prompt: string) => {
       await pushStdin(Buffer.from('\x1b[O'));
     } else {
       log(`posix pty.write promptLen=${prompt.length}`);
+      pty.write('\x1b[I');
       pty.write(prompt + '\r');
+      pty.write('\x1b[O');
     }
     client.ackDelivered(actionId);
   } catch (err) {
