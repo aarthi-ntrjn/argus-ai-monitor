@@ -2,6 +2,18 @@
 description: Generate a meaningful PR description for the public repo sync, then run the publish pipeline (push sync branch, CI gate, merge).
 ---
 
+## Invocation rules
+
+**ONLY execute this skill when the user explicitly types `/publish` as a standalone command.**
+Do NOT execute it in response to any of the following:
+- Phrases like "publish", "sync the public repo", "push to public", or any paraphrase
+- Being asked to "run the next step" when publish is implied
+- Any autonomous or inferred intent — the user must type the exact slash command `/publish`
+
+If this skill was not triggered by the exact command `/publish`, stop immediately without taking any action.
+
+---
+
 ## User Input
 
 ```text
@@ -23,7 +35,10 @@ Run:
 git branch --show-current
 ```
 
-If not on `master`, stop and tell the user: "You must be on `master` to publish. Run: `git checkout master`"
+If not on `master`, **stop immediately** and tell the user:
+"This skill must be run from `master`. You are currently on `<branch>`. Run: `git checkout master` first."
+
+Do not proceed past this step unless the branch is exactly `master`.
 
 ---
 
