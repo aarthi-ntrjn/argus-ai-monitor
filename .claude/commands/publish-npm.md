@@ -11,8 +11,8 @@ You are releasing the npm package for this project. Follow these steps exactly.
 ### Step 1 — Run the publish-npm script
 
 Run:
-```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/publish-npm.ps1
+```bash
+node scripts/publish-npm.mjs
 ```
 
 If the script fails (wrong branch, tag already exists, remote not found), stop and report the error clearly with the fix the user needs to apply.

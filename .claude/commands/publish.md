@@ -64,10 +64,8 @@ Do NOT use em dashes in the description.
 
 Invoke the script with the generated title and body:
 
-```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/publish.ps1 `
-  -Title "<generated title>" `
-  -Body "<generated body>"
+```bash
+node scripts/publish.mjs --title "<generated title>" --body "<generated body>"
 ```
 
 Stream the output so the user can see CI poll progress in real time.

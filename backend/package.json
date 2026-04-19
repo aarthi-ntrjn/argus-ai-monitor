@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "powershell -ExecutionPolicy Bypass -File ../scripts/kill-dev.ps1",
+    "predev": "node ../scripts/kill-dev.mjs",
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "test": "vitest run",
