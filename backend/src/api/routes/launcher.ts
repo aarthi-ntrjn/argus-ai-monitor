@@ -44,11 +44,6 @@ interface SessionEndedMessage {
   exitCode: number | null;
 }
 
-interface WorkspaceIdMessage {
-  type: 'workspace_id';
-  sessionId: string;
-}
-
 interface DiagnosticMessage {
   type: 'diagnostic';
   actionId: string;
@@ -61,7 +56,6 @@ type LauncherMessage =
   | PromptFailedMessage
   | UpdatePidMessage
   | SessionEndedMessage
-  | WorkspaceIdMessage
   | DiagnosticMessage;
 
 function ensureRepository(cwd: string): Repository {
@@ -120,7 +114,7 @@ const launcherRoutes: FastifyPluginAsync = async (fastify) => {
         if (existingSession) {
           const livePid = existingSession.hostPid ?? existingSession.pid;
           if (livePid !== null && isPidRunning(livePid)) {
-            ptyRegistry.claimByPtyLaunchId(ptyLaunchId, existingSession.id);
+            ptyRegistry.promotePendingToSession(ptyLaunchId, existingSession.id);
             fastify.log.info({ ptyLaunchId, sessionId: existingSession.id, priorStatus: existingSession.status }, 'Launcher reconnected to existing session via ptyLaunchId');
             const now = new Date().toISOString();
             if (existingSession.status === 'ended') {
@@ -173,50 +167,6 @@ const launcherRoutes: FastifyPluginAsync = async (fastify) => {
             ptyRegistry.updateClaimedPid(claudeSessionId, msg.pid);
             fastify.log.info({ claudeSessionId, pid: msg.pid }, 'Parked resolved pid — session not yet in DB');
           }
-        }
-        return;
-      }
-
-      if (msg.type === 'workspace_id') {
-        // launch.ts found the copilot workspace.yaml and is telling us the real session ID.
-        // Claim the pending connection by ptyLaunchId directly — no repoPath matching needed.
-        if (!ptyLaunchId) return;
-        fastify.log.info({ ptyLaunchId, workspaceSessionId: msg.sessionId }, 'Launcher: workspace_id received');
-        const claimed = ptyRegistry.claimByPtyLaunchId(ptyLaunchId, msg.sessionId);
-        if (claimed) {
-          // Eagerly upgrade the DB session if a scan already created it with launchMode:null
-          const session = getSession(msg.sessionId);
-          if (session) {
-            const needsUpgrade = session.launchMode !== 'pty';
-            const needsRestore = session.status === 'ended' && isPidRunning(claimed.hostPid);
-            if (needsUpgrade || needsRestore) {
-              const now = new Date().toISOString();
-              const updated = {
-                ...session,
-                launchMode: 'pty' as const,
-                pid: needsUpgrade ? claimed.pid : session.pid,
-                hostPid: needsUpgrade ? claimed.hostPid : session.hostPid,
-                pidSource: needsUpgrade ? 'pty_registry' as const : session.pidSource,
-                status: needsRestore ? 'active' as const : session.status,
-                endedAt: needsRestore ? null : session.endedAt,
-                lastActivityAt: needsRestore ? now : session.lastActivityAt,
-                ptyLaunchId,
-              };
-              upsertSession(updated);
-              broadcast({ type: 'session.updated', timestamp: now, data: { ...updated, ptyConnected: true } as unknown as Record<string, unknown> });
-              if (needsRestore) {
-                fastify.log.info({ claudeSessionId: msg.sessionId, ptyLaunchId }, 'Launcher: restored copilot session to active after server restart');
-              } else {
-                fastify.log.info({ claudeSessionId: msg.sessionId }, 'Launcher: upgrading existing session to launchMode=pty');
-              }
-            } else if (!session.ptyLaunchId) {
-              // Persist ptyLaunchId if not yet stored (first-time claim)
-              upsertSession({ ...session, ptyLaunchId });
-            }
-          }
-          fastify.log.info({ claudeSessionId: msg.sessionId, hostPid: claimed.hostPid, pid: claimed.pid }, 'Copilot session claimed via workspace_id');
-        } else {
-          fastify.log.warn({ ptyLaunchId, workspaceSessionId: msg.sessionId }, 'Launcher: workspace_id claim failed — no pending entry for ptyLaunchId');
         }
         return;
       }

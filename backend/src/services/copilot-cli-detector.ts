@@ -184,11 +184,8 @@ export class CopilotCliDetector {
       resolvedHostPid = existingSession!.hostPid;
       resolvedPidSource = existingSession!.pidSource;
       // The lockfile PID is ground truth: it is written by the Copilot process itself and
-      // is always authoritative for which process owns this session. If it disagrees with the
-      // stored pid, the DB row is stale. The most likely cause is the session-type hijack bug
-      // where a Copilot scan claimed a Claude launcher's pending registry entry (keyed only by
-      // repo path) before the workspace_id message arrived, writing Claude's PID into this row.
-      // Correcting to the lockfile PID here lets the DB converge within one scan cycle.
+      // is always authoritative for which process owns this session. Correct any stale DB
+      // value so the row converges within one scan cycle.
       if (pid !== null && pid !== existingSession!.pid) {
         logger.warn(`[CopilotDetector] alreadyClaimed pid mismatch: lockfile=${pid} stored=${existingSession!.pid} sessionId=${sessionId} — correcting to lockfile pid`);
         resolvedPid = pid;

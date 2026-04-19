@@ -60,22 +60,6 @@ export class PtyRegistry {
     }
   }
 
-  // Called by the launcher WS handler when launch.ts sends a workspace_id message
-  // after discovering the copilot workspace.yaml. Promotes the pending connection to
-  // a claimed connection keyed by sessionId, bypassing repoPath matching entirely.
-  claimByPtyLaunchId(ptyLaunchId: string, sessionId: string): { pid: number | null; hostPid: number; ptyLaunchId: string } | null {
-    const pending = this.pendingByLaunchId.get(ptyLaunchId);
-    if (!pending) {
-      logger.info(`[PtyRegistry] claimByPtyLaunchId MISS ptyLaunchId=${ptyLaunchId} sessionId=${sessionId} — no pending entry found`);
-      return null;
-    }
-    logger.info(`[PtyRegistry] claimByPtyLaunchId ptyLaunchId=${ptyLaunchId} sessionId=${sessionId} hostPid=${pending.hostPid} pid=${pending.pid}`);
-    this.connections.set(sessionId, pending.ws);
-    this.ptyLaunchToClaimedId.set(ptyLaunchId, sessionId);
-    this.pendingByLaunchId.delete(ptyLaunchId);
-    return { pid: pending.pid, hostPid: pending.hostPid, ptyLaunchId };
-  }
-
   // Called by ClaudeCodeDetector or CopilotCliDetector when a session is matched by repoPath.
   // Scans all pending launchers for one matching both repoPath and sessionType.
   // If multiple launchers for the same repo are pending (e.g. a reconnecting Copilot launcher
@@ -98,6 +82,22 @@ export class PtyRegistry {
     }
     logger.info(`[PtyRegistry] claimForSession MISS sessionId=${claudeSessionId} expected=${sessionType} repoPath="${repoPath}"`);
     return null;
+  }
+
+  // Called during server-restart reconnect: the launcher has re-registered (registerPending)
+  // and we already know its session ID from the DB. Promotes the pending entry directly
+  // without a repoPath scan.
+  promotePendingToSession(ptyLaunchId: string, sessionId: string): { pid: number | null; hostPid: number } | null {
+    const pending = this.pendingByLaunchId.get(ptyLaunchId);
+    if (!pending) {
+      logger.info(`[PtyRegistry] promotePendingToSession MISS ptyLaunchId=${ptyLaunchId} sessionId=${sessionId}`);
+      return null;
+    }
+    logger.info(`[PtyRegistry] promotePendingToSession ptyLaunchId=${ptyLaunchId} sessionId=${sessionId} hostPid=${pending.hostPid}`);
+    this.connections.set(sessionId, pending.ws);
+    this.ptyLaunchToClaimedId.set(ptyLaunchId, sessionId);
+    this.pendingByLaunchId.delete(ptyLaunchId);
+    return { pid: pending.pid, hostPid: pending.hostPid };
   }
 
   // Returns the claude session ID that was claimed for this ptyLaunchId,
