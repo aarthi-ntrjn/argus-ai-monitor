@@ -37,5 +37,9 @@ CREATE TABLE IF NOT EXISTS todos (
   updated_at TEXT    NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_todos_user ON todos(user_id);
+CREATE TABLE IF NOT EXISTS server_state (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
 `;
 

@@ -4,7 +4,7 @@ import { join, normalize } from 'path';
 import { homedir } from 'os';
 import { load as yamlLoad } from 'js-yaml';
 import { randomUUID } from 'crypto';
-import { upsertSession, getRepositoryByPath, getSession } from '../db/database.js';
+import { upsertSession, getRepositoryByPath, getSession, getSessions, getServerState, setServerState } from '../db/database.js';
 import { ptyRegistry } from './pty-registry.js';
 import { CopilotJsonlWatcher } from './copilot-jsonl-watcher.js';
 import { detectYoloModeFromPids, isPidRunning, isExpectedProcess } from './process-utils.js';
@@ -23,11 +23,39 @@ interface WorkspaceYaml {
 
 export class CopilotCliDetector {
   private readonly jsonlWatcher = new CopilotJsonlWatcher();
-  private lastScanTime = 0;
-  // Dirs known to have an active session last scan — must be rechecked even if mtime unchanged.
+  private lastScanTime: number;
+  // Dirs known to have an active session — rechecked on every scan to detect when they end.
   private activeDirPaths = new Set<string>();
 
-  constructor(private sessionStateDir: string = DEFAULT_SESSION_DIR) {}
+  constructor(private sessionStateDir: string = DEFAULT_SESSION_DIR) {
+    const stored = getServerState('copilot_last_scan_time');
+    this.lastScanTime = stored ? parseInt(stored, 10) : 0;
+    // Pre-populate activeDirPaths from DB so sessions that were active when the server
+    // stopped are picked up on the first scan even if their dir mtime predates lastScanTime.
+    this.initActiveDirsFromDb();
+  }
+
+  // Reads active copilot-cli sessions from the DB and finds their on-disk dirs.
+  // This ensures active sessions are always rechecked on startup regardless of mtime.
+  private initActiveDirsFromDb(): void {
+    if (!existsSync(this.sessionStateDir)) return;
+    const activeSessions = getSessions({ type: SessionTypes.COPILOT_CLI, status: 'active' });
+    if (activeSessions.length === 0) return;
+    const activeIds = new Set(activeSessions.map(s => s.id));
+    try {
+      const entries = readdirSync(this.sessionStateDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const dirPath = join(this.sessionStateDir, entry.name);
+        const workspaceFile = join(dirPath, 'workspace.yaml');
+        if (!existsSync(workspaceFile)) continue;
+        try {
+          const workspace = yamlLoad(readFileSync(workspaceFile, 'utf-8')) as WorkspaceYaml;
+          if (workspace.id && activeIds.has(workspace.id)) this.activeDirPaths.add(dirPath);
+        } catch { /* ignore */ }
+      }
+    } catch { /* ignore */ }
+  }
 
   async scan(force = false): Promise<Session[]> {
     if (!existsSync(this.sessionStateDir)) return [];
@@ -82,6 +110,7 @@ export class CopilotCliDetector {
 
     this.activeDirPaths = newActiveDirPaths;
     this.lastScanTime = t0;
+    setServerState('copilot_last_scan_time', String(t0));
 
     return sessions;
   }
@@ -184,11 +213,8 @@ export class CopilotCliDetector {
       resolvedHostPid = existingSession!.hostPid;
       resolvedPidSource = existingSession!.pidSource;
       // The lockfile PID is ground truth: it is written by the Copilot process itself and
-      // is always authoritative for which process owns this session. If it disagrees with the
-      // stored pid, the DB row is stale. The most likely cause is the session-type hijack bug
-      // where a Copilot scan claimed a Claude launcher's pending registry entry (keyed only by
-      // repo path) before the workspace_id message arrived, writing Claude's PID into this row.
-      // Correcting to the lockfile PID here lets the DB converge within one scan cycle.
+      // is always authoritative for which process owns this session. Correct any stale DB
+      // value so the row converges within one scan cycle.
       if (pid !== null && pid !== existingSession!.pid) {
         logger.warn(`[CopilotDetector] alreadyClaimed pid mismatch: lockfile=${pid} stored=${existingSession!.pid} sessionId=${sessionId} — correcting to lockfile pid`);
         resolvedPid = pid;
