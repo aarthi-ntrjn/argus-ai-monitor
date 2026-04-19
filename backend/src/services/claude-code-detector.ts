@@ -117,11 +117,6 @@ export class ClaudeCodeDetector {
     );
   }
 
-  // Claude names project dirs by replacing path separators (:, \, /) with hyphens.
-  static projectDirName(repoPath: string): string {
-    return repoPath.replace(/[:\\/]/g, '-');
-  }
-
   async scanExistingSessions(): Promise<void> {
     const registry = new ClaudeSessionRegistry();
     const registryEntries = registry.scanEntries();

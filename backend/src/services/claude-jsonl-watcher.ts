@@ -11,7 +11,7 @@ import { broadcast } from '../api/ws/event-dispatcher.js';
 import { parseClaudeJsonlLine, parseModel } from './claude-code-jsonl-parser.js';
 
 function claudeProjectDirName(repoPath: string): string {
-  return repoPath.replace(/[:\\/]/g, '-');
+  return repoPath.replace(/[:\\/\s]/g, '-');
 }
 
 export class ClaudeJsonlWatcher {
