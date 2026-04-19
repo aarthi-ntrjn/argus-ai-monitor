@@ -205,19 +205,6 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
           </Button>
         </div>
 
-        {onRestartTour && (
-          <div className="mt-2 pt-2 border-t border-gray-100 flex flex-col gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onRestartTour}
-              className="w-full text-left !text-sm hover:!text-blue-600"
-            >
-              Restart Tour
-            </Button>
-          </div>
-        )}
-
         <div className="mt-2 pt-2 border-t border-gray-100">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">About</p>
           <div className="flex flex-col gap-1">
@@ -233,6 +220,16 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M0 0v24h24V0H0zm6.672 19.992H3.336V6.664h3.336v13.328zm11.664 0h-3.336v-9.992h-3.336v9.992H8.328V6.664h10.008v13.328z"/></svg>
               npm
             </a>
+            {onRestartTour && (
+              <button
+                type="button"
+                onClick={onRestartTour}
+                className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors text-left"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+                Restart Tour
+              </button>
+            )}
           </div>
         </div>
 
