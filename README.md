@@ -152,6 +152,8 @@ Click **Add Repository**, type or paste a root folder path (e.g. `C:\source` or 
 
 Argus scans that folder recursively for git repos and registers all new ones in one go. Already-registered repos are skipped automatically.
 
+Paths are normalized on entry: trailing slashes and mixed separators are stripped, and spaces in paths (common on Linux) are handled correctly. Both the path you type and the working directory reported by Claude/Copilot are normalized the same way, so sessions always match their registered repo.
+
 Each repo card shows the current branch name and, when the remote is a GitHub repository, a **compare link icon** (external link) next to the branch badge. Clicking it opens the GitHub compare page for that branch against master in a new tab. On the default branch (master or main), the link opens the repository's compare page directly.
 
 ## To Tackle
