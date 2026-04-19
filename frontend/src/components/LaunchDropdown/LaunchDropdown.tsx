@@ -39,8 +39,7 @@ export default function LaunchDropdown({ repoPath }: Props) {
     return () => document.removeEventListener('keydown', handler);
   }, [open]);
 
-  const handleCopy = async (e: React.MouseEvent, tool: 'claude' | 'copilot') => {
-    e.stopPropagation();
+  const copyCommand = async (tool: 'claude' | 'copilot') => {
     const base = tool === 'claude' ? tools?.claudeCmd : tools?.copilotCmd;
     const cmd = base ? `${base} --cwd "${repoPath}"` : undefined;
     if (!cmd) return;
@@ -60,8 +59,16 @@ export default function LaunchDropdown({ repoPath }: Props) {
     setTimeout(() => setCopied(null), 1500);
   };
 
+  const handleCopy = async (e: React.MouseEvent, tool: 'claude' | 'copilot') => {
+    e.stopPropagation();
+    await copyCommand(tool);
+  };
+
   const handleLaunch = async (tool: 'claude' | 'copilot') => {
-    if (tools?.terminalAvailable === false) return;
+    if (tools?.terminalAvailable === false) {
+      await copyCommand(tool);
+      return;
+    }
     setOpen(false);
     try {
       await launchInTerminal(tool, repoPath);
@@ -142,15 +149,9 @@ function LaunchRow({ label, icon, headless, copied, onLaunch, onCopy }: LaunchRo
   return (
     <div className="flex items-center group">
       <button
-        onClick={headless ? undefined : onLaunch}
-        className={`flex-1 flex items-center gap-2 px-3 py-1.5 text-xs text-left transition-colors
-          ${headless
-            ? 'text-gray-400 cursor-default'
-            : 'text-gray-700 hover:bg-gray-50 focus-visible:bg-blue-50 cursor-pointer'
-          }`}
-        tabIndex={headless ? -1 : 0}
-        aria-disabled={headless}
-        title={headless ? 'Terminal unavailable in this environment — use the copy button' : undefined}
+        onClick={onLaunch}
+        className="flex-1 flex items-center gap-2 px-3 py-1.5 text-xs text-left text-gray-700 hover:bg-gray-50 focus-visible:bg-blue-50 cursor-pointer transition-colors"
+        title={headless ? 'Click to copy command' : undefined}
       >
         <span className="shrink-0">{icon}</span>
         {label}
