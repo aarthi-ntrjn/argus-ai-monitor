@@ -300,7 +300,7 @@ export default function DashboardPage() {
                 {repoList}
               </div>
               {(!settings.hideTodoPanel || selectedSessionId) && (
-                <div className={`${selectedSessionId ? 'w-[640px]' : 'w-[400px]'} shrink-0 sticky top-8 flex flex-col gap-4${selectedSessionId ? '' : ' h-auto'}`} style={selectedSessionId ? { height: 'calc(100vh - 9rem)' } : undefined}>
+                <div className={`${selectedSessionId ? 'w-[640px]' : 'w-[400px]'} shrink-0 sticky top-8 flex flex-col gap-4`} style={{ height: 'calc(100vh - 9rem)' }}>
                   {selectedSessionId && (() => {
                     const selectedSession = sessions.find(s => s.id === selectedSessionId);
                     return selectedSession ? (
@@ -313,7 +313,7 @@ export default function DashboardPage() {
                     ) : null;
                   })()}
                   {!settings.hideTodoPanel && (
-                    <div className={selectedSessionId ? 'flex-[1] min-h-0 overflow-hidden' : 'flex-1'}>
+                    <div className={`${selectedSessionId ? 'flex-[1]' : 'flex-1'} min-h-0 overflow-hidden`}>
                       <TodoPanel />
                     </div>
                   )}
