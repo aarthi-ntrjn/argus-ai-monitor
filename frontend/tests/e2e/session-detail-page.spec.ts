@@ -347,7 +347,7 @@ test.describe('Session Detail Page', () => {
   test('prompt bar Send button is disabled when input is empty', async ({ page }) => {
     await mockSession(page, { launchMode: 'pty' });
     await page.goto(`/sessions/${SESSION_ID}`);
-    await expect(page.getByRole('button', { name: '↵' })).toBeDisabled({ timeout: 5000 });
+    await expect(page.getByRole('button', { name: 'Send' })).toBeDisabled({ timeout: 5000 });
   });
 
   test('prompt bar sends prompt on the detail page and clears input', async ({ page }) => {
@@ -363,7 +363,7 @@ test.describe('Session Detail Page', () => {
     await page.goto(`/sessions/${SESSION_ID}`);
     const input = page.getByPlaceholder('Send a prompt…');
     await input.fill('detail page prompt');
-    await page.getByRole('button', { name: '↵' }).click();
+    await page.getByRole('button', { name: 'Send' }).click();
     await expect(input).toHaveValue('', { timeout: 3000 });
     expect(sendCalled).toBe(true);
   });

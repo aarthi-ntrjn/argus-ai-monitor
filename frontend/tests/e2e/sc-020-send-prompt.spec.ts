@@ -81,14 +81,14 @@ test.describe('SC-020: Send Prompt — PTY session (mocked API)', () => {
     await expect(input).toBeEnabled();
   });
 
-  test('enter button (↵) is enabled for a PTY session once text is typed', async ({ page }) => {
+  test('send button is enabled for a PTY session once text is typed', async ({ page }) => {
     await page.goto(`/sessions/${SESSION_ID}`);
     const input = page.getByPlaceholder('Send a prompt…');
     await input.fill('do something');
-    await expect(page.getByRole('button', { name: '↵' })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Send' })).toBeEnabled();
   });
 
-  test('clicking ↵ calls POST /sessions/:id/send with the prompt', async ({ page }) => {
+  test('clicking Send calls POST /sessions/:id/send with the prompt', async ({ page }) => {
     let sentPayload: { prompt?: string } | null = null;
     await page.route(`**/api/v1/sessions/${SESSION_ID}/send`, route => {
       sentPayload = route.request().postDataJSON();
@@ -102,7 +102,7 @@ test.describe('SC-020: Send Prompt — PTY session (mocked API)', () => {
     await page.goto(`/sessions/${SESSION_ID}`);
     const input = page.getByPlaceholder('Send a prompt…');
     await input.fill('run the tests');
-    await page.getByRole('button', { name: '↵' }).click();
+    await page.getByRole('button', { name: 'Send' }).click();
 
     await expect(input).toHaveValue('', { timeout: 3000 });
     expect(sentPayload?.prompt).toBe('run the tests');
@@ -138,7 +138,7 @@ test.describe('SC-020: Send Prompt — PTY session (mocked API)', () => {
 
     await page.goto(`/sessions/${SESSION_ID}`);
     await page.getByPlaceholder('Send a prompt…').fill('hello');
-    await page.getByRole('button', { name: '↵' }).click();
+    await page.getByRole('button', { name: 'Send' }).click();
 
     await expect(page.getByText(/server exploded/i)).toBeVisible({ timeout: 3000 });
   });
@@ -211,9 +211,9 @@ test.describe('SC-020: Send Prompt — detected (read-only) session (mocked API)
     await expect(page.getByPlaceholder('Send a prompt…')).not.toBeVisible({ timeout: 5000 });
   });
 
-  test('enter button (↵) is not shown for a detected session', async ({ page }) => {
+  test('send button is not shown for a detected session', async ({ page }) => {
     await page.goto(`/sessions/${DETECTED_SESSION.id}`);
-    await expect(page.getByRole('button', { name: '↵' })).not.toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('button', { name: 'Send' })).not.toBeVisible({ timeout: 5000 });
   });
 
   test('"read-only" badge is shown for detected sessions', async ({ page }) => {
