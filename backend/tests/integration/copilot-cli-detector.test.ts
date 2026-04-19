@@ -23,7 +23,8 @@ vi.mock('../../src/db/database.js', () => ({
   getSession: mockGetSession,
   upsertSession: mockUpsertSession,
   deleteSessionOutput: vi.fn(),
-  insertOutput: vi.fn(),
+  insertOutput: vi.fn().mockReturnValue(true),
+  getMaxSequenceNumber: vi.fn().mockReturnValue(0),
 }));
 
 const mockBroadcast = vi.hoisted(() => vi.fn());

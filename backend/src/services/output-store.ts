@@ -10,17 +10,17 @@ export interface OutputPage {
 }
 
 export class OutputStore {
-  insertOutput(sessionId: string, outputs: SessionOutput[]): void {
-    for (const output of outputs) {
-      dbInsertOutput(output);
-    }
-    if (outputs.length > 0) {
+  /** Returns true if at least one output was newly inserted (not a duplicate). */
+  insertOutput(sessionId: string, outputs: SessionOutput[]): boolean {
+    const inserted = outputs.filter(o => dbInsertOutput(o));
+    if (inserted.length > 0) {
       broadcast({
         type: 'session.output.batch',
         timestamp: new Date().toISOString(),
-        data: { sessionId, outputs: outputs as unknown as Record<string, unknown>[] },
+        data: { sessionId, outputs: inserted as unknown as Record<string, unknown>[] },
       });
     }
+    return inserted.length > 0;
   }
 
   getOutputPage(sessionId: string, limit: number, before?: string): OutputPage {

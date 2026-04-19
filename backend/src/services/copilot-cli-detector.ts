@@ -1,15 +1,12 @@
-import { readdirSync, existsSync, readFileSync, openSync, readSync, closeSync, statSync } from 'fs';
+import { readdirSync, existsSync, readFileSync, statSync } from 'fs';
 import * as logger from '../utils/logger.js';
 import { join, normalize } from 'path';
 import { homedir } from 'os';
 import { load as yamlLoad } from 'js-yaml';
 import { randomUUID } from 'crypto';
-import chokidar, { type FSWatcher } from 'chokidar';
-import { upsertSession, getRepositoryByPath, deleteSessionOutput, getSession } from '../db/database.js';
-import { broadcast } from '../api/ws/event-dispatcher.js';
+import { upsertSession, getRepositoryByPath, getSession } from '../db/database.js';
 import { ptyRegistry } from './pty-registry.js';
-import { OutputStore } from './output-store.js';
-import { parseJsonlLine, parseModelFromEvent } from './events-parser.js';
+import { CopilotJsonlWatcher } from './copilot-jsonl-watcher.js';
 import { detectYoloModeFromPids, isPidRunning, isExpectedProcess } from './process-utils.js';
 import { SessionTypes } from '../models/index.js';
 import type { Session, PidSource } from '../models/index.js';
@@ -25,10 +22,7 @@ interface WorkspaceYaml {
 }
 
 export class CopilotCliDetector {
-  private watchers = new Map<string, FSWatcher>();
-  private filePositions = new Map<string, number>();
-  private sequenceCounters = new Map<string, number>();
-  private outputStore = new OutputStore();
+  private readonly jsonlWatcher = new CopilotJsonlWatcher();
   private lastScanTime = 0;
   // Dirs known to have an active session last scan — must be rechecked even if mtime unchanged.
   private activeDirPaths = new Set<string>();
@@ -162,7 +156,7 @@ export class CopilotCliDetector {
     upsertSession(session);
 
     if (isRunning) {
-      this.watchEventsFile(sessionId, dirPath);
+      await this.jsonlWatcher.watchFile(sessionId, dirPath);
     }
 
     return session;
@@ -241,85 +235,6 @@ export class CopilotCliDetector {
     return { launchMode, resolvedPid, resolvedHostPid, resolvedPidSource, resolvedPtyLaunchId };
   }
 
-  private watchEventsFile(sessionId: string, dirPath: string): void {
-    if (this.watchers.has(sessionId)) return;
-    const eventsFile = join(dirPath, 'events.jsonl');
-    if (!existsSync(eventsFile)) return;
-
-    const TAIL_BYTES = 16 * 1024; // ~20-50 recent events; avoids reading huge historical files
-    const fileSize = statSync(eventsFile).size;
-
-    deleteSessionOutput(sessionId);
-    this.filePositions.set(sessionId, Math.max(0, fileSize - TAIL_BYTES));
-    this.sequenceCounters.set(sessionId, 0);
-
-    this.readNewLines(sessionId, eventsFile);
-
-    const watcher = chokidar.watch(eventsFile, { persistent: false, usePolling: false });
-    watcher.on('change', () => this.readNewLines(sessionId, eventsFile));
-    this.watchers.set(sessionId, watcher);
-  }
-
-  private readNewLines(sessionId: string, filePath: string): void {
-    try {
-      const currentSize = statSync(filePath).size;
-      const lastPos = this.filePositions.get(sessionId) ?? 0;
-      if (currentSize <= lastPos) return;
-
-      const fd = openSync(filePath, 'r');
-      const buffer = Buffer.alloc(currentSize - lastPos);
-      readSync(fd, buffer, 0, buffer.length, lastPos);
-      closeSync(fd);
-      this.filePositions.set(sessionId, currentSize);
-
-      const newContent = buffer.toString('utf-8');
-      const lines = newContent.split('\n').filter((l) => l.trim());
-      let seq = this.sequenceCounters.get(sessionId) ?? 0;
-
-      let detectedModel: string | null = null;
-      const outputs = lines.map((line) => {
-        seq++;
-        if (!detectedModel) detectedModel = parseModelFromEvent(line);
-        return parseJsonlLine(line, sessionId, seq);
-      }).filter((o): o is NonNullable<typeof o> => o !== null);
-
-      this.sequenceCounters.set(sessionId, seq);
-      if (outputs.length > 0) {
-        this.outputStore.insertOutput(sessionId, outputs);
-        const now = new Date().toISOString();
-        const active = getSession(sessionId);
-        if (active) {
-          const updated = { ...active, lastActivityAt: now };
-          upsertSession(updated);
-          broadcast({ type: 'session.updated', timestamp: now, data: updated as unknown as Record<string, unknown> });
-        }
-      }
-
-      if (detectedModel && !getSession(sessionId)?.model) {
-        const existing = getSession(sessionId);
-        if (existing) {
-          const updated = { ...existing, model: detectedModel };
-          upsertSession(updated);
-          broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: updated as unknown as Record<string, unknown> });
-        }
-      }
-
-      // Update summary with the most recent user prompt in this batch
-      const lastUserMsg = [...outputs].reverse().find(o => o.role === 'user' && o.type === 'message' && !o.isMeta);
-      if (lastUserMsg?.content) {
-        const existing = getSession(sessionId);
-        if (existing) {
-          const summary = lastUserMsg.content.slice(0, 120);
-          if (existing.summary !== summary) {
-            const updated = { ...existing, summary };
-            upsertSession(updated);
-            broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: updated as unknown as Record<string, unknown> });
-          }
-        }
-      }
-    } catch { /* ignore */ }
-  }
-
   /**
    * Scan all copilot session directories and return a map of session ID → PID
    * from inuse.<PID>.lock files. This is the copilot equivalent of
@@ -354,10 +269,7 @@ export class CopilotCliDetector {
   }
 
   stopWatchers(): void {
-    for (const watcher of this.watchers.values()) {
-      watcher.close().catch(() => { /* ignore */ });
-    }
-    this.watchers.clear();
+    this.jsonlWatcher.stopWatchers();
   }
 
   private findLockFile(dirPath: string): string | null {
