@@ -155,7 +155,7 @@ export default function LaunchDropdown({ repoPath }: Props) {
                     className="icon-btn w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 focus-visible:bg-blue-50 transition-colors"
                   >
                     <span className="text-orange-500 shrink-0"><ClaudeIcon size={13} /></span>
-                    Launch Claude
+                    {tools.terminalAvailable === false ? 'Get Claude command' : 'Launch Claude'}
                   </button>
                   <button
                     onClick={() => handleCopy('claude')}
@@ -177,7 +177,7 @@ export default function LaunchDropdown({ repoPath }: Props) {
                     className="icon-btn w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 focus-visible:bg-blue-50 transition-colors"
                   >
                     <span className="text-purple-600 shrink-0"><CopilotIcon size={13} /></span>
-                    Launch Copilot
+                    {tools.terminalAvailable === false ? 'Get Copilot command' : 'Launch Copilot'}
                   </button>
                   <button
                     onClick={() => handleCopy('copilot')}
