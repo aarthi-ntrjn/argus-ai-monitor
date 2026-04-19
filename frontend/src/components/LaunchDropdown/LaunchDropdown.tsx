@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Terminal, Copy, ChevronDown } from 'lucide-react';
+import { Terminal, Copy, ChevronDown, Check } from 'lucide-react';
 import { ClaudeIcon, CopilotIcon } from '../SessionTypeIcon/SessionTypeIcon';
 import { getAvailableTools, launchInTerminal } from '../../services/api';
 import { Button } from '../Button';
@@ -13,8 +13,6 @@ export default function LaunchDropdown({ repoPath }: Props) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState<'claude' | 'copilot' | null>(null);
   const [launchError, setLaunchError] = useState<string | null>(null);
-  const [noTerminalCmd, setNoTerminalCmd] = useState<string | null>(null);
-  const [cmdCopied, setCmdCopied] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const { data: tools } = useQuery({
@@ -41,15 +39,13 @@ export default function LaunchDropdown({ repoPath }: Props) {
     return () => document.removeEventListener('keydown', handler);
   }, [open]);
 
-  const handleCopy = async (tool: 'claude' | 'copilot') => {
+  const copyCommand = async (tool: 'claude' | 'copilot') => {
     const base = tool === 'claude' ? tools?.claudeCmd : tools?.copilotCmd;
-    // Append --cwd so the command launches in this repo regardless of where it's pasted.
     const cmd = base ? `${base} --cwd "${repoPath}"` : undefined;
     if (!cmd) return;
     try {
       await navigator.clipboard.writeText(cmd);
     } catch {
-      // Fallback for environments where the async Clipboard API is denied.
       const el = document.createElement('textarea');
       el.value = cmd;
       el.style.position = 'fixed';
@@ -61,37 +57,27 @@ export default function LaunchDropdown({ repoPath }: Props) {
     }
     setCopied(tool);
     setTimeout(() => setCopied(null), 1500);
-    setOpen(false);
+  };
+
+  const handleCopy = async (e: React.MouseEvent, tool: 'claude' | 'copilot') => {
+    e.stopPropagation();
+    await copyCommand(tool);
   };
 
   const handleLaunch = async (tool: 'claude' | 'copilot') => {
+    if (tools?.terminalAvailable === false) {
+      await copyCommand(tool);
+      return;
+    }
     setOpen(false);
     try {
-      const { cmd } = await launchInTerminal(tool, repoPath);
-      if (cmd) setNoTerminalCmd(cmd);
+      await launchInTerminal(tool, repoPath);
     } catch (err) {
       setLaunchError(err instanceof Error ? err.message : 'Failed to launch');
     }
   };
 
-  const handleCopyCmd = async () => {
-    if (!noTerminalCmd) return;
-    try {
-      await navigator.clipboard.writeText(noTerminalCmd);
-    } catch {
-      const el = document.createElement('textarea');
-      el.value = noTerminalCmd;
-      el.style.position = 'fixed';
-      el.style.opacity = '0';
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand('copy');
-      document.body.removeChild(el);
-    }
-    setCmdCopied(true);
-    setTimeout(() => setCmdCopied(false), 1500);
-  };
-
+  const headless = tools?.terminalAvailable === false;
   const hasAny = tools?.claude || tools?.copilot;
 
   return (
@@ -99,27 +85,11 @@ export default function LaunchDropdown({ repoPath }: Props) {
       {launchError && (
         <p className="text-xs text-red-600 mb-1">{launchError}</p>
       )}
-      {noTerminalCmd && (
-        <div className="mb-1 p-2 bg-gray-50 border border-gray-200 rounded text-xs">
-          <p className="text-gray-600 mb-1">No terminal available. Run manually:</p>
-          <div className="flex items-start gap-1">
-            <code className="flex-1 break-all text-gray-800 font-mono text-[10px] leading-relaxed">{noTerminalCmd}</code>
-            <button
-              onClick={handleCopyCmd}
-              className="icon-btn shrink-0 text-gray-500 hover:text-gray-700"
-              aria-label="Copy command"
-              title="Copy command"
-            >
-              {cmdCopied ? <span className="text-green-600">✓</span> : <Copy size={11} aria-hidden="true" />}
-            </button>
-          </div>
-        </div>
-      )}
       <Button
         variant="outline"
         size="sm"
         data-tour-id="dashboard-launch"
-        onClick={() => { setLaunchError(null); setNoTerminalCmd(null); setOpen(o => !o); }}
+        onClick={() => { setLaunchError(null); setOpen(o => !o); }}
         title="Launch a new session with Argus"
         aria-label="Launch with Argus"
         aria-expanded={open}
@@ -131,7 +101,7 @@ export default function LaunchDropdown({ repoPath }: Props) {
       </Button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-40 min-w-[220px] py-1">
+        <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-40 min-w-[200px] py-1">
           {!tools ? (
             <p className="text-xs text-gray-500 px-3 py-2">Checking installed tools…</p>
           ) : !hasAny ? (
@@ -139,47 +109,29 @@ export default function LaunchDropdown({ repoPath }: Props) {
           ) : (
             <>
               {tools.claude && (
-                <>
-                  <div className="px-3 pt-2 pb-0.5">
-                    <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Claude Code</span>
-                  </div>
-                  <button
-                    onClick={() => handleLaunch('claude')}
-                    className="icon-btn w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 focus-visible:bg-blue-50 transition-colors"
-                  >
-                    <span className="text-orange-500 shrink-0"><ClaudeIcon size={13} /></span>
-                    Launch Claude
-                  </button>
-                  <button
-                    onClick={() => handleCopy('claude')}
-                    className="icon-btn w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 focus-visible:bg-blue-50 transition-colors"
-                  >
-                    <Copy size={13} className="text-gray-400 shrink-0" aria-hidden="true" />
-                    {copied === 'claude' ? 'Copied!' : 'Copy Claude command'}
-                  </button>
-                </>
+                <LaunchRow
+                  label="Launch Claude"
+                  icon={<span className="text-orange-500"><ClaudeIcon size={13} /></span>}
+                  headless={headless}
+                  copied={copied === 'claude'}
+                  onLaunch={() => handleLaunch('claude')}
+                  onCopy={(e) => handleCopy(e, 'claude')}
+                />
               )}
-
               {tools.copilot && (
-                <>
-                  <div className={`px-3 pb-0.5 ${tools.claude ? 'pt-2 border-t border-gray-100 mt-1' : 'pt-2'}`}>
-                    <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">GitHub Copilot CLI</span>
-                  </div>
-                  <button
-                    onClick={() => handleLaunch('copilot')}
-                    className="icon-btn w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 focus-visible:bg-blue-50 transition-colors"
-                  >
-                    <span className="text-purple-600 shrink-0"><CopilotIcon size={13} /></span>
-                    Launch Copilot
-                  </button>
-                  <button
-                    onClick={() => handleCopy('copilot')}
-                    className="icon-btn w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 focus-visible:bg-blue-50 transition-colors"
-                  >
-                    <Copy size={13} className="text-gray-400 shrink-0" aria-hidden="true" />
-                    {copied === 'copilot' ? 'Copied!' : 'Copy Copilot command'}
-                  </button>
-                </>
+                <LaunchRow
+                  label="Launch Copilot"
+                  icon={<span className="text-purple-600"><CopilotIcon size={13} /></span>}
+                  headless={headless}
+                  copied={copied === 'copilot'}
+                  onLaunch={() => handleLaunch('copilot')}
+                  onCopy={(e) => handleCopy(e, 'copilot')}
+                />
+              )}
+              {headless && (
+                <p className="px-3 pt-1.5 pb-2 text-[10px] text-gray-400 border-t border-gray-100 mt-1">
+                  No terminal available. Copy and run manually.
+                </p>
               )}
             </>
           )}
@@ -188,3 +140,39 @@ export default function LaunchDropdown({ repoPath }: Props) {
     </div>
   );
 }
+
+interface LaunchRowProps {
+  label: string;
+  icon: React.ReactNode;
+  headless: boolean;
+  copied: boolean;
+  onLaunch: () => void;
+  onCopy: (e: React.MouseEvent) => void;
+}
+
+function LaunchRow({ label, icon, headless, copied, onLaunch, onCopy }: LaunchRowProps) {
+  return (
+    <div className="flex items-center group">
+      <button
+        onClick={onLaunch}
+        className="flex-1 flex items-center gap-2 px-3 py-1.5 text-xs text-left text-gray-700 hover:bg-gray-50 focus-visible:bg-blue-50 cursor-pointer transition-colors"
+        title={headless ? 'Click to copy command' : undefined}
+      >
+        <span className="shrink-0">{icon}</span>
+        {label}
+      </button>
+      <button
+        onClick={onCopy}
+        className="icon-btn shrink-0 px-2 py-1.5 text-gray-400 hover:text-gray-700 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+        aria-label={`Copy ${label.toLowerCase()} command`}
+        title="Copy command"
+      >
+        {copied
+          ? <Check size={12} className="text-green-600" aria-hidden="true" />
+          : <Copy size={12} aria-hidden="true" />
+        }
+      </button>
+    </div>
+  );
+}
+

@@ -43,6 +43,20 @@ function isCopilotInstalled(): boolean {
   return isInstalled(ToolCommands.COPILOT);
 }
 
+// Detect whether the server can open a GUI terminal window.
+// Returns false in headless environments (Codespaces, SSH-only, no display server).
+function canLaunchTerminal(): boolean {
+  const os = platform();
+  if (os === 'win32') return true;
+  if (os === 'darwin') {
+    // SSH session without a local display = no GUI terminal
+    return !process.env.SSH_CLIENT && !process.env.SSH_TTY;
+  }
+  // Linux: need a display server; Codespaces is always headless
+  if (process.env.CODESPACES === 'true') return false;
+  return !!(process.env.DISPLAY || process.env.WAYLAND_DISPLAY);
+}
+
 function spawnDetached(file: string, args: string[]): void {
   const child = spawn(file, args, { detached: true, stdio: 'ignore' });
   child.on('error', (err) => {
@@ -100,6 +114,7 @@ const toolsRoutes: FastifyPluginAsync = async (app) => {
     return reply.send({
       claude: hasClaude,
       copilot: hasCopilot,
+      terminalAvailable: canLaunchTerminal(),
       claudeCmd: hasClaude ? buildLaunchCmdBase(ToolCommands.CLAUDE, yoloMode) : undefined,
       copilotCmd: hasCopilot ? buildLaunchCmdBase(ToolCommands.COPILOT, yoloMode) : undefined,
     });

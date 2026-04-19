@@ -113,6 +113,7 @@ export async function deleteTodo(id: string): Promise<void> {
 export interface AvailableTools {
   claude: boolean;
   copilot: boolean;
+  terminalAvailable: boolean;
   claudeCmd?: string;
   copilotCmd?: string;
 }
