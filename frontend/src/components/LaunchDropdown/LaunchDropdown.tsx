@@ -128,6 +128,11 @@ export default function LaunchDropdown({ repoPath }: Props) {
                   onCopy={(e) => handleCopy(e, 'copilot')}
                 />
               )}
+              {headless && (
+                <p className="px-3 pt-1.5 pb-2 text-[10px] text-gray-400 border-t border-gray-100 mt-1">
+                  No terminal available. Copy and run manually.
+                </p>
+              )}
             </>
           )}
         </div>
