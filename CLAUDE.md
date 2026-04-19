@@ -28,6 +28,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Add logs when the root cause is unclear.** If static analysis and code reading have not pinpointed a bug after a reasonable effort, add targeted log statements to the relevant code path, ask the user to reproduce the issue, and use the output to confirm the root cause before making any fix. Remove diagnostic logs after the bug is resolved.
 
+## Logging
+
+- **Always prefix log messages with `[ComponentName]`** — every `logger.info`, `logger.warn`, etc. call must begin with a `[ComponentName]` tag so logs are easy to filter and attribute. Examples: `[CopilotDetector]`, `[PtyRegistry]`, `[Launcher]`, `[SessionMonitor]`.
+- **Use `createTaggedLogger` for components that need a distinct color.** Import from `utils/logger.ts` and call `createTaggedLogger('[ComponentName]', ansiColor)`. The returned logger automatically prepends the colored tag in TTY environments. Current assignments: `[PtyRegistry]` uses magenta (`\x1b[35m`).
+- **No em dashes in log messages.** Use a comma or colon instead (consistent with the Writing Style rule).
+
 ## Error Handling
 
 - **Never swallow errors silently.** Every `catch` block must either surface the error to the user (via `setError`, a toast, etc.) or log it (`console.warn` / `console.error` for non-user-facing errors such as WebSocket parse failures). An empty `catch` block or a `catch` that discards the error object is always a bug.

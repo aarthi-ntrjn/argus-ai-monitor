@@ -56,7 +56,7 @@ export async function buildServer() {
     logger: {
       level: process.env.LOG_LEVEL ?? 'info',
       transport: process.env.NODE_ENV !== 'production'
-        ? { target: 'pino-pretty', options: { colorize: true } }
+        ? { target: 'pino-pretty', options: { colorize: true, singleLine: true } }
         : undefined,
     },
     genReqId: () => randomUUID(),
