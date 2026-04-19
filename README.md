@@ -138,7 +138,7 @@ The alert appears for both read-only and connected sessions. It is never shown f
 
 ### Prompt Bar
 
-Every session card has a prompt bar. For **live** (PTY-launched) sessions, type a message and press **↵** to send it.
+Every session card has a prompt bar. For **live** (PTY-launched) sessions, type a message and click the send button (or press **Enter**) to send it.
 
 Prompt injection works for both Claude Code and Copilot CLI when started via `Launch with Argus`.
 
@@ -195,6 +195,10 @@ Click the **gear icon** (top-right) to open Settings.
 | Resting after (minutes)            | 20       | Minutes of inactivity before a session is shown as **resting**. Valid range: 1 to 60. Click **Reset** to restore the default. |
 
 These settings are saved in your browser (`localStorage`) and restored on every load.
+
+### About
+
+The bottom of the Settings panel has an **About** section with quick links to the Argus website, GitHub repository, and npm package page.
 
 ### Rescan Remote URLs
 
