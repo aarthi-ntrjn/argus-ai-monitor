@@ -370,7 +370,7 @@ code {
    ============================================================ */
 .social-proof {
   padding-block: 1.5rem;
-  background-color: var(--color-accent-light);
+  background-color: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -393,7 +393,7 @@ code {
    ============================================================ */
 .why-argus {
   padding-block: var(--section-gap);
-  background-color: var(--color-surface);
+  background-color: var(--color-accent-light);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -509,7 +509,6 @@ code {
 .how-it-works {
   padding-block: var(--section-gap);
   background-color: var(--color-surface);
-  border-top: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
 }
 
