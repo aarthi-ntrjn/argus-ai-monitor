@@ -121,11 +121,23 @@ export async function getAvailableTools(): Promise<AvailableTools> {
   return apiFetch<AvailableTools>('/tools');
 }
 
-export async function launchInTerminal(tool: ToolCommand, repoPath?: string): Promise<void> {
-  await apiFetch<void>('/sessions/launch-terminal', {
+// Returns { cmd } when the server cannot open a terminal (headless/Codespaces),
+// so the caller can show the command for manual execution. Throws on other errors.
+export async function launchInTerminal(tool: ToolCommand, repoPath?: string): Promise<{ cmd?: string }> {
+  const res = await fetch(`${BASE}/sessions/launch-terminal`, {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ tool, repoPath }),
   });
+  if (res.status === 202) return {};
+  if (res.status === 422) {
+    const body = await res.json() as { cmd?: string };
+    return { cmd: body.cmd };
+  }
+  const text = await res.text();
+  let message = text;
+  try { message = (JSON.parse(text) as { message?: string }).message ?? text; } catch { /* use raw text */ }
+  throw new Error(message);
 }
 
 export async function getArgusSettings(): Promise<ArgusConfig> {

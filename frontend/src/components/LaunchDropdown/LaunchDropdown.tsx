@@ -13,6 +13,8 @@ export default function LaunchDropdown({ repoPath }: Props) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState<'claude' | 'copilot' | null>(null);
   const [launchError, setLaunchError] = useState<string | null>(null);
+  const [noTerminalCmd, setNoTerminalCmd] = useState<string | null>(null);
+  const [cmdCopied, setCmdCopied] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const { data: tools } = useQuery({
@@ -65,10 +67,29 @@ export default function LaunchDropdown({ repoPath }: Props) {
   const handleLaunch = async (tool: 'claude' | 'copilot') => {
     setOpen(false);
     try {
-      await launchInTerminal(tool, repoPath);
+      const { cmd } = await launchInTerminal(tool, repoPath);
+      if (cmd) setNoTerminalCmd(cmd);
     } catch (err) {
       setLaunchError(err instanceof Error ? err.message : 'Failed to launch');
     }
+  };
+
+  const handleCopyCmd = async () => {
+    if (!noTerminalCmd) return;
+    try {
+      await navigator.clipboard.writeText(noTerminalCmd);
+    } catch {
+      const el = document.createElement('textarea');
+      el.value = noTerminalCmd;
+      el.style.position = 'fixed';
+      el.style.opacity = '0';
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+    }
+    setCmdCopied(true);
+    setTimeout(() => setCmdCopied(false), 1500);
   };
 
   const hasAny = tools?.claude || tools?.copilot;
@@ -78,11 +99,27 @@ export default function LaunchDropdown({ repoPath }: Props) {
       {launchError && (
         <p className="text-xs text-red-600 mb-1">{launchError}</p>
       )}
+      {noTerminalCmd && (
+        <div className="mb-1 p-2 bg-gray-50 border border-gray-200 rounded text-xs">
+          <p className="text-gray-600 mb-1">No terminal available. Run manually:</p>
+          <div className="flex items-start gap-1">
+            <code className="flex-1 break-all text-gray-800 font-mono text-[10px] leading-relaxed">{noTerminalCmd}</code>
+            <button
+              onClick={handleCopyCmd}
+              className="icon-btn shrink-0 text-gray-500 hover:text-gray-700"
+              aria-label="Copy command"
+              title="Copy command"
+            >
+              {cmdCopied ? <span className="text-green-600">✓</span> : <Copy size={11} aria-hidden="true" />}
+            </button>
+          </div>
+        </div>
+      )}
       <Button
         variant="outline"
         size="sm"
         data-tour-id="dashboard-launch"
-        onClick={() => { setLaunchError(null); setOpen(o => !o); }}
+        onClick={() => { setLaunchError(null); setNoTerminalCmd(null); setOpen(o => !o); }}
         title="Launch a new session with Argus"
         aria-label="Launch with Argus"
         aria-expanded={open}
