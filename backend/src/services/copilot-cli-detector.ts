@@ -119,7 +119,7 @@ export class CopilotCliDetector {
     if (!isRunning && existingSession?.status === 'ended') return null;
 
     const repo = workspace.cwd ? getRepositoryByPath(normalize(workspace.cwd)) : null;
-    if (!repo) { logger.debug(`[CopilotDetector] no repo for cwd="${workspace.cwd ?? 'none'}" sessionId=${sessionId} — session ignored`); return null; }
+    if (!repo) { logger.warn(`[CopilotDetector] no repo for cwd="${workspace.cwd ?? 'none'}" sessionId=${sessionId} — session ignored`); return null; }
 
     const status = isRunning ? 'active' : 'ended';
     const toIso = (val: string | Date | undefined): string =>
