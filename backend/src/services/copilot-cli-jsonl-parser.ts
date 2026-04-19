@@ -72,7 +72,7 @@ function extractContent(event: JsonlEvent): string {
   return JSON.stringify(rest);
 }
 
-export function parseModelFromEvent(line: string): string | null {
+export function parseModel(line: string): string | null {
   if (!line.trim()) return null;
   try {
     const event = JSON.parse(line) as JsonlEvent;

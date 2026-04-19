@@ -8,7 +8,7 @@ import chokidar, { type FSWatcher } from 'chokidar';
 import { upsertSession, getRepositoryByPath, deleteSessionOutput, getSession } from '../db/database.js';
 import { ptyRegistry } from './pty-registry.js';
 import { OutputStore } from './output-store.js';
-import { parseJsonlLine, parseModelFromEvent } from './copilot-cli-jsonl-parser.js';
+import { parseJsonlLine, parseModel } from './copilot-cli-jsonl-parser.js';
 import { applyActivityUpdate, applyModelUpdate, applySummaryUpdate } from './watcher-session-helpers.js';
 import { detectYoloModeFromPids, isPidRunning, isExpectedProcess } from './process-utils.js';
 import { SessionTypes } from '../models/index.js';
@@ -279,7 +279,7 @@ export class CopilotCliDetector {
       let detectedModel: string | null = null;
       const outputs = lines.map((line) => {
         seq++;
-        if (!detectedModel) detectedModel = parseModelFromEvent(line);
+        if (!detectedModel) detectedModel = parseModel(line);
         return parseJsonlLine(line, sessionId, seq);
       }).filter((o): o is NonNullable<typeof o> => o !== null);
 

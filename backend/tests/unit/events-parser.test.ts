@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseJsonlLine, parseModelFromEvent } from '../../src/services/copilot-cli-jsonl-parser.js';
+import { parseJsonlLine, parseModel } from '../../src/services/copilot-cli-jsonl-parser.js';
 
 // T008/T009 — 019 US2: mixed content-block array and multi-text-block joining
 describe('EventsParser 019 US2 — content-block array edge cases', () => {
@@ -309,7 +309,7 @@ describe('EventsParser T088 — nested data format', () => {
 });
 
 // T086 regression tests — model extraction from Copilot CLI events
-describe('parseModelFromEvent', () => {
+describe('parseModel', () => {
   it('should extract model from assistant.message event', () => {
     const line = JSON.stringify({
       type: 'assistant.message',
@@ -317,7 +317,7 @@ describe('parseModelFromEvent', () => {
       content: 'Hello!',
       model: 'gpt-4o',
     });
-    expect(parseModelFromEvent(line)).toBe('gpt-4o');
+    expect(parseModel(line)).toBe('gpt-4o');
   });
 
   it('should return null for non-assistant events', () => {
@@ -327,7 +327,7 @@ describe('parseModelFromEvent', () => {
       content: 'Hello!',
       model: 'gpt-4o',
     });
-    expect(parseModelFromEvent(line)).toBeNull();
+    expect(parseModel(line)).toBeNull();
   });
 
   it('should return null when assistant.message has no model field', () => {
@@ -336,7 +336,7 @@ describe('parseModelFromEvent', () => {
       timestamp: '2024-01-01T00:00:00.000Z',
       content: 'Hello!',
     });
-    expect(parseModelFromEvent(line)).toBeNull();
+    expect(parseModel(line)).toBeNull();
   });
 
   it('should return null for non-string model field', () => {
@@ -346,7 +346,7 @@ describe('parseModelFromEvent', () => {
       content: 'Hello!',
       model: 42,
     });
-    expect(parseModelFromEvent(line)).toBeNull();
+    expect(parseModel(line)).toBeNull();
   });
 
   it('should extract model from tool.execution_complete data.model', () => {
@@ -355,15 +355,15 @@ describe('parseModelFromEvent', () => {
       data: { toolCallId: 'tc-1', model: 'claude-sonnet-4.6', success: true, result: { content: 'done' } },
       id: 'abc', timestamp: '2024-01-01T00:00:00.000Z', parentId: null,
     });
-    expect(parseModelFromEvent(line)).toBe('claude-sonnet-4.6');
+    expect(parseModel(line)).toBe('claude-sonnet-4.6');
   });
 
   it('should return null for empty line', () => {
-    expect(parseModelFromEvent('')).toBeNull();
+    expect(parseModel('')).toBeNull();
   });
 
   it('should return null for invalid JSON', () => {
-    expect(parseModelFromEvent('not-json')).toBeNull();
+    expect(parseModel('not-json')).toBeNull();
   });
 
   it('should extract toolCallId from tool.execution_start data.toolCallId', () => {
