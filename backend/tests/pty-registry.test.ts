@@ -100,30 +100,75 @@ describe('PtyRegistry', () => {
     expect(() => registry.handleAck('unknown-action', true)).not.toThrow();
   });
 
-  it('claimByPtyLaunchId returns hostPid and null pid when pending entry found', () => {
-    const ws = makeMockWs();
-    registry.registerPending('temp-abc', ws as any, '/repo', 7777);
-    const result = registry.claimByPtyLaunchId('temp-abc', 'workspace-session-1');
-    expect(result).toMatchObject({ pid: null, hostPid: 7777 });
-    expect(registry.has('workspace-session-1')).toBe(true);
+  it('claimForSession finds the matching sessionType when multiple launchers are pending for the same repo', () => {
+    const wsC = makeMockWs();
+    const wsP = makeMockWs();
+    // Register a copilot-cli launcher first (simulates a reconnecting old launcher)
+    registry.registerPending('copilot-launch-1', wsP as any, '/repo', 1001, null, 'copilot-cli');
+    // Register a claude-code launcher second
+    registry.registerPending('claude-launch-1', wsC as any, '/repo', 2002, null, 'claude-code');
+
+    // Claude Code hook fires: should claim the claude-code entry, not the copilot-cli one
+    const claimed = registry.claimForSession('claude-session-1', '/repo', 'claude-code');
+    expect(claimed).not.toBeNull();
+    expect(claimed!.ptyLaunchId).toBe('claude-launch-1');
+    expect(registry.has('claude-session-1')).toBe(true);
+
+    // The copilot-cli entry should still be pending
+    const copilotClaimed = registry.claimForSession('copilot-session-1', '/repo', 'copilot-cli');
+    expect(copilotClaimed).not.toBeNull();
+    expect(copilotClaimed!.ptyLaunchId).toBe('copilot-launch-1');
   });
 
-  it('claimByPtyLaunchId returns null when tempId not found', () => {
-    expect(registry.claimByPtyLaunchId('no-such-temp', 'any-session')).toBeNull();
+  it('re-registering the same ptyLaunchId replaces its own entry, not others', () => {
+    const ws1 = makeMockWs();
+    const ws2 = makeMockWs();
+    registry.registerPending('launch-a', ws1 as any, '/repo', 1111, null, 'claude-code');
+    registry.registerPending('launch-b', ws2 as any, '/repo', 2222, null, 'claude-code');
+
+    // Re-register launch-a (reconnect scenario)
+    const ws1b = makeMockWs();
+    registry.registerPending('launch-a', ws1b as any, '/repo', 3333, null, 'claude-code');
+
+    // Both entries still present; launch-a updated
+    const claimedA = registry.claimForSession('s-a', '/repo', 'claude-code');
+    expect(claimedA).not.toBeNull();
+    const claimedB = registry.claimForSession('s-b', '/repo', 'claude-code');
+    expect(claimedB).not.toBeNull();
   });
 
-  it('claimByPtyLaunchId sets getClaimedId mapping', () => {
+  it('linkToSession + claimForSession uses pre-linked fast path, skipping repoPath scan', () => {
     const ws = makeMockWs();
-    registry.registerPending('temp-xyz', ws as any, '/repo2', 8888);
-    registry.claimByPtyLaunchId('temp-xyz', 'workspace-session-2');
-    expect(registry.getClaimedId('temp-xyz')).toBe('workspace-session-2');
+    registry.registerPending('launch-pre', ws as any, '/repo', 5555, 5555, 'claude-code');
+    registry.linkToSession('launch-pre', 'pre-linked-session-id');
+
+    const claimed = registry.claimForSession('pre-linked-session-id', '/DIFFERENT/PATH', 'claude-code');
+    expect(claimed).not.toBeNull();
+    expect(claimed!.ptyLaunchId).toBe('launch-pre');
+    expect(registry.has('pre-linked-session-id')).toBe(true);
   });
 
-  it('claimByPtyLaunchId removes pending entry so subsequent claimForSession returns null', () => {
+  it('linkToSession fast path does not claim a different sessionId', () => {
     const ws = makeMockWs();
-    registry.registerPending('temp-def', ws as any, '/repo3', 9999);
-    registry.claimByPtyLaunchId('temp-def', 'workspace-session-3');
-    expect(registry.claimForSession('other', '/repo3', 'claude-code')).toBeNull();
+    registry.registerPending('launch-pre2', ws as any, '/repo', 6666, 6666, 'claude-code');
+    registry.linkToSession('launch-pre2', 'correct-session');
+
+    // Claim with WRONG sessionId — should miss pre-link but also miss repoPath (different path)
+    const claimed = registry.claimForSession('wrong-session', '/different', 'claude-code');
+    expect(claimed).toBeNull();
+    // Correct sessionId still claims via pre-link
+    const correct = registry.claimForSession('correct-session', '/repo', 'claude-code');
+    expect(correct).not.toBeNull();
+  });
+
+  it('getPendingSessionType returns sessionType of a pending launcher', () => {
+    const ws = makeMockWs();
+    registry.registerPending('launch-st', ws as any, '/r', 7777, null, 'copilot-cli');
+    expect(registry.getPendingSessionType('launch-st')).toBe('copilot-cli');
+  });
+
+  it('getPendingSessionType returns null for unknown ptyLaunchId', () => {
+    expect(registry.getPendingSessionType('no-such')).toBeNull();
   });
 
   it('sendPrompt() rejects after timeout when no ack arrives', async () => {

@@ -41,8 +41,8 @@
   <!-- HERO -->
   <header class="hero" data-testid="hero">
     <div class="container hero__inner">
+      <h1 class="hero__headline">Your command center for AI coding sessions</h1>
       <div class="hero__content">
-        <h1 class="hero__headline">Your command center for AI coding sessions</h1>
         <p class="hero__supported">
           Works with
           <span class="hero__badge hero__badge--claude">
@@ -70,7 +70,7 @@
           </span>
         </p>
         <p class="hero__subheadline">
-          Monitor and control <strong>Claude Code</strong> and <strong>GitHub Copilot CLI</strong> sessions
+          Manage <strong>Claude Code</strong> and <strong>GitHub Copilot CLI</strong> sessions
           from a single browser tab. See what your agents are doing, stream their output live,
           and take back control at any moment.
         </p>
@@ -113,6 +113,75 @@
       </div>
     </div>
   </header>
+
+  <!-- WHY ARGUS -->
+  <section class="why-argus" id="why-argus">
+    <div class="container">
+      <h2 class="section-title">Built for the intensity of AI development</h2>
+      <p class="section-subtitle why-argus__lead">
+        In the AI era, protecting your attention is critical. When you're building with intensity, the complexity of modern AI-powered development adds up fast.
+      </p>
+      <div class="why-argus__equation" role="img" aria-label="Multiple sessions plus multiple tools plus multiple repositories equals ALT-TAB hell">
+        <span class="why-argus__term">Multiple sessions</span>
+        <span class="why-argus__op" aria-hidden="true">+</span>
+        <span class="why-argus__term">Multiple tools</span>
+        <span class="why-argus__op" aria-hidden="true">+</span>
+        <span class="why-argus__term">Multiple repositories</span>
+        <span class="why-argus__op" aria-hidden="true">=</span>
+        <span class="why-argus__term why-argus__term--pain">ALT-TAB hell</span>
+      </div>
+      <p class="why-argus__resolution">
+        Argus was built to make working across sessions seamless, so you can stay in flow and focus on what you're building.
+      </p>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="how-it-works" id="how-it-works">
+    <div class="container">
+      <h2 class="section-title">How It Works</h2>
+      <p class="section-subtitle">Three steps to full visibility into your AI coding sessions.</p>
+      <div class="steps">
+        <div class="step-card">
+          <div class="step-card__number" aria-hidden="true">1</div>
+          <h3 class="step-card__title">Install</h3>
+          <p class="step-card__body">Run <code>npx argus-ai-hub</code> in any terminal. No global install needed; it starts up instantly.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-card__number" aria-hidden="true">2</div>
+          <h3 class="step-card__title">Add Repositories</h3>
+          <p class="step-card__body">Navigate to <code>http://localhost:7411</code>. Add a repository and Argus immediately starts monitoring all running Claude Code and Copilot CLI sessions within it.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-card__number" aria-hidden="true">3</div>
+          <h3 class="step-card__title">Launch with Argus</h3>
+          <p class="step-card__body">Stream output live, send prompts, kill runaway sessions, or focus your terminal. Stay in control without leaving the dashboard.</p>
+        </div>
+      </div>
+      <ul class="privacy-pills" aria-label="Privacy highlights">
+        <li class="privacy-pill">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          No login required
+        </li>
+        <li class="privacy-pill">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          Runs on localhost only
+        </li>
+        <li class="privacy-pill">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="2" y1="2" x2="22" y2="22"/><path d="M8.56 2.9A7 7 0 0 1 19 9v4m-4.06 4.06A5 5 0 0 1 7 13V9a5 5 0 0 1 .08-.83M10.83 5.17A5 5 0 0 1 17 9"/><path d="M12 2a10 10 0 0 1 8 4"/><path d="M2 12a10 10 0 0 0 17.5 6.8"/></svg>
+          Never tracks coding data
+        </li>
+        <li class="privacy-pill">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><line x1="12" y1="2" x2="12" y2="2"/><path d="M4.93 4.93l14.14 14.14"/></svg>
+          No external services
+        </li>
+        <li class="privacy-pill">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Minimal tracking (opt-out)
+        </li>
+      </ul>
+    </div>
+  </section>
 
   <!-- FEATURES -->
   <section class="features" id="features">
@@ -176,31 +245,6 @@
             data-testid="feature-img-control"
             class="feature-block__image"
           >
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- HOW IT WORKS -->
-  <section class="how-it-works" id="how-it-works">
-    <div class="container">
-      <h2 class="section-title">How It Works</h2>
-      <p class="section-subtitle">Three steps to full visibility into your AI coding sessions.</p>
-      <div class="steps">
-        <div class="step-card">
-          <div class="step-card__number" aria-hidden="true">1</div>
-          <h3 class="step-card__title">Install</h3>
-          <p class="step-card__body">Run <code>npx argus-ai-hub</code> in any terminal. No global install needed; it starts up instantly.</p>
-        </div>
-        <div class="step-card">
-          <div class="step-card__number" aria-hidden="true">2</div>
-          <h3 class="step-card__title">Add Repositories</h3>
-          <p class="step-card__body">Navigate to <code>http://localhost:7411</code>. Add a repository and Argus immediately starts monitoring all running Claude Code and Copilot CLI sessions within it.</p>
-        </div>
-        <div class="step-card">
-          <div class="step-card__number" aria-hidden="true">3</div>
-          <h3 class="step-card__title">Launch with Argus</h3>
-          <p class="step-card__body">Stream output live, send prompts, kill runaway sessions, or focus your terminal. Stay in control without leaving the dashboard.</p>
         </div>
       </div>
     </div>

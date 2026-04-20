@@ -198,12 +198,12 @@ export default function DashboardPage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 pb-20 md:p-8 md:pb-8">
-      <div className="mx-auto max-w-screen-xl">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6 md:mb-8">
-          <h1 data-tour-id="dashboard-header" className="flex items-center gap-2 text-2xl md:text-3xl font-semibold text-gray-900">
-            <ArgusLogo size={36} />
+    <div className="min-h-screen bg-slate-50">
+      {/* Sticky header */}
+      <header className="bg-slate-50 border-b border-gray-200">
+        <div className="mx-auto max-w-screen-xl px-4 md:px-8 py-3 flex justify-between items-center">
+          <h1 data-tour-id="dashboard-header" className="flex items-center gap-2 text-xl font-semibold text-gray-900">
+            <ArgusLogo size={28} />
             Argus
           </h1>
           <div className="flex items-center gap-2">
@@ -257,6 +257,10 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+      </header>
+
+      {/* Page content */}
+      <div className="mx-auto max-w-screen-xl px-4 py-4 pb-20 md:px-8 md:py-6 md:pb-8">
 
         {argusSettings?.telemetryPromptSeen === false && (
           <TelemetryBanner onDismiss={handleTelemetryDismiss} />
@@ -264,9 +268,9 @@ export default function DashboardPage() {
 
 
         {addError && (
-          <div role="alert" className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm flex justify-between">
-            <span>{addError}</span>
-            <button onClick={clearAddError} aria-label="Dismiss error" className="icon-btn ml-2">&times;</button>
+          <div role="alert" className="mb-4 px-3 py-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm flex items-center justify-between gap-3">
+            <span className="leading-snug">{addError}</span>
+            <button onClick={clearAddError} aria-label="Dismiss error" className="icon-btn shrink-0 p-0 leading-none">&times;</button>
           </div>
         )}
 
@@ -285,7 +289,7 @@ export default function DashboardPage() {
             <div className="flex gap-6 items-start">
               <div className="flex-1">{emptyState}</div>
               {!settings.hideTodoPanel && (
-                <div className="w-[400px] shrink-0 sticky top-8">
+                <div className="w-[400px] shrink-0 sticky top-8 flex flex-col" style={{ height: 'calc(100vh - 6rem)' }}>
                   <TodoPanel />
                 </div>
               )}
@@ -296,7 +300,7 @@ export default function DashboardPage() {
                 {repoList}
               </div>
               {(!settings.hideTodoPanel || selectedSessionId) && (
-                <div className={`${selectedSessionId ? 'w-[640px]' : 'w-[400px]'} shrink-0 sticky top-8 flex flex-col gap-4${selectedSessionId ? '' : ' h-auto'}`} style={selectedSessionId ? { height: 'calc(100vh - 9rem)' } : undefined}>
+                <div className={`${selectedSessionId ? 'w-[640px]' : 'w-[400px]'} shrink-0 sticky top-8 flex flex-col gap-4`} style={{ height: 'calc(100vh - 6rem)' }}>
                   {selectedSessionId && (() => {
                     const selectedSession = sessions.find(s => s.id === selectedSessionId);
                     return selectedSession ? (
@@ -309,7 +313,7 @@ export default function DashboardPage() {
                     ) : null;
                   })()}
                   {!settings.hideTodoPanel && (
-                    <div className={selectedSessionId ? 'flex-[1] min-h-0 overflow-hidden' : 'flex-1'}>
+                    <div className={`${selectedSessionId ? 'flex-[1]' : 'flex-1'} min-h-0 overflow-hidden`}>
                       <TodoPanel />
                     </div>
                   )}

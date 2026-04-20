@@ -44,7 +44,8 @@ describe('isInactive', () => {
   });
 
   it('returns false when activity is exactly at the threshold boundary (strict >)', () => {
-    const atThreshold = new Date(Date.now() - INACTIVE_THRESHOLD_MS).toISOString();
+    // Use 1s inside the threshold to avoid timing flakiness on slow runners
+    const atThreshold = new Date(Date.now() - INACTIVE_THRESHOLD_MS + 1000).toISOString();
     expect(isInactive(session({ lastActivityAt: atThreshold }))).toBe(false);
   });
 

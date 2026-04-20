@@ -304,7 +304,7 @@ test.describe('SC-001: Session Card — Prompt Bar Send', () => {
     await mockApis(page, [SESSION_CLAUDE]);
     await page.goto('/');
     await expect(page.getByText('Writing unit tests for auth module')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByRole('button', { name: '↵' }).first()).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Send' }).first()).toBeDisabled();
   });
 
   test('Send button becomes enabled after typing in the prompt input', async ({ page }) => {
@@ -312,7 +312,7 @@ test.describe('SC-001: Session Card — Prompt Bar Send', () => {
     await page.goto('/');
     await expect(page.getByText('Writing unit tests for auth module')).toBeVisible({ timeout: 5000 });
     await page.getByPlaceholder('Send a prompt…').first().fill('Hello');
-    await expect(page.getByRole('button', { name: '↵' }).first()).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Send' }).first()).toBeEnabled();
   });
 
   test('clicking Send POSTs to /sessions/{id}/send and clears the input', async ({ page }) => {
@@ -329,7 +329,7 @@ test.describe('SC-001: Session Card — Prompt Bar Send', () => {
     await expect(page.getByText('Writing unit tests for auth module')).toBeVisible({ timeout: 5000 });
     const input = page.getByPlaceholder('Send a prompt…').first();
     await input.fill('do something useful');
-    await page.getByRole('button', { name: '↵' }).first().click();
+    await page.getByRole('button', { name: 'Send' }).first().click();
     await expect(input).toHaveValue('', { timeout: 3000 });
     expect(sendCalled).toBe(true);
   });
@@ -364,7 +364,7 @@ test.describe('SC-001: Session Card — Prompt Bar Send', () => {
     await page.goto('/');
     await expect(page.getByText('Writing unit tests for auth module')).toBeVisible({ timeout: 5000 });
     await page.getByPlaceholder('Send a prompt…').first().fill('trigger error');
-    await page.getByRole('button', { name: '↵' }).first().click();
+    await page.getByRole('button', { name: 'Send' }).first().click();
     await expect(page.getByText('Server error occurred')).toBeVisible({ timeout: 3000 });
   });
 
