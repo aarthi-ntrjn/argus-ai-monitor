@@ -461,3 +461,8 @@ Each phase checkpoint delivers independently demonstrable value:
 
 - [X] T123Fix `backend/src/services/session-monitor.ts` `refreshRepositoryBranches()`: when a branch change is detected and `updateRepositoryBranch(repo.id, branch)` is called, no WebSocket event is broadcast. T120 removed the 5-second `refetchInterval` poll from the frontend, so the UI has no way to learn of the change. The frontend `socket.ts` also has no `repository.updated` handler. Fix: (1) In `refreshRepositoryBranches()`, after `updateRepositoryBranch(repo.id, branch)`, call `getRepository(repo.id)` and broadcast `{ type: 'repository.updated', timestamp: now, data: updatedRepo }`. `getRepository` is already exported from `../db/database.js`. (2) In `frontend/src/services/socket.ts`, add `onEvent('repository.updated', () => { qc.invalidateQueries({ queryKey: ['repositories'] }); })` alongside the existing `repository.added` and `repository.removed` handlers.
 
+
+
+### Addendum: Bug — @homebridge/node-pty-prebuilt-multiarch dead dependency breaks Node 25
+
+- [ ] T125 Remove dead dependency `@homebridge/node-pty-prebuilt-multiarch` from `package.json` (root) and `backend/package.json`: the package is listed as a dependency in both files but is never imported anywhere in the codebase (all PTY usage imports from `node-pty` directly). Its engine constraint `>=18.0.0 <25.0.0` causes `npm warn EBADENGINE` on Node 25.x. Fix: delete the `"@homebridge/node-pty-prebuilt-multiarch": "^0.13.1"` entry from the `dependencies` section of both `package.json` and `backend/package.json`, then run `npm install` to remove it from `package-lock.json`.
