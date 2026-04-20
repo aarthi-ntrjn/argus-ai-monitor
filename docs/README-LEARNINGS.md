@@ -29,7 +29,18 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 
 ---
 
-## T114 — T113 regression: PTY launchMode wiped when session ends
+## T124 — Copilot CLI ask_user question not shown in Argus UX
+
+**Date**: 2026-04-20
+**Symptom**: When Copilot CLI calls the `ask_user` tool, the question and choices panel never appears in the Argus dashboard. The question is visible in the Copilot session terminal but the Argus UI shows nothing.
+**Root cause**: Claude Code sends `AskUserQuestion` events via an HTTP hook (`PreToolUse` → `handlePreAskQuestion()` in `claude-code-detector.ts`), which broadcasts `session.pending_choice` over WebSocket immediately. Copilot CLI instead writes events to `events.jsonl`, and the `CopilotJsonlWatcher` read path never detected `ask_user` tool calls or broadcast `session.pending_choice`. The frontend's `detectPendingChoice(items)` fallback exists but is unreliable: it depends on React Query cache being up to date and has no explicit resolved notification.
+**Why it was missed**: The two session types use fundamentally different event delivery mechanisms (HTTP hook vs. JSONL file watcher). The frontend fallback (`detectPendingChoice`) partially masked the problem for existing items but did not handle the real-time notification gap. No integration test verified that Copilot CLI's ask_user flow produces a `session.pending_choice` WebSocket event.
+**How to prevent**: Any feature that works via the HTTP hook path for Claude Code must have an equivalent code path for the JSONL watcher path for Copilot CLI, and vice versa. When adding interactive features, verify both session types emit the required WebSocket events, not just that the output data is stored.
+**Fix summary**: Added `protected onNewOutputs(sessionId, outputs)` hook in `JsonlWatcherBase` (called after inserting new outputs), then overrode it in `CopilotJsonlWatcher` to detect `tool_use` events with `toolName === 'ask_user'` and broadcast `session.pending_choice`, and to detect the matching `tool_result` by `toolCallId` and broadcast `session.pending_choice.resolved`.
+
+---
+
+
 
 **Date**: 2026-04-10
 **Symptom**: After T113, GHCP sessions showed as read-only (launchMode: null) again immediately after the session exited.
