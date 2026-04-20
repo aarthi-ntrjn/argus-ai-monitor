@@ -173,6 +173,6 @@ describe('SessionController — sendPrompt PTY routing', () => {
     const action = await controller.sendPrompt('pty-session', 'do something');
 
     expect(action.status).toBe('pending');
-    expect(ptyRegistry.sendPrompt).toHaveBeenCalledWith('pty-session', action.id, 'do something');
+    expect(ptyRegistry.sendPrompt).toHaveBeenCalledWith('pty-session', action.id, 'do something', undefined, false);
   });
 });

@@ -6,11 +6,12 @@ import { Button } from '../Button';
 
 interface Props {
   session: Session;
+  onPromptSent?: () => void;
 }
 
 type ConnectionState = 'readonly' | 'connecting' | 'connected';
 
-export default function SessionPromptBar({ session }: Props) {
+export default function SessionPromptBar({ session, onPromptSent }: Props) {
   const connectionState: ConnectionState =
     session.launchMode !== 'pty' ? 'readonly' :
     session.ptyConnected === false ? 'connecting' : 'connected';
@@ -27,6 +28,7 @@ export default function SessionPromptBar({ session }: Props) {
     try {
       await sendPrompt(session.id, text);
       setPrompt('');
+      onPromptSent?.();
     } catch (err) {
       const msg = err instanceof Error ? err.message : '';
       setError(msg === 'Failed to fetch' ? 'Failed to send — server not reachable' : (msg || 'Failed to send'));

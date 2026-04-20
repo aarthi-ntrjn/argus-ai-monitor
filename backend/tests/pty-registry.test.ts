@@ -73,7 +73,7 @@ describe('PtyRegistry', () => {
 
     expect(ws.send).toHaveBeenCalledOnce();
     const sent = JSON.parse(ws.send.mock.calls[0][0] as string);
-    expect(sent).toEqual({ type: 'send_prompt', actionId: 'action-abc', prompt: 'do something' });
+    expect(sent).toEqual({ type: 'send_prompt', actionId: 'action-abc', prompt: 'do something', skipEnter: false });
   });
 
   it('sendPrompt() resolves when handleAck(success=true) is called', async () => {

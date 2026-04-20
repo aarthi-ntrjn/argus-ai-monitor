@@ -41,7 +41,7 @@ jobs:
         #   - never writes to the lockfile
         # --ignore-scripts suppresses all package lifecycle scripts by default.
         # Allowlisted packages are rebuilt explicitly in the next step.
-        run: npm ci --ignore-scripts
+        run: npm ci --ignore-scripts --engine-strict
 
       - name: Rebuild allowlisted lifecycle packages
         # Read lifecycle-allowlist.yml and run `npm rebuild` for each package

@@ -49,7 +49,7 @@ const hooksRoutes: FastifyPluginAsync = async (app) => {
         }
       }
 
-      req.log.info({ hookEvent: payload.hook_event_name }, 'hook received');
+      req.log.info({ hookEvent: payload.hook_event_name, payload }, 'hook received');
 
       if (_claudeDetector) {
         await _claudeDetector.handleHookPayload(payload);

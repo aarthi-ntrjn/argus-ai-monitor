@@ -51,7 +51,7 @@ Each card is a live snapshot of a session:
 - **Elapsed time** representing how long since the session start
 - **Drill in link**: displays a larger view of the session.
 - **Current prompt**: the most recent question you asked, shown below the badges and updated live as the conversation progresses
-- **Last output preview**: up to 2 lines of the most recent AI reply
+- **Last output preview**: up to 2 lines of the most recent AI reply, rendered with markdown formatting
 - **Send prompt input and button**: (only in live sessions) Type a prompt and send to the CLI session from Argus.
 - **Focus button** (crosshair icon): brings the originating terminal window to the foreground. Shown for all active sessions; disabled when no PID is known.
 
@@ -134,7 +134,7 @@ The alert appears for both read-only and connected sessions. It is never shown f
 
 - **Claude Code sessions**: Argus uses a `PreToolUse` hook (auto-configured in `~/.claude/settings.json`) that fires the moment Claude calls `AskUserQuestion`, before the interactive menu is shown. This gives real-time detection independent of JSONL file updates. When the user answers, a `PostToolUse` hook clears the alert immediately. Argus manages these hook entries automatically alongside the existing `SessionStart` and `SessionEnd` hooks.
 
-- **GitHub Copilot sessions**: Detection is based on output stream parsing. When a `ask_user` tool_use appears in the session output without a subsequent `tool_result`, the alert is shown. It disappears once the `tool_result` (the user's answer) is written to the output.
+- **GitHub Copilot sessions**: The backend monitors the session output stream. When an `ask_user` tool_use is detected without a subsequent `tool_result`, the backend broadcasts a `session.pending_choice` event via WebSocket. The frontend receives this event and shows the alert. It disappears once the `tool_result` (the user's answer) is written to the output.
 
 ### Prompt Bar
 

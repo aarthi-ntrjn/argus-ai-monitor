@@ -12,7 +12,7 @@ import { loadConfig } from './config/config-loader.js';
 import * as logger from './utils/logger.js';
 import { addClient, removeClient, broadcast } from './api/ws/event-dispatcher.js';
 import repositoriesRoutes, { setMonitor } from './api/routes/repositories.js';
-import sessionsRoutes from './api/routes/sessions.js';
+import sessionsRoutes, { setSessionClaudeDetector } from './api/routes/sessions.js';
 import hooksRoutes, { setClaudeDetector } from './api/routes/hooks.js';
 import healthRoutes from './api/routes/health.js';
 import metricsRoutes from './api/routes/metrics.js';
@@ -138,6 +138,7 @@ export async function startServer() {
   monitor = new SessionMonitor();
   const claudeDetector = monitor.getClaudeCodeDetector();
   setClaudeDetector(claudeDetector);
+  setSessionClaudeDetector(claudeDetector);
   setMonitor(monitor);
 
   monitor.on('session.created', (session: Session) => {
