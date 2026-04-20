@@ -1,6 +1,8 @@
 import { randomUUID } from 'crypto';
 import type { Logger, LogFn } from 'pino';
 import type { App } from '@microsoft/teams.apps';
+import { MessageActivity } from '@microsoft/teams.api';
+import { AdaptiveCard, TextBlock, ExecuteAction } from '@microsoft/teams.cards';
 import type { Session, SessionOutput } from '../../models/index.js';
 import { loadTeamsConfig } from '../../config/teams-config-loader.js';
 import { getTeamsThread, upsertTeamsThread, deleteTeamsThread, getRepository } from '../../db/database.js';
@@ -83,7 +85,7 @@ export class TeamsNotifier implements NotificationIntegration {
       this.queue.enqueue(async () => {
         try {
           const threadConvId = `${channelId};messageid=${existing.teamsThreadId}`;
-          await this.teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text: this._formatReconnectMessage(session) });
+          await this.teamsApp.api.conversations.activities(threadConvId).create(this._buildReconnectMessage(session));
           this.logger.teams({ ...this._sessionCtx(session), teamsThreadId: existing.teamsThreadId }, 'teams.thread.reused.notified');
         } catch (err) {
           if (isTeamsThreadNotFound(err)) {
@@ -92,7 +94,7 @@ export class TeamsNotifier implements NotificationIntegration {
             deleteTeamsThread(session.id);
             const repo = getRepository(session.repositoryId);
             try {
-              const sent = await this.teamsApp.send(channelId, { type: 'message', text: this._formatOpeningMessage(session, repo) });
+              const sent = await this.teamsApp.send(channelId, this._buildOpeningMessage(session, repo));
               upsertTeamsThread({
                 id: randomUUID(),
                 sessionId: session.id,
@@ -118,7 +120,7 @@ export class TeamsNotifier implements NotificationIntegration {
     this.logger.teams({ ...this._sessionCtx(session), repositoryId: session.repositoryId, repoName: repo?.name }, 'teams.thread.creating');
     this.queue.enqueue(async () => {
       try {
-        const sent = await this.teamsApp.send(channelId, { type: 'message', text: this._formatOpeningMessage(session, repo) });
+        const sent = await this.teamsApp.send(channelId, this._buildOpeningMessage(session, repo));
         this.logger.teams({ ...this._sessionCtx(session), sentId: sent?.id, sentKeys: sent ? Object.keys(sent) : [] }, 'teams.thread.send.response');
         upsertTeamsThread({
           id: randomUUID(),
@@ -167,12 +169,12 @@ export class TeamsNotifier implements NotificationIntegration {
 
     const config = loadTeamsConfig();
     const { channelId } = config as { channelId: string };
-    const text = this._formatUpdateMessage(session, changes);
+    const activity = this._buildUpdateMessage(session, changes);
 
     this.queue.enqueue(async () => {
       try {
         const threadConvId = `${channelId};messageid=${thread.teamsThreadId}`;
-        await this.teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text });
+        await this.teamsApp.api.conversations.activities(threadConvId).create(activity);
         this.logger.teams({ ...this._sessionCtx(session), changes: changes.map(c => c.label) }, 'teams.session.updated.posted');
       } catch (err) {
         this.logger.error({ ...this._sessionCtx(session), err }, 'teams.session.update.notify.failed');
@@ -200,7 +202,7 @@ export class TeamsNotifier implements NotificationIntegration {
       if (!thread) return;
       try {
         const threadConvId = `${channelId};messageid=${thread.teamsThreadId}`;
-        await this.teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text });
+        await this.teamsApp.api.conversations.activities(threadConvId).create(new MessageActivity(text));
         this.logger.teams({ ...this._logCtx(), sessionId, chars: text.length }, 'teams.session.output.posted');
       } catch (err) {
         this.logger.error({ ...this._logCtx(), err, sessionId }, 'teams.session.output.failed');
@@ -217,11 +219,11 @@ export class TeamsNotifier implements NotificationIntegration {
     const thread = getTeamsThread(choice.sessionId);
     if (!thread) return;
 
-    const text = this._formatPendingChoiceMessage(choice);
+    const activity = this._buildPendingChoiceMessage(choice);
     this.queue.enqueue(async () => {
       try {
         const threadConvId = `${channelId};messageid=${thread.teamsThreadId}`;
-        await this.teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text });
+        await this.teamsApp.api.conversations.activities(threadConvId).create(activity);
         this.logger.teams({ ...this._logCtx(), sessionId: choice.sessionId }, 'teams.pending_choice.posted');
       } catch (err) {
         this.logger.error({ ...this._logCtx(), err, sessionId: choice.sessionId }, 'teams.pending_choice.failed');
@@ -246,11 +248,11 @@ export class TeamsNotifier implements NotificationIntegration {
       return;
     }
 
-    const text = this._formatEndedMessage(session);
+    const activity = this._buildEndedMessage(session);
     this.queue.enqueue(async () => {
       try {
         const threadConvId = `${channelId};messageid=${thread.teamsThreadId}`;
-        await this.teamsApp.api.conversations.activities(threadConvId).create({ type: 'message', text });
+        await this.teamsApp.api.conversations.activities(threadConvId).create(activity);
         deleteTeamsThread(session.id);
         this.diffTracker.clear(session.id);
         this.logger.teams({ ...this._sessionCtx(session), status: session.status }, 'teams.session.ended');
@@ -269,8 +271,8 @@ export class TeamsNotifier implements NotificationIntegration {
     this.queue.drain();
   }
 
-  _formatOpeningMessage(session: Session, repo: Repository | undefined): string {
-    return [
+  _buildOpeningMessage(session: Session, repo: Repository | undefined): MessageActivity {
+    const text = [
       '**Argus Session Started**',
       '---',
       field('Repo', repo?.name ?? '(unknown)'),
@@ -283,45 +285,65 @@ export class TeamsNotifier implements NotificationIntegration {
       field('PID', session.pid != null ? String(session.pid) : '(unknown)'),
       field('Session', code(session.id)),
     ].join('\n');
+    return new MessageActivity(text);
   }
 
-  _formatReconnectMessage(session: Session): string {
-    return [
+  _buildReconnectMessage(session: Session): MessageActivity {
+    const text = [
       '**Session Reconnected**',
       '---',
       field('Status', session.status),
       field('Session', code(session.id)),
     ].join('\n');
+    return new MessageActivity(text);
   }
 
-  _formatUpdateMessage(_session: Session, changes: SessionChange[]): string {
-    return [
+  _buildUpdateMessage(_session: Session, changes: SessionChange[]): MessageActivity {
+    const text = [
       '**Session Updated**',
       '---',
       ...changes.map(({ label, to }) => field(label, to)),
     ].join('\n');
+    return new MessageActivity(text);
   }
 
-  _formatPendingChoiceMessage(choice: PendingChoice): string {
-    const lines = [
+  _buildPendingChoiceMessage(choice: PendingChoice): MessageActivity {
+    const card = new AdaptiveCard(
+      new TextBlock('Action Required', { size: 'Medium', weight: 'Bolder' }),
+      new TextBlock(choice.question, { wrap: true }),
+    );
+
+    if (choice.choices.length > 0) {
+      card.withActions(
+        ...choice.choices.map((c, i) =>
+          new ExecuteAction({ title: c })
+            .withData({ action: 'pending_choice', sessionId: choice.sessionId, choiceIndex: i, choiceText: c })
+            .withStyle('positive')
+        ),
+      );
+    }
+
+    const fallbackText = [
       '**Action Required**',
       '---',
       field('Question', choice.question),
-    ];
-    if (choice.choices.length > 0) {
-      lines.push('**Options:**');
-      lines.push(...choice.choices.map((c, i) => `${i + 1}. ${c}`));
-    }
-    return lines.join('\n');
+      ...(choice.choices.length > 0
+        ? ['**Options:**', ...choice.choices.map((c, i) => `${i + 1}. ${c}`)]
+        : []),
+    ].join('\n');
+
+    return new MessageActivity(fallbackText)
+      .addCard('adaptive', card);
   }
 
-  _formatEndedMessage(session: Session): string {
-    return [
+  _buildEndedMessage(session: Session): MessageActivity {
+    const text = [
       '**Session Ended**',
       '---',
       field('Status', session.status),
       field('Ended', session.endedAt ?? new Date().toISOString()),
     ].join('\n');
+    return new MessageActivity(text);
   }
 }
 
