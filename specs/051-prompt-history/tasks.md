@@ -9,8 +9,8 @@
 
 **Purpose**: Create the new hook file and test stubs so downstream tasks have clear targets.
 
-- [ ] T001 Create `frontend/src/hooks/usePromptHistory.ts` with exported stub (empty function, correct TypeScript signature matching `UsePromptHistoryResult` from data-model.md)
-- [ ] T002 Create `frontend/src/__tests__/usePromptHistory.test.ts` with describe block and one placeholder test that asserts the hook exists
+- [x] T001 Create `frontend/src/hooks/usePromptHistory.ts` with exported stub (empty function, correct TypeScript signature matching `UsePromptHistoryResult` from data-model.md)
+- [x] T002 Create `frontend/src/__tests__/usePromptHistory.test.ts` with describe block and one placeholder test that asserts the hook exists
 
 ---
 
@@ -24,25 +24,25 @@
 
 ### Tests for US1+US2
 
-- [ ] T003 [P] [US1] Write failing tests in `usePromptHistory.test.ts` for `navigateUp`:
+- [x] T003 [P] [US1] Write failing tests in `usePromptHistory.test.ts` for `navigateUp`:
   - `navigateUp` with empty entries returns empty string (no-op)
   - `navigateUp` with one entry returns that entry; calling again is a no-op
   - `navigateUp` with multiple entries cycles oldest-to-newest correctly
   - `historyIndex` advances correctly with each call
   - `isNavigating` is false before first call, true after
-- [ ] T004 [P] [US1] Write failing tests in `usePromptHistory.test.ts` for `navigateDown`:
+- [x] T004 [P] [US1] Write failing tests in `usePromptHistory.test.ts` for `navigateDown`:
   - `navigateDown` when not navigating is a no-op (returns empty string)
   - `navigateDown` from historyIndex 1 moves to historyIndex 0
   - `navigateDown` from historyIndex 0 returns the saved draft and resets `isNavigating` to false
-- [ ] T005 [P] [US2] Write failing tests in `usePromptHistory.test.ts` for draft preservation:
+- [x] T005 [P] [US2] Write failing tests in `usePromptHistory.test.ts` for draft preservation:
   - Draft text passed to first `navigateUp` call is stored
   - Draft restored when `navigateDown` is called past the newest entry
   - Empty string draft restored correctly
-- [ ] T006 [P] [US1] Write failing tests in `usePromptHistory.test.ts` for `addEntry`:
+- [x] T006 [P] [US1] Write failing tests in `usePromptHistory.test.ts` for `addEntry`:
   - Adds text to entries; `entries.length` increases
   - Caps entries at 50 (oldest dropped when 51st added)
   - Resets `historyIndex` to null and `isNavigating` to false after adding
-- [ ] T007 [P] [US1] Write failing tests in `SessionPromptBar.test.tsx` for arrow key handling:
+- [x] T007 [P] [US1] Write failing tests in `SessionPromptBar.test.tsx` for arrow key handling:
   - Pressing ArrowUp in the input when no history exists: input unchanged
   - Pressing ArrowUp once when one prompt was sent: input shows that prompt
   - Pressing ArrowUp twice: input shows second-most-recent prompt
@@ -51,7 +51,7 @@
 
 ### Implementation for US1+US2
 
-- [ ] T008 [US1] Implement `usePromptHistory` hook in `frontend/src/hooks/usePromptHistory.ts`:
+- [x] T008 [US1] Implement `usePromptHistory` hook in `frontend/src/hooks/usePromptHistory.ts`:
   - State: `entries: string[]`, `historyIndex: number | null`, `draft: string`
   - `navigateUp(currentInput: string): string` — saves draft on first call, returns next older entry
   - `navigateDown(): string` — returns next newer entry, or draft when past newest
@@ -59,7 +59,7 @@
   - `resetNavigation(): void` — resets historyIndex to null
   - Computed: `isNavigating: boolean`, `indicator: string | null`
   - Ensure all hook functions are < 50 lines each (§III)
-- [ ] T009 [US1] Integrate `usePromptHistory` into `SessionPromptBar.tsx`:
+- [x] T009 [US1] Integrate `usePromptHistory` into `SessionPromptBar.tsx`:
   - Call `const history = usePromptHistory(session.id, [])` (empty array for now — US3 fills this)
   - In `handleKeyDown`: handle `ArrowUp` → `e.preventDefault()`, set prompt to `history.navigateUp(prompt)`
   - In `handleKeyDown`: handle `ArrowDown` → prevent default only when `history.isNavigating`, set prompt to `history.navigateDown()`
@@ -79,25 +79,25 @@
 
 ### Tests for US3
 
-- [ ] T010 [P] [US3] Write failing tests in `usePromptHistory.test.ts` for backfill:
+- [x] T010 [P] [US3] Write failing tests in `usePromptHistory.test.ts` for backfill:
   - When `sessionOutputItems` contains "you" messages on initial render, `entries` is seeded with their content in chronological order
   - `isMeta: true` entries are excluded
   - Empty-content entries are excluded
   - Non-user-message entries (role='assistant', type='tool_use') are excluded
-- [ ] T011 [P] [US3] Write failing tests in `usePromptHistory.test.ts` for live sync:
+- [x] T011 [P] [US3] Write failing tests in `usePromptHistory.test.ts` for live sync:
   - When `sessionOutputItems` gains a new "you" message (higher `sequenceNumber`), it is added to `entries`
   - When `sessionOutputItems` gains a new "you" message whose text matches a pending bar-send, it is NOT added again (dedup via `pendingBarSends`)
   - When user sends the same text twice via bar, both bar-sends are tracked and two corresponding session output entries each decrement the count once
 
 ### Implementation for US3
 
-- [ ] T012 [US3] Add `sessionOutputItems: SessionOutput[]` parameter to `usePromptHistory` hook:
+- [x] T012 [US3] Add `sessionOutputItems: SessionOutput[]` parameter to `usePromptHistory` hook:
   - Seed `entries` from `sessionOutputItems` on mount (filter: `role === 'user'`, `type === 'message'`, `!isMeta`, non-empty content, sorted by `sequenceNumber`)
   - Initialize `lastSeenSequence` to the max `sequenceNumber` among seeded items (or 0)
   - Add `pendingBarSends: Map<string, number>` state
   - Update `addEntry` to increment `pendingBarSends[text]` before appending to entries
   - Add `useEffect` watching `sessionOutputItems`: for each item with `sequenceNumber > lastSeenSequence`, apply dedup logic (decrement `pendingBarSends` if pending, else append to `entries`); update `lastSeenSequence`
-- [ ] T013 [US3] Add `useQuery(['session-output', session.id])` to `SessionPromptBar.tsx`:
+- [x] T013 [US3] Add `useQuery(['session-output', session.id])` to `SessionPromptBar.tsx`:
   - Pass the resulting `data.items ?? []` as second argument to `usePromptHistory`
   - Import `getSessionOutput` and `SessionOutput` (query uses shared cache; no extra network request)
 
@@ -115,12 +115,12 @@
 
 ### Tests for Indicator
 
-- [ ] T014 [P] Write failing tests in `usePromptHistory.test.ts` for `indicator`:
+- [x] T014 [P] Write failing tests in `usePromptHistory.test.ts` for `indicator`:
   - `indicator` is null when not navigating
   - `indicator` is `"1 / N"` after first up arrow (at most recent entry)
   - `indicator` is `"N / N"` at oldest entry
   - `indicator` returns to null after navigating back to draft (down past newest)
-- [ ] T015 [P] Write failing tests in `SessionPromptBar.test.tsx` for indicator rendering:
+- [x] T015 [P] Write failing tests in `SessionPromptBar.test.tsx` for indicator rendering:
   - Indicator element is not present initially
   - Indicator element appears in the DOM after pressing ArrowUp (with correct text)
   - Indicator disappears after pressing ArrowDown back to draft position
@@ -128,8 +128,8 @@
 
 ### Implementation for Indicator
 
-- [ ] T016 Confirm `indicator` computed value in `usePromptHistory` — `historyIndex === null ? null : \`${historyIndex + 1} / ${entries.length}\``; already part of T008, add if missing
-- [ ] T017 Render indicator in `SessionPromptBar.tsx`:
+- [x] T016 Confirm `indicator` computed value in `usePromptHistory` — `historyIndex === null ? null : \`${historyIndex + 1} / ${entries.length}\``; already part of T008, add if missing
+- [x] T017 Render indicator in `SessionPromptBar.tsx`:
   - When `history.indicator` is non-null, render `<span aria-live="polite" className="text-xs text-gray-500 shrink-0 tabular-nums">{history.indicator}</span>` inside the flex row, to the left of the `<input>`
   - Ensure `aria-live="polite"` so screen readers announce navigation position changes
 
@@ -141,9 +141,9 @@
 
 **Purpose**: README update, build validation, full test run.
 
-- [ ] T018 Update `README.md` — add a "Prompt History Navigation" entry under the session prompt bar section, describing the up/down arrow feature, the 50-entry cap, and that terminal messages are included (§XI)
-- [ ] T019 [P] Run `npm run build --workspace=frontend` — confirm no TypeScript errors or build failures
-- [ ] T020 [P] Run `npm run test --workspace=frontend` — confirm all tests pass with no regressions
+- [x] T018 Update `README.md` — add a "Prompt History Navigation" entry under the session prompt bar section, describing the up/down arrow feature, the 50-entry cap, and that terminal messages are included (§XI)
+- [x] T019 [P] Run `npm run build --workspace=frontend` — confirm no TypeScript errors or build failures
+- [x] T020 [P] Run `npm run test --workspace=frontend` — confirm all tests pass with no regressions
 
 ---
 

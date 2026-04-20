@@ -1,8 +1,10 @@
 import { useState, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { CornerDownLeft } from 'lucide-react';
-import { sendPrompt, interruptSession } from '../../services/api';
+import { sendPrompt, interruptSession, getSessionOutput } from '../../services/api';
 import type { Session } from '../../types';
 import { Button } from '../Button';
+import { usePromptHistory } from '../../hooks/usePromptHistory';
 
 interface Props {
   session: Session;
@@ -20,6 +22,14 @@ export default function SessionPromptBar({ session, onPromptSent }: Props) {
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const { data: outputData } = useQuery({
+    queryKey: ['session-output', session.id],
+    queryFn: () => getSessionOutput(session.id, { limit: 100 }),
+    enabled: connectionState !== 'readonly',
+  });
+
+  const history = usePromptHistory(session.id, outputData?.items ?? []);
+
   const handleSend = async () => {
     const text = prompt.trim();
     if (!text) return;
@@ -27,6 +37,7 @@ export default function SessionPromptBar({ session, onPromptSent }: Props) {
     setSending(true);
     try {
       await sendPrompt(session.id, text);
+      history.addEntry(text);
       setPrompt('');
       onPromptSent?.();
     } catch (err) {
@@ -57,6 +68,18 @@ export default function SessionPromptBar({ session, onPromptSent }: Props) {
       e.stopPropagation();
       handleInterrupt();
     }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const next = history.navigateUp(prompt);
+      setPrompt(next);
+    }
+    if (e.key === 'ArrowDown') {
+      if (history.isNavigating) {
+        e.preventDefault();
+        const next = history.navigateDown();
+        setPrompt(next);
+      }
+    }
   };
 
   if (connectionState === 'readonly') {
@@ -75,6 +98,11 @@ export default function SessionPromptBar({ session, onPromptSent }: Props) {
         <p className="text-xs text-amber-600 italic mb-1">Connecting to session…</p>
       )}
       <div className="flex gap-1 items-center">
+        {history.indicator && (
+          <span aria-live="polite" className="text-xs text-gray-500 shrink-0 tabular-nums">
+            {history.indicator}
+          </span>
+        )}
         <input
           ref={inputRef}
           type="text"
