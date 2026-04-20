@@ -6,6 +6,7 @@ import { randomUUID } from 'crypto';
 import { platform, tmpdir } from 'os';
 import { join } from 'path';
 import { resolveLaunchCommand } from './launch-command-resolver.js';
+import { SessionTypes } from '../models/index.js';
 import { ArgusLaunchClient } from './argus-launch-client.js';
 
 const sessionId = randomUUID();
@@ -148,36 +149,71 @@ const pushStdin = (buf: Buffer): Promise<void> => {
   return new Promise<void>((resolve) => setTimeout(resolve, KEYSTROKE_DELAY_MS));
 };
 
+// sendPromptV1: Win32 keyboard input sequence path.
+// Encodes the prompt as Win32 keyboard input sequences and pushes to stdin.
+// Both claude-code and copilot-cli read input via the Windows Console API, so
+// process.stdin.push() with Win32 sequences is the correct path.
+// pty.write() does not work for interactive prompts (e.g. AskUserQuestion in
+// claude-code) because the PTY may be in raw/char mode waiting for a single keystroke.
+const sendPromptV1 = async (prompt: string): Promise<void> => {
+  log(`win32 focus-in`);
+  await pushStdin(Buffer.from('\x1b[I'));
+  for (const ch of prompt) {
+    for (const buf of win32InputEvents(ch)) {
+      await pushStdin(buf);
+    }
+  }
+  for (const buf of win32InputEvents('\r')) {
+    await pushStdin(buf);
+  }
+  await pushStdin(Buffer.from('\x1b[O'));
+};
+
+// sendPromptWin: POSIX pty.write path with inter-write delays.
+// Writes focus-in, the full prompt, then focus-out to the PTY master, pausing
+// 10ms after each write so the app has time to process each sequence before
+// the next one arrives.
+const WRITE_DELAY_MS = 10;
+const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+const sendPromptWin = async (prompt: string, skipEnter = false): Promise<void> => {
+  log(`posix focus-in`);
+  pty.write('\x1b[I');
+  await delay(WRITE_DELAY_MS);
+  log(`posix pty.write promptLen=${prompt.length}`);
+  pty.write(prompt);
+  await delay(WRITE_DELAY_MS);
+  if (!skipEnter) {
+    // Without this keyboard mimic of '\r', Windows does not recognize the end of the sentence.
+    for (const buf of win32InputEvents('\r')) {
+      await pushStdin(buf);
+    }
+  }
+  log(`posix focus-out`);
+  pty.write('\x1b[O');
+  await delay(WRITE_DELAY_MS);
+};
+
+// sendPromptNoDelay: POSIX pty.write path without inter-write delays.
+const sendPromptNoDelay = (prompt: string): void => {
+  log(`posix focus-in (no-delay)`);
+  pty.write('\x1b[I');
+  log(`posix pty.write promptLen=${prompt.length} (no-delay)`);
+  pty.write(prompt + '\r');
+  log(`posix focus-out (no-delay)`);
+  pty.write('\x1b[O');
+};
+
 // When Argus sends a prompt, deliver it to the PTY.
-// On Windows: encode as Win32 keyboard input sequences and push to stdin.
-//   Both claude-code and copilot-cli read input via the Windows Console API, so
-//   process.stdin.push() with Win32 sequences is the correct path.
-//   pty.write() does not work for interactive prompts (e.g. AskUserQuestion in
-//   claude-code) because the PTY may be in raw/char mode waiting for a single keystroke.
-// On POSIX (Linux/Mac): write focus-in (\x1b[I), the prompt, then focus-out (\x1b[O)
-//   directly to the PTY master. The focus sequences are standard xterm and signal to
-//   the app that the terminal has regained focus before input arrives.
-client.onSendPrompt(async (actionId: string, prompt: string) => {
-  log(`onSendPrompt actionId=${actionId} promptLen=${prompt.length}`);
+// On Windows + copilot-cli: use sendPromptWin (inter-write delays required for the Console API).
+// All other cases: use sendPromptNoDelay.
+client.onSendPrompt(async (actionId: string, prompt: string, skipEnter: boolean) => {
+  log(`onSendPrompt actionId=${actionId} promptLen=${prompt.length} skipEnter=${skipEnter}`);
   try {
-    // if (isWin) {
-    //   log(`win32 focus-in`);
-    //   await pushStdin(Buffer.from('\x1b[I'));
-    //   for (const ch of prompt) {
-    //     for (const buf of win32InputEvents(ch)) {
-    //       await pushStdin(buf);
-    //     }
-    //   }
-    //   for (const buf of win32InputEvents('\r')) {
-    //     await pushStdin(buf);
-    //   }
-    //   await pushStdin(Buffer.from('\x1b[O'));
-    // } else {
-      log(`posix pty.write promptLen=${prompt.length}`);
-      pty.write('\x1b[I');
-      pty.write(prompt + '\r');
-      pty.write('\x1b[O');
-    // }
+    if (isWin) {
+      await sendPromptWin(prompt, skipEnter);
+    } else {
+      sendPromptNoDelay(prompt);
+    }
     client.ackDelivered(actionId);
   } catch (err) {
     log(`prompt delivery failed: ${err}`);

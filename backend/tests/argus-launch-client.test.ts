@@ -68,7 +68,7 @@ describe('ArgusLaunchClient', () => {
     expect(messageHandler).toBeDefined();
 
     messageHandler(Buffer.from(JSON.stringify({ type: 'send_prompt', actionId: 'action-1', prompt: 'do something' })));
-    expect(onPrompt).toHaveBeenCalledWith('action-1', 'do something');
+    expect(onPrompt).toHaveBeenCalledWith('action-1', 'do something', false);
   });
 
   it('sends prompt_delivered after successful delivery', () => {

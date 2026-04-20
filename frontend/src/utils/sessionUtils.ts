@@ -7,9 +7,17 @@ export function isInactive(session: Session, thresholdMs = INACTIVE_THRESHOLD_MS
   return Date.now() - new Date(session.lastActivityAt).getTime() > thresholdMs;
 }
 
+export interface PendingChoiceItem {
+  question: string;
+  choices: string[];
+  descriptions?: string[];
+  header?: string;
+}
+
 export interface PendingChoice {
   question: string;
   choices: string[];
+  allQuestions?: PendingChoiceItem[];
 }
 
 const CHOICE_TOOL_NAMES = ['ask_user', 'AskUserQuestion'] as const;
@@ -26,35 +34,60 @@ export function detectPendingChoice(items: SessionOutput[]): PendingChoice | nul
       try {
         const parsed = JSON.parse(item.content) as Record<string, unknown>;
 
-        // AskUserQuestion format: { questions: [{ question, options: [{label, description}] }] }
+        // AskUserQuestion format: { questions: [{ question, header, options: [{label, description}] }] }
         // ask_user (Copilot) format: { question: string, choices: string[] }
-        const firstQ = Array.isArray(parsed.questions) && parsed.questions.length > 0
-          ? parsed.questions[0] as Record<string, unknown>
-          : null;
-
-        const question = typeof parsed.question === 'string'
-          ? parsed.question
-          : typeof firstQ?.question === 'string' ? firstQ.question : '';
-
-        const rawChoices: unknown[] = Array.isArray(parsed.choices)
-          ? parsed.choices
-          : Array.isArray(parsed.options)
-            ? parsed.options
-            : Array.isArray(firstQ?.options)
-              ? firstQ.options as unknown[]
-              : [];
-
-        const choices = rawChoices.map((c) => {
-          if (typeof c === 'string') return c;
-          if (c && typeof c === 'object' && typeof (c as Record<string, unknown>).label === 'string') {
-            return (c as Record<string, unknown>).label as string;
+        const rawQs = Array.isArray(parsed.questions) ? parsed.questions as Record<string, unknown>[] : [];
+        const allQuestions: PendingChoiceItem[] = rawQs.map((q) => {
+          const qText = typeof q.question === 'string' ? q.question : '';
+          const rawOpts: unknown[] = Array.isArray(q.options) ? q.options : [];
+          const qChoices: string[] = [];
+          const qDescriptions: string[] = [];
+          for (const c of rawOpts) {
+            if (typeof c === 'string') {
+              qChoices.push(c);
+              qDescriptions.push('');
+            } else if (c && typeof c === 'object') {
+              const obj = c as Record<string, unknown>;
+              if (typeof obj.label === 'string') {
+                qChoices.push(obj.label);
+                qDescriptions.push(typeof obj.description === 'string' ? obj.description : '');
+              }
+            }
           }
-          return null;
-        }).filter((c): c is string => c !== null);
+          const hasDescriptions = qDescriptions.some(d => d !== '');
+          return {
+            question: qText,
+            choices: qChoices,
+            ...(hasDescriptions ? { descriptions: qDescriptions } : {}),
+            ...(typeof q.header === 'string' ? { header: q.header } : {}),
+          };
+        });
 
-        return { question, choices };
+        let question: string;
+        let choices: string[];
+
+        if (allQuestions.length > 0) {
+          question = allQuestions[0].question;
+          choices = allQuestions[0].choices;
+        } else {
+          // Flat format fallback
+          question = typeof parsed.question === 'string' ? parsed.question : '';
+          const rawChoices: unknown[] = Array.isArray(parsed.choices)
+            ? parsed.choices
+            : Array.isArray(parsed.options) ? parsed.options : [];
+          choices = rawChoices.map((c) => {
+            if (typeof c === 'string') return c;
+            if (c && typeof c === 'object' && typeof (c as Record<string, unknown>).label === 'string') {
+              return (c as Record<string, unknown>).label as string;
+            }
+            return null;
+          }).filter((c): c is string => c !== null);
+          allQuestions.push({ question, choices });
+        }
+
+        return { question, choices, allQuestions };
       } catch {
-        return { question: '', choices: [] };
+        return { question: '', choices: [], allQuestions: [] };
       }
     }
   }

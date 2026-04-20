@@ -137,8 +137,16 @@ export interface TelemetryEvent {
   sessionType?: string;
 }
 
+export interface PendingChoiceItem {
+  question: string;
+  choices: string[];
+  descriptions?: string[];
+  header?: string;
+}
+
 export interface PendingChoice {
   question: string;
   choices: string[];
+  allQuestions?: PendingChoiceItem[];
 }
 

@@ -67,7 +67,7 @@ export class SessionController {
     }
   }
 
-  async sendPrompt(sessionId: string, prompt: string): Promise<ControlAction> {
+  async sendPrompt(sessionId: string, prompt: string, skipEnter = false): Promise<ControlAction> {
     const session = getSession(sessionId);
     if (!session) throw Object.assign(new Error(`Session ${sessionId} not found`), { code: 'NOT_FOUND' });
     if (session.status === 'ended' || session.status === 'completed') {
@@ -123,7 +123,7 @@ export class SessionController {
     this.broadcastAction(action);
 
     // Deliver asynchronously; HTTP response returns immediately with pending action
-    ptyRegistry.sendPrompt(sessionId, action.id, prompt)
+    ptyRegistry.sendPrompt(sessionId, action.id, prompt, undefined, skipEnter)
       .then(() => {
         const now = new Date().toISOString();
         logger.info(`[sendPrompt] DELIVERED actionId=${action.id} sessionId=${sessionId}`);
