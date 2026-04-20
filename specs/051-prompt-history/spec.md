@@ -64,8 +64,9 @@ As a user who types prompts directly in the Claude Code or Copilot terminal (rat
 - The user edits a recalled history entry and sends it: the edited text is stored as a new history entry; the original recalled entry is unchanged.
 - Very long recalled messages: displayed in full in the input field; no truncation.
 - The user navigates history and then sends a recalled message without editing: it is stored as a new entry at the top of history.
-- Terminal messages that arrive after the session view is open are included in history as they appear in the session output.
+- Terminal messages that are already in the session output when the Argus view loads are backfilled into history immediately; new terminal messages are added to history as they arrive.
 - History is per-session and does not mix entries from different sessions.
+- The history indicator disappears immediately when the user sends a message or navigates back to the draft position.
 
 ## Requirements *(mandatory)*
 
@@ -78,11 +79,12 @@ As a user who types prompts directly in the Claude Code or Copilot terminal (rat
 - **FR-005**: When the user presses down arrow past the most recent history entry, the input MUST restore to the draft text that was present before history navigation began (empty string if the input was empty when navigation started).
 - **FR-006**: Before replacing the input on the first up arrow press, the system MUST save the current input text as a restorable draft.
 - **FR-007**: Prompt history MUST include messages sent via the Argus prompt bar for this session.
-- **FR-008**: Prompt history MUST include messages sent directly from the Claude or Copilot terminal that appear as "you" messages in the session output.
+- **FR-008**: Prompt history MUST include messages sent directly from the Claude or Copilot terminal that appear as "you" messages in the session output — both messages already present when the Argus view loads (backfilled) and new messages that arrive while the view is open.
 - **FR-009**: All history entries MUST be presented in chronological order — most recent first when navigating up from the draft position.
 - **FR-010**: Prompt history MUST be scoped to the individual session — entries from other sessions MUST NOT appear.
 - **FR-011**: The system MUST retain at least the 50 most recent prompts per session in history. Entries beyond this limit are silently dropped (oldest first).
 - **FR-012**: Up arrow navigation MUST work regardless of where the cursor is positioned within the prompt input.
+- **FR-013**: While the user is navigating history (between first up arrow press and returning to the draft), the prompt bar MUST display a subtle visual indicator showing that history mode is active (for example, an entry index such as "3 / 12" or a "History" label). The indicator MUST disappear when the user returns to the draft position or sends a message.
 
 ### Key Entities
 
@@ -98,6 +100,7 @@ As a user who types prompts directly in the Claude Code or Copilot terminal (rat
 - **SC-003**: Terminal "you" messages are visible in history within 1 navigation press of Argus-bar messages sent at the same point in the conversation.
 - **SC-004**: History navigation responds within 100 ms per key press — users experience it as instantaneous.
 - **SC-005**: 100% of sessions where the user has sent prompts (via bar or terminal) show those prompts in the navigable history.
+- **SC-006**: The history mode indicator appears within 100 ms of the first up arrow press and disappears within 100 ms of returning to the draft position.
 
 ## Assumptions
 
@@ -108,122 +111,9 @@ As a user who types prompts directly in the Claude Code or Copilot terminal (rat
 - Down arrow outside of history navigation mode (i.e., when at the draft position already) retains default browser input behavior and does not cycle to the oldest entry.
 - History entries from the terminal are available as soon as the session output is received; there is no delay beyond normal session output latency.
 
-<!--
-  IMPORTANT: User stories should be PRIORITIZED as user journeys ordered by importance.
-  Each user story/journey must be INDEPENDENTLY TESTABLE - meaning if you implement just ONE of them,
-  you should still have a viable MVP (Minimum Viable Product) that delivers value.
-  
-  Assign priorities (P1, P2, P3, etc.) to each story, where P1 is the most critical.
-  Think of each story as a standalone slice of functionality that can be:
-  - Developed independently
-  - Tested independently
-  - Deployed independently
-  - Demonstrated to users independently
--->
+## Clarifications
 
-### User Story 1 - [Brief Title] (Priority: P1)
+### Session 2026-04-20
 
-[Describe this user journey in plain language]
-
-**Why this priority**: [Explain the value and why it has this priority level]
-
-**Independent Test**: [Describe how this can be tested independently - e.g., "Can be fully tested by [specific action] and delivers [specific value]"]
-
-**Acceptance Scenarios**:
-
-1. **Given** [initial state], **When** [action], **Then** [expected outcome]
-2. **Given** [initial state], **When** [action], **Then** [expected outcome]
-
----
-
-### User Story 2 - [Brief Title] (Priority: P2)
-
-[Describe this user journey in plain language]
-
-**Why this priority**: [Explain the value and why it has this priority level]
-
-**Independent Test**: [Describe how this can be tested independently]
-
-**Acceptance Scenarios**:
-
-1. **Given** [initial state], **When** [action], **Then** [expected outcome]
-
----
-
-### User Story 3 - [Brief Title] (Priority: P3)
-
-[Describe this user journey in plain language]
-
-**Why this priority**: [Explain the value and why it has this priority level]
-
-**Independent Test**: [Describe how this can be tested independently]
-
-**Acceptance Scenarios**:
-
-1. **Given** [initial state], **When** [action], **Then** [expected outcome]
-
----
-
-[Add more user stories as needed, each with an assigned priority]
-
-### Edge Cases
-
-<!--
-  ACTION REQUIRED: The content in this section represents placeholders.
-  Fill them out with the right edge cases.
--->
-
-- What happens when [boundary condition]?
-- How does system handle [error scenario]?
-
-## Requirements *(mandatory)*
-
-<!--
-  ACTION REQUIRED: The content in this section represents placeholders.
-  Fill them out with the right functional requirements.
--->
-
-### Functional Requirements
-
-- **FR-001**: System MUST [specific capability, e.g., "allow users to create accounts"]
-- **FR-002**: System MUST [specific capability, e.g., "validate email addresses"]  
-- **FR-003**: Users MUST be able to [key interaction, e.g., "reset their password"]
-- **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
-- **FR-005**: System MUST [behavior, e.g., "log all security events"]
-
-*Example of marking unclear requirements:*
-
-- **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
-- **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
-
-### Key Entities *(include if feature involves data)*
-
-- **[Entity 1]**: [What it represents, key attributes without implementation]
-- **[Entity 2]**: [What it represents, relationships to other entities]
-
-## Success Criteria *(mandatory)*
-
-<!--
-  ACTION REQUIRED: Define measurable success criteria.
-  These must be technology-agnostic and measurable.
--->
-
-### Measurable Outcomes
-
-- **SC-001**: [Measurable metric, e.g., "Users can complete account creation in under 2 minutes"]
-- **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
-- **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
-- **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
-
-## Assumptions
-
-<!--
-  ACTION REQUIRED: The content in this section represents placeholders.
-  Fill them out with the right assumptions based on reasonable defaults
-  chosen when the feature description did not specify certain details.
--->
-
-- [Assumption about target users, e.g., "Users have stable internet connectivity"]
-- [Assumption about scope boundaries, e.g., "Mobile support is out of scope for v1"]
-- [Assumption about data/environment, e.g., "Existing authentication system will be reused"]
-- [Dependency on existing system/service, e.g., "Requires access to the existing user profile API"]
+- Q: Should terminal "you" messages already in the session output before the Argus view was opened be included in prompt history? → A: Yes — all "you" messages in the session output are backfilled into history when the view loads, plus new ones as they arrive.
+- Q: Should the prompt bar show a visual indicator when the user is actively navigating history? → A: Yes — a subtle inline indicator (e.g., entry index or "History" label) is shown while in history navigation mode.
