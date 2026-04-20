@@ -185,17 +185,22 @@ export default function DashboardPage() {
   );
 
   const emptyState = (
-    <div className="text-center py-16 text-gray-500">
+    <div className="text-center py-16">
       {repos.length === 0 ? (
-        <>
-          <p className="text-xl">No repositories registered.</p>
-          <p className="mt-2">Click "Add Repository" to get started.</p>
-        </>
+        <div className="space-y-1">
+          <p className="text-base text-gray-400">No repositories added yet.</p>
+          <p className="text-sm text-gray-400">Click "Add Repository" to start monitoring sessions.</p>
+          {argusSettings?.telemetryPromptSeen === false && (
+            <div className="mt-6 max-w-lg mx-auto text-left">
+              <TelemetryBanner onDismiss={handleTelemetryDismiss} subtle />
+            </div>
+          )}
+        </div>
       ) : (
-        <>
-          <p className="text-xl">No repositories to show.</p>
-          <p className="mt-2">All repositories are hidden by your current settings.</p>
-        </>
+        <div className="space-y-1">
+          <p className="text-base text-gray-400">No repositories to show.</p>
+          <p className="text-sm text-gray-400">All repositories are hidden by your current settings.</p>
+        </div>
       )}
     </div>
   );
@@ -292,11 +297,6 @@ export default function DashboardPage() {
 
       {/* Page content */}
       <div className="mx-auto max-w-screen-xl px-4 py-4 pb-20 md:px-8 md:py-6 md:pb-8">
-
-        {argusSettings?.telemetryPromptSeen === false && (
-          <TelemetryBanner onDismiss={handleTelemetryDismiss} />
-        )}
-
 
         {addError && (
           <div role="alert" className="mb-4 px-3 py-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm flex items-center justify-between gap-3">
