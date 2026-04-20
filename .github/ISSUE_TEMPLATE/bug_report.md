@@ -1,36 +1,28 @@
 ---
 name: Bug Report
-about: Report something that isn't working correctly
+about: Report something that is not working correctly
 title: "[Bug] "
 labels: bug
 assignees: aarthi-ntrjn
 ---
 
-## Describe the bug
+## What happened
 
-A clear description of what's broken.
+A clear description of what went wrong.
 
 ## Steps to reproduce
 
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 ## Expected behavior
 
-What you expected to happen.
-
-## Actual behavior
-
-What actually happened.
+What you expected to happen instead.
 
 ## Environment
 
-- OS: (e.g., Windows 11, macOS 15, Ubuntu 24.04)
-- Node.js version: 
-- Browser: (e.g., Chrome 130, Safari 18)
-- Argus version: (run `npx argus-ai-hub --version` or check package.json)
-
-## Screenshots
-
-If applicable, add screenshots to help explain the problem.
+- OS:
+- Node.js version:
+- Argus version: (run `npx argus-ai-hub --version`)
+- Browser:

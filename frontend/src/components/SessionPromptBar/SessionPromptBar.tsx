@@ -1,15 +1,17 @@
 import { useState, useRef } from 'react';
+import { CornerDownLeft } from 'lucide-react';
 import { sendPrompt, interruptSession } from '../../services/api';
 import type { Session } from '../../types';
 import { Button } from '../Button';
 
 interface Props {
   session: Session;
+  onPromptSent?: () => void;
 }
 
 type ConnectionState = 'readonly' | 'connecting' | 'connected';
 
-export default function SessionPromptBar({ session }: Props) {
+export default function SessionPromptBar({ session, onPromptSent }: Props) {
   const connectionState: ConnectionState =
     session.launchMode !== 'pty' ? 'readonly' :
     session.ptyConnected === false ? 'connecting' : 'connected';
@@ -26,6 +28,7 @@ export default function SessionPromptBar({ session }: Props) {
     try {
       await sendPrompt(session.id, text);
       setPrompt('');
+      onPromptSent?.();
     } catch (err) {
       const msg = err instanceof Error ? err.message : '';
       setError(msg === 'Failed to fetch' ? 'Failed to send — server not reachable' : (msg || 'Failed to send'));
@@ -85,10 +88,12 @@ export default function SessionPromptBar({ session }: Props) {
         />
         <Button
           size="sm"
+          aria-label={sending ? 'Sending…' : 'Send'}
           onClick={handleSend}
           disabled={sending || isConnecting || !prompt.trim()}
+          className="inline-flex items-center justify-center self-stretch"
         >
-          {sending ? '…' : '↵'}
+          <CornerDownLeft size={13} aria-hidden="true" />
         </Button>
       </div>
       {error && <p role="alert" className="text-xs text-red-600 mt-0.5">{error}</p>}

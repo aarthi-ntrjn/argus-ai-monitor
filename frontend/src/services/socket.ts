@@ -144,10 +144,15 @@ export function initSocketHandlers(qc: QueryClient): void {
     applyOutputBatchEvent(qc, sessionId, outputs);
   });
   onEvent('session.pending_choice', (data) => {
-    const { sessionId, question, choices } = data as { sessionId: string; question: string; choices: string[] };
+    const { sessionId, question, choices, allQuestions } = data as {
+      sessionId: string;
+      question: string;
+      choices: string[];
+      allQuestions?: import('../utils/sessionUtils').PendingChoiceItem[];
+    };
     qc.setQueryData<import('../utils/sessionUtils').PendingChoice | null>(
       ['session-pending-choice', sessionId],
-      { question, choices }
+      { question, choices, allQuestions: allQuestions ?? [{ question, choices }] }
     );
   });
   onEvent('session.pending_choice.resolved', (data) => {

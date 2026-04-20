@@ -16,7 +16,7 @@ import { SlackNotifier } from './integration/slack/slack-notifier.js';
 import { SlackListener } from './integration/slack/slack-listener.js';
 import { addClient, removeClient, broadcast } from './api/ws/event-dispatcher.js';
 import repositoriesRoutes, { setMonitor } from './api/routes/repositories.js';
-import sessionsRoutes from './api/routes/sessions.js';
+import sessionsRoutes, { setSessionClaudeDetector } from './api/routes/sessions.js';
 import hooksRoutes, { setClaudeDetector } from './api/routes/hooks.js';
 import healthRoutes, { setSlackServices } from './api/routes/health.js';
 import integrationsRoutes, { setIntegrationServices } from './api/routes/integrations.js';
@@ -75,7 +75,7 @@ export async function buildServer() {
       level: process.env.LOG_LEVEL ?? 'info',
       customLevels: { teams: 35 },
       transport: process.env.NODE_ENV !== 'production'
-        ? { target: 'pino-pretty', options: { colorize: true, customLevels: '35:TEAMS', customColors: 'teams:cyanBright' } }
+        ? { target: 'pino-pretty', options: { colorize: true, singleLine: true, customLevels: '35:TEAMS', customColors: 'teams:cyanBright' } }
         : undefined,
     },
     genReqId: () => randomUUID(),
@@ -170,6 +170,7 @@ export async function startServer() {
   monitor = new SessionMonitor();
   const claudeDetector = monitor.getClaudeCodeDetector();
   setClaudeDetector(claudeDetector);
+  setSessionClaudeDetector(claudeDetector);
   setMonitor(monitor);
 
   monitor.on('session.created', (session: Session) => {

@@ -29,7 +29,18 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 
 ---
 
-## T114 — T113 regression: PTY launchMode wiped when session ends
+## T124 — Copilot CLI ask_user question not shown in Argus UX
+
+**Date**: 2026-04-20
+**Symptom**: When Copilot CLI calls the `ask_user` tool, the question and choices panel never appears in the Argus dashboard. The question is visible in the Copilot session terminal but the Argus UI shows nothing.
+**Root cause**: Claude Code sends `AskUserQuestion` events via an HTTP hook (`PreToolUse` → `handlePreAskQuestion()` in `claude-code-detector.ts`), which broadcasts `session.pending_choice` over WebSocket immediately. Copilot CLI instead writes events to `events.jsonl`, and the `CopilotJsonlWatcher` read path never detected `ask_user` tool calls or broadcast `session.pending_choice`. The frontend's `detectPendingChoice(items)` fallback exists but is unreliable: it depends on React Query cache being up to date and has no explicit resolved notification.
+**Why it was missed**: The two session types use fundamentally different event delivery mechanisms (HTTP hook vs. JSONL file watcher). The frontend fallback (`detectPendingChoice`) partially masked the problem for existing items but did not handle the real-time notification gap. No integration test verified that Copilot CLI's ask_user flow produces a `session.pending_choice` WebSocket event.
+**How to prevent**: Any feature that works via the HTTP hook path for Claude Code must have an equivalent code path for the JSONL watcher path for Copilot CLI, and vice versa. When adding interactive features, verify both session types emit the required WebSocket events, not just that the output data is stored.
+**Fix summary**: Added `protected onNewOutputs(sessionId, outputs)` hook in `JsonlWatcherBase` (called after inserting new outputs), then overrode it in `CopilotJsonlWatcher` to detect `tool_use` events with `toolName === 'ask_user'` and broadcast `session.pending_choice`, and to detect the matching `tool_result` by `toolCallId` and broadcast `session.pending_choice.resolved`.
+
+---
+
+
 
 **Date**: 2026-04-10
 **Symptom**: After T113, GHCP sessions showed as read-only (launchMode: null) again immediately after the session exited.
@@ -358,3 +369,14 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 **Why it was missed**: The initial read was designed to populate the UI output stream from history — a legitimate need. But `insertOutput()` treated every call identically: DB write plus notification. The dual purpose (populate UI vs. notify integrations) was never separated.
 **How to prevent**: Any function that inserts data for UI replay (bootstrapping a cache from stored/historical records) must not trigger side-effect notifications designed for live events. Annotate call sites with the intent: historical reads should always pass `{ skipNotifications: true }` so the distinction is explicit in code rather than implicit in timing.
 **Fix summary**: Added `options?: { skipNotifications?: boolean }` to `OutputStore.insertOutput()` in `backend/src/services/output-store.ts`. Changed `ClaudeJsonlWatcher.watchFile()` to call `readNewLines(..., { skipNotifications: true })` for the initial historical read. Subsequent `chokidar` change events call `readNewLines()` without the flag, so live output continues to notify normally.
+
+---
+
+## T125 — @homebridge/node-pty-prebuilt-multiarch dead dependency breaks Node 25
+
+**Date**: 2026-04-20
+**Symptom**: `npm install` emits `npm warn EBADENGINE` for `@homebridge/node-pty-prebuilt-multiarch@0.13.1` on Node 25.x because the package requires `>=18.0.0 <25.0.0`.
+**Root cause**: `@homebridge/node-pty-prebuilt-multiarch` was listed in `dependencies` in both `package.json` (root) and `backend/package.json` but was never imported anywhere. All PTY usage in the codebase imports from `node-pty` directly (`launch.ts:2`). The package is a dead dependency that was never wired up.
+**Why it was missed**: The engine warning is a `warn`, not an error, so `npm install` still succeeds. The package was likely added as a preparatory step for switching from `node-pty` to its prebuilt-binary variant, but the import was never updated.
+**How to prevent**: When adding a new dependency, verify it is actually imported somewhere before committing (`grep -r "from '<package>'" src/`). `npm warn EBADENGINE` on install is the real detection signal — treat it as a hard error in CI rather than a ignorable warning. A per-package unit test is not the right guard here; it catches only one specific package and not the general pattern.
+**Fix summary**: Removed `"@homebridge/node-pty-prebuilt-multiarch": "^0.13.1"` from `dependencies` in `package.json` and `backend/package.json`; ran `npm install` to drop it from the lockfile.

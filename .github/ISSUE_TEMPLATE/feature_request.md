@@ -8,18 +8,14 @@ assignees: aarthi-ntrjn
 
 ## Problem
 
-What problem does this feature solve? (e.g., "I find it frustrating when...")
+What problem are you trying to solve?
 
 ## Proposed solution
 
-Describe what you'd like to happen.
+What would you like to happen?
 
 ## Alternatives considered
 
-Any alternative solutions or workarounds you've tried.
-
-## Additional context
-
-Any other details, screenshots, or examples.
+Any other approaches you thought of.
 
 > **Note:** This is a sole-maintainer project. Feature requests are welcome but may not be implemented on any particular timeline.

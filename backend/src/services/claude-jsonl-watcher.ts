@@ -5,7 +5,7 @@ import { JsonlWatcherBase } from './jsonl-watcher-base.js';
 import type { SessionOutput } from '../models/index.js';
 
 function claudeProjectDirName(repoPath: string): string {
-  return repoPath.replace(/[:\\/]/g, '-');
+  return repoPath.replace(/[:\\/\s]/g, '-');
 }
 
 export class ClaudeJsonlWatcher extends JsonlWatcherBase {

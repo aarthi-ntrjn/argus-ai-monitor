@@ -8,7 +8,7 @@ import { ClaudeSessionRegistry } from './claude-session-registry.js';
 import { ClaudeJsonlWatcher } from './claude-jsonl-watcher.js';
 import { broadcast } from '../api/ws/event-dispatcher.js';
 import { detectYoloModeFromPids, isPidRunning, isExpectedProcess } from './process-utils.js';
-import type { Session, Repository, PendingChoice } from '../models/index.js';
+import type { Session, Repository, PendingChoice, PendingChoiceItem } from '../models/index.js';
 import { pendingChoiceEvents } from './pending-choice-events.js';
 
 const CLAUDE_SETTINGS_PATH = join(homedir(), '.claude', 'settings.json');
@@ -118,11 +118,6 @@ export class ClaudeCodeDetector {
     );
   }
 
-  // Claude names project dirs by replacing path separators (:, \, /) with hyphens.
-  static projectDirName(repoPath: string): string {
-    return repoPath.replace(/[:\\/]/g, '-');
-  }
-
   async scanExistingSessions(): Promise<void> {
     const registry = new ClaudeSessionRegistry();
     const registryEntries = registry.scanEntries();
@@ -143,7 +138,7 @@ export class ClaudeCodeDetector {
 
       const normalizedCwd = normalize(entry.cwd.trimEnd().replace(/[/\\]+$/, ''));
       const repo = getRepositoryByPath(normalizedCwd);
-      if (!repo) continue;
+      if (!repo) { logger.warn(`[ClaudeDetector] no repo for cwd="${normalizedCwd}" sessionId=${entry.sessionId} — session ignored`); continue; }
 
       await this.activateFoundSession(entry.sessionId, repo, null);
     }
@@ -156,7 +151,7 @@ export class ClaudeCodeDetector {
 
     const normalizedCwd = cwd ? normalize(cwd.trimEnd().replace(/[/\\]+$/, '')) : null;
     const repo = normalizedCwd ? getRepositoryByPath(normalizedCwd) : null;
-    if (!repo) return;
+    if (!repo) { logger.warn(`[ClaudeDetector] no repo for cwd="${normalizedCwd ?? 'none'}" sessionId=${session_id} hook=${hook_event_name} — hook ignored`); return; }
 
     const existing = getSession(session_id);
     const now = new Date().toISOString();
@@ -192,25 +187,52 @@ export class ClaudeCodeDetector {
   private handlePreAskQuestion(sessionId: string, existing: Session | null | undefined, payload: HookPayload, now: string): void {
     if (!existing) return;
     const toolInput = payload.tool_input ?? {};
-    const firstQ = Array.isArray(toolInput.questions) && toolInput.questions.length > 0
-      ? toolInput.questions[0] as Record<string, unknown>
-      : null;
-    const question = typeof toolInput.question === 'string'
-      ? toolInput.question
-      : typeof firstQ?.question === 'string' ? firstQ.question : '';
-    const rawOptions: unknown[] = Array.isArray(toolInput.choices)
-      ? toolInput.choices
-      : Array.isArray(firstQ?.options) ? firstQ.options as unknown[] : [];
-    const choices = rawOptions.map((c) => {
-      if (typeof c === 'string') return c;
-      if (c && typeof c === 'object' && typeof (c as Record<string, unknown>).label === 'string') {
-        return (c as Record<string, unknown>).label as string;
+
+    const rawQs = Array.isArray(toolInput.questions) ? toolInput.questions as Record<string, unknown>[] : [];
+    const allQuestions: PendingChoiceItem[] = rawQs.map((q) => {
+      const qText = typeof q.question === 'string' ? q.question : '';
+      const rawOpts: unknown[] = Array.isArray(q.options) ? q.options : [];
+      const qChoices: string[] = [];
+      const qDescriptions: string[] = [];
+      for (const c of rawOpts) {
+        if (typeof c === 'string') {
+          qChoices.push(c);
+          qDescriptions.push('');
+        } else if (c && typeof c === 'object') {
+          const obj = c as Record<string, unknown>;
+          if (typeof obj.label === 'string') {
+            qChoices.push(obj.label);
+            qDescriptions.push(typeof obj.description === 'string' ? obj.description : '');
+          }
+        }
       }
-      return null;
-    }).filter((c): c is string => c !== null);
-    this.pendingChoices.set(sessionId, { question, choices });
-    broadcast({ type: 'session.pending_choice', timestamp: now, data: { sessionId, question, choices } });
-    pendingChoiceEvents.emit('session.pending_choice', { sessionId, question, choices });
+      const hasDescriptions = qDescriptions.some(d => d !== '');
+      return {
+        question: qText,
+        choices: qChoices,
+        ...(hasDescriptions ? { descriptions: qDescriptions } : {}),
+        ...(typeof q.header === 'string' ? { header: q.header } : {}),
+      };
+    });
+
+    // Fallback: flat format { question: string, choices: string[] } (e.g. ask_user / Copilot)
+    if (allQuestions.length === 0) {
+      const question = typeof toolInput.question === 'string' ? toolInput.question : '';
+      const rawChoices: unknown[] = Array.isArray(toolInput.choices) ? toolInput.choices : [];
+      const choices = rawChoices.map((c) => {
+        if (typeof c === 'string') return c;
+        if (c && typeof c === 'object' && typeof (c as Record<string, unknown>).label === 'string') {
+          return (c as Record<string, unknown>).label as string;
+        }
+        return null;
+      }).filter((c): c is string => c !== null);
+      allQuestions.push({ question, choices });
+    }
+
+    const { question, choices } = allQuestions[0];
+    this.pendingChoices.set(sessionId, { question, choices, allQuestions });
+    broadcast({ type: 'session.pending_choice', timestamp: now, data: { sessionId, question, choices, allQuestions } });
+    pendingChoiceEvents.emit('session.pending_choice', { sessionId, question, choices, allQuestions });
   }
 
   private handlePostAskQuestion(sessionId: string, existing: Session | null | undefined, now: string): void {

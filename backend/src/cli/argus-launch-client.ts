@@ -8,7 +8,7 @@ interface RegisterInfo {
   cwd: string;
 }
 
-type PromptCallback = (actionId: string, prompt: string) => void | Promise<void>;
+type PromptCallback = (actionId: string, prompt: string, skipEnter: boolean) => void | Promise<void>;
 
 export class ArgusLaunchClient {
   private ws!: WebSocket;
@@ -92,7 +92,7 @@ export class ArgusLaunchClient {
   }
 
   private handleMessage(data: Buffer): void {
-    let msg: { type: string; actionId?: string; prompt?: string };
+    let msg: { type: string; actionId?: string; prompt?: string; skipEnter?: boolean };
     try {
       msg = JSON.parse(data.toString());
     } catch {
@@ -113,7 +113,7 @@ export class ArgusLaunchClient {
     }
 
     if (msg.type === 'send_prompt' && msg.actionId && msg.prompt !== undefined) {
-      this.promptCallback?.(msg.actionId, msg.prompt);
+      this.promptCallback?.(msg.actionId, msg.prompt, !!msg.skipEnter);
     }
   }
 

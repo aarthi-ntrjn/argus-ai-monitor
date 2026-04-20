@@ -25,6 +25,9 @@ vi.mock('../../src/db/database.js', () => ({
   deleteSessionOutput: vi.fn(),
   insertOutput: vi.fn().mockReturnValue(true),
   getMaxSequenceNumber: vi.fn().mockReturnValue(0),
+  getServerState: vi.fn().mockReturnValue(null),
+  setServerState: vi.fn(),
+  getSessions: vi.fn().mockReturnValue([]),
 }));
 
 const mockBroadcast = vi.hoisted(() => vi.fn());
@@ -217,8 +220,8 @@ updated_at: ${new Date().toISOString()}
     expect(mockClaimForSession).not.toHaveBeenCalled();
   });
 
-  it('sets launchMode=pty when ptyRegistry already has the session (workspace_id claimed before scan)', async () => {
-    // Simulate: workspace_id message arrived before this scan, session is in connections
+  it('sets launchMode=pty when ptyRegistry already has the session before scan', async () => {
+    // Simulate: session was claimed in a previous scan cycle and is already in connections
     mockIsPidRunning.mockReturnValueOnce(true);
     mockPsList.mockResolvedValueOnce([{ pid: testPid, name: 'copilot', ppid: 1 }]);
     mockHas.mockReturnValueOnce(true); // ptyRegistry.has(sessionId) = true

@@ -68,7 +68,7 @@ describe('ArgusLaunchClient', () => {
     expect(messageHandler).toBeDefined();
 
     messageHandler(Buffer.from(JSON.stringify({ type: 'send_prompt', actionId: 'action-1', prompt: 'do something' })));
-    expect(onPrompt).toHaveBeenCalledWith('action-1', 'do something');
+    expect(onPrompt).toHaveBeenCalledWith('action-1', 'do something', false);
   });
 
   it('sends prompt_delivered after successful delivery', () => {
@@ -150,20 +150,6 @@ describe('ArgusLaunchClient', () => {
     } finally {
       vi.useRealTimers();
     }
-  });
-
-  it('handleOpen does not send workspace_id on reconnect', () => {
-    const client = new ArgusLaunchClient('ws://127.0.0.1:7411/launcher');
-    const mockWs = (client as any).ws;
-
-    const registerInfo = { sessionId: 'abc', hostPid: 1, pid: 1, sessionType: 'copilot-cli' as const, cwd: '/tmp' };
-    client.setRegisterInfo(registerInfo);
-
-    const messageHandler = mockWs.on.mock.calls.find((c: string[]) => c[0] === 'message')?.[1];
-    messageHandler(Buffer.from(JSON.stringify({ type: 'connected', ptyLaunchId: 'server-id' })));
-
-    const sent = mockWs.send.mock.calls.map((c: string[]) => JSON.parse(c[0]));
-    expect(sent.every((m: { type: string }) => m.type !== 'workspace_id')).toBe(true);
   });
 
   it('register replay on reconnect carries the resolved pidwhen updatePid was called while WS was open', async () => {

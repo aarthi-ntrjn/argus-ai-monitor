@@ -51,7 +51,7 @@ Each card is a live snapshot of a session:
 - **Elapsed time** representing how long since the session start
 - **Drill in link**: displays a larger view of the session.
 - **Current prompt**: the most recent question you asked, shown below the badges and updated live as the conversation progresses
-- **Last output preview**: up to 2 lines of the most recent AI reply
+- **Last output preview**: up to 2 lines of the most recent AI reply, rendered with markdown formatting
 - **Send prompt input and button**: (only in live sessions) Type a prompt and send to the CLI session from Argus.
 - **Focus button** (crosshair icon): brings the originating terminal window to the foreground. Shown for all active sessions; disabled when no PID is known.
 
@@ -134,11 +134,11 @@ The alert appears for both read-only and connected sessions. It is never shown f
 
 - **Claude Code sessions**: Argus uses a `PreToolUse` hook (auto-configured in `~/.claude/settings.json`) that fires the moment Claude calls `AskUserQuestion`, before the interactive menu is shown. This gives real-time detection independent of JSONL file updates. When the user answers, a `PostToolUse` hook clears the alert immediately. Argus manages these hook entries automatically alongside the existing `SessionStart` and `SessionEnd` hooks.
 
-- **GitHub Copilot sessions**: Detection is based on output stream parsing. When a `ask_user` tool_use appears in the session output without a subsequent `tool_result`, the alert is shown. It disappears once the `tool_result` (the user's answer) is written to the output.
+- **GitHub Copilot sessions**: The backend monitors the session output stream. When an `ask_user` tool_use is detected without a subsequent `tool_result`, the backend broadcasts a `session.pending_choice` event via WebSocket. The frontend receives this event and shows the alert. It disappears once the `tool_result` (the user's answer) is written to the output.
 
 ### Prompt Bar
 
-Every session card has a prompt bar. For **live** (PTY-launched) sessions, type a message and press **↵** to send it.
+Every session card has a prompt bar. For **live** (PTY-launched) sessions, type a message and click the send button (or press **Enter**) to send it.
 
 Prompt injection works for both Claude Code and Copilot CLI when started via `Launch with Argus`.
 
@@ -151,6 +151,8 @@ Click **Add Repository**, type or paste a root folder path (e.g. `C:\source` or 
 <img src="docs/images/argus-addrepo.png" alt="Add Repository Dialog" height="300">
 
 Argus scans that folder recursively for git repos and registers all new ones in one go. Already-registered repos are skipped automatically.
+
+Paths are normalized on entry: trailing slashes and mixed separators are stripped, and spaces in paths (common on Linux) are handled correctly. Both the path you type and the working directory reported by Claude/Copilot are normalized the same way, so sessions always match their registered repo.
 
 Each repo card shows the current branch name and, when the remote is a GitHub repository, a **compare link icon** (external link) next to the branch badge. Clicking it opens the GitHub compare page for that branch against master in a new tab. On the default branch (master or main), the link opens the repository's compare page directly.
 
@@ -193,6 +195,10 @@ Click the **gear icon** (top-right) to open Settings.
 | Resting after (minutes)            | 20       | Minutes of inactivity before a session is shown as **resting**. Valid range: 1 to 60. Click **Reset** to restore the default. |
 
 These settings are saved in your browser (`localStorage`) and restored on every load.
+
+### About
+
+The bottom of the Settings panel has an **About** section with quick links to the Argus website, GitHub repository, and npm package page.
 
 ### Rescan Remote URLs
 
@@ -385,6 +391,10 @@ Configure this URL in your bot's messaging endpoint in the Azure portal.
 
 
 See [docs/README-CONTRIBUTORS.md](docs/README-CONTRIBUTORS.md) for architecture, dev setup, API reference, security model, CI pipeline, and development guides.
+
+## Feedback
+
+Found a bug or have a feature idea? Use the **Feedback** dropdown in the top-right corner of the dashboard, or go directly to the [GitHub Issues page](https://github.com/aarthi-ntrjn/argus/issues).
 
 ## Uninstall and Cleanup
 

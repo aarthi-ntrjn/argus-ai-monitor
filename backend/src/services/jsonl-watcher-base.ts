@@ -96,7 +96,10 @@ export abstract class JsonlWatcherBase {
       this.sequenceCounters.set(sessionId, seq);
       if (outputs.length > 0) {
         const anyNew = this.outputStore.insertOutput(sessionId, outputs);
-        if (anyNew) applyActivityUpdate(sessionId);
+        if (anyNew) {
+          applyActivityUpdate(sessionId);
+          this.onNewOutputs(sessionId, outputs);
+        }
       }
       if (detectedModel) applyModelUpdate(sessionId, detectedModel, this.tag);
       applySummaryUpdate(sessionId, outputs, this.tag);
@@ -111,4 +114,6 @@ export abstract class JsonlWatcherBase {
     this.filePositions.clear();
     this.sequenceCounters.clear();
   }
+
+  protected onNewOutputs(_sessionId: string, _outputs: SessionOutput[]): void {}
 }

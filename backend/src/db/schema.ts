@@ -60,5 +60,9 @@ CREATE TABLE IF NOT EXISTS integrations (
   enabled    INTEGER NOT NULL DEFAULT 1,
   updated_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS server_state (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
 `;
 

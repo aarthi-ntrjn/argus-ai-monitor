@@ -49,6 +49,12 @@ The Teams and Slack integrations live under `backend/src/integration/{teams,slac
 
 **API:** Start/stop endpoints live in `backend/src/api/routes/integrations.ts`. Any new integration must be registered there.
 
+## Logging
+
+- **Always prefix log messages with `[ComponentName]`** — every `logger.info`, `logger.warn`, etc. call must begin with a `[ComponentName]` tag so logs are easy to filter and attribute. Examples: `[CopilotDetector]`, `[PtyRegistry]`, `[Launcher]`, `[SessionMonitor]`.
+- **Use `createTaggedLogger` for components that need a distinct color.** Import from `utils/logger.ts` and call `createTaggedLogger('[ComponentName]', ansiColor)`. The returned logger automatically prepends the colored tag in TTY environments. Current assignments: `[PtyRegistry]` uses magenta (`\x1b[35m`).
+- **No em dashes in log messages.** Use a comma or colon instead (consistent with the Writing Style rule).
+
 ## Error Handling
 
 - **Never swallow errors silently.** Every `catch` block must either surface the error to the user (via `setError`, a toast, etc.) or log it (`console.warn` / `console.error` for non-user-facing errors such as WebSocket parse failures). An empty `catch` block or a `catch` that discards the error object is always a bug.
