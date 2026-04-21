@@ -25,7 +25,7 @@ const healthRoutes: FastifyPluginAsync = async (app) => {
     let version = '1.0.0';
     try {
       const require = createRequire(import.meta.url);
-      const pkg = require(join(__dirname, '..', '..', '..', 'package.json'));
+      const pkg = require(join(__dirname, '..', '..', '..', '..', 'package.json'));
       version = (pkg as { version?: string }).version ?? '1.0.0';
     } catch { /* use default */ }
 
