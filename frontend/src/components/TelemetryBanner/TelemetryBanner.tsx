@@ -1,15 +1,24 @@
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
-import { Checkbox } from '../Checkbox';
 import { Button } from '../Button';
 
 interface TelemetryBannerProps {
-  onDismiss: (enabled: boolean) => void;
+  onDismiss: () => void;
+  onOpenSettings: () => void;
   subtle?: boolean;
 }
 
-export function TelemetryBanner({ onDismiss, subtle = false }: TelemetryBannerProps) {
-  const [enabled, setEnabled] = useState(true);
+const INLINE_ACTION_CLASSES = '!inline !p-0 !text-sm !font-normal align-baseline underline whitespace-nowrap';
+
+export function TelemetryBanner({ onDismiss, onOpenSettings, subtle = false }: TelemetryBannerProps) {
+  const textActionClassName = subtle
+    ? 'text-gray-500 hover:text-gray-700'
+    : 'text-blue-900 hover:text-blue-700';
+  const buttonActionClassName = subtle
+    ? `${INLINE_ACTION_CLASSES} !text-gray-500 hover:!text-gray-700`
+    : `${INLINE_ACTION_CLASSES} !text-blue-900 hover:!text-blue-700`;
+  const dismissClassName = subtle
+    ? 'icon-btn shrink-0 p-0 leading-none text-gray-400 hover:text-gray-600'
+    : 'icon-btn shrink-0 p-0 leading-none text-blue-700/70 hover:text-blue-700';
 
   if (subtle) {
     return (
@@ -19,23 +28,14 @@ export function TelemetryBanner({ onDismiss, subtle = false }: TelemetryBannerPr
         className="flex flex-wrap items-center gap-3 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-500"
       >
         <span className="flex-1">
-          Argus collects anonymous usage data to improve the product. No personal information is sent.{' '}
-          <Link to="/telemetry" className="underline hover:text-gray-700 whitespace-nowrap">What we collect</Link>
+          Argus collects anonymous usage data to improve the product. No coding or personal information is sent.{' '}
+          <span className="inline-flex items-baseline gap-1">
+            <Link to="/telemetry" className={`${textActionClassName} underline whitespace-nowrap`}>What we collect</Link>
+            <span aria-hidden="true">-</span>
+            <Button type="button" variant="ghost" size="sm" className={buttonActionClassName} onClick={() => onOpenSettings()}>Opt out</Button>
+          </span>
         </span>
-        <Checkbox
-          label="Send telemetry"
-          aria-label="Enable anonymous telemetry"
-          checked={enabled}
-          onChange={e => setEnabled(e.target.checked)}
-        />
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onDismiss(enabled)}
-          aria-label="Dismiss telemetry notice"
-        >
-          Got it
-        </Button>
+        <button type="button" onClick={() => onDismiss()} aria-label="Dismiss telemetry notice" className={dismissClassName}>&times;</button>
       </div>
     );
   }
@@ -47,23 +47,14 @@ export function TelemetryBanner({ onDismiss, subtle = false }: TelemetryBannerPr
       className="flex items-center gap-3 px-4 py-2 bg-blue-50 border-b border-blue-100 text-sm text-blue-900"
     >
       <span className="flex-1">
-        Argus collects anonymous usage data to improve the product. No personal information is sent.{' '}
-        <Link to="/telemetry" className="underline hover:text-blue-700 whitespace-nowrap">What we collect</Link>
+        Argus collects anonymous usage data to improve the product. No coding or personal information is sent.{' '}
+        <span className="inline-flex items-baseline gap-1">
+          <Link to="/telemetry" className={`${textActionClassName} underline whitespace-nowrap`}>What we collect</Link>
+          <span aria-hidden="true">-</span>
+          <Button type="button" variant="ghost" size="sm" className={buttonActionClassName} onClick={() => onOpenSettings()}>Opt out</Button>
+        </span>
       </span>
-      <Checkbox
-        label="Send telemetry"
-        aria-label="Enable anonymous telemetry"
-        checked={enabled}
-        onChange={e => setEnabled(e.target.checked)}
-      />
-      <Button
-        variant="primary"
-        size="sm"
-        onClick={() => onDismiss(enabled)}
-        aria-label="Dismiss telemetry notice"
-      >
-        Got it
-      </Button>
+      <button type="button" onClick={() => onDismiss()} aria-label="Dismiss telemetry notice" className={dismissClassName}>&times;</button>
     </div>
   );
 }
