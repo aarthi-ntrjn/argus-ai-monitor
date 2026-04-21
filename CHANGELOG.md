@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.10] - 2026-04-21
+
+### Added
+
+- **Prompt history navigation**: Up/down arrow keys in the session prompt bar now cycle through the last 50 sent prompts, with draft text preserved when navigating back past the newest entry. Terminal messages typed directly in Claude/Copilot sessions are included in history and kept in sync live, with deduplication so bar-sent prompts do not appear twice.
+- **History position indicator**: A compact overlay inside the prompt input shows the current navigation position (e.g. `1 / 3`) while browsing history, with no layout shift on appear or dismiss.
+- **Version display in Settings**: The About section of the Settings panel now shows the running server version (e.g. `v0.1.9`), fetched from the health endpoint.
+
+### Fixed
+
+- **Dashboard layout jank**: Fixed layout reflow on page load by matching the loading skeleton pane proportions to the actual layout. Also fixed a flex overflow on the right pane that caused the session list to shrink unexpectedly when output pane content was wide.
+- **Server version endpoint**: Fixed `/api/health` returning `1.0.0` instead of the correct version by reading from the root `package.json`.
+- **Telemetry banner**: Fixed the banner appearing on the dashboard after repositories had already been added.
+
+---
+
 ## [0.1.9] - 2026-04-20
 
 ### Added

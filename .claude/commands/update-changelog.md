@@ -6,7 +6,7 @@ description: Auto-generate a CHANGELOG.md entry for the current version from com
 
 This skill may be invoked:
 - Explicitly by the user typing `/update-changelog`
-- Automatically as a step inside `/publish-npm` — in that case, skip the standalone invocation check and proceed directly
+- Automatically as a step inside `/npm-release` — in that case, skip the standalone invocation check and proceed directly
 
 If invoked as `/update-changelog` standalone, only run on `master`. If not on `master`, stop and say:
 "This skill must be run from `master`. You are currently on `<branch>`."
@@ -119,7 +119,7 @@ git commit -m "docs: update CHANGELOG for v<version>
 Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 ```
 
-Do NOT push. The push happens in the calling skill (`/publish-npm`).
+Do NOT push. The push happens in the calling skill (`/npm-release`).
 
 ---
 
