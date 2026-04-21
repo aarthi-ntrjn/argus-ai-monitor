@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { RotateCcw, Bug, Lightbulb } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import type { DashboardSettings } from '../../types';
 import { useArgusSettings } from '../../hooks/useArgusSettings';
 import { YoloWarningDialog } from '../YoloWarningDialog/YoloWarningDialog';
 import { Checkbox } from '../Checkbox';
 import { Button } from '../Button';
-import { rescanRemoteUrls } from '../../services/api';
+import { rescanRemoteUrls, getHealth } from '../../services/api';
 import { buildBugReportUrl, buildFeatureRequestUrl } from '../../config/feedback';
 
 const DEFAULT_THRESHOLD = 20;
@@ -23,6 +24,7 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
   const { settings: argusSettings, patchSetting } = useArgusSettings();
   const [showYoloWarning, setShowYoloWarning] = useState(false);
   const [rescanState, setRescanState] = useState<'idle' | 'scanning' | 'done'>('idle');
+  const { data: healthData } = useQuery({ queryKey: ['health'], queryFn: getHealth, staleTime: Infinity });
   const [thresholdInput, setThresholdInput] = useState(String(argusSettings?.restingThresholdMinutes ?? DEFAULT_THRESHOLD));
   const [thresholdError, setThresholdError] = useState<string | null>(null);
 
@@ -206,7 +208,12 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
         </div>
 
         <div className="mt-2 pt-2 border-t border-gray-100">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">About</p>
+          <div className="flex items-baseline justify-between mb-2">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">About</p>
+            {healthData?.version && (
+              <span className="text-xs text-gray-400 tabular-nums">v{healthData.version}</span>
+            )}
+          </div>
           <div className="flex flex-col gap-1">
             <a href="https://aarthi-ntrjn.github.io/argus" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600">
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>

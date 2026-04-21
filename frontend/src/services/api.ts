@@ -149,6 +149,12 @@ export async function patchArgusSettings(patch: Partial<ArgusConfig>): Promise<A
   return apiFetch<ArgusConfig>('/settings', { method: 'PATCH', body: JSON.stringify(patch) });
 }
 
+export async function getHealth(): Promise<{ status: string; version: string; uptime: number }> {
+  const res = await fetch('/api/health');
+  if (!res.ok) throw new Error('Health check failed');
+  return res.json() as Promise<{ status: string; version: string; uptime: number }>;
+}
+
 export function postTelemetryEvent(type: string): void {
   void fetch(`${BASE}/telemetry/event`, {
     method: 'POST',
