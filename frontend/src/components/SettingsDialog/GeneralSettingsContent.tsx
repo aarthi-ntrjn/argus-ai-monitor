@@ -80,6 +80,9 @@ export function GeneralSettingsContent({ settings, onToggle, compact = false }: 
 
   return (
     <>
+      {!compact && (
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">General</p>
+      )}
       <div className="py-1">
         <Checkbox
           label="Hide ended sessions"
