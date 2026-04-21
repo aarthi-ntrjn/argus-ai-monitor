@@ -187,22 +187,24 @@ export function GeneralSettingsContent({ settings, onToggle, compact = false }: 
         </div>
       )}
 
-      <div className="mt-2 pt-2 border-t border-gray-100 flex flex-col gap-1">
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={rescanState === 'scanning'}
-          onClick={async () => {
-            setRescanState('scanning');
-            await rescanRemoteUrls().catch(() => {});
-            setRescanState('done');
-            setTimeout(() => setRescanState('idle'), 2000);
-          }}
-          className="w-full text-left !text-sm hover:!text-blue-600"
-        >
-          {rescanState === 'scanning' ? 'Scanning...' : rescanState === 'done' ? 'Done' : 'Rescan Remote URLs'}
-        </Button>
-      </div>
+      {!compact && (
+        <div className="mt-2 pt-2 border-t border-gray-100 flex flex-col gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={rescanState === 'scanning'}
+            onClick={async () => {
+              setRescanState('scanning');
+              await rescanRemoteUrls().catch(() => {});
+              setRescanState('done');
+              setTimeout(() => setRescanState('idle'), 2000);
+            }}
+            className="w-full text-left !text-sm hover:!text-blue-600"
+          >
+            {rescanState === 'scanning' ? 'Scanning...' : rescanState === 'done' ? 'Done' : 'Rescan Remote URLs'}
+          </Button>
+        </div>
+      )}
 
       <YoloWarningDialog
         open={showYoloWarning}

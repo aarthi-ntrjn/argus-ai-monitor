@@ -21,7 +21,7 @@ export function SettingsPanel({ settings, onToggle, onOpenAllSettings }: Setting
             className="flex items-center gap-2 w-full text-sm text-gray-600 hover:text-blue-600 transition-colors"
           >
             <Settings size={13} className="shrink-0" aria-hidden="true" />
-            Open settings
+            Advanced settings
           </button>
         </div>
       )}
