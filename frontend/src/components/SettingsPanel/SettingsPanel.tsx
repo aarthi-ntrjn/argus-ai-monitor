@@ -21,7 +21,7 @@ export function SettingsPanel({ settings, onToggle, onOpenAllSettings }: Setting
       <div className="mt-2 pt-2 border-t border-gray-100 flex items-center gap-3">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide shrink-0">
           About Argus{healthData?.version && (
-            <><a href={ARGUS_CHANGELOG_URL} target="_blank" rel="noopener noreferrer" className="ml-3 normal-case font-normal tabular-nums text-gray-400 hover:text-blue-600 transition-colors">v{healthData.version}</a></>
+            <><a href={ARGUS_CHANGELOG_URL} target="_blank" rel="noopener noreferrer" className="ml-3 normal-case font-normal tabular-nums text-blue-600 hover:text-blue-700 hover:underline">v{healthData.version}</a></>
           )}
         </p>
         <div className="flex items-center gap-1">
@@ -87,7 +87,7 @@ export function SettingsPanel({ settings, onToggle, onOpenAllSettings }: Setting
           <button
             type="button"
             onClick={onOpenAllSettings}
-            className="flex items-center gap-2 w-full text-sm text-gray-600 hover:text-blue-600 transition-colors"
+            className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:underline"
           >
             <Settings size={13} className="shrink-0" aria-hidden="true" />
             Advanced settings
