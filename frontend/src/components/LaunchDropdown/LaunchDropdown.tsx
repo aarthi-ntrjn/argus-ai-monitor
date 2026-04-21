@@ -7,12 +7,18 @@ import { Button } from '../Button';
 
 interface Props {
   repoPath: string;
+  onLaunchError: (msg: string) => void;
 }
 
-export default function LaunchDropdown({ repoPath }: Props) {
+function toLaunchErrorMessage(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err);
+  if (!raw || raw === 'Failed to fetch') return 'Failed to launch session. The Argus server is unreachable.';
+  return `Failed to launch session: ${raw}`;
+}
+
+export default function LaunchDropdown({ repoPath, onLaunchError }: Props) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState<'claude' | 'copilot' | null>(null);
-  const [launchError, setLaunchError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const { data: tools } = useQuery({
@@ -73,7 +79,7 @@ export default function LaunchDropdown({ repoPath }: Props) {
     try {
       await launchInTerminal(tool, repoPath);
     } catch (err) {
-      setLaunchError(err instanceof Error ? err.message : 'Failed to launch');
+      onLaunchError(toLaunchErrorMessage(err));
     }
   };
 
@@ -82,14 +88,11 @@ export default function LaunchDropdown({ repoPath }: Props) {
 
   return (
     <div className="relative" ref={menuRef}>
-      {launchError && (
-        <p className="text-xs text-red-600 mb-1">{launchError}</p>
-      )}
       <Button
         variant="outline"
         size="sm"
         data-tour-id="dashboard-launch"
-        onClick={() => { setLaunchError(null); setOpen(o => !o); }}
+        onClick={() => { setOpen(o => !o); }}
         title="Launch a new session with Argus"
         aria-label="Launch with Argus"
         aria-expanded={open}
