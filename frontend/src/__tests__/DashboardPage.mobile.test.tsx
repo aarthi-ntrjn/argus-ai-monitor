@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import DashboardPage from '../pages/DashboardPage';
@@ -95,5 +96,18 @@ describe('DashboardPage — mobile layout', () => {
     // Wait for loading to finish
     await waitFor(() => expect(screen.queryByText('animate-pulse')).not.toBeInTheDocument());
     expect(screen.queryByRole('navigation', { name: /mobile navigation/i })).not.toBeInTheDocument();
+  });
+
+  it('toggles dashboard width from the header control on desktop', async () => {
+    mockUseIsMobile.mockReturnValue(false);
+    renderDashboard();
+
+    const expandButton = await screen.findByRole('button', { name: /expand dashboard width/i });
+    expect(expandButton).toHaveAttribute('aria-pressed', 'false');
+
+    await userEvent.click(expandButton);
+
+    const collapseButton = screen.getByRole('button', { name: /collapse dashboard width/i });
+    expect(collapseButton).toHaveAttribute('aria-pressed', 'true');
   });
 });
