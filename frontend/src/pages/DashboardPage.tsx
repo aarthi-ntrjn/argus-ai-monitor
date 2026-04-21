@@ -12,6 +12,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import { Button } from '../components/Button';
 import { SettingsPanel } from '../components/SettingsPanel';
 import { TeamsIntegrationButton, SlackIntegrationButton } from '../components/IntegrationButton/IntegrationButton';
+import { SettingsDialog, type SettingsTab } from '../components/SettingsDialog/SettingsDialog';
 import { TelemetryBanner } from '../components/TelemetryBanner';
 import { RemoveConfirmDialog } from '../components/RemoveConfirmDialog';
 import OutputPane from '../components/OutputPane/OutputPane';
@@ -38,6 +39,14 @@ export default function DashboardPage() {
   const isMobile = useIsMobile();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogTab, setDialogTab] = useState<SettingsTab>('general');
+
+  const openDialog = (tab: SettingsTab) => {
+    setDialogTab(tab);
+    setDialogOpen(true);
+    setSettingsOpen(false);
+  };
   const [isDashboardExpanded, setIsDashboardExpanded] = useState(
     () => localStorage.getItem('isDashboardExpanded') === 'true'
   );
@@ -275,6 +284,7 @@ export default function DashboardPage() {
                 }
                 onClick={teamsConfigured ? () => toggle('teams') : undefined}
                 disabled={isPending}
+                onOpenSettings={() => openDialog('teams')}
               />
               <SlackIntegrationButton
                 connected={slackRunning}
@@ -287,6 +297,7 @@ export default function DashboardPage() {
                 }
                 onClick={slackConfigured ? () => toggle('slack') : undefined}
                 disabled={isPending}
+                onOpenSettings={() => openDialog('slack')}
               />
             </div>
             <div className="relative" ref={settingsRef}>
@@ -314,6 +325,7 @@ export default function DashboardPage() {
                     startTour('manual');
                     setTourRun(true);
                   }}
+                  onOpenAllSettings={() => openDialog('general')}
                 />
               )}
             </div>
@@ -444,6 +456,21 @@ export default function DashboardPage() {
           onSkip={() => { markRepoStepsSeen(); setCatchUpRun(false); }}
         />
       )}
+
+      <SettingsDialog
+        open={dialogOpen}
+        tab={dialogTab}
+        onTabChange={setDialogTab}
+        onClose={() => setDialogOpen(false)}
+        settings={settings}
+        onToggle={(key, value) => updateSetting(key, value)}
+        onRestartTour={() => {
+          setDialogOpen(false);
+          resetOnboarding();
+          startTour('manual');
+          setTourRun(true);
+        }}
+      />
     </div>
   );
 }
