@@ -18,8 +18,8 @@ interface DropdownProps {
 }
 
 const STATUS_DOT: Record<IntegrationVisibleStatus, string> = {
-  'not-configured': 'bg-amber-400',
-  'disconnected':   'bg-gray-300',
+  'not-configured': 'bg-gray-300',
+  'disconnected':   'bg-amber-400',
   'connected':      'bg-green-500',
 };
 

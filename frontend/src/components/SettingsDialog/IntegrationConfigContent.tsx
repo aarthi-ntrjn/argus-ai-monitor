@@ -49,8 +49,8 @@ function ConfigFields({ fields }: { fields: { label: string; value: string | und
 }
 
 const STATUS_BADGE: Record<IntegrationVisibleStatus, { text: string; colorClass: string }> = {
-  'not-configured': { text: 'not configured', colorClass: 'bg-amber-100 text-amber-700' },
-  'disconnected':   { text: 'disconnected',   colorClass: 'bg-gray-100 text-gray-600' },
+  'not-configured': { text: 'not configured', colorClass: 'bg-gray-100 text-gray-600' },
+  'disconnected':   { text: 'disconnected',   colorClass: 'bg-amber-100 text-amber-700' },
   'connected':      { text: 'connected',       colorClass: 'bg-green-100 text-green-700' },
 };
 
