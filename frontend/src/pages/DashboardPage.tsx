@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRef, useState, useEffect, useMemo } from 'react';
-import { Plus, Check } from 'lucide-react';
+import { Plus, Check, Maximize2, Minimize2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getSessions, getRepositories } from '../services/api';
 import { useSettings } from '../hooks/useSettings';
@@ -28,12 +28,15 @@ const ENDED_STATUSES = new Set(['completed', 'ended']);
 const ACTIVE_STATUSES = new Set(['active', 'waiting', 'error']);
 
 type MobileTab = 'sessions' | 'tasks';
+const MANAGED_DASHBOARD_WIDTH_CLASS = 'w-full max-w-[1600px]';
+const EXPANDED_DASHBOARD_WIDTH_CLASS = 'w-full max-w-none';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [isDashboardExpanded, setIsDashboardExpanded] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
     () => localStorage.getItem('selectedSessionId')
   );
@@ -52,8 +55,8 @@ export default function DashboardPage() {
   const [tourRun, setTourRun] = useState(false);
   const [catchUpRun, setCatchUpRun] = useState(false);
 
-  const handleTelemetryDismiss = (enabled: boolean) => {
-    patchSetting({ telemetryEnabled: enabled, telemetryPromptSeen: true });
+  const handleTelemetryDismiss = () => {
+    patchSetting({ telemetryPromptSeen: true });
   };
 
   const {
@@ -97,6 +100,10 @@ export default function DashboardPage() {
     queryKey: ['sessions'],
     queryFn: () => getSessions(),
   });
+
+  const dashboardWidthClassName = isDashboardExpanded
+    ? EXPANDED_DASHBOARD_WIDTH_CLASS
+    : MANAGED_DASHBOARD_WIDTH_CLASS;
 
   const sessionsByRepo = useMemo(() => {
     const map = new Map<string, Session[]>();
@@ -182,19 +189,25 @@ export default function DashboardPage() {
   );
 
   const emptyState = (
-    <div className="text-center py-16">
+    <div className="flex h-full min-h-[60vh] flex-col text-center">
       {repos.length === 0 ? (
-        <div className="space-y-1">
-          <p className="text-base text-gray-400">No repositories added yet.</p>
-          <p className="text-sm text-gray-400">Click "Add Repository" to start monitoring sessions.</p>
+        <>
+          <div className="flex-1 flex flex-col justify-center space-y-1">
+            <p className="text-xl font-semibold text-gray-400">No repositories added yet.</p>
+            <p className="text-xl text-gray-400">Click "<span className="font-semibold">Add Repositories</span>" to start managing sessions.</p>
+          </div>
           {argusSettings?.telemetryPromptSeen === false && (
-            <div className="mt-6 max-w-lg mx-auto text-left">
-              <TelemetryBanner onDismiss={handleTelemetryDismiss} subtle />
+            <div className="pt-8 max-w-lg mx-auto w-full text-left">
+              <TelemetryBanner
+                onDismiss={handleTelemetryDismiss}
+                onOpenSettings={() => setSettingsOpen(true)}
+                subtle
+              />
             </div>
           )}
-        </div>
+        </>
       ) : (
-        <div className="space-y-1">
+        <div className="flex-1 flex flex-col justify-center space-y-1">
           <p className="text-base text-gray-400">No repositories to show.</p>
           <p className="text-sm text-gray-400">All repositories are hidden by your current settings.</p>
         </div>
@@ -206,12 +219,32 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-slate-50">
       {/* Sticky header */}
       <header className="bg-slate-50 border-b border-gray-200">
-        <div className="mx-auto max-w-screen-xl px-4 md:px-8 py-3 flex justify-between items-center">
+        <div className={`mx-auto ${dashboardWidthClassName} px-4 md:px-8 py-3 flex justify-between items-center`}>
           <h1 data-tour-id="dashboard-header" className="flex items-center gap-2 text-xl font-semibold text-gray-900">
             <ArgusLogo size={28} />
             Argus
           </h1>
           <div className="flex items-center gap-2">
+            <div className="relative">
+              <Button
+                variant={repos.length === 0 ? 'primary' : 'outline'}
+                data-tour-id="dashboard-add-repo"
+                onClick={handleAddRepo}
+                disabled={adding}
+                className="inline-flex items-center gap-1"
+              >
+                <Plus size={11} aria-hidden="true" />
+                {adding ? 'Adding...' : 'Add Repositories'}
+              </Button>
+              <span
+                role="status"
+                aria-live="polite"
+                className={`absolute right-0 top-full mt-1 inline-flex items-center gap-1 text-xs text-green-600 whitespace-nowrap transition-opacity duration-500 ${addInfo ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+              >
+                <Check size={11} aria-hidden="true" />
+                {infoSnapshot}
+              </span>
+            </div>
             <div className="relative" ref={settingsRef}>
               <button
                 data-tour-id="dashboard-settings"
@@ -240,32 +273,22 @@ export default function DashboardPage() {
                 />
               )}
             </div>
-            <div className="relative">
-              <Button
-                variant="outline"
-                data-tour-id="dashboard-add-repo"
-                onClick={handleAddRepo}
-                disabled={adding}
-                className="inline-flex items-center gap-1"
-              >
-                <Plus size={11} aria-hidden="true" />
-                {adding ? 'Adding...' : 'Add Repository'}
-              </Button>
-              <span
-                role="status"
-                aria-live="polite"
-                className={`absolute right-0 top-full mt-1 inline-flex items-center gap-1 text-xs text-green-600 whitespace-nowrap transition-opacity duration-500 ${addInfo ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-              >
-                <Check size={11} aria-hidden="true" />
-                {infoSnapshot}
-              </span>
-            </div>
+            <button
+              type="button"
+              onClick={() => setIsDashboardExpanded(v => !v)}
+              aria-label={isDashboardExpanded ? 'Collapse dashboard width' : 'Expand dashboard width'}
+              aria-pressed={isDashboardExpanded}
+              title={isDashboardExpanded ? 'Collapse dashboard width' : 'Expand dashboard width'}
+              className="icon-btn text-gray-500 hover:text-blue-600"
+            >
+              {isDashboardExpanded ? <Minimize2 size={16} aria-hidden="true" /> : <Maximize2 size={16} aria-hidden="true" />}
+            </button>
           </div>
         </div>
       </header>
 
       {/* Page content */}
-      <div className="mx-auto max-w-screen-xl px-4 py-4 pb-20 md:px-8 md:py-6 md:pb-8">
+      <div className={`mx-auto ${dashboardWidthClassName} px-4 py-4 pb-20 md:px-8 md:py-6 md:pb-8`}>
 
         {addError && (
           <div role="alert" className="mb-4 px-3 py-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm flex items-center justify-between gap-3">
@@ -287,9 +310,9 @@ export default function DashboardPage() {
           /* Desktop layout: two-column */
           reposWithSessions.length === 0 ? (
             <div className="flex gap-6 items-start">
-              <div className="flex-1">{emptyState}</div>
+              <div className="flex-1" style={{ height: 'calc(100vh - 8rem)' }}>{emptyState}</div>
               {!settings.hideTodoPanel && (
-                <div className="w-[400px] shrink-0 sticky top-8 flex flex-col" style={{ height: 'calc(100vh - 6rem)' }}>
+                <div className="w-[400px] shrink-0 sticky top-8 flex flex-col" style={{ height: 'calc(100vh - 8rem)' }}>
                   <TodoPanel />
                 </div>
               )}
