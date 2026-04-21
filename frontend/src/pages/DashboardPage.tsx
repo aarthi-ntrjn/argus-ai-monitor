@@ -64,7 +64,7 @@ export default function DashboardPage() {
 
   const [settings, updateSetting] = useSettings();
   const { settings: argusSettings, patchSetting } = useArgusSettings();
-  const { teamsRunning, slackRunning, teamsConfigured, slackConfigured, toggle, isPending } = useIntegrationControl();
+  const { integrationsEnabled, teamsRunning, slackRunning, slackConfigured, toggle, isPending } = useIntegrationControl();
   const { tourStatus, seenRepoSteps, startTour, skipTour, completeTour, markRepoStepsSeen, resetOnboarding } = useOnboarding();
   const [tourRun, setTourRun] = useState(false);
   const [catchUpRun, setCatchUpRun] = useState(false);
@@ -272,34 +272,23 @@ export default function DashboardPage() {
                 {infoSnapshot}
               </span>
             </div>
-            <div className="flex items-center gap-3">
-              <TeamsIntegrationButton
-                connected={teamsRunning}
-                title={
-                  !teamsConfigured
-                    ? 'Microsoft Teams: not configured'
-                    : teamsRunning
-                      ? 'Microsoft Teams: running - click to stop'
-                      : 'Microsoft Teams: stopped - click to start'
-                }
-                onClick={teamsConfigured ? () => toggle('teams') : undefined}
-                disabled={isPending}
-                onOpenSettings={() => openDialog('teams')}
-              />
-              <SlackIntegrationButton
-                connected={slackRunning}
-                title={
-                  !slackConfigured
-                    ? 'Slack: not configured'
-                    : slackRunning
-                      ? 'Slack: running - click to stop'
-                      : 'Slack: stopped - click to start'
-                }
-                onClick={slackConfigured ? () => toggle('slack') : undefined}
-                disabled={isPending}
-                onOpenSettings={() => openDialog('slack')}
-              />
-            </div>
+            {integrationsEnabled && (
+              <div className="flex items-center gap-3">
+                <TeamsIntegrationButton
+                  running={teamsRunning}
+                  disabled={isPending}
+                  onToggle={() => toggle('teams')}
+                  onOpenSettings={() => openDialog('teams')}
+                />
+                <SlackIntegrationButton
+                  running={slackRunning}
+                  configured={slackConfigured}
+                  disabled={isPending}
+                  onToggle={() => toggle('slack')}
+                  onOpenSettings={() => openDialog('slack')}
+                />
+              </div>
+            )}
             <div className="relative" ref={settingsRef}>
               <button
                 data-tour-id="dashboard-settings"
@@ -319,12 +308,6 @@ export default function DashboardPage() {
                 <SettingsPanel
                   settings={settings}
                   onToggle={(key, value) => updateSetting(key, value)}
-                  onRestartTour={() => {
-                    setSettingsOpen(false);
-                    resetOnboarding();
-                    startTour('manual');
-                    setTourRun(true);
-                  }}
                   onOpenAllSettings={() => openDialog('general')}
                 />
               )}

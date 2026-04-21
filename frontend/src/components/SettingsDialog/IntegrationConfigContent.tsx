@@ -3,6 +3,8 @@ import { Copy, Check } from 'lucide-react';
 import Badge from '../Badge';
 import { useTeamsSettings } from '../../hooks/useTeamsSettings';
 import { useSlackSettings } from '../../hooks/useSlackSettings';
+import { useIntegrationControl } from '../../hooks/useIntegrationControl';
+import type { IntegrationVisibleStatus } from '../IntegrationButton/IntegrationButton';
 
 function CopyButton({ value }: { value: string | undefined }) {
   const [copied, setCopied] = useState(false);
@@ -46,14 +48,20 @@ function ConfigFields({ fields }: { fields: { label: string; value: string | und
   );
 }
 
+const STATUS_BADGE: Record<IntegrationVisibleStatus, { text: string; colorClass: string }> = {
+  'not-configured': { text: 'not configured', colorClass: 'bg-gray-100 text-gray-600' },
+  'disconnected':   { text: 'disconnected',   colorClass: 'bg-amber-100 text-amber-700' },
+  'connected':      { text: 'connected',       colorClass: 'bg-green-100 text-green-700' },
+};
+
 function TeamsConfigContent() {
   const { config } = useTeamsSettings();
-  const badge = config
-    ? {
-        text: config.connectionStatus,
-        colorClass: config.connectionStatus === 'connected' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600',
-      }
-    : null;
+  const { teamsRunning } = useIntegrationControl();
+  const status: IntegrationVisibleStatus =
+    !config || config.connectionStatus === 'unconfigured' ? 'not-configured'
+    : teamsRunning ? 'connected'
+    : 'disconnected';
+  const badge = STATUS_BADGE[status];
   const fields = [
     { label: 'Team ID', value: config?.teamId },
     { label: 'Channel ID', value: config?.channelId },
@@ -64,7 +72,7 @@ function TeamsConfigContent() {
     <>
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm font-medium text-gray-700">Microsoft Teams</span>
-        {badge && <Badge colorClass={badge.colorClass}>{badge.text}</Badge>}
+        <Badge colorClass={badge.colorClass}>{badge.text}</Badge>
       </div>
       <ConfigFields fields={fields} />
     </>
@@ -73,12 +81,12 @@ function TeamsConfigContent() {
 
 function SlackConfigContent() {
   const { config } = useSlackSettings();
-  const badge = config
-    ? {
-        text: config.enabled ? 'connected' : 'disconnected',
-        colorClass: config.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600',
-      }
-    : null;
+  const { slackConfigured, slackRunning } = useIntegrationControl();
+  const status: IntegrationVisibleStatus =
+    !slackConfigured || !config ? 'not-configured'
+    : slackRunning ? 'connected'
+    : 'disconnected';
+  const badge = STATUS_BADGE[status];
   const fields = [
     { label: 'Bot Token', value: config?.botToken },
     { label: 'App Token', value: config?.appToken },
@@ -88,7 +96,7 @@ function SlackConfigContent() {
     <>
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm font-medium text-gray-700">Slack</span>
-        {badge && <Badge colorClass={badge.colorClass}>{badge.text}</Badge>}
+        <Badge colorClass={badge.colorClass}>{badge.text}</Badge>
       </div>
       <ConfigFields fields={fields} />
     </>

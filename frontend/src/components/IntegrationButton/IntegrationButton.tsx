@@ -3,25 +3,30 @@ import { ChevronDown, ExternalLink } from 'lucide-react';
 import teamsUrl from '../../images/microsoft-teams.svg?url';
 import slackUrl from '../../images/slack.svg?url';
 import { IntegrationConfigContent } from '../SettingsDialog/IntegrationConfigContent';
+import { useTeamsSettings } from '../../hooks/useTeamsSettings';
+import { useSlackSettings } from '../../hooks/useSlackSettings';
 
-interface IntegrationButtonBaseProps {
-  connected: boolean;
-  title: string;
-  onClick?: () => void;
+export type IntegrationVisibleStatus = 'not-configured' | 'disconnected' | 'connected';
+
+interface DropdownProps {
+  type: 'teams' | 'slack';
+  label: string;
+  status: IntegrationVisibleStatus;
+  onToggle?: () => void;
   disabled?: boolean;
   onOpenSettings: () => void;
 }
 
-interface DropdownProps extends IntegrationButtonBaseProps {
-  type: 'teams' | 'slack';
-  label: string;
-}
+const STATUS_DOT: Record<IntegrationVisibleStatus, string> = {
+  'not-configured': 'bg-gray-300',
+  'disconnected':   'bg-amber-400',
+  'connected':      'bg-green-500',
+};
 
-function IntegrationDropdown({ type, connected, title, onClick, disabled, label, onOpenSettings }: DropdownProps) {
+function IntegrationDropdown({ type, label, status, onToggle, disabled, onOpenSettings }: DropdownProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const src = type === 'teams' ? teamsUrl : slackUrl;
-  const configured = !!onClick;
 
   useEffect(() => {
     if (!open) return;
@@ -39,30 +44,33 @@ function IntegrationDropdown({ type, connected, title, onClick, disabled, label,
     return () => document.removeEventListener('keydown', handler);
   }, [open]);
 
-  const handleOpenSettings = () => {
-    setOpen(false);
-    onOpenSettings();
-  };
+  const handleOpenSettings = () => { setOpen(false); onOpenSettings(); };
+
+  const iconOpacity = status === 'not-configured' ? 'opacity-30' : 'opacity-90';
+  const toggleTitle =
+    status === 'connected' ? `${label}: running - click to stop`
+    : status === 'disconnected' ? `${label}: stopped - click to start`
+    : `${label}: not configured`;
 
   return (
     <div className="relative" ref={ref}>
       <div className="flex items-center rounded-md border border-gray-200 bg-white hover:border-gray-300 transition-colors">
-        {configured ? (
+        {onToggle ? (
           <button
             type="button"
-            onClick={onClick}
+            onClick={onToggle}
             disabled={disabled}
-            title={title}
-            aria-label={title}
+            title={toggleTitle}
+            aria-label={toggleTitle}
             className="relative flex items-center justify-center p-1.5 rounded-l-md hover:bg-gray-50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <img src={src} alt="" width={16} height={16} aria-hidden="true" className={`transition-opacity ${connected ? 'opacity-90' : 'opacity-30'}`} />
-            <span className={`absolute bottom-0.5 right-0.5 w-2 h-2 rounded-full border border-white ${connected ? 'bg-green-500' : 'bg-gray-300'}`} aria-hidden="true" />
+            <img src={src} alt="" width={16} height={16} aria-hidden="true" className={`transition-opacity ${iconOpacity}`} />
+            <span className={`absolute bottom-0.5 right-0.5 w-2 h-2 rounded-full border border-white ${STATUS_DOT[status]}`} aria-hidden="true" />
           </button>
         ) : (
-          <div className="relative flex items-center justify-center p-1.5 rounded-l-md" title={title} aria-label={title}>
-            <img src={src} alt="" width={16} height={16} aria-hidden="true" className="transition-opacity opacity-30" />
-            <span className="absolute bottom-0.5 right-0.5 w-2 h-2 rounded-full border border-white bg-gray-300" aria-hidden="true" />
+          <div className="relative flex items-center justify-center p-1.5 rounded-l-md" title={toggleTitle} aria-label={toggleTitle}>
+            <img src={src} alt="" width={16} height={16} aria-hidden="true" className={`transition-opacity ${iconOpacity}`} />
+            <span className={`absolute bottom-0.5 right-0.5 w-2 h-2 rounded-full border border-white ${STATUS_DOT[status]}`} aria-hidden="true" />
           </div>
         )}
         <div className="w-px self-stretch bg-gray-200" aria-hidden="true" />
@@ -80,7 +88,22 @@ function IntegrationDropdown({ type, connected, title, onClick, disabled, label,
 
       {open && (
         <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-md shadow-lg z-50 p-3">
-          {configured ? (
+          {status === 'not-configured' ? (
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-medium text-gray-700">{label}</p>
+              <p className="text-xs text-gray-500">
+                Not configured. Set the required environment variables to enable this integration.
+              </p>
+              <button
+                type="button"
+                onClick={handleOpenSettings}
+                className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline"
+              >
+                <ExternalLink size={11} aria-hidden="true" />
+                Setup connection
+              </button>
+            </div>
+          ) : (
             <>
               <IntegrationConfigContent type={type} />
               <div className="mt-2 pt-2 border-t border-gray-100">
@@ -94,19 +117,6 @@ function IntegrationDropdown({ type, connected, title, onClick, disabled, label,
                 </button>
               </div>
             </>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <p className="text-sm font-medium text-gray-700">{label}</p>
-              <p className="text-xs text-gray-500">Not configured. Set the required environment variables to enable this integration.</p>
-              <button
-                type="button"
-                onClick={handleOpenSettings}
-                className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline"
-              >
-                <ExternalLink size={11} aria-hidden="true" />
-                Setup connection
-              </button>
-            </div>
           )}
         </div>
       )}
@@ -114,29 +124,52 @@ function IntegrationDropdown({ type, connected, title, onClick, disabled, label,
   );
 }
 
-export function TeamsIntegrationButton({ connected, title, onClick, disabled, onOpenSettings }: IntegrationButtonBaseProps) {
+interface TeamsIntegrationButtonProps {
+  running: boolean;
+  disabled?: boolean;
+  onToggle: () => void;
+  onOpenSettings: () => void;
+}
+
+export function TeamsIntegrationButton({ running, disabled, onToggle, onOpenSettings }: TeamsIntegrationButtonProps) {
+  const { config } = useTeamsSettings();
+  const status: IntegrationVisibleStatus =
+    !config || config.connectionStatus === 'unconfigured' ? 'not-configured'
+    : running ? 'connected'
+    : 'disconnected';
   return (
     <IntegrationDropdown
       type="teams"
-      connected={connected}
-      title={title}
-      onClick={onClick}
-      disabled={disabled}
       label="Microsoft Teams"
+      status={status}
+      onToggle={status !== 'not-configured' ? onToggle : undefined}
+      disabled={disabled}
       onOpenSettings={onOpenSettings}
     />
   );
 }
 
-export function SlackIntegrationButton({ connected, title, onClick, disabled, onOpenSettings }: IntegrationButtonBaseProps) {
+interface SlackIntegrationButtonProps {
+  running: boolean;
+  configured: boolean;
+  disabled?: boolean;
+  onToggle: () => void;
+  onOpenSettings: () => void;
+}
+
+export function SlackIntegrationButton({ running, configured, disabled, onToggle, onOpenSettings }: SlackIntegrationButtonProps) {
+  const { config } = useSlackSettings();
+  const status: IntegrationVisibleStatus =
+    !configured || !config ? 'not-configured'
+    : running ? 'connected'
+    : 'disconnected';
   return (
     <IntegrationDropdown
       type="slack"
-      connected={connected}
-      title={title}
-      onClick={onClick}
-      disabled={disabled}
       label="Slack"
+      status={status}
+      onToggle={status !== 'not-configured' ? onToggle : undefined}
+      disabled={disabled}
       onOpenSettings={onOpenSettings}
     />
   );

@@ -4,27 +4,32 @@ import type { SlackListener } from '../../integration/slack/slack-listener.js';
 import type { TeamsNotifier } from '../../integration/teams/teams-notifier.js';
 import type { TeamsListener } from '../../integration/teams/teams-listener.js';
 import { setIntegrationEnabled } from '../../db/database.js';
+import { telemetryService } from '../../services/telemetry-service.js';
 
 let slackNotifier: SlackNotifier | null = null;
 let slackListener: SlackListener | null = null;
 let teamsNotifier: TeamsNotifier | null = null;
 let teamsListener: TeamsListener | null = null;
+let integrationsEnabled = false;
 
 export function setIntegrationServices(
   sn: SlackNotifier | null,
   sl: SlackListener | null,
   tn: TeamsNotifier | null,
   tl: TeamsListener | null,
+  enabled: boolean,
 ): void {
   slackNotifier = sn;
   slackListener = sl;
   teamsNotifier = tn;
   teamsListener = tl;
+  integrationsEnabled = enabled;
 }
 
 const integrationsRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/api/v1/integrations', async (_request, reply) => {
     return reply.send({
+      integrationsEnabled,
       slack: {
         notifier: slackNotifier ? { running: slackNotifier.isRunning } : null,
         listener: slackListener ? { running: slackListener.isRunning } : null,
@@ -41,6 +46,7 @@ const integrationsRoutes: FastifyPluginAsync = async (fastify) => {
     const started = await slackNotifier.initialize();
     slackListener?.initialize();
     setIntegrationEnabled('slack', true);
+    telemetryService.sendEvent('integration_started', { platform: 'slack' });
     return reply.send({ started });
   });
 
@@ -49,6 +55,7 @@ const integrationsRoutes: FastifyPluginAsync = async (fastify) => {
     slackListener?.shutdown();
     slackNotifier.shutdown();
     setIntegrationEnabled('slack', false);
+    telemetryService.sendEvent('integration_stopped', { platform: 'slack' });
     return reply.send({ stopped: true });
   });
 
@@ -57,6 +64,7 @@ const integrationsRoutes: FastifyPluginAsync = async (fastify) => {
     const started = await teamsNotifier.initialize();
     teamsListener?.initialize();
     setIntegrationEnabled('teams', true);
+    telemetryService.sendEvent('integration_started', { platform: 'teams' });
     return reply.send({ started });
   });
 
@@ -65,6 +73,7 @@ const integrationsRoutes: FastifyPluginAsync = async (fastify) => {
     teamsListener?.shutdown();
     teamsNotifier.shutdown();
     setIntegrationEnabled('teams', false);
+    telemetryService.sendEvent('integration_stopped', { platform: 'teams' });
     return reply.send({ stopped: true });
   });
 };

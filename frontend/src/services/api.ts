@@ -178,6 +178,7 @@ export interface IntegrationRunState {
 }
 
 export interface IntegrationStatus {
+  integrationsEnabled: boolean;
   slack: IntegrationRunState;
   teams: IntegrationRunState;
 }
