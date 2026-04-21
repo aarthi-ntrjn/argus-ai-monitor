@@ -97,16 +97,19 @@ export async function buildServer() {
   });
 
   // Initialize Teams SDK App with Fastify adapter before static/catch-all routes
-  const teamsApp = new App({
-    httpServerAdapter: new FastifyTeamsAdapter(app),
-    messagingEndpoint: '/api/v1/teams/webhook',
-    clientId: process.env.CLIENT_ID,
-    clientSecret: process.env.CLIENT_SECRET,
-    tenantId: process.env.TENANT_ID,
-  });
-  teamsListener = new TeamsListener(teamsApp, app.log as any);
-  await teamsListener.initialize();
-  await teamsApp.initialize();
+  let teamsApp: App | null = null;
+  if (config.integrationsEnabled) {
+    teamsApp = new App({
+      httpServerAdapter: new FastifyTeamsAdapter(app),
+      messagingEndpoint: '/api/v1/teams/webhook',
+      clientId: process.env.CLIENT_ID,
+      clientSecret: process.env.CLIENT_SECRET,
+      tenantId: process.env.TENANT_ID,
+    });
+    teamsListener = new TeamsListener(teamsApp, app.log as any);
+    await teamsListener.initialize();
+    await teamsApp.initialize();
+  }
 
   const frontendDist = join(__dirname, '..', '..', 'frontend', 'dist');
   try {
@@ -188,44 +191,48 @@ export async function startServer() {
     broadcast({ type: 'repository.added', timestamp: new Date().toISOString(), data: repo as unknown as Record<string, unknown> });
   });
 
-  const slackConfig = loadSlackConfig();
-  if (slackConfig) {
-    slackNotifier = new SlackNotifier(slackConfig, monitor);
-    if (getIntegrationEnabled('slack') !== false) {
-      await slackNotifier.initialize();
-
-      if (slackNotifier.webClient) {
-        slackListener = new SlackListener(slackConfig, slackNotifier.webClient, slackNotifier);
-        await slackListener.initialize();
-      }
-    }
-    setSlackServices(slackNotifier, slackListener);
-  }
-
   await monitor.start();
   startPruningJob();
 
-  teamsNotifier = new TeamsNotifier(teamsApp, app.log as any);
+  if (config.integrationsEnabled) {
+    const slackConfig = loadSlackConfig();
+    if (slackConfig) {
+      slackNotifier = new SlackNotifier(slackConfig, monitor);
+      if (getIntegrationEnabled('slack') !== false) {
+        await slackNotifier.initialize();
 
-  if (getIntegrationEnabled('teams') !== false && await teamsNotifier.initialize()) {
-    monitor.on('session.created', (session: Session) => {
-      teamsNotifier!.onSessionCreated(session).catch(err => app.log.error({ err }, 'teams.session.created.error'));
-    });
-    monitor.on('session.updated', (session: Session) => {
-      teamsNotifier!.onSessionUpdated(session).catch(err => app.log.error({ err }, 'teams.session.updated.error'));
-    });
-    monitor.on('session.ended', (session: Session) => {
-      teamsNotifier!.onSessionEnded(session).catch(err => app.log.error({ err }, 'teams.session.ended.error'));
-    });
-    outputEvents.on('session.output.batch', (sessionId: string, outputs: SessionOutput[]) => {
-      teamsNotifier!.onSessionOutput(sessionId, outputs).catch(err => app.log.error({ err }, 'teams.session.output.error'));
-    });
-    pendingChoiceEvents.on('session.pending_choice', (choice: PendingChoice) => {
-      teamsNotifier!.onPendingChoice(choice).catch(err => app.log.error({ err }, 'teams.pending_choice.error'));
-    });
+        if (slackNotifier.webClient) {
+          slackListener = new SlackListener(slackConfig, slackNotifier.webClient, slackNotifier);
+          await slackListener.initialize();
+        }
+      }
+      setSlackServices(slackNotifier, slackListener);
+    }
+
+    if (teamsApp) {
+      teamsNotifier = new TeamsNotifier(teamsApp, app.log as any);
+
+      if (getIntegrationEnabled('teams') !== false && await teamsNotifier.initialize()) {
+        monitor.on('session.created', (session: Session) => {
+          teamsNotifier!.onSessionCreated(session).catch(err => app.log.error({ err }, 'teams.session.created.error'));
+        });
+        monitor.on('session.updated', (session: Session) => {
+          teamsNotifier!.onSessionUpdated(session).catch(err => app.log.error({ err }, 'teams.session.updated.error'));
+        });
+        monitor.on('session.ended', (session: Session) => {
+          teamsNotifier!.onSessionEnded(session).catch(err => app.log.error({ err }, 'teams.session.ended.error'));
+        });
+        outputEvents.on('session.output.batch', (sessionId: string, outputs: SessionOutput[]) => {
+          teamsNotifier!.onSessionOutput(sessionId, outputs).catch(err => app.log.error({ err }, 'teams.session.output.error'));
+        });
+        pendingChoiceEvents.on('session.pending_choice', (choice: PendingChoice) => {
+          teamsNotifier!.onPendingChoice(choice).catch(err => app.log.error({ err }, 'teams.pending_choice.error'));
+        });
+      }
+    }
   }
 
-  setIntegrationServices(slackNotifier, slackListener, teamsNotifier, teamsListener);
+  setIntegrationServices(slackNotifier, slackListener, teamsNotifier, teamsListener, config.integrationsEnabled);
 
   process.on('SIGTERM', async () => { telemetryService.sendEvent('app_ended'); teamsNotifier?.shutdown(); teamsListener?.shutdown(); slackListener?.shutdown(); slackNotifier?.shutdown(); monitor?.stop(); await app.close(); process.exit(0); });
   process.on('SIGINT', async () => { telemetryService.sendEvent('app_ended'); teamsNotifier?.shutdown(); teamsListener?.shutdown(); slackListener?.shutdown(); slackNotifier?.shutdown(); monitor?.stop(); await app.close(); process.exit(0); });

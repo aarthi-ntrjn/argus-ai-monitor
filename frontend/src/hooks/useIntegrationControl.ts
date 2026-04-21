@@ -9,6 +9,7 @@ export function useIntegrationControl() {
     queryFn: getIntegrationStatus,
   });
 
+  const integrationsEnabled = data?.integrationsEnabled === true;
   const teamsConfigured = data?.teams.notifier !== null;
   const slackConfigured = data?.slack.notifier !== null;
   const teamsRunning = data?.teams.notifier?.running === true;
@@ -28,5 +29,5 @@ export function useIntegrationControl() {
     },
   });
 
-  return { teamsRunning, slackRunning, teamsConfigured, slackConfigured, toggle, isPending };
+  return { integrationsEnabled, teamsRunning, slackRunning, teamsConfigured, slackConfigured, toggle, isPending };
 }
