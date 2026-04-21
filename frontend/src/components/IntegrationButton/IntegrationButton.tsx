@@ -14,7 +14,7 @@ interface DropdownProps {
   status: IntegrationVisibleStatus;
   onToggle?: () => void;
   disabled?: boolean;
-  onOpenSettings: () => void;
+  onOpenSettings: (setupMode?: boolean) => void;
 }
 
 const STATUS_DOT: Record<IntegrationVisibleStatus, string> = {
@@ -44,7 +44,7 @@ function IntegrationDropdown({ type, label, status, onToggle, disabled, onOpenSe
     return () => document.removeEventListener('keydown', handler);
   }, [open]);
 
-  const handleOpenSettings = () => { setOpen(false); onOpenSettings(); };
+  const handleOpenSettings = (setupMode = false) => { setOpen(false); onOpenSettings(setupMode); };
 
   const iconOpacity = status === 'not-configured' ? 'opacity-30' : 'opacity-90';
   const toggleTitle =
@@ -96,7 +96,7 @@ function IntegrationDropdown({ type, label, status, onToggle, disabled, onOpenSe
               </p>
               <button
                 type="button"
-                onClick={handleOpenSettings}
+                onClick={() => handleOpenSettings(true)}
                 className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline"
               >
                 <ExternalLink size={11} aria-hidden="true" />
@@ -109,7 +109,7 @@ function IntegrationDropdown({ type, label, status, onToggle, disabled, onOpenSe
               <div className="mt-2 pt-2 border-t border-gray-100">
                 <button
                   type="button"
-                  onClick={handleOpenSettings}
+                  onClick={() => handleOpenSettings()}
                   className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:underline"
                 >
                   <Settings size={11} aria-hidden="true" />
@@ -128,7 +128,7 @@ interface TeamsIntegrationButtonProps {
   running: boolean;
   disabled?: boolean;
   onToggle: () => void;
-  onOpenSettings: () => void;
+  onOpenSettings: (setupMode?: boolean) => void;
 }
 
 export function TeamsIntegrationButton({ running, disabled, onToggle, onOpenSettings }: TeamsIntegrationButtonProps) {
@@ -154,7 +154,7 @@ interface SlackIntegrationButtonProps {
   configured: boolean;
   disabled?: boolean;
   onToggle: () => void;
-  onOpenSettings: () => void;
+  onOpenSettings: (setupMode?: boolean) => void;
 }
 
 export function SlackIntegrationButton({ running, configured, disabled, onToggle, onOpenSettings }: SlackIntegrationButtonProps) {

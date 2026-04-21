@@ -92,8 +92,8 @@ const GUIDE_COMPONENTS: Components = {
   td: ({ children }) => <td className="text-xs text-gray-600 border-b border-gray-100 py-1 px-2">{children}</td>,
 };
 
-function SetupGuide({ content }: { content: string }) {
-  const [expanded, setExpanded] = useState(false);
+function SetupGuide({ content, initialExpanded = false }: { content: string; initialExpanded?: boolean }) {
+  const [expanded, setExpanded] = useState(initialExpanded);
   return (
     <div className="mt-3 pt-3 border-t border-gray-100">
       <button
@@ -115,7 +115,7 @@ function SetupGuide({ content }: { content: string }) {
   );
 }
 
-function TeamsConfigContent() {
+function TeamsConfigContent({ expandSetupGuide }: { expandSetupGuide?: boolean }) {
   const { config } = useTeamsSettings();
   const { teamsRunning } = useIntegrationControl();
   const status: IntegrationVisibleStatus =
@@ -132,12 +132,12 @@ function TeamsConfigContent() {
     <>
       <IntegrationHeader label="Microsoft Teams" badge={STATUS_BADGE[status]} />
       <ConfigFields fields={fields} />
-      <SetupGuide content={teamsGuide} />
+      <SetupGuide content={teamsGuide} initialExpanded={expandSetupGuide} />
     </>
   );
 }
 
-function SlackConfigContent() {
+function SlackConfigContent({ expandSetupGuide }: { expandSetupGuide?: boolean }) {
   const { config } = useSlackSettings();
   const { slackConfigured, slackRunning } = useIntegrationControl();
   const status: IntegrationVisibleStatus =
@@ -153,11 +153,13 @@ function SlackConfigContent() {
     <>
       <IntegrationHeader label="Slack" badge={STATUS_BADGE[status]} />
       <ConfigFields fields={fields} />
-      <SetupGuide content={slackGuide} />
+      <SetupGuide content={slackGuide} initialExpanded={expandSetupGuide} />
     </>
   );
 }
 
-export function IntegrationConfigContent({ type }: { type: 'teams' | 'slack' }) {
-  return type === 'teams' ? <TeamsConfigContent /> : <SlackConfigContent />;
+export function IntegrationConfigContent({ type, expandSetupGuide }: { type: 'teams' | 'slack'; expandSetupGuide?: boolean }) {
+  return type === 'teams'
+    ? <TeamsConfigContent expandSetupGuide={expandSetupGuide} />
+    : <SlackConfigContent expandSetupGuide={expandSetupGuide} />;
 }

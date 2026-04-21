@@ -17,6 +17,7 @@ export type SettingsTab = 'general' | 'teams' | 'slack' | 'about' | 'feedback';
 interface SettingsDialogProps {
   open: boolean;
   tab: SettingsTab;
+  expandSetupGuide?: boolean;
   onTabChange: (tab: SettingsTab) => void;
   onClose: () => void;
   settings: DashboardSettings;
@@ -67,7 +68,7 @@ const TABS: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
   },
 ] as const;
 
-export function SettingsDialog({ open, tab, onTabChange, onClose, settings, onToggle, onRestartTour }: SettingsDialogProps) {
+export function SettingsDialog({ open, tab, expandSetupGuide, onTabChange, onClose, settings, onToggle, onRestartTour }: SettingsDialogProps) {
   const { data: healthData } = useQuery({ queryKey: ['health'], queryFn: getHealth, staleTime: Infinity });
 
   useEffect(() => {
@@ -125,8 +126,8 @@ export function SettingsDialog({ open, tab, onTabChange, onClose, settings, onTo
             {tab === 'general' && (
               <GeneralSettingsContent settings={settings} onToggle={onToggle} />
             )}
-            {tab === 'teams' && <IntegrationConfigContent type="teams" />}
-            {tab === 'slack' && <IntegrationConfigContent type="slack" />}
+            {tab === 'teams' && <IntegrationConfigContent type="teams" expandSetupGuide={expandSetupGuide} />}
+            {tab === 'slack' && <IntegrationConfigContent type="slack" expandSetupGuide={expandSetupGuide} />}
             {tab === 'about' && (
               <div className="flex flex-col gap-1">
                 <SectionHeading className="mb-1">About</SectionHeading>
