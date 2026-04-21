@@ -13,4 +13,29 @@
   .icon-btn {
     @apply p-1 rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400;
   }
+
+  /* Hover-only scrollbar: invisible until the element is hovered. */
+  .scroll-hover {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    transition: scrollbar-color 0.2s;
+  }
+  .scroll-hover:hover {
+    scrollbar-color: rgb(203 213 225) transparent;
+  }
+  /* Webkit (Chrome, Safari, Edge) */
+  .scroll-hover::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scroll-hover::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scroll-hover::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 9999px;
+    transition: background-color 0.2s;
+  }
+  .scroll-hover:hover::-webkit-scrollbar-thumb {
+    background-color: rgb(203 213 225);
+  }
 }

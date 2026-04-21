@@ -194,6 +194,12 @@ export async function stopIntegration(platform: 'slack' | 'teams'): Promise<void
   await apiFetch<unknown>(`/integrations/${platform}/stop`, { method: 'POST' });
 }
 
+export async function getHealth(): Promise<{ status: string; version: string; uptime: number }> {
+  const res = await fetch('/api/health');
+  if (!res.ok) throw new Error('Health check failed');
+  return res.json() as Promise<{ status: string; version: string; uptime: number }>;
+}
+
 export function postTelemetryEvent(type: string): void {
   void fetch(`${BASE}/telemetry/event`, {
     method: 'POST',
