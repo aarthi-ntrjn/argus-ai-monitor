@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 import Badge from '../Badge';
+import { SectionHeading } from '../SectionHeading';
 import { useTeamsSettings } from '../../hooks/useTeamsSettings';
 import { useSlackSettings } from '../../hooks/useSlackSettings';
 import { useIntegrationControl } from '../../hooks/useIntegrationControl';
@@ -54,6 +55,15 @@ const STATUS_BADGE: Record<IntegrationVisibleStatus, { text: string; colorClass:
   'connected':      { text: 'connected',       colorClass: 'bg-green-100 text-green-700' },
 };
 
+function IntegrationHeader({ label, badge }: { label: string; badge: { text: string; colorClass: string } }) {
+  return (
+    <div className="flex items-center gap-2 mb-2">
+      <SectionHeading>{label}</SectionHeading>
+      <Badge colorClass={badge.colorClass}>{badge.text}</Badge>
+    </div>
+  );
+}
+
 function TeamsConfigContent() {
   const { config } = useTeamsSettings();
   const { teamsRunning } = useIntegrationControl();
@@ -61,7 +71,6 @@ function TeamsConfigContent() {
     !config || config.connectionStatus === 'unconfigured' ? 'not-configured'
     : teamsRunning ? 'connected'
     : 'disconnected';
-  const badge = STATUS_BADGE[status];
   const fields = [
     { label: 'Team ID', value: config?.teamId },
     { label: 'Channel ID', value: config?.channelId },
@@ -70,10 +79,7 @@ function TeamsConfigContent() {
   ];
   return (
     <>
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-sm font-medium text-gray-700">Microsoft Teams</span>
-        <Badge colorClass={badge.colorClass}>{badge.text}</Badge>
-      </div>
+      <IntegrationHeader label="Microsoft Teams" badge={STATUS_BADGE[status]} />
       <ConfigFields fields={fields} />
     </>
   );
@@ -86,7 +92,6 @@ function SlackConfigContent() {
     !slackConfigured || !config ? 'not-configured'
     : slackRunning ? 'connected'
     : 'disconnected';
-  const badge = STATUS_BADGE[status];
   const fields = [
     { label: 'Bot Token', value: config?.botToken },
     { label: 'App Token', value: config?.appToken },
@@ -94,10 +99,7 @@ function SlackConfigContent() {
   ];
   return (
     <>
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-sm font-medium text-gray-700">Slack</span>
-        <Badge colorClass={badge.colorClass}>{badge.text}</Badge>
-      </div>
+      <IntegrationHeader label="Slack" badge={STATUS_BADGE[status]} />
       <ConfigFields fields={fields} />
     </>
   );

@@ -6,6 +6,7 @@ import { useArgusSettings } from '../../hooks/useArgusSettings';
 import { YoloWarningDialog } from '../YoloWarningDialog/YoloWarningDialog';
 import { Checkbox } from '../Checkbox';
 import { Button } from '../Button';
+import { SectionHeading } from '../SectionHeading';
 import { rescanRemoteUrls } from '../../services/api';
 
 const DEFAULT_THRESHOLD = 20;
@@ -81,7 +82,7 @@ export function GeneralSettingsContent({ settings, onToggle, compact = false }: 
   return (
     <>
       {!compact && (
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">General</p>
+        <SectionHeading className="mb-1">General</SectionHeading>
       )}
       <div className="py-1">
         <Checkbox
@@ -118,7 +119,7 @@ export function GeneralSettingsContent({ settings, onToggle, compact = false }: 
 
       {!compact && (
         <div className="mt-2 pt-2 border-t border-gray-100">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Resting</p>
+          <SectionHeading className="mb-1">Resting</SectionHeading>
           <div className="flex items-center gap-2 py-1">
             <label htmlFor="resting-threshold-input" className="text-sm text-gray-700 shrink-0">
               Resting after
@@ -155,7 +156,7 @@ export function GeneralSettingsContent({ settings, onToggle, compact = false }: 
       )}
 
       <div className="mt-2 pt-2 border-t border-gray-100">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Launch Behaviour</p>
+        <SectionHeading className="mb-1">Launch Behaviour</SectionHeading>
         <label className="flex items-start gap-2 cursor-pointer select-none py-1">
           <Checkbox
             aria-label="Yolo mode"
@@ -174,7 +175,7 @@ export function GeneralSettingsContent({ settings, onToggle, compact = false }: 
 
       {!compact && (
         <div className="mt-2 pt-2 border-t border-gray-100">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Privacy</p>
+          <SectionHeading className="mb-1">Privacy</SectionHeading>
           <label className="flex items-start gap-2 cursor-pointer select-none py-1">
             <Checkbox
               aria-label="Send anonymous usage telemetry"
