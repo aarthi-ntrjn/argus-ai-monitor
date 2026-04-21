@@ -228,7 +228,7 @@ export default function DashboardPage() {
             <div className="pt-8 max-w-lg mx-auto w-full text-left">
               <TelemetryBanner
                 onDismiss={handleTelemetryDismiss}
-                onOpenSettings={() => setSettingsOpen(true)}
+                onOpenSettings={() => openDialog('general')}
                 subtle
               />
             </div>

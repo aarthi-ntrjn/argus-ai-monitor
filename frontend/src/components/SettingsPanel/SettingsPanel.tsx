@@ -12,7 +12,7 @@ export function SettingsPanel({ settings, onToggle, onOpenAllSettings }: Setting
   return (
     <div className="absolute right-0 top-full mt-1 w-96 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3 max-h-[calc(100vh-4rem)] overflow-y-auto">
       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Settings</p>
-      <GeneralSettingsContent settings={settings} onToggle={onToggle} />
+      <GeneralSettingsContent settings={settings} onToggle={onToggle} compact />
       {onOpenAllSettings && (
         <div className="mt-2 pt-2 border-t border-gray-100">
           <button
