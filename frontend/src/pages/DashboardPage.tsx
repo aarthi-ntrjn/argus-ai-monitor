@@ -151,11 +151,22 @@ export default function DashboardPage() {
 
   if (reposLoading || sessionsLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 p-4 md:p-8">
-        <div className="animate-pulse space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-24 bg-gray-200 rounded-lg" />
-          ))}
+      <div className="h-screen flex flex-col overflow-hidden bg-slate-50">
+        <header className="shrink-0 bg-slate-50 border-b border-gray-200">
+          <div className={`mx-auto ${dashboardWidthClassName} px-4 md:px-8 py-3 flex justify-between items-center`}>
+            <h1 className="flex items-center gap-2 text-xl font-semibold text-gray-900">
+              <ArgusLogo size={28} />
+              Argus
+            </h1>
+          </div>
+        </header>
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <div className={`mx-auto ${dashboardWidthClassName} h-full px-4 py-4 md:px-8 md:py-6 flex flex-col`}>
+            <div className="animate-pulse flex gap-6 flex-1 min-h-0">
+              <div className="flex-[13] bg-gray-200 rounded-lg" />
+              <div className="flex-[7] bg-gray-200 rounded-lg" />
+            </div>
+          </div>
         </div>
       </div>
     );
