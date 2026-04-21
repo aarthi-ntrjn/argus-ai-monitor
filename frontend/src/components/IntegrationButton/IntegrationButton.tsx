@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { ChevronDown, ExternalLink } from 'lucide-react';
+import { ChevronDown, ExternalLink, Settings } from 'lucide-react';
 import teamsUrl from '../../images/microsoft-teams.svg?url';
 import slackUrl from '../../images/slack.svg?url';
 import { IntegrationConfigContent } from '../SettingsDialog/IntegrationConfigContent';
@@ -112,7 +112,7 @@ function IntegrationDropdown({ type, label, status, onToggle, disabled, onOpenSe
                   onClick={handleOpenSettings}
                   className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:underline"
                 >
-                  <ExternalLink size={11} aria-hidden="true" />
+                  <Settings size={11} aria-hidden="true" />
                   Open in settings
                 </button>
               </div>
