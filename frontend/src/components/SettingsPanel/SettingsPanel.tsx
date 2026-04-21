@@ -19,7 +19,7 @@ export function SettingsPanel({ settings, onToggle, onOpenAllSettings }: Setting
       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Settings</p>
       <GeneralSettingsContent settings={settings} onToggle={onToggle} compact />
       <div className="mt-2 pt-2 border-t border-gray-100 flex items-center gap-3">
-        <p className="text-xs text-gray-500 shrink-0">About{healthData?.version ? ` v${healthData.version}` : ''}</p>
+        <p className="text-sm text-gray-600 shrink-0">About Argus{healthData?.version ? ` - v${healthData.version}` : ''}</p>
         <div className="flex items-center gap-1">
           <a
             href="https://aarthi-ntrjn.github.io/argus"
@@ -54,7 +54,7 @@ export function SettingsPanel({ settings, onToggle, onOpenAllSettings }: Setting
         </div>
       </div>
       <div className="mt-2 pt-2 border-t border-gray-100 flex items-center gap-3">
-        <p className="text-xs text-gray-500 shrink-0">Feedback</p>
+        <p className="text-sm text-gray-600 shrink-0">Feedback</p>
         <div className="flex items-center gap-1">
           <a
             href={buildBugReportUrl()}
