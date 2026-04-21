@@ -1,40 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { RotateCcw, Copy, Check, Bug, Lightbulb } from 'lucide-react';
+import { RotateCcw, Bug, Lightbulb } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import type { DashboardSettings } from '../../types';
 import { useArgusSettings } from '../../hooks/useArgusSettings';
-import { useTeamsSettings } from '../../hooks/useTeamsSettings';
-import { useSlackSettings } from '../../hooks/useSlackSettings';
 import { YoloWarningDialog } from '../YoloWarningDialog/YoloWarningDialog';
 import { Checkbox } from '../Checkbox';
 import { Button } from '../Button';
-import Badge from '../Badge';
 import { rescanRemoteUrls, getHealth } from '../../services/api';
 import { buildBugReportUrl, buildFeatureRequestUrl } from '../../config/feedback';
-
-function CopyButton({ value }: { value: string | undefined }) {
-  const [copied, setCopied] = useState(false);
-  const handleCopy = useCallback(() => {
-    if (!value) return;
-    navigator.clipboard.writeText(value).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  }, [value]);
-  if (!value) return null;
-  return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      aria-label="Copy to clipboard"
-      title="Copy to clipboard"
-      className="icon-btn text-gray-400 hover:text-blue-600 shrink-0"
-    >
-      {copied ? <Check size={11} aria-hidden="true" /> : <Copy size={11} aria-hidden="true" />}
-    </button>
-  );
-}
 
 const DEFAULT_THRESHOLD = 20;
 const MIN_THRESHOLD = 1;
@@ -48,8 +22,6 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPanelProps) {
   const { settings: argusSettings, patchSetting } = useArgusSettings();
-  const { config: teamsConfig } = useTeamsSettings();
-  const { config: slackConfig } = useSlackSettings();
   const [showYoloWarning, setShowYoloWarning] = useState(false);
   const [rescanState, setRescanState] = useState<'idle' | 'scanning' | 'done'>('idle');
   const { data: healthData } = useQuery({ queryKey: ['health'], queryFn: getHealth, staleTime: Infinity });
@@ -291,67 +263,6 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
           </div>
         </div>
 
-        <div className="mt-2 pt-2 border-t border-gray-100">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700">Slack</span>
-            {slackConfig && (
-              <Badge colorClass={slackConfig.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}>
-                {slackConfig.enabled ? 'connected' : 'disconnected'}
-              </Badge>
-            )}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <p className="text-xs text-gray-500">Configured via environment variables.</p>
-            {([
-              { label: 'Bot Token', value: slackConfig?.botToken },
-              { label: 'App Token', value: slackConfig?.appToken },
-              { label: 'Channel ID', value: slackConfig?.channelId },
-            ] as { label: string; value: string | undefined }[]).map(({ label, value }) => (
-              <div key={label}>
-                <p className="text-xs text-gray-500 mb-0.5">{label}</p>
-                <div className="flex items-start gap-1">
-                  <p className="text-xs font-mono text-gray-700 break-all flex-1">
-                    {value ?? <span className="text-gray-400">not set</span>}
-                  </p>
-                  <CopyButton value={value} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-2 pt-2 border-t border-gray-100">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700">Microsoft Teams</span>
-            {teamsConfig && (
-              <Badge colorClass={
-                teamsConfig.connectionStatus === 'connected' ? 'bg-green-100 text-green-700' :
-                'bg-gray-100 text-gray-600'
-              }>
-                {teamsConfig.connectionStatus}
-              </Badge>
-            )}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <p className="text-xs text-gray-500">Configured via environment variables.</p>
-            {([
-              { label: 'Team ID', value: teamsConfig?.teamId },
-              { label: 'Channel ID', value: teamsConfig?.channelId },
-              { label: 'Owner AAD Object ID', value: teamsConfig?.ownerAadObjectId },
-              { label: 'Webhook URL', value: `${window.location.origin}/api/v1/teams/webhook` },
-            ] as { label: string; value: string | undefined }[]).map(({ label, value }) => (
-              <div key={label}>
-                <p className="text-xs text-gray-500 mb-0.5">{label}</p>
-                <div className="flex items-start gap-1">
-                  <p className="text-xs font-mono text-gray-700 break-all flex-1">
-                    {value ?? <span className="text-gray-400">not set</span>}
-                  </p>
-                  <CopyButton value={value} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
       <YoloWarningDialog

@@ -11,7 +11,7 @@ import { useRepositoryManagement } from '../hooks/useRepositoryManagement';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { Button } from '../components/Button';
 import { SettingsPanel } from '../components/SettingsPanel';
-import { IntegrationStatusIcon } from '../components/IntegrationStatusIcon';
+import { TeamsIntegrationButton, SlackIntegrationButton } from '../components/IntegrationButton/IntegrationButton';
 import { TelemetryBanner } from '../components/TelemetryBanner';
 import { RemoveConfirmDialog } from '../components/RemoveConfirmDialog';
 import OutputPane from '../components/OutputPane/OutputPane';
@@ -264,8 +264,7 @@ export default function DashboardPage() {
               </span>
             </div>
             <div className="flex items-center gap-3">
-              <IntegrationStatusIcon
-                type="teams"
+              <TeamsIntegrationButton
                 connected={teamsRunning}
                 title={
                   !teamsConfigured
@@ -277,8 +276,7 @@ export default function DashboardPage() {
                 onClick={teamsConfigured ? () => toggle('teams') : undefined}
                 disabled={isPending}
               />
-              <IntegrationStatusIcon
-                type="slack"
+              <SlackIntegrationButton
                 connected={slackRunning}
                 title={
                   !slackConfigured
