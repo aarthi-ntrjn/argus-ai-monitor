@@ -85,7 +85,7 @@ export function SettingsDialog({ open, tab, onTabChange, onClose, settings, onTo
         role="dialog"
         aria-modal="true"
         aria-label="Settings"
-        className="bg-white rounded-lg shadow-xl flex overflow-hidden w-full max-w-2xl h-[85vh]"
+        className="bg-white rounded-lg shadow-xl flex overflow-hidden w-full max-w-2xl h-[70vh]"
         onClick={e => e.stopPropagation()}
       >
         {/* Left sidebar */}
