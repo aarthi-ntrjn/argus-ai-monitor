@@ -18,8 +18,8 @@ export function SettingsPanel({ settings, onToggle, onOpenAllSettings }: Setting
     <div className="absolute right-0 top-full mt-1 w-96 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3 max-h-[calc(100vh-4rem)] overflow-y-auto">
       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Settings</p>
       <GeneralSettingsContent settings={settings} onToggle={onToggle} compact />
-      <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between">
-        <span className="text-xs text-gray-400 tabular-nums">{healthData?.version ? `v${healthData.version}` : ''}</span>
+      <div className="mt-2 pt-2 border-t border-gray-100 flex items-center gap-3">
+        <p className="text-xs text-gray-500 shrink-0">About{healthData?.version ? ` v${healthData.version}` : ''}</p>
         <div className="flex items-center gap-1">
           <a
             href="https://aarthi-ntrjn.github.io/argus"
