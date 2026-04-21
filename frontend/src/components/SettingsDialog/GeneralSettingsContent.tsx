@@ -15,9 +15,10 @@ const MAX_THRESHOLD = 60;
 export interface GeneralSettingsContentProps {
   settings: DashboardSettings;
   onToggle: (key: keyof DashboardSettings, value: boolean) => void;
+  compact?: boolean;
 }
 
-export function GeneralSettingsContent({ settings, onToggle }: GeneralSettingsContentProps) {
+export function GeneralSettingsContent({ settings, onToggle, compact = false }: GeneralSettingsContentProps) {
   const { settings: argusSettings, patchSetting } = useArgusSettings();
   const [showYoloWarning, setShowYoloWarning] = useState(false);
   const [rescanState, setRescanState] = useState<'idle' | 'scanning' | 'done'>('idle');
@@ -79,6 +80,9 @@ export function GeneralSettingsContent({ settings, onToggle }: GeneralSettingsCo
 
   return (
     <>
+      {!compact && (
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">General</p>
+      )}
       <div className="py-1">
         <Checkbox
           label="Hide ended sessions"
@@ -112,41 +116,43 @@ export function GeneralSettingsContent({ settings, onToggle }: GeneralSettingsCo
         />
       </div>
 
-      <div className="mt-2 pt-2 border-t border-gray-100">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Resting</p>
-        <div className="flex items-center gap-2 py-1">
-          <label htmlFor="resting-threshold-input" className="text-sm text-gray-700 shrink-0">
-            Resting after
-          </label>
-          <input
-            id="resting-threshold-input"
-            type="number"
-            aria-label="Resting after"
-            value={thresholdInput}
-            min={MIN_THRESHOLD}
-            max={MAX_THRESHOLD}
-            onChange={e => {
-              setThresholdInput(e.target.value);
-              commitThreshold(e.target.value);
-            }}
-            onBlur={e => commitThreshold(e.target.value, true)}
-            className="w-14 text-sm px-1 py-0.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 text-center"
-          />
-          <span className="text-sm text-gray-500 shrink-0">min</span>
-          <button
-            type="button"
-            onClick={handleReset}
-            aria-label="Reset resting threshold to default"
-            title="Reset to default (20 min, max 60 min)"
-            className="icon-btn text-gray-500 hover:text-blue-600"
-          >
-            <RotateCcw size={12} aria-hidden="true" />
-          </button>
+      {!compact && (
+        <div className="mt-2 pt-2 border-t border-gray-100">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Resting</p>
+          <div className="flex items-center gap-2 py-1">
+            <label htmlFor="resting-threshold-input" className="text-sm text-gray-700 shrink-0">
+              Resting after
+            </label>
+            <input
+              id="resting-threshold-input"
+              type="number"
+              aria-label="Resting after"
+              value={thresholdInput}
+              min={MIN_THRESHOLD}
+              max={MAX_THRESHOLD}
+              onChange={e => {
+                setThresholdInput(e.target.value);
+                commitThreshold(e.target.value);
+              }}
+              onBlur={e => commitThreshold(e.target.value, true)}
+              className="w-14 text-sm px-1 py-0.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 text-center"
+            />
+            <span className="text-sm text-gray-500 shrink-0">min</span>
+            <button
+              type="button"
+              onClick={handleReset}
+              aria-label="Reset resting threshold to default"
+              title="Reset to default (20 min, max 60 min)"
+              className="icon-btn text-gray-500 hover:text-blue-600"
+            >
+              <RotateCcw size={12} aria-hidden="true" />
+            </button>
+          </div>
+          {thresholdError && (
+            <p role="alert" className="text-xs text-red-600 mt-0.5 px-1">{thresholdError}</p>
+          )}
         </div>
-        {thresholdError && (
-          <p role="alert" className="text-xs text-red-600 mt-0.5 px-1">{thresholdError}</p>
-        )}
-      </div>
+      )}
 
       <div className="mt-2 pt-2 border-t border-gray-100">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Launch Behaviour</p>
@@ -166,38 +172,42 @@ export function GeneralSettingsContent({ settings, onToggle }: GeneralSettingsCo
         </label>
       </div>
 
-      <div className="mt-2 pt-2 border-t border-gray-100">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Privacy</p>
-        <label className="flex items-start gap-2 cursor-pointer select-none py-1">
-          <Checkbox
-            aria-label="Send anonymous usage telemetry"
-            checked={argusSettings?.telemetryEnabled ?? true}
-            onChange={e => patchSetting({ telemetryEnabled: e.target.checked })}
-            className="mt-0.5"
-          />
-          <span className="flex flex-col">
-            <span className="text-sm text-gray-600">Send anonymous usage telemetry</span>
-            <Link to="/telemetry" className="text-xs text-blue-600 hover:underline">What we collect</Link>
-          </span>
-        </label>
-      </div>
+      {!compact && (
+        <div className="mt-2 pt-2 border-t border-gray-100">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Privacy</p>
+          <label className="flex items-start gap-2 cursor-pointer select-none py-1">
+            <Checkbox
+              aria-label="Send anonymous usage telemetry"
+              checked={argusSettings?.telemetryEnabled ?? true}
+              onChange={e => patchSetting({ telemetryEnabled: e.target.checked })}
+              className="mt-0.5"
+            />
+            <span className="flex flex-col">
+              <span className="text-sm text-gray-600">Send anonymous usage telemetry</span>
+              <Link to="/telemetry" className="text-xs text-blue-600 hover:underline">What we collect</Link>
+            </span>
+          </label>
+        </div>
+      )}
 
-      <div className="mt-2 pt-2 border-t border-gray-100 flex flex-col gap-1">
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={rescanState === 'scanning'}
-          onClick={async () => {
-            setRescanState('scanning');
-            await rescanRemoteUrls().catch(() => {});
-            setRescanState('done');
-            setTimeout(() => setRescanState('idle'), 2000);
-          }}
-          className="w-full text-left !text-sm hover:!text-blue-600"
-        >
-          {rescanState === 'scanning' ? 'Scanning...' : rescanState === 'done' ? 'Done' : 'Rescan Remote URLs'}
-        </Button>
-      </div>
+      {!compact && (
+        <div className="mt-2 pt-2 border-t border-gray-100 flex flex-col gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={rescanState === 'scanning'}
+            onClick={async () => {
+              setRescanState('scanning');
+              await rescanRemoteUrls().catch(() => {});
+              setRescanState('done');
+              setTimeout(() => setRescanState('idle'), 2000);
+            }}
+            className="w-full text-left !text-sm hover:!text-blue-600"
+          >
+            {rescanState === 'scanning' ? 'Scanning...' : rescanState === 'done' ? 'Done' : 'Rescan Remote URLs'}
+          </Button>
+        </div>
+      )}
 
       <YoloWarningDialog
         open={showYoloWarning}
