@@ -71,7 +71,7 @@ function TeamsConfigContent() {
   return (
     <>
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-sm font-medium text-gray-700">Microsoft Teams</span>
+        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Microsoft Teams</span>
         <Badge colorClass={badge.colorClass}>{badge.text}</Badge>
       </div>
       <ConfigFields fields={fields} />
@@ -95,7 +95,7 @@ function SlackConfigContent() {
   return (
     <>
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-sm font-medium text-gray-700">Slack</span>
+        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Slack</span>
         <Badge colorClass={badge.colorClass}>{badge.text}</Badge>
       </div>
       <ConfigFields fields={fields} />
