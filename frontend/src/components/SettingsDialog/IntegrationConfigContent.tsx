@@ -1,16 +1,12 @@
 import { useCallback, useState } from 'react';
-import { Copy, Check, ChevronDown } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import type { Components } from 'react-markdown';
+import { Copy, Check, ExternalLink } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import Badge from '../Badge';
 import { SectionHeading } from '../SectionHeading';
 import { useTeamsSettings } from '../../hooks/useTeamsSettings';
 import { useSlackSettings } from '../../hooks/useSlackSettings';
 import { useIntegrationControl } from '../../hooks/useIntegrationControl';
 import type { IntegrationVisibleStatus } from '../IntegrationButton/IntegrationButton';
-import teamsGuide from '../../../../docs/README-TEAMS-APP.md?raw';
-import slackGuide from '../../../../docs/README-SLACK-APP.md?raw';
 
 function CopyButton({ value }: { value: string | undefined }) {
   const [copied, setCopied] = useState(false);
@@ -69,48 +65,16 @@ function IntegrationHeader({ label, badge }: { label: string; badge: { text: str
   );
 }
 
-const GUIDE_COMPONENTS: Components = {
-  h1: () => null,
-  h2: ({ children }) => <p className="text-xs font-semibold text-gray-700 mt-3 mb-1 first:mt-0">{children}</p>,
-  h3: ({ children }) => <p className="text-xs font-medium text-gray-600 mt-2 mb-0.5">{children}</p>,
-  p: ({ children }) => <p className="text-xs text-gray-600 mb-1">{children}</p>,
-  a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{children}</a>,
-  code: ({ children, className }) => {
-    const isBlock = className?.startsWith('language-');
-    return isBlock
-      ? <code className="block text-xs font-mono bg-gray-50 border border-gray-200 rounded p-2 overflow-x-auto mb-1 whitespace-pre">{children}</code>
-      : <code className="text-xs font-mono bg-gray-100 text-gray-700 px-1 py-0.5 rounded">{children}</code>;
-  },
-  pre: ({ children }) => <>{children}</>,
-  ul: ({ children }) => <ul className="list-disc pl-4 mb-1 space-y-0.5 text-xs text-gray-600">{children}</ul>,
-  ol: ({ children }) => <ol className="list-decimal pl-4 mb-1 space-y-0.5 text-xs text-gray-600">{children}</ol>,
-  li: ({ children }) => <li>{children}</li>,
-  blockquote: ({ children }) => <blockquote className="border-l-2 border-gray-200 pl-2 text-gray-500 text-xs italic my-1">{children}</blockquote>,
-  hr: () => <hr className="border-gray-100 my-2" />,
-  table: ({ children }) => <table className="text-xs w-full border-collapse mb-2">{children}</table>,
-  th: ({ children }) => <th className="text-left text-xs font-medium text-gray-600 border-b border-gray-200 py-1 px-2">{children}</th>,
-  td: ({ children }) => <td className="text-xs text-gray-600 border-b border-gray-100 py-1 px-2">{children}</td>,
-};
-
-function SetupGuide({ content }: { content: string }) {
-  const [expanded, setExpanded] = useState(false);
+function SetupGuideLink({ to }: { to: string }) {
   return (
     <div className="mt-3 pt-3 border-t border-gray-100">
-      <button
-        type="button"
-        onClick={() => setExpanded(e => !e)}
+      <Link
+        to={to}
         className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:underline"
       >
-        <ChevronDown size={11} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} aria-hidden="true" />
-        Setup guide
-      </button>
-      {expanded && (
-        <div className="mt-2 max-h-80 overflow-y-auto pr-1">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} components={GUIDE_COMPONENTS}>
-            {content}
-          </ReactMarkdown>
-        </div>
-      )}
+        <ExternalLink size={11} aria-hidden="true" />
+        View setup guide
+      </Link>
     </div>
   );
 }
@@ -132,7 +96,7 @@ function TeamsConfigContent() {
     <>
       <IntegrationHeader label="Microsoft Teams" badge={STATUS_BADGE[status]} />
       <ConfigFields fields={fields} />
-      <SetupGuide content={teamsGuide} />
+      <SetupGuideLink to="/setup/teams" />
     </>
   );
 }
@@ -153,11 +117,13 @@ function SlackConfigContent() {
     <>
       <IntegrationHeader label="Slack" badge={STATUS_BADGE[status]} />
       <ConfigFields fields={fields} />
-      <SetupGuide content={slackGuide} />
+      <SetupGuideLink to="/setup/slack" />
     </>
   );
 }
 
 export function IntegrationConfigContent({ type }: { type: 'teams' | 'slack' }) {
-  return type === 'teams' ? <TeamsConfigContent /> : <SlackConfigContent />;
+  return type === 'teams'
+    ? <TeamsConfigContent />
+    : <SlackConfigContent />;
 }
