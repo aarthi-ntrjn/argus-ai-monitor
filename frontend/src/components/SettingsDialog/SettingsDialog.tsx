@@ -5,7 +5,7 @@ import teamsUrl from '../../images/microsoft-teams.svg?url';
 import slackUrl from '../../images/slack.svg?url';
 import type { DashboardSettings } from '../../types';
 import { getHealth } from '../../services/api';
-import { buildBugReportUrl, buildFeatureRequestUrl } from '../../config/feedback';
+import { buildBugReportUrl, buildFeatureRequestUrl, ARGUS_CHANGELOG_URL } from '../../config/feedback';
 import { GeneralSettingsContent } from './GeneralSettingsContent';
 import { IntegrationConfigContent } from './IntegrationConfigContent';
 
@@ -126,12 +126,13 @@ export function SettingsDialog({ open, tab, onTabChange, onClose, settings, onTo
             {tab === 'slack' && <IntegrationConfigContent type="slack" />}
             {tab === 'about' && (
               <div className="flex flex-col gap-1">
-                <div className="flex items-baseline justify-between mb-1">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">About</p>
-                  {healthData?.version && (
-                    <span className="text-xs text-gray-400 tabular-nums">v{healthData.version}</span>
-                  )}
-                </div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">About</p>
+                {healthData?.version && (
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm text-gray-600 tabular-nums">v{healthData.version}</span>
+                    <a href={ARGUS_CHANGELOG_URL} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">What's new</a>
+                  </div>
+                )}
                 <a href="https://aarthi-ntrjn.github.io/argus" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600">
                   <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                   Website
