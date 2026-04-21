@@ -319,12 +319,6 @@ export default function DashboardPage() {
                 <SettingsPanel
                   settings={settings}
                   onToggle={(key, value) => updateSetting(key, value)}
-                  onRestartTour={() => {
-                    setSettingsOpen(false);
-                    resetOnboarding();
-                    startTour('manual');
-                    setTourRun(true);
-                  }}
                   onOpenAllSettings={() => openDialog('general')}
                 />
               )}

@@ -4,11 +4,10 @@ import { GeneralSettingsContent } from '../SettingsDialog/GeneralSettingsContent
 interface SettingsPanelProps {
   settings: DashboardSettings;
   onToggle: (key: keyof DashboardSettings, value: boolean) => void;
-  onRestartTour?: () => void;
   onOpenAllSettings?: () => void;
 }
 
-export function SettingsPanel({ settings, onToggle, onRestartTour, onOpenAllSettings }: SettingsPanelProps) {
+export function SettingsPanel({ settings, onToggle, onOpenAllSettings }: SettingsPanelProps) {
   return (
     <div className="absolute right-0 top-full mt-1 w-96 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3 max-h-[calc(100vh-4rem)] overflow-y-auto">
       <div className="flex items-center justify-between mb-2">
@@ -23,7 +22,7 @@ export function SettingsPanel({ settings, onToggle, onRestartTour, onOpenAllSett
           </button>
         )}
       </div>
-      <GeneralSettingsContent settings={settings} onToggle={onToggle} onRestartTour={onRestartTour} />
+      <GeneralSettingsContent settings={settings} onToggle={onToggle} />
     </div>
   );
 }
