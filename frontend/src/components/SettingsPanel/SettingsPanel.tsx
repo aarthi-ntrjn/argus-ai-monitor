@@ -21,7 +21,7 @@ export function SettingsPanel({ settings, onToggle, onOpenAllSettings }: Setting
       <div className="mt-2 pt-2 border-t border-gray-100 flex items-center gap-3">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide shrink-0">
           About Argus{healthData?.version && (
-            <> - <a href={ARGUS_CHANGELOG_URL} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">v{healthData.version}</a></>
+            <> - <a href={ARGUS_CHANGELOG_URL} target="_blank" rel="noopener noreferrer" className="normal-case font-normal tabular-nums text-gray-400 hover:text-blue-600 transition-colors">v{healthData.version}</a></>
           )}
         </p>
         <div className="flex items-center gap-1">
