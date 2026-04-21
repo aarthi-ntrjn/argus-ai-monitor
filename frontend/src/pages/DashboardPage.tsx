@@ -36,7 +36,9 @@ export default function DashboardPage() {
   const isMobile = useIsMobile();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [isDashboardExpanded, setIsDashboardExpanded] = useState(false);
+  const [isDashboardExpanded, setIsDashboardExpanded] = useState(
+    () => localStorage.getItem('isDashboardExpanded') === 'true'
+  );
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
     () => localStorage.getItem('selectedSessionId')
   );
@@ -216,9 +218,8 @@ export default function DashboardPage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Sticky header */}
-      <header className="bg-slate-50 border-b border-gray-200">
+    <div className="h-screen flex flex-col overflow-hidden bg-slate-50">
+      <header className="shrink-0 bg-slate-50 border-b border-gray-200">
         <div className={`mx-auto ${dashboardWidthClassName} px-4 md:px-8 py-3 flex justify-between items-center`}>
           <h1 data-tour-id="dashboard-header" className="flex items-center gap-2 text-xl font-semibold text-gray-900">
             <ArgusLogo size={28} />
@@ -275,7 +276,11 @@ export default function DashboardPage() {
             </div>
             <button
               type="button"
-              onClick={() => setIsDashboardExpanded(v => !v)}
+              onClick={() => setIsDashboardExpanded(v => {
+                const next = !v;
+                localStorage.setItem('isDashboardExpanded', String(next));
+                return next;
+              })}
               aria-label={isDashboardExpanded ? 'Collapse dashboard width' : 'Expand dashboard width'}
               aria-pressed={isDashboardExpanded}
               title={isDashboardExpanded ? 'Collapse dashboard width' : 'Expand dashboard width'}
@@ -288,7 +293,8 @@ export default function DashboardPage() {
       </header>
 
       {/* Page content */}
-      <div className={`mx-auto ${dashboardWidthClassName} px-4 py-4 pb-20 md:px-8 md:py-6 md:pb-8`}>
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <div className={`mx-auto ${dashboardWidthClassName} h-full px-4 py-4 md:px-8 md:py-6 flex flex-col`}>
 
         {addError && (
           <div role="alert" className="mb-4 px-3 py-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm flex items-center justify-between gap-3">
@@ -299,7 +305,7 @@ export default function DashboardPage() {
 
         {/* Mobile layout: single column with bottom tab navigation */}
         {isMobile ? (
-          <div>
+          <div className="flex-1 min-h-0 overflow-y-auto pb-20 scroll-hover">
             {activeMobileTab === 'sessions' ? (
               reposWithSessions.length === 0 ? emptyState : repoList
             ) : (
@@ -309,25 +315,25 @@ export default function DashboardPage() {
         ) : (
           /* Desktop layout: two-column */
           reposWithSessions.length === 0 ? (
-            <div className="flex gap-6 items-start">
-              <div className="flex-1" style={{ height: 'calc(100vh - 8rem)' }}>{emptyState}</div>
+            <div className="flex-1 min-h-0 flex gap-6">
+              <div className="flex-[13] overflow-y-auto">{emptyState}</div>
               {!settings.hideTodoPanel && (
-                <div className="w-[400px] shrink-0 sticky top-8 flex flex-col" style={{ height: 'calc(100vh - 8rem)' }}>
+                <div className="flex-[7] flex flex-col">
                   <TodoPanel />
                 </div>
               )}
             </div>
           ) : (
-            <div className="flex gap-6 items-start">
-              <div className="flex-1 min-w-0">
+            <div className="flex-1 min-h-0 flex gap-6">
+              <div className={`${selectedSessionId ? (isDashboardExpanded ? 'flex-[2]' : 'flex-1') : 'flex-[13]'} min-w-0 overflow-y-auto scroll-hover`}>
                 {repoList}
               </div>
               {(!settings.hideTodoPanel || selectedSessionId) && (
-                <div className={`${selectedSessionId ? 'w-[640px]' : 'w-[400px]'} shrink-0 sticky top-8 flex flex-col gap-4`} style={{ height: 'calc(100vh - 6rem)' }}>
+                <div className={`${selectedSessionId ? (isDashboardExpanded ? 'flex-[3]' : 'flex-1') : 'flex-[7]'} flex flex-col gap-4 min-h-0`}>
                   {selectedSessionId && (() => {
                     const selectedSession = sessions.find(s => s.id === selectedSessionId);
                     return selectedSession ? (
-                      <div className={settings.hideTodoPanel ? 'flex-1 min-h-0' : 'flex-[4] min-h-0'}>
+                      <div className={settings.hideTodoPanel ? 'flex-1 min-h-0' : 'flex-[3] min-h-0'}>
                         <OutputPane
                           session={selectedSession}
                           onClose={() => selectSession(null)}
@@ -345,6 +351,7 @@ export default function DashboardPage() {
             </div>
           )
         )}
+      </div>
       </div>
 
       {/* Mobile bottom tab bar */}

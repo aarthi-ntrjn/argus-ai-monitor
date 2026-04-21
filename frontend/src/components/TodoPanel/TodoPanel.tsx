@@ -239,7 +239,7 @@ export default function TodoPanel() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto scroll-hover">
         {/* Add row always visible regardless of loading state */}
         <div
           className="flex items-center gap-2 px-4 py-2 border-b border-gray-50 cursor-text"
