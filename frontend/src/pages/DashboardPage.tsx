@@ -72,6 +72,8 @@ export default function DashboardPage() {
     cancelFolderInput, clearAddError,
   } = useRepositoryManagement();
 
+  const [launchError, setLaunchError] = useState<string | null>(null);
+
   const [infoSnapshot, setInfoSnapshot] = useState<string | null>(null);
   useEffect(() => { if (addInfo) setInfoSnapshot(addInfo); }, [addInfo]);
 
@@ -199,6 +201,7 @@ export default function DashboardPage() {
           onRemoveById={handleRemoveRepoById}
           onSetRemoveConfirm={setRemoveConfirmId}
           onSelectSession={handleSessionSelect}
+          onLaunchError={setLaunchError}
         />
       ))}
     </div>
@@ -342,6 +345,13 @@ export default function DashboardPage() {
           <div role="alert" className="mb-4 px-3 py-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm flex items-center justify-between gap-3">
             <span className="leading-snug">{addError}</span>
             <button onClick={clearAddError} aria-label="Dismiss error" className="icon-btn shrink-0 p-0 leading-none">&times;</button>
+          </div>
+        )}
+
+        {launchError && (
+          <div role="alert" className="mb-4 px-3 py-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm flex items-center justify-between gap-3">
+            <span className="leading-snug">{launchError}</span>
+            <button onClick={() => setLaunchError(null)} aria-label="Dismiss error" className="icon-btn shrink-0 p-0 leading-none">&times;</button>
           </div>
         )}
 

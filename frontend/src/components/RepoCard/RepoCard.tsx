@@ -18,11 +18,12 @@ interface RepoCardProps {
   onRemoveById: (id: string) => void;
   onSetRemoveConfirm: (id: string) => void;
   onSelectSession: (id: string) => void;
+  onLaunchError: (msg: string) => void;
 }
 
 export default function RepoCard({
   repo, skipConfirm, selectedSessionId, isMobile,
-  onRemoveById, onSetRemoveConfirm, onSelectSession,
+  onRemoveById, onSetRemoveConfirm, onSelectSession, onLaunchError,
 }: RepoCardProps) {
   return (
     <div data-tour-id="dashboard-repo-card" className="bg-white rounded-lg shadow p-4 md:p-6">
@@ -33,7 +34,7 @@ export default function RepoCard({
             <Badge>
               {repo.sessions.length} session{repo.sessions.length !== 1 ? 's' : ''}
             </Badge>
-            <LaunchDropdown repoPath={repo.path} />
+            <LaunchDropdown repoPath={repo.path} onLaunchError={onLaunchError} />
             <button
               onClick={(e) => {
                 e.stopPropagation();
