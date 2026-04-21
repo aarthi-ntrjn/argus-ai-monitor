@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { ChevronDown, ExternalLink, Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import teamsUrl from '../../images/microsoft-teams.svg?url';
 import slackUrl from '../../images/slack.svg?url';
 import { IntegrationConfigContent } from '../SettingsDialog/IntegrationConfigContent';
@@ -14,7 +15,7 @@ interface DropdownProps {
   status: IntegrationVisibleStatus;
   onToggle?: () => void;
   disabled?: boolean;
-  onOpenSettings: (setupMode?: boolean) => void;
+  onOpenSettings: () => void;
 }
 
 const STATUS_DOT: Record<IntegrationVisibleStatus, string> = {
@@ -26,6 +27,7 @@ const STATUS_DOT: Record<IntegrationVisibleStatus, string> = {
 function IntegrationDropdown({ type, label, status, onToggle, disabled, onOpenSettings }: DropdownProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
   const src = type === 'teams' ? teamsUrl : slackUrl;
 
   useEffect(() => {
@@ -44,7 +46,8 @@ function IntegrationDropdown({ type, label, status, onToggle, disabled, onOpenSe
     return () => document.removeEventListener('keydown', handler);
   }, [open]);
 
-  const handleOpenSettings = (setupMode = false) => { setOpen(false); onOpenSettings(setupMode); };
+  const handleOpenSettings = () => { setOpen(false); onOpenSettings(); };
+  const handleSetupGuide = () => { setOpen(false); navigate(type === 'teams' ? '/setup/teams' : '/setup/slack'); };
 
   const iconOpacity = status === 'not-configured' ? 'opacity-30' : 'opacity-90';
   const toggleTitle =
@@ -96,7 +99,7 @@ function IntegrationDropdown({ type, label, status, onToggle, disabled, onOpenSe
               </p>
               <button
                 type="button"
-                onClick={() => handleOpenSettings(true)}
+                onClick={handleSetupGuide}
                 className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline"
               >
                 <ExternalLink size={11} aria-hidden="true" />
@@ -109,7 +112,7 @@ function IntegrationDropdown({ type, label, status, onToggle, disabled, onOpenSe
               <div className="mt-2 pt-2 border-t border-gray-100">
                 <button
                   type="button"
-                  onClick={() => handleOpenSettings()}
+                  onClick={handleOpenSettings}
                   className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:underline"
                 >
                   <Settings size={11} aria-hidden="true" />
@@ -128,7 +131,7 @@ interface TeamsIntegrationButtonProps {
   running: boolean;
   disabled?: boolean;
   onToggle: () => void;
-  onOpenSettings: (setupMode?: boolean) => void;
+  onOpenSettings: () => void;
 }
 
 export function TeamsIntegrationButton({ running, disabled, onToggle, onOpenSettings }: TeamsIntegrationButtonProps) {
@@ -154,7 +157,7 @@ interface SlackIntegrationButtonProps {
   configured: boolean;
   disabled?: boolean;
   onToggle: () => void;
-  onOpenSettings: (setupMode?: boolean) => void;
+  onOpenSettings: () => void;
 }
 
 export function SlackIntegrationButton({ running, configured, disabled, onToggle, onOpenSettings }: SlackIntegrationButtonProps) {

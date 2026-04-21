@@ -41,13 +41,11 @@ export default function DashboardPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogTab, setDialogTab] = useState<SettingsTab>('general');
-  const [dialogExpandGuide, setDialogExpandGuide] = useState(false);
 
-  const openDialog = (tab: SettingsTab, expandGuide = false) => {
+  const openDialog = (tab: SettingsTab) => {
     setDialogTab(tab);
     setDialogOpen(true);
     setSettingsOpen(false);
-    setDialogExpandGuide(expandGuide);
   };
   const [isDashboardExpanded, setIsDashboardExpanded] = useState(
     () => localStorage.getItem('isDashboardExpanded') === 'true'
@@ -280,14 +278,14 @@ export default function DashboardPage() {
                   running={teamsRunning}
                   disabled={isPending}
                   onToggle={() => toggle('teams')}
-                  onOpenSettings={(setupMode) => openDialog('teams', setupMode)}
+                  onOpenSettings={() => openDialog('teams')}
                 />
                 <SlackIntegrationButton
                   running={slackRunning}
                   configured={slackConfigured}
                   disabled={isPending}
                   onToggle={() => toggle('slack')}
-                  onOpenSettings={(setupMode) => openDialog('slack', setupMode)}
+                  onOpenSettings={() => openDialog('slack')}
                 />
               </div>
             )}
@@ -445,7 +443,6 @@ export default function DashboardPage() {
       <SettingsDialog
         open={dialogOpen}
         tab={dialogTab}
-        expandSetupGuide={dialogExpandGuide}
         onTabChange={setDialogTab}
         onClose={() => setDialogOpen(false)}
         settings={settings}
