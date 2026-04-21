@@ -142,6 +142,15 @@ Every session card has a prompt bar. For **live** (PTY-launched) sessions, type 
 
 Prompt injection works for both Claude Code and Copilot CLI when started via `Launch with Argus`.
 
+#### Prompt History Navigation
+
+Press **Up arrow** to cycle backward through prompts you have sent in the current session. Press **Down arrow** to move forward again. Pressing Down past the most recent entry restores whatever draft text you had typed.
+
+- Works from any cursor position in the input field.
+- Includes prompts typed directly in the Claude/Copilot terminal (they appear as "you" messages in session output).
+- History is per session and capped at the 50 most recent entries.
+- A small position indicator (e.g. `2 / 5`) appears to the left of the input while you are navigating. It disappears when you return to draft mode or send a message.
+
 ### Repository Management
 
 <img src="docs/images/argus-repos.png" alt="Repository Cards" height="300">
@@ -198,7 +207,7 @@ These settings are saved in your browser (`localStorage`) and restored on every 
 
 ### About
 
-The bottom of the Settings panel has an **About** section with quick links to the Argus website, GitHub repository, and npm package page.
+The bottom of the Settings panel has an **About** section with quick links to the Argus website, GitHub repository, and npm package page. The current Argus version is displayed next to the heading (e.g. `v0.1.9`), sourced from the running server.
 
 ### Rescan Remote URLs
 

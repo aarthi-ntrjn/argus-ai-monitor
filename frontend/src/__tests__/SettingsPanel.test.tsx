@@ -13,6 +13,8 @@ vi.mock('../services/api', () => ({
   getTeamsSettings: vi.fn().mockResolvedValue({ enabled: false, connectionStatus: 'unconfigured' }),
   patchTeamsSettings: vi.fn().mockResolvedValue({ enabled: false, connectionStatus: 'unconfigured' }),
   getSlackSettings: vi.fn().mockRejectedValue(new Error('not configured')),
+  getHealth: vi.fn().mockResolvedValue({ status: 'ok', version: '1.2.3', uptime: 0 }),
+  rescanRemoteUrls: vi.fn().mockResolvedValue(undefined),
 }));
 
 function renderWithQuery(ui: React.ReactElement) {
@@ -261,6 +263,21 @@ describe('SettingsPanel', () => {
       renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
       await waitFor(() => screen.getByRole('checkbox', { name: /yolo mode/i }));
       expect(screen.queryByText(/all permission checks disabled/i)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('About section — version display', () => {
+    it('shows the version from the health endpoint next to the About heading', async () => {
+      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
+      await waitFor(() => {
+        expect(screen.getByText('v1.2.3')).toBeInTheDocument();
+      });
+    });
+
+    it('does not show a version when the health query has not resolved', () => {
+      vi.mocked(api.getHealth).mockReturnValue(new Promise(() => {}));
+      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
+      expect(screen.queryByText(/^v\d/)).not.toBeInTheDocument();
     });
   });
 });

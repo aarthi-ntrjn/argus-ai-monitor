@@ -59,17 +59,22 @@ const remoteTag = execSync(`git ls-remote origin "refs/tags/${tag}"`, { encoding
 if (remoteTag) fail(`Tag ${tag} already exists on origin. Bump the version in package.json first.`);
 ok(`Tag ${tag} is available`);
 
-// 5. Create annotated tag
+// 5. Push master to origin so the changelog commit is included before tagging
+step('Pushing master to origin (ensures changelog commit is included in tag)');
+run(`git push origin master`, { inherit: true });
+ok('master pushed to origin');
+
+// 6. Create annotated tag
 step(`Creating annotated tag ${tag}`);
 run(`git tag -a ${tag} -m "Release ${tag}"`);
 ok(`Created local tag ${tag}`);
 
-// 6. Push tag to origin (private)
+// 7. Push tag to origin (private)
 step(`Pushing tag ${tag} to origin (private)`);
 run(`git push origin ${tag}`, { inherit: true });
 ok('Pushed to origin');
 
-// 7. Push tag to public (triggers publish-npm workflow)
+// 8. Push tag to public (triggers publish-npm workflow)
 step(`Pushing tag ${tag} to ${PUBLIC_REMOTE} (public)`);
 run(`git push ${PUBLIC_REMOTE} ${tag}`, { inherit: true });
 ok(`Pushed to ${PUBLIC_REMOTE}`);

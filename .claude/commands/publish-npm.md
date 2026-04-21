@@ -34,7 +34,21 @@ Do not proceed past this step unless the branch is exactly `master`.
 
 ---
 
-### Step 1 — Run the publish-npm script
+### Step 1 — Update the changelog
+
+Before tagging, invoke the `/update-changelog` skill inline (do not ask the user to run it separately — run it as part of this flow):
+
+- Read the version from `package.json`
+- Collect commits since the last tag
+- Generate and commit the changelog entry to `master` on `origin`
+
+The changelog commit must exist on `master` **before** the tag is created, so it is included in the release.
+
+If changelog generation fails for any reason, stop and report the error. Do not proceed to tagging.
+
+---
+
+### Step 2 — Run the publish-npm script
 
 Run:
 ```bash
@@ -47,21 +61,21 @@ If it succeeds, note the tag name printed by the script (e.g. `v0.1.1`).
 
 ---
 
-### Step 2 — Locate the triggered workflow run
+### Step 3 — Locate the triggered workflow run
 
 Wait about 5 seconds for GitHub to register the tag push, then run:
 ```bash
 gh run list --repo aarthi-ntrjn/argus --workflow=publish-npm.yml --limit=5 --json databaseId,status,conclusion,headBranch,createdAt
 ```
 
-Find the run whose `headBranch` matches the tag pushed in Step 1. Note its `databaseId`.
+Find the run whose `headBranch` matches the tag pushed in Step 2. Note its `databaseId`.
 
 If no matching run appears after two attempts (10 seconds apart), report:
 "The workflow did not appear on the public repo. Check https://github.com/aarthi-ntrjn/argus/actions manually."
 
 ---
 
-### Step 3 — Poll until complete
+### Step 4 — Poll until complete
 
 Poll the run every 15 seconds using:
 ```bash
@@ -73,7 +87,7 @@ gh run view <databaseId> --repo aarthi-ntrjn/argus --json status,conclusion,jobs
 
 ---
 
-### Step 4 — Report the result
+### Step 5 — Report the result
 
 **On success** (`conclusion` is `success`):
 

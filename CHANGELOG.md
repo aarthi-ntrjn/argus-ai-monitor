@@ -5,6 +5,134 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.9] - 2026-04-20
+
+### Added
+
+- **Markdown preview**: session card output stream now renders markdown formatting
+- **Copilot ask_user UX**: pending choice prompts from the Copilot `ask_user` tool are now broadcast via WebSocket and displayed in the UI
+
+### Fixed
+
+- Removed dead `@homebridge/node-pty-prebuilt-multiarch` dependency that broke installation on Node 25
+- Skip submit panel when an `ask_user` question has only one option
+- Advance `PendingChoicePanel` index correctly when user types via the session prompt bar
+
+### Changed
+
+- CI pipeline now enforces `--engine-strict` on `npm ci`
+
+---
+
+## [0.1.8] - 2026-04-19
+
+### Added
+
+- **Feedback menu**: GitHub feedback dropdown in Settings panel with bug report and feature request links
+- **About section**: Settings panel now includes links to the website, GitHub repo, and npm package
+- **Why Argus section**: landing page section explaining the attention and context-switching problem
+- **Privacy callout pills**: landing page How It Works section highlights privacy and telemetry posture
+- **Colored tagged logger**: `createTaggedLogger` utility for component-level colored log prefixes
+- **PID-based session pre-linking**: sessions launched via Argus are now linked by PID immediately, replacing the slower repo path scan
+
+### Fixed
+
+- Sticky header with border-bottom in the dashboard, matching the landing page nav style
+- Sidebar height and To Tackle panel now fill available viewport height correctly
+- Send button in session prompt bar replaced with a paper-plane SVG icon, properly centered
+- Error banner padding tightened and user-facing error messages made more descriptive on repo remove failure
+- PTY registry now supports multiple pending launchers per repo path
+- Active directory paths seeded from DB on server startup instead of requiring a full scan
+- Landing page hero headline centered and full-width; telemetry and privacy pill text updated
+
+---
+
+## [0.1.7] - 2026-04-19
+
+### Added
+
+- **Unified output ID scheme**: byte-offset plus block-index for both Claude and Copilot parsers, ensuring stable IDs across server restarts
+- **JsonlWatcherBase**: shared watcher logic extracted into a base class, fixing tail-read behavior and clear-on-attach
+
+### Fixed
+
+- Spaces in repo paths are now escaped when resolving the Claude project directory name
+- Trailing slashes stripped from repo paths on insert and lookup
+- Warning logged when a session working directory does not match any registered repository
+
+---
+
+## [0.1.6] - 2026-04-18
+
+### Fixed
+
+- Publish scripts (`/publish`, `/publish-npm`) guarded against accidental invocation
+- Null return from `execSync` (when `stdio` is `inherit`) handled in both publish scripts
+
+---
+
+## [0.1.5] - 2026-04-18
+
+### Added
+
+- **Headless environment detection**: Argus detects SSH and Codespaces environments on startup and skips terminal launch automatically
+- **Headless launch UX**: LaunchDropdown redesigned with inline copy icon per row; clicking a row in headless mode copies the command to clipboard
+- **Headless hint**: hint shown at the bottom of the launch menu in headless environments
+- **Cross-platform scripts**: `.mjs` equivalents added for all PowerShell automation scripts
+- Ubuntu added to tested-on badges in the landing page
+
+### Fixed
+
+- PTY input: focus-in/out xterm sequences sent before prompt delivery on POSIX
+- PTY write used for prompt delivery on POSIX instead of Win32 input sequences
+- Copilot process identified by command line (not `comm`) on Linux and Mac
+
+---
+
+## [0.1.4] - 2026-04-18
+
+### Added
+
+- `--version` / `-v` flag for the `argus` CLI binary
+- Uninstall and Cleanup section added to README
+
+### Fixed
+
+- Manual command shown when no terminal is available (headless environments and Codespaces)
+- Linux terminal handling stabilized; server no longer crashes on launch in Linux environments
+
+---
+
+## [0.1.3] - 2026-04-18
+
+### Fixed
+
+- `npx argus-ai-hub` now calls the compiled `launch.js` directly instead of using `npm --workspace`, fixing launch failures in published packages
+
+---
+
+## [0.1.2] - 2026-04-18
+
+### Fixed
+
+- Added `argus-ai-hub` bin entry to `package.json` so `npx argus-ai-hub` resolves correctly
+- Restored npm token auth while keeping `--provenance` for attestation
+
+---
+
+## [0.1.1] - 2026-04-18
+
+### Added
+
+- npm publish pipeline via OIDC Trusted Publishing
+- GitHub Pages deploy workflow for the landing page
+
+### Fixed
+
+- Added missing `dotenv` dependency to the published package
+
+---
+
 ## [0.1.0] - 2026-04-12
 
 First public release.

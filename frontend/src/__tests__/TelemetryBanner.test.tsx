@@ -15,7 +15,7 @@ describe('TelemetryBanner', () => {
       </MemoryRouter>
     );
 
-    await userEvent.click(screen.getByRole('button', { name: /opt out\?/i }));
+    await userEvent.click(screen.getByRole('button', { name: /opt out/i }));
 
     expect(onOpenSettings).toHaveBeenCalledOnce();
     expect(onDismiss).not.toHaveBeenCalled();

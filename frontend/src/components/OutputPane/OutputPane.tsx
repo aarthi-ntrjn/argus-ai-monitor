@@ -79,7 +79,7 @@ export default function OutputPane({ session, onClose, className, 'data-tour-id'
           )}
         </div>
       </div>
-      <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto rounded-b-lg">
+      <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto rounded-b-lg scroll-hover">
         {isError ? (
           <p className="p-6 text-center text-sm text-red-600">Failed to load output. Is the server running?</p>
         ) : (
