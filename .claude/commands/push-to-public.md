@@ -4,13 +4,13 @@ description: Generate a meaningful PR description for the public repo sync, then
 
 ## Invocation rules
 
-**ONLY execute this skill when the user explicitly types `/publish-to-public` as a standalone command.**
+**ONLY execute this skill when the user explicitly types `/push-to-public` as a standalone command.**
 Do NOT execute it in response to any of the following:
 - Phrases like "publish", "sync the public repo", "push to public", or any paraphrase
 - Being asked to "run the next step" when publish is implied
-- Any autonomous or inferred intent — the user must type the exact slash command `/publish-to-public`
+- Any autonomous or inferred intent — the user must type the exact slash command `/push-to-public`
 
-If this skill was not triggered by the exact command `/publish-to-public`, stop immediately without taking any action.
+If this skill was not triggered by the exact command `/push-to-public`, stop immediately without taking any action.
 
 ---
 
@@ -100,4 +100,5 @@ Once the script completes, output:
 - Merged: ✅
 ```
 
-If the script fails (CI failure, merge conflict, etc.), report the error clearly and tell the user what to fix before re-running `/publish-to-public`.
+If the script fails (CI failure, merge conflict, etc.), report the error clearly and tell the user what to fix before re-running `/push-to-public`.
+
