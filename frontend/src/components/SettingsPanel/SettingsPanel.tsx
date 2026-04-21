@@ -1,7 +1,8 @@
-import { Settings } from 'lucide-react';
+import { Settings, Bug, Lightbulb } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import type { DashboardSettings } from '../../types';
 import { getHealth } from '../../services/api';
+import { buildBugReportUrl, buildFeatureRequestUrl } from '../../config/feedback';
 import { GeneralSettingsContent } from '../SettingsDialog/GeneralSettingsContent';
 
 interface SettingsPanelProps {
@@ -49,6 +50,31 @@ export function SettingsPanel({ settings, onToggle, onOpenAllSettings }: Setting
             className="icon-btn text-gray-400 hover:text-blue-600"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M0 0v24h24V0H0zm6.672 19.992H3.336V6.664h3.336v13.328zm11.664 0h-3.336v-9.992h-3.336v9.992H8.328V6.664h10.008v13.328z"/></svg>
+          </a>
+        </div>
+      </div>
+      <div className="mt-2 pt-2 border-t border-gray-100 flex items-center gap-3">
+        <p className="text-xs text-gray-500 shrink-0">Feedback</p>
+        <div className="flex items-center gap-1">
+          <a
+            href={buildBugReportUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Report a bug"
+            title="Report a bug"
+            className="icon-btn text-gray-400 hover:text-blue-600"
+          >
+            <Bug size={13} aria-hidden="true" />
+          </a>
+          <a
+            href={buildFeatureRequestUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Request a feature"
+            title="Request a feature"
+            className="icon-btn text-gray-400 hover:text-blue-600"
+          >
+            <Lightbulb size={13} aria-hidden="true" />
           </a>
         </div>
       </div>
