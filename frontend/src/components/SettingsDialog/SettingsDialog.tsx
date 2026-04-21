@@ -118,7 +118,7 @@ export function SettingsDialog({ open, tab, onTabChange, onClose, settings, onTo
           >
             <X size={15} aria-hidden="true" />
           </button>
-          <div className="p-4">
+          <div className="px-4 pb-4 pt-9">
             {tab === 'general' && (
               <GeneralSettingsContent settings={settings} onToggle={onToggle} />
             )}
