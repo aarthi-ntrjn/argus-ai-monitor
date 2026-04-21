@@ -2,7 +2,7 @@ import { Settings, Bug, Lightbulb } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import type { DashboardSettings } from '../../types';
 import { getHealth } from '../../services/api';
-import { buildBugReportUrl, buildFeatureRequestUrl } from '../../config/feedback';
+import { buildBugReportUrl, buildFeatureRequestUrl, ARGUS_CHANGELOG_URL } from '../../config/feedback';
 import { GeneralSettingsContent } from '../SettingsDialog/GeneralSettingsContent';
 
 interface SettingsPanelProps {
@@ -19,7 +19,11 @@ export function SettingsPanel({ settings, onToggle, onOpenAllSettings }: Setting
       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Settings</p>
       <GeneralSettingsContent settings={settings} onToggle={onToggle} compact />
       <div className="mt-2 pt-2 border-t border-gray-100 flex items-center gap-3">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide shrink-0">About Argus{healthData?.version ? ` - v${healthData.version}` : ''}</p>
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide shrink-0">
+          About Argus{healthData?.version && (
+            <> - <a href={ARGUS_CHANGELOG_URL} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">v{healthData.version}</a></>
+          )}
+        </p>
         <div className="flex items-center gap-1">
           <a
             href="https://aarthi-ntrjn.github.io/argus"
