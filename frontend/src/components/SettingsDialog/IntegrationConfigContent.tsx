@@ -70,6 +70,8 @@ function SetupGuideLink({ to }: { to: string }) {
     <div className="mt-3 pt-3 border-t border-gray-100">
       <Link
         to={to}
+        target="_blank"
+        rel="noreferrer"
         className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:underline"
       >
         <ExternalLink size={11} aria-hidden="true" />
@@ -96,7 +98,7 @@ function TeamsConfigContent() {
     <>
       <IntegrationHeader label="Microsoft Teams" badge={STATUS_BADGE[status]} />
       <ConfigFields fields={fields} />
-      <SetupGuideLink to="/setup/teams" />
+      {status !== 'connected' && <SetupGuideLink to="/setup/teams" />}
     </>
   );
 }
@@ -117,7 +119,7 @@ function SlackConfigContent() {
     <>
       <IntegrationHeader label="Slack" badge={STATUS_BADGE[status]} />
       <ConfigFields fields={fields} />
-      <SetupGuideLink to="/setup/slack" />
+      {status !== 'connected' && <SetupGuideLink to="/setup/slack" />}
     </>
   );
 }
