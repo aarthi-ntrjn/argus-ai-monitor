@@ -2,15 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { SettingsPanel } from '../components/SettingsPanel/SettingsPanel';
-import type { DashboardSettings } from '../types';
+import { IntegrationConfigContent } from '../components/SettingsDialog/IntegrationConfigContent';
 import * as api from '../services/api';
 
+const notRunning = { integrationsEnabled: true, slack: { notifier: null, listener: null }, teams: { notifier: { running: false }, listener: null } };
+const teamsRunning = { integrationsEnabled: true, slack: { notifier: null, listener: null }, teams: { notifier: { running: true }, listener: null } };
+
 vi.mock('../services/api', () => ({
-  getArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false, yoloMode: false }),
-  patchArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false, yoloMode: false }),
   getTeamsSettings: vi.fn().mockResolvedValue({ enabled: false, connectionStatus: 'unconfigured' }),
   getSlackSettings: vi.fn().mockRejectedValue(new Error('not configured')),
+  getIntegrationStatus: vi.fn().mockResolvedValue({ integrationsEnabled: true, slack: { notifier: null, listener: null }, teams: { notifier: { running: false }, listener: null } }),
+  startIntegration: vi.fn().mockResolvedValue(undefined),
+  stopIntegration: vi.fn().mockResolvedValue(undefined),
 }));
 
 function renderWithQuery(ui: React.ReactElement) {
@@ -18,36 +21,28 @@ function renderWithQuery(ui: React.ReactElement) {
   return render(<MemoryRouter><QueryClientProvider client={qc}>{ui}</QueryClientProvider></MemoryRouter>);
 }
 
-const baseSettings: DashboardSettings = {
-  hideEndedSessions: false,
-  hideReposWithNoActiveSessions: false,
-  hideInactiveSessions: false,
-  outputDisplayMode: 'focused',
-  hideTodoPanel: false,
-};
-
 describe('SettingsPanel - Teams integration section', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(api.getArgusSettings).mockResolvedValue({ autoRegisterRepos: false, yoloMode: false } as any);
     vi.mocked(api.getTeamsSettings).mockResolvedValue({ enabled: false, connectionStatus: 'unconfigured' });
+    vi.mocked(api.getIntegrationStatus).mockResolvedValue(notRunning);
   });
 
   it('renders the Microsoft Teams section heading', async () => {
-    renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
+    renderWithQuery(<IntegrationConfigContent type="teams" />);
     await waitFor(() => {
       expect(screen.getByText(/microsoft teams/i)).toBeInTheDocument();
     });
   });
 
   it('shows connection status badge', async () => {
-    renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
+    renderWithQuery(<IntegrationConfigContent type="teams" />);
     await waitFor(() => {
-      expect(screen.getByText(/unconfigured/i)).toBeInTheDocument();
+      expect(screen.getByText(/not configured/i)).toBeInTheDocument();
     });
   });
 
-  it('shows connected status when config is connected', async () => {
+  it('shows connected status when integration is running', async () => {
     vi.mocked(api.getTeamsSettings).mockResolvedValue({
       enabled: true,
       teamId: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
@@ -55,9 +50,10 @@ describe('SettingsPanel - Teams integration section', () => {
       ownerAadObjectId: 'owner-aad-id',
       connectionStatus: 'connected',
     });
-    renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
+    vi.mocked(api.getIntegrationStatus).mockResolvedValue(teamsRunning);
+    renderWithQuery(<IntegrationConfigContent type="teams" />);
     await waitFor(() => {
-      expect(screen.getByText(/connected/i)).toBeInTheDocument();
+      expect(screen.getByText('connected')).toBeInTheDocument();
     });
   });
 
@@ -69,21 +65,21 @@ describe('SettingsPanel - Teams integration section', () => {
       ownerAadObjectId: 'owner-aad-id',
       connectionStatus: 'connected',
     });
-    renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
+    renderWithQuery(<IntegrationConfigContent type="teams" />);
     await waitFor(() => {
       expect(screen.getByText('test-team-id')).toBeInTheDocument();
     });
   });
 
   it('shows not set when team ID is missing', async () => {
-    renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
+    renderWithQuery(<IntegrationConfigContent type="teams" />);
     await waitFor(() => {
       expect(screen.getAllByText(/not set/i).length).toBeGreaterThan(0);
     });
   });
 
   it('does not render a save button', async () => {
-    renderWithQuery(<SettingsPanel settings={baseSettings} onToggle={vi.fn()} />);
+    renderWithQuery(<IntegrationConfigContent type="teams" />);
     await waitFor(() => screen.getByText(/microsoft teams/i));
     expect(screen.queryByRole('button', { name: /save teams settings/i })).not.toBeInTheDocument();
   });

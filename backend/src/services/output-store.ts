@@ -12,17 +12,30 @@ export interface OutputPage {
   total: number;
 }
 
+type OutputListener = (sessionId: string, outputs: SessionOutput[]) => void;
+
 export class OutputStore {
+  private readonly listeners = new Set<OutputListener>();
+
+  addOutputListener(fn: OutputListener): void {
+    this.listeners.add(fn);
+  }
+
+  removeOutputListener(fn: OutputListener): void {
+    this.listeners.delete(fn);
+  }
+
   /** Returns true if at least one output was newly inserted (not a duplicate). */
-  insertOutput(sessionId: string, outputs: SessionOutput[]): boolean {
+  insertOutput(sessionId: string, outputs: SessionOutput[], options?: { skipNotifications?: boolean }): boolean {
     const inserted = outputs.filter(o => dbInsertOutput(o));
-    if (inserted.length > 0) {
+    if (inserted.length > 0 && !options?.skipNotifications) {
       broadcast({
         type: 'session.output.batch',
         timestamp: new Date().toISOString(),
         data: { sessionId, outputs: inserted as unknown as Record<string, unknown>[] },
       });
       outputEvents.emit('session.output.batch', sessionId, outputs);
+      for (const fn of this.listeners) fn(sessionId, inserted);
     }
     return inserted.length > 0;
   }
