@@ -156,11 +156,12 @@ export default function LaunchDropdown({ repoPath, onLaunchError }: Props) {
                   onCopy={(e) => handleCopy(e, 'copilot')}
                 />
               )}
-              {headless && (
-                <p className="px-3 pt-1.5 pb-2 text-[10px] text-gray-400 border-t border-gray-100 mt-1">
-                  No terminal available. Copy and run manually.
-                </p>
-              )}
+              <div className="border-t border-gray-100 mt-1 px-3 pt-1.5 pb-2 space-y-1">
+                {headless && (
+                  <p className="text-[10px] text-gray-400">No terminal available. Copy and run manually.</p>
+                )}
+                <p className="text-[10px] text-gray-400">Log in to the CLI and trust this folder first so Argus can fully control the session.</p>
+              </div>
             </>
           )}
         </div>
