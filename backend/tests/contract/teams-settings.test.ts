@@ -30,8 +30,15 @@ describe('GET /api/v1/settings/teams', () => {
     closeDb();
   });
 
-  it('returns connectionStatus: disconnected when no config file exists', async () => {
+  it('returns connectionStatus: unconfigured when no config file exists', async () => {
     vi.mocked(loadTeamsConfig).mockReturnValue({ enabled: false });
+    const res = await request.get('/api/v1/settings/teams');
+    expect(res.status).toBe(200);
+    expect(res.body.connectionStatus).toBe('unconfigured');
+  });
+
+  it('returns connectionStatus: disconnected when config is set but disabled', async () => {
+    vi.mocked(loadTeamsConfig).mockReturnValue({ enabled: false, teamId: 'T-001', channelId: 'C-001', clientId: 'cid', clientSecret: 'csec' });
     const res = await request.get('/api/v1/settings/teams');
     expect(res.status).toBe(200);
     expect(res.body.connectionStatus).toBe('disconnected');

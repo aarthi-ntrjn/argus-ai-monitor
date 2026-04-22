@@ -5,6 +5,8 @@ import type { TeamsConfig } from '../../models/index.js';
 type ConnectionStatus = 'connected' | 'disconnected' | 'unconfigured';
 
 function checkConnectionStatus(config: Partial<TeamsConfig> & { enabled: boolean }): ConnectionStatus {
+  const hasAnyConfig = Boolean(config.teamId || config.channelId || config.clientId || config.clientSecret);
+  if (!hasAnyConfig) return 'unconfigured';
   if (!config.enabled) return 'disconnected';
   const hasAuth = Boolean(config.clientId && config.clientSecret);
   if (!config.teamId || !config.channelId || !hasAuth) return 'unconfigured';
