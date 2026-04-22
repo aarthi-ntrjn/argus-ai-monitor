@@ -24,6 +24,7 @@ const STEPS: SetupStep[] = [
         <p className="text-sm text-gray-600 mb-3">Teams delivers webhook events to Argus over HTTPS. Since Argus runs on your local machine, use a dev tunnel to expose it.</p>
         <p className="text-sm text-gray-600 mb-1">Create a persistent tunnel (one-time):</p>
         <CodeBlock value={TUNNEL_CREATE} />
+        <p className="text-xs text-gray-400 mt-2">Sign in with your GitHub account or personal Microsoft account when prompted by <Mono>devtunnel login</Mono>.</p>
         <p className="text-sm text-gray-600 mt-3 mb-1">Start it each session:</p>
         <CodeBlock value="devtunnel host argus-tunnel" />
         <p className="text-sm text-gray-600 mt-3">Note the printed URL, e.g. <Mono>{'https://<tunnel-id>-7411.<region>.devtunnels.ms'}</Mono>. This is your <Mono>{'<endpoint>'}</Mono> in the next step.</p>
