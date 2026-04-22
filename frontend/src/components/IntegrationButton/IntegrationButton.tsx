@@ -108,7 +108,7 @@ function IntegrationDropdown({ type, label, status, onToggle, disabled, onOpenSe
             </div>
           ) : (
             <>
-              <IntegrationConfigContent type={type} />
+              <IntegrationConfigContent type={type} showSetupGuide={status !== 'connected'} />
               <div className="mt-2 pt-2 border-t border-gray-100">
                 <button
                   type="button"

@@ -81,7 +81,7 @@ function SetupGuideLink({ to }: { to: string }) {
   );
 }
 
-function TeamsConfigContent() {
+function TeamsConfigContent({ showSetupGuide }: { showSetupGuide: boolean }) {
   const { config } = useTeamsSettings();
   const { teamsRunning } = useIntegrationControl();
   const status: IntegrationVisibleStatus =
@@ -98,12 +98,12 @@ function TeamsConfigContent() {
     <>
       <IntegrationHeader label="Microsoft Teams" badge={STATUS_BADGE[status]} />
       <ConfigFields fields={fields} />
-      {status !== 'connected' && <SetupGuideLink to="/setup/teams" />}
+      {showSetupGuide && <SetupGuideLink to="/setup/teams" />}
     </>
   );
 }
 
-function SlackConfigContent() {
+function SlackConfigContent({ showSetupGuide }: { showSetupGuide: boolean }) {
   const { config } = useSlackSettings();
   const { slackConfigured, slackRunning } = useIntegrationControl();
   const status: IntegrationVisibleStatus =
@@ -119,13 +119,13 @@ function SlackConfigContent() {
     <>
       <IntegrationHeader label="Slack" badge={STATUS_BADGE[status]} />
       <ConfigFields fields={fields} />
-      {status !== 'connected' && <SetupGuideLink to="/setup/slack" />}
+      {showSetupGuide && <SetupGuideLink to="/setup/slack" />}
     </>
   );
 }
 
-export function IntegrationConfigContent({ type }: { type: 'teams' | 'slack' }) {
+export function IntegrationConfigContent({ type, showSetupGuide = true }: { type: 'teams' | 'slack'; showSetupGuide?: boolean }) {
   return type === 'teams'
-    ? <TeamsConfigContent />
-    : <SlackConfigContent />;
+    ? <TeamsConfigContent showSetupGuide={showSetupGuide} />
+    : <SlackConfigContent showSetupGuide={showSetupGuide} />;
 }
