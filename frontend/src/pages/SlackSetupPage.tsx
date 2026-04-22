@@ -1,46 +1,12 @@
-import { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Copy, Check } from 'lucide-react';
-import ArgusLogo from '../components/ArgusLogo';
+import { SetupPage, CodeBlock, Mono, ExternalA } from '../components/SetupPage/SetupPage';
+import type { SetupStep } from '../components/SetupPage/SetupPage';
 import slackUrl from '../images/slack.svg?url';
 
-function CopyButton({ value }: { value: string }) {
-  const [copied, setCopied] = useState(false);
-  const handle = useCallback(() => {
-    navigator.clipboard.writeText(value).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  }, [value]);
-  return (
-    <button type="button" onClick={handle} aria-label="Copy to clipboard" className="icon-btn text-gray-400 hover:text-blue-600 shrink-0">
-      {copied ? <Check size={12} aria-hidden="true" /> : <Copy size={12} aria-hidden="true" />}
-    </button>
-  );
-}
-
-function CodeBlock({ value }: { value: string }) {
-  return (
-    <div className="flex items-start gap-2 bg-gray-50 border border-gray-200 rounded-md px-3 py-2.5 mt-2">
-      <code className="text-xs font-mono text-gray-800 flex-1 whitespace-pre">{value}</code>
-      <CopyButton value={value} />
-    </div>
-  );
-}
-
-function Mono({ children }: { children: string }) {
-  return <code className="text-xs font-mono bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded">{children}</code>;
-}
-
-function ExternalA({ href, children }: { href: string; children: string }) {
-  return <a href={href} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">{children}</a>;
-}
-
 const SCOPES = [
-  ['chat:write',       'Post messages and thread replies'],
-  ['channels:read',    'Look up channel information'],
-  ['app_mentions:read','Receive @mention events'],
-  ['im:history',       'Receive direct messages'],
+  ['chat:write',        'Post messages and thread replies'],
+  ['channels:read',     'Look up channel information'],
+  ['app_mentions:read', 'Receive @mention events'],
+  ['im:history',        'Receive direct messages'],
 ] as const;
 
 const ENV_BLOCK = `SLACK_BOT_TOKEN=xoxb-...        # required
@@ -50,9 +16,7 @@ SLACK_APP_TOKEN=xapp-...        # optional — enables inbound commands`;
 const LOG_BLOCK = `[SlackNotifier] Initialized, posting to channel C01234ABCDE
 [SlackListener] Socket Mode connected, listening for app mentions and DMs`;
 
-interface Step { title: string; body: React.ReactNode; }
-
-const STEPS: Step[] = [
+const STEPS: SetupStep[] = [
   {
     title: 'Create the app',
     body: (
@@ -160,57 +124,21 @@ const STEPS: Step[] = [
   },
 ];
 
+const PREREQUISITES = (
+  <ul className="space-y-1.5 text-sm text-gray-600 list-disc pl-4">
+    <li>A Slack workspace — free tier is sufficient. <ExternalA href="https://slack.com/help/articles/206845317-Create-a-Slack-workspace">Create one</ExternalA> if you don't have one.</li>
+    <li>Admin access to the workspace, or permission to install apps.</li>
+  </ul>
+);
+
 export default function SlackSetupPage() {
-  const navigate = useNavigate();
-
   return (
-    <div className="min-h-screen bg-slate-50 p-6 md:p-12">
-      <div className="mx-auto max-w-2xl">
-
-        <div className="mb-8">
-          <button onClick={() => navigate('/')} className="icon-btn text-sm text-gray-600 hover:text-blue-600 mb-6 flex items-center gap-1.5">
-            <ArrowLeft size={14} aria-hidden="true" /> Back
-          </button>
-          <div className="flex items-center gap-2.5 mb-1">
-            <ArgusLogo size={24} />
-            <img src={slackUrl} alt="" width={20} height={20} aria-hidden="true" />
-            <h1 className="text-xl font-semibold text-gray-900">Slack Setup</h1>
-          </div>
-          <p className="text-sm text-gray-500">Connect Argus to a Slack channel in 8 steps.</p>
-        </div>
-
-        <div className="bg-white border border-gray-200 rounded-lg px-6 py-5 mb-4">
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Prerequisites</h2>
-          <ul className="space-y-1.5 text-sm text-gray-600 list-disc pl-4">
-            <li>A Slack workspace — free tier is sufficient. <ExternalA href="https://slack.com/help/articles/206845317-Create-a-Slack-workspace">Create one</ExternalA> if you don't have one.</li>
-            <li>Admin access to the workspace, or permission to install apps.</li>
-          </ul>
-        </div>
-
-        <div className="bg-white border border-gray-200 rounded-lg px-6 py-5">
-          {STEPS.map((step, i) => (
-            <div key={step.title} className="flex gap-4">
-              <div className="flex flex-col items-center">
-                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-semibold shrink-0">
-                  {i + 1}
-                </div>
-                {i < STEPS.length - 1 && <div className="w-px flex-1 bg-gray-100 my-1.5" />}
-              </div>
-              <div className={`flex-1 ${i < STEPS.length - 1 ? 'pb-6' : 'pb-0'}`}>
-                <h2 className="text-sm font-semibold text-gray-900 mb-2 leading-6">{step.title}</h2>
-                {step.body}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-6">
-          <button onClick={() => navigate('/')} className="icon-btn text-sm text-gray-500 hover:text-blue-600 flex items-center gap-1.5">
-            <ArrowLeft size={13} aria-hidden="true" /> Back to Argus
-          </button>
-        </div>
-
-      </div>
-    </div>
+    <SetupPage
+      title="Slack Setup"
+      subtitle="Connect Argus to a Slack channel in 8 steps."
+      logoSrc={slackUrl}
+      prerequisites={PREREQUISITES}
+      steps={STEPS}
+    />
   );
 }

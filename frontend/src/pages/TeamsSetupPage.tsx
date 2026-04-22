@@ -1,61 +1,94 @@
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import type { Components } from 'react-markdown';
-import ArgusLogo from '../components/ArgusLogo';
-import teamsGuide from '../../../docs/README-TEAMS-APP.md?raw';
+import { SetupPage, CodeBlock, Mono, ExternalA } from '../components/SetupPage/SetupPage';
+import type { SetupStep } from '../components/SetupPage/SetupPage';
+import teamsUrl from '../images/microsoft-teams.svg?url';
 
-const COMPONENTS: Components = {
-  h1: ({ children }) => <h1 className="text-2xl font-semibold text-gray-900 mb-1">{children}</h1>,
-  h2: ({ children }) => <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mt-6 mb-3 first:mt-0">{children}</h2>,
-  h3: ({ children }) => <h3 className="text-sm font-medium text-gray-700 mt-4 mb-2">{children}</h3>,
-  p: ({ children }) => <p className="text-sm text-gray-700 mb-3">{children}</p>,
-  a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{children}</a>,
-  code: ({ children, className }) => {
-    const isBlock = className?.startsWith('language-');
-    return isBlock
-      ? <code className="block text-sm font-mono bg-gray-50 border border-gray-200 rounded p-3 overflow-x-auto mb-3 whitespace-pre">{children}</code>
-      : <code className="text-sm font-mono bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded">{children}</code>;
+const TUNNEL_CREATE = `devtunnel login
+devtunnel create argus-tunnel --allow-anonymous
+devtunnel port create argus-tunnel -p 7411 --protocol auto`;
+
+const BOT_CREATE = `teams login
+teams app create --name "Argus" \\
+  --endpoint "https://<endpoint>/api/v1/teams/webhook" \\
+  --env .env`;
+
+const ENV_BLOCK = `TEAMS_ENABLED=true
+TEAMS_TEAM_ID=<Team ID>
+TEAMS_CHANNEL_ID=<Channel ID>
+TEAMS_OWNER_AAD_OBJECT_ID=<Your AAD Object ID>`;
+
+const STEPS: SetupStep[] = [
+  {
+    title: 'Set up a tunnel (local dev only)',
+    body: (
+      <>
+        <p className="text-xs text-gray-400 mb-3">Skip this step if Argus is deployed on a server with a public HTTPS domain.</p>
+        <p className="text-sm text-gray-600 mb-1">Create a persistent tunnel (one-time):</p>
+        <CodeBlock value={TUNNEL_CREATE} />
+        <p className="text-sm text-gray-600 mt-3 mb-1">Start it each session:</p>
+        <CodeBlock value="devtunnel host argus-tunnel" />
+        <p className="text-sm text-gray-600 mt-3">Note the printed URL, e.g. <Mono>{'https://<tunnel-id>-7411.<region>.devtunnels.ms'}</Mono>. This is your <Mono>{'<endpoint>'}</Mono> in the next step.</p>
+      </>
+    ),
   },
-  pre: ({ children }) => <>{children}</>,
-  ul: ({ children }) => <ul className="list-disc pl-5 mb-3 space-y-1 text-sm text-gray-700">{children}</ul>,
-  ol: ({ children }) => <ol className="list-decimal pl-5 mb-3 space-y-1 text-sm text-gray-700">{children}</ol>,
-  li: ({ children }) => <li>{children}</li>,
-  blockquote: ({ children }) => <blockquote className="border-l-4 border-gray-200 pl-4 text-gray-500 text-sm italic my-3">{children}</blockquote>,
-  hr: () => <hr className="border-gray-200 my-6" />,
-  table: ({ children }) => (
-    <div className="overflow-x-auto mb-4">
-      <table className="text-sm w-full border-collapse">{children}</table>
-    </div>
-  ),
-  th: ({ children }) => <th className="text-left text-xs font-medium text-gray-600 border-b border-gray-200 py-2 px-3 bg-gray-50">{children}</th>,
-  td: ({ children }) => <td className="text-sm text-gray-700 border-b border-gray-100 py-2 px-3">{children}</td>,
-};
+  {
+    title: 'Create the bot',
+    body: (
+      <>
+        <CodeBlock value={BOT_CREATE} />
+        <p className="text-sm text-gray-600 mt-3">This registers the bot, generates credentials (<Mono>CLIENT_ID</Mono>, <Mono>CLIENT_SECRET</Mono>, <Mono>TENANT_ID</Mono>), writes them to <Mono>.env</Mono>, and prints an install link. Open the install link to add the bot to your team.</p>
+        <p className="text-xs text-gray-400 mt-2">Use your tunnel URL for <Mono>{'<endpoint>'}</Mono> during local dev, or your server's public domain in production.</p>
+      </>
+    ),
+  },
+  {
+    title: 'Get your Team ID, Channel ID, and AAD Object ID',
+    body: (
+      <ol className="space-y-3 text-sm text-gray-600 list-decimal pl-4">
+        <li><strong>Team ID:</strong> Right-click the team name in Teams -&gt; <strong>Get link to team</strong>. The <Mono>groupId</Mono> parameter is your <Mono>TEAMS_TEAM_ID</Mono>.</li>
+        <li><strong>Channel ID:</strong> Right-click the channel -&gt; <strong>Get link to channel</strong>. The decoded value starting with <Mono>19:</Mono> is your <Mono>TEAMS_CHANNEL_ID</Mono> (format: <Mono>{'19:xxxxxxxx@thread.tacv2'}</Mono>).</li>
+        <li><strong>AAD Object ID:</strong> In the <ExternalA href="https://portal.azure.com">Azure portal</ExternalA>, go to <strong>Microsoft Entra ID -&gt; Users</strong>, click your account, and copy the <strong>Object ID</strong>. This is your <Mono>TEAMS_OWNER_AAD_OBJECT_ID</Mono>.</li>
+      </ol>
+    ),
+  },
+  {
+    title: 'Configure Argus',
+    body: (
+      <>
+        <p className="text-sm text-gray-600 mb-1">Add to <Mono>backend/.env</Mono> (bot credentials from step 2 are already there):</p>
+        <CodeBlock value={ENV_BLOCK} />
+        <p className="text-sm text-gray-600 mt-3">Restart Argus.</p>
+      </>
+    ),
+  },
+  {
+    title: 'Verify the connection',
+    body: (
+      <>
+        <p className="text-sm text-gray-600 mb-1">Check the server logs on startup for:</p>
+        <CodeBlock value="teams: configured, subscribing to session events" />
+        <p className="text-sm text-gray-600 mt-3 mb-1">Mention the bot in the channel to confirm it is reachable:</p>
+        <CodeBlock value="@Argus help" />
+      </>
+    ),
+  },
+];
+
+const PREREQUISITES = (
+  <ul className="space-y-1.5 text-sm text-gray-600 list-disc pl-4">
+    <li><ExternalA href="https://microsoft.github.io/teams-sdk/">Teams CLI</ExternalA> installed: <Mono>npm install -g @microsoft/teams.cli@preview</Mono></li>
+    <li>A Microsoft Teams workspace where you are a team owner or admin. <ExternalA href="https://www.microsoft.com/en-us/microsoft-365/business/microsoft-365-plans-and-pricing">Get Microsoft 365</ExternalA> if you don't have one.</li>
+    <li>For local dev: <ExternalA href="https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/">Azure Dev Tunnels CLI</ExternalA> -- <Mono>winget install Microsoft.DevTunnel</Mono> or <Mono>brew install devtunnel</Mono>.</li>
+  </ul>
+);
 
 export default function TeamsSetupPage() {
-  const navigate = useNavigate();
-
   return (
-    <div className="min-h-screen bg-slate-50 p-6 md:p-12">
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-8">
-          <button onClick={() => navigate('/')} className="icon-btn text-sm font-medium text-gray-700 hover:text-blue-600 mb-6 flex items-center gap-1">
-            <ArrowLeft size={14} />Back
-          </button>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold text-gray-900 mb-1">
-            <ArgusLogo size={28} />
-            Teams Setup
-          </h1>
-          <p className="text-sm text-gray-500">How to configure Microsoft Teams notifications.</p>
-        </div>
-
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} components={COMPONENTS}>
-            {teamsGuide}
-          </ReactMarkdown>
-        </div>
-      </div>
-    </div>
+    <SetupPage
+      title="Teams Setup"
+      subtitle="Connect Argus to a Microsoft Teams channel in 5 steps."
+      logoSrc={teamsUrl}
+      prerequisites={PREREQUISITES}
+      steps={STEPS}
+    />
   );
 }
