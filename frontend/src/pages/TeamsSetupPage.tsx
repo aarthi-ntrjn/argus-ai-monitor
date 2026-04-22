@@ -18,10 +18,10 @@ TEAMS_OWNER_AAD_OBJECT_ID=<Your AAD Object ID>`;
 
 const STEPS: SetupStep[] = [
   {
-    title: 'Set up a tunnel (local dev only)',
+    title: 'Set up a tunnel',
     body: (
       <>
-        <p className="text-xs text-gray-400 mb-3">Skip this step if Argus is deployed on a server with a public HTTPS domain.</p>
+        <p className="text-sm text-gray-600 mb-3">Teams delivers webhook events to Argus over HTTPS. Since Argus runs on your local machine, use a dev tunnel to expose it.</p>
         <p className="text-sm text-gray-600 mb-1">Create a persistent tunnel (one-time):</p>
         <CodeBlock value={TUNNEL_CREATE} />
         <p className="text-sm text-gray-600 mt-3 mb-1">Start it each session:</p>
