@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.14] - 2026-04-21
+
+### Added
+
+- **Supported CLIs in Settings**: A new "Supported CLIs" row appears in the Settings panel above the About section, with icon buttons linking to the Claude Code and GitHub Copilot CLI documentation pages.
+- **CLI login and trust reminder**: The Launch dropdown now shows a persistent footer reminding users to log in to the CLI and trust the folder before Argus can fully control the session.
+
+### Fixed
+
+- **Mac PTY launcher**: Fixed the PTY-based launcher on macOS so sessions start correctly.
+- **Mac JSONL event watcher**: Fixed the JSONL file watcher not firing on macOS by enabling persistent watching, ensuring session events are detected reliably.
+- **CLI icons on install links**: The no-tools panel in the Launch dropdown now shows the Claude Code and GitHub Copilot icons next to each install link for quick visual identification.
+- **Diff link icon**: The "View diff on GitHub" link in repository cards now uses a distinct GitCompare icon, distinguishing it from the session details link.
+
+---
+
 ## [0.1.13] - 2026-04-21
 
 ### Added
