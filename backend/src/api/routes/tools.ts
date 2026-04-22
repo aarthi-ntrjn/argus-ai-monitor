@@ -34,8 +34,17 @@ function buildLaunchCmdWithCwd(tool: ToolCommand, repoPath: string, yoloMode = f
 }
 
 function isInstalled(cmd: string): boolean {
-  const checker = platform() === 'win32' ? 'where' : 'which';
-  const result = spawnSync(checker, [cmd], { encoding: 'utf-8', timeout: 3000 });
+  if (platform() === 'win32') {
+    // Use PowerShell's Get-Command so profile-defined PATH entries and
+    // aliases are resolved, unlike where.exe which only sees system PATH.
+    const result = spawnSync(
+      'powershell',
+      ['-NoProfile', '-Command', `Get-Command ${cmd} -ErrorAction SilentlyContinue`],
+      { encoding: 'utf-8', timeout: 5000 }
+    );
+    return result.status === 0 && result.stdout.trim().length > 0;
+  }
+  const result = spawnSync('which', [cmd], { encoding: 'utf-8', timeout: 3000 });
   return result.status === 0;
 }
 
