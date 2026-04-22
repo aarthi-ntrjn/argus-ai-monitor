@@ -181,7 +181,7 @@ export default function SlackSetupPage() {
 
         <div className="bg-white border border-gray-200 rounded-lg px-6 py-5 mb-4">
           <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Prerequisites</h2>
-          <ul className="space-y-1.5 text-sm text-gray-600">
+          <ul className="space-y-1.5 text-sm text-gray-600 list-disc pl-4">
             <li>A Slack workspace — free tier is sufficient. <ExternalA href="https://slack.com/help/articles/206845317-Create-a-Slack-workspace">Create one</ExternalA> if you don't have one.</li>
             <li>Admin access to the workspace, or permission to install apps.</li>
           </ul>
