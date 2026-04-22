@@ -4,7 +4,7 @@ import teamsUrl from '../images/microsoft-teams.svg?url';
 
 const TUNNEL_CREATE = `devtunnel login
 devtunnel create argus-tunnel --allow-anonymous
-devtunnel port create argus-tunnel -p 7411 --protocol auto`;
+devtunnel port create argus-tunnel -p 7411`;
 
 const BOT_CREATE = `teams login
 teams app create --name "Argus" \\
