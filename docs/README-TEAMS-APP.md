@@ -39,8 +39,7 @@ Note the URL printed, e.g. `https://<tunnel-id>-7411.<region>.devtunnels.ms`. Th
 teams login
 teams app create --name "Argus" \
   --endpoint "https://<endpoint>/api/v1/teams/webhook" \
-  --env .env \
-  --json
+  --env .env
 ```
 
 This registers the bot, generates credentials (`CLIENT_ID`, `CLIENT_SECRET`, `TENANT_ID`), writes them to `.env`, and prints an install link. Open the install link to add the bot to your team.
