@@ -18,7 +18,7 @@ export function SettingsPanel({ settings, onToggle, onOpenAllSettings }: Setting
   const { data: healthData } = useQuery({ queryKey: ['health'], queryFn: getHealth, staleTime: Infinity });
 
   return (
-    <div className="absolute right-0 top-full mt-1 w-96 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-5 max-h-[calc(100vh-4rem)] overflow-y-auto">
+    <div className="absolute right-0 top-full mt-1 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-5 max-h-[calc(100vh-4rem)] overflow-y-auto">
       <SectionHeading className="mb-2">Settings</SectionHeading>
       <GeneralSettingsContent settings={settings} onToggle={onToggle} compact />
       <div className="mt-2 pt-2 border-t border-gray-100">
