@@ -25,6 +25,7 @@ export default function App() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/sessions/:id" element={<SessionPage />} />
           <Route path="/telemetry" element={<TelemetryPage />} />
+          <Route path="/setup/integrations" element={<IntegrationsSetupPage />} />
           <Route path="/setup/teams" element={<IntegrationsSetupPage />} />
           <Route path="/setup/slack" element={<IntegrationsSetupPage />} />
         </Routes>
