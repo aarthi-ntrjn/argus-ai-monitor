@@ -10,7 +10,7 @@ Argus  →  Bot Framework API  →  Teams
 ## Prerequisites
 
 - [Teams CLI](https://microsoft.github.io/teams-sdk/) installed (`npm install -g @microsoft/teams.cli@preview`)
-- A Microsoft Teams workspace where you are a team owner or admin
+- A Microsoft Teams workspace where you are a team owner or admin (don't have one? [Get Microsoft 365](https://www.microsoft.com/en-us/microsoft-365/business/microsoft-365-plans-and-pricing))
 - For local dev: [Azure Dev Tunnels CLI](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/) (`winget install Microsoft.DevTunnel` or `brew install devtunnel`)
 
 ## Step 1: Set up a tunnel (local dev only)
