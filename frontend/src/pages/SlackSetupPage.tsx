@@ -179,6 +179,14 @@ export default function SlackSetupPage() {
           <p className="text-sm text-gray-500">Connect Argus to a Slack channel in 8 steps.</p>
         </div>
 
+        <div className="bg-white border border-gray-200 rounded-lg px-6 py-5 mb-4">
+          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Prerequisites</h2>
+          <ul className="space-y-1.5 text-sm text-gray-600">
+            <li>A Slack workspace — free tier is sufficient. <ExternalA href="https://slack.com/help/articles/206845317-Create-a-Slack-workspace">Create one</ExternalA> if you don't have one.</li>
+            <li>Admin access to the workspace, or permission to install apps.</li>
+          </ul>
+        </div>
+
         <div className="bg-white border border-gray-200 rounded-lg px-6 py-5">
           {STEPS.map((step, i) => (
             <div key={step.title} className="flex gap-4">
