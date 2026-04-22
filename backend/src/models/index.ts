@@ -114,6 +114,7 @@ export interface ArgusConfig {
   restingThresholdMinutes: number;
   telemetryEnabled: boolean;
   telemetryPromptSeen: boolean;
+  integrationsEnabled: boolean;
 }
 
 export type TelemetryEventType =
@@ -125,7 +126,9 @@ export type TelemetryEventType =
   | 'session_stopped'
   | 'todo_added'
   | 'repo_diff_opened'
-  | 'request_error';
+  | 'request_error'
+  | 'integration_started'
+  | 'integration_stopped';
 
 export const TELEMETRY_EVENT_TYPES = new Set<TelemetryEventType>([
   'app_started',
@@ -137,6 +140,8 @@ export const TELEMETRY_EVENT_TYPES = new Set<TelemetryEventType>([
   'todo_added',
   'repo_diff_opened',
   'request_error',
+  'integration_started',
+  'integration_stopped',
 ]);
 
 export interface TelemetryEvent {
