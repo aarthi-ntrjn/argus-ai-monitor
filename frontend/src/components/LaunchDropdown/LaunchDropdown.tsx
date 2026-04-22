@@ -108,7 +108,32 @@ export default function LaunchDropdown({ repoPath, onLaunchError }: Props) {
           {!tools ? (
             <p className="text-xs text-gray-500 px-3 py-2">Checking installed tools…</p>
           ) : !hasAny ? (
-            <p className="text-xs text-gray-500 px-3 py-2">No supported tools found on PATH</p>
+            <div className="px-3 py-2 space-y-1">
+              <p className="text-xs text-gray-700 font-medium">No supported tools installed</p>
+              <p className="text-xs text-gray-500">Install one of the following to launch a session:</p>
+              <ul className="text-xs space-y-0.5 mt-1">
+                <li>
+                  <a
+                    href="https://docs.anthropic.com/en/docs/claude-code/getting-started"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    Claude Code
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://docs.github.com/en/copilot/how-tos/copilot-individual/using-github-copilot-in-the-command-line"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    GitHub Copilot CLI
+                  </a>
+                </li>
+              </ul>
+            </div>
           ) : (
             <>
               {tools.claude && (
