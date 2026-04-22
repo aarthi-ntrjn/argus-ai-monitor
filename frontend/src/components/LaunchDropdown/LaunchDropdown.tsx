@@ -117,8 +117,9 @@ export default function LaunchDropdown({ repoPath, onLaunchError }: Props) {
                     href="https://docs.anthropic.com/en/docs/claude-code/getting-started"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
+                    className="inline-flex items-center gap-1.5 text-blue-600 hover:underline"
                   >
+                    <span className="text-orange-500"><ClaudeIcon size={12} /></span>
                     Claude Code
                   </a>
                 </li>
@@ -127,8 +128,9 @@ export default function LaunchDropdown({ repoPath, onLaunchError }: Props) {
                     href="https://github.com/features/copilot/cli/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
+                    className="inline-flex items-center gap-1.5 text-blue-600 hover:underline"
                   >
+                    <span className="text-purple-600"><CopilotIcon size={12} /></span>
                     GitHub Copilot CLI
                   </a>
                 </li>
