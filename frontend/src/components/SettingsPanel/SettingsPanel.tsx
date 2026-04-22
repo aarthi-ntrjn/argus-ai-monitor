@@ -22,7 +22,7 @@ export function SettingsPanel({ settings, onToggle, onOpenAllSettings }: Setting
       <SectionHeading className="mb-2">Settings</SectionHeading>
       <GeneralSettingsContent settings={settings} onToggle={onToggle} compact />
       <div className="mt-2 pt-2 border-t border-gray-100">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
           <SectionHeading>Supported CLIs</SectionHeading>
           <div className="flex items-center gap-2">
             <a
