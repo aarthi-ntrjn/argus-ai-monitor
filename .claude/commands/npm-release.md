@@ -1,5 +1,5 @@
 ---
-description: Tag the current version, push to both remotes, and monitor the npm publish workflow on the public repo until it succeeds or fails.
+description: Push the current version tag to the public remote and monitor the npm publish workflow until it succeeds or fails.
 ---
 
 ## Invocation rules
@@ -14,9 +14,17 @@ If this skill was not triggered by the exact command `/npm-release`, stop immedi
 
 ---
 
+## Prerequisite
+
+**Run `/bump-version` before this command.** `/bump-version` handles the full version bump cycle: it increments `package.json`, updates the CHANGELOG, creates the annotated tag, and pushes master + the tag to origin.
+
+`/npm-release` only pushes the tag to the public remote and monitors the publish CI workflow.
+
+---
+
 ## Outline
 
-You are releasing the npm package for this project. Follow these steps exactly.
+You are publishing the already-tagged version of this project to npm. Follow these steps exactly.
 
 ---
 
@@ -34,45 +42,26 @@ Do not proceed past this step unless the branch is exactly `master`.
 
 ---
 
-### Step 1 — Commit the package.json version bump
+### Step 1 — Verify the tag exists
 
-Check whether `package.json` has uncommitted changes:
-
-```bash
-git diff --name-only
-git diff --cached --name-only
-```
-
-If `package.json` appears in either list (unstaged or staged), commit it now:
+Read the version from `package.json`:
 
 ```bash
-git add package.json
-git commit -m "chore: bump version to v<version>
-
-Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+node -e "console.log(require('./package.json').version)"
 ```
 
-If `package.json` is clean (already committed), skip this sub-step and continue.
+The expected tag is `v<version>`. Verify it exists on origin:
 
-If `package.json` is absent from the diff but the tag for the current version already exists locally or on origin, stop and tell the user the version has already been released and they need to bump it first.
+```bash
+git ls-remote origin "refs/tags/v<version>"
+```
+
+If the tag does not exist on origin, stop and tell the user:
+"Tag v<version> has not been pushed to origin yet. Run `/bump-version` first."
 
 ---
 
-### Step 2 — Update the changelog
-
-Before tagging, invoke the `/update-changelog` skill inline (do not ask the user to run it separately — run it as part of this flow):
-
-- Read the version from `package.json`
-- Collect commits since the last tag
-- Generate and commit the changelog entry to `master` on `origin`
-
-The changelog commit must exist on `master` **before** the tag is created, so it is included in the release.
-
-If changelog generation fails for any reason, stop and report the error. Do not proceed to tagging.
-
----
-
-### Step 3 — Run the publish-npm script
+### Step 2 — Run the publish-npm script
 
 Run:
 ```bash
@@ -85,21 +74,21 @@ If it succeeds, note the tag name printed by the script (e.g. `v0.1.1`).
 
 ---
 
-### Step 4 — Locate the triggered workflow run
+### Step 3 — Locate the triggered workflow run
 
 Wait about 5 seconds for GitHub to register the tag push, then run:
 ```bash
 gh run list --repo aarthi-ntrjn/argus --workflow=publish-npm.yml --limit=5 --json databaseId,status,conclusion,headBranch,createdAt
 ```
 
-Find the run whose `headBranch` matches the tag pushed in Step 3. Note its `databaseId`.
+Find the run whose `headBranch` matches the tag pushed in Step 2. Note its `databaseId`.
 
 If no matching run appears after two attempts (10 seconds apart), report:
 "The workflow did not appear on the public repo. Check https://github.com/aarthi-ntrjn/argus/actions manually."
 
 ---
 
-### Step 5 — Poll until complete
+### Step 4 — Poll until complete
 
 Poll the run every 15 seconds using:
 ```bash
@@ -111,7 +100,7 @@ gh run view <databaseId> --repo aarthi-ntrjn/argus --json status,conclusion,jobs
 
 ---
 
-### Step 6 — Report the result
+### Step 5 — Report the result
 
 **On success** (`conclusion` is `success`):
 
