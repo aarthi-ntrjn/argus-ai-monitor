@@ -134,6 +134,7 @@ function TeamsConfigContent({ showSetupGuide }: { showSetupGuide: boolean }) {
     <>
       <IntegrationHeader label="Microsoft Teams" badge={STATUS_BADGE[status]} />
       <ConfigForm
+        key={config ? 'loaded' : 'empty'}
         fields={fields}
         values={values}
         saving={saving}
@@ -174,6 +175,7 @@ function SlackConfigContent({ showSetupGuide }: { showSetupGuide: boolean }) {
     <>
       <IntegrationHeader label="Slack" badge={STATUS_BADGE[status]} />
       <ConfigForm
+        key={config ? 'loaded' : 'empty'}
         fields={fields}
         values={values}
         saving={saving}
