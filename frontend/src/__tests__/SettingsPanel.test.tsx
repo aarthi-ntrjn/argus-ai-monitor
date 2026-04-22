@@ -182,7 +182,7 @@ describe('SettingsPanel', () => {
     it('renders website, GitHub, and npm links', () => {
       renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
       expect(screen.getByRole('link', { name: /website/i })).toHaveAttribute('href', 'https://aarthi-ntrjn.github.io/argus');
-      expect(screen.getByRole('link', { name: /github/i })).toHaveAttribute('href', 'https://github.com/aarthi-ntrjn/argus');
+      expect(screen.getByRole('link', { name: 'GitHub' })).toHaveAttribute('href', 'https://github.com/aarthi-ntrjn/argus');
       expect(screen.getByRole('link', { name: /npm/i })).toHaveAttribute('href', 'https://www.npmjs.com/package/argus-ai-hub');
     });
 
@@ -190,7 +190,7 @@ describe('SettingsPanel', () => {
       renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
       const links = [
         screen.getByRole('link', { name: /website/i }),
-        screen.getByRole('link', { name: /github/i }),
+        screen.getByRole('link', { name: 'GitHub' }),
         screen.getByRole('link', { name: /npm/i }),
       ];
       for (const link of links) {

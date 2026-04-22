@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { RotateCcw, Bug, Lightbulb } from 'lucide-react';
+import { ClaudeIcon, CopilotIcon } from '../SessionTypeIcon/SessionTypeIcon';
 import { useQuery } from '@tanstack/react-query';
 import type { DashboardSettings } from '../../types';
 import { useArgusSettings } from '../../hooks/useArgusSettings';
@@ -208,6 +209,34 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
         </div>
 
         <div className="mt-2 pt-2 border-t border-gray-100">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-600">Supported CLIs</span>
+            <div className="flex items-center gap-2">
+              <a
+                href="https://docs.anthropic.com/en/docs/claude-code/getting-started"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="icon-btn text-orange-500 hover:text-orange-600"
+                aria-label="Claude Code"
+                title="Claude Code"
+              >
+                <ClaudeIcon size={14} />
+              </a>
+              <a
+                href="https://github.com/features/copilot/cli/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="icon-btn text-purple-600 hover:text-purple-700"
+                aria-label="GitHub Copilot CLI"
+                title="GitHub Copilot CLI"
+              >
+                <CopilotIcon size={14} />
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-2 pt-2 border-t border-gray-100">
           <div className="flex items-baseline justify-between mb-2">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">About</p>
             {healthData?.version && (
@@ -215,7 +244,7 @@ export function SettingsPanel({ settings, onToggle, onRestartTour }: SettingsPan
             )}
           </div>
           <div className="flex flex-col gap-1">
-            <a href="https://aarthi-ntrjn.github.io/argus" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600">
+            <a href="https://aarthi-ntrjn.github.io/argus"target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600">
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
               Website
             </a>

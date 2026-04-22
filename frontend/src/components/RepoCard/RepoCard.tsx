@@ -1,6 +1,7 @@
 import type { Repository, Session } from '../../types';
 import { buildGitHubCompareUrl } from '../../utils/repoUtils';
 import { postTelemetryEvent } from '../../services/api';
+import { GitCompare } from 'lucide-react';
 import Badge from '../Badge';
 import LaunchDropdown from '../LaunchDropdown/LaunchDropdown';
 import SessionCard from '../SessionCard/SessionCard';
@@ -72,9 +73,7 @@ export default function RepoCard({
               className="inline-flex items-center text-gray-400 hover:text-gray-700"
               onClick={e => { e.stopPropagation(); postTelemetryEvent('repo_diff_opened'); }}
             >
-              <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
+              <GitCompare size={14} aria-hidden="true" />
             </a>
           )}
         </div>

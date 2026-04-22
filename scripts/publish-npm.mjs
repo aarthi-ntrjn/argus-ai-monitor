@@ -51,30 +51,47 @@ if (!version) fail("Could not read 'version' from package.json");
 const tag = `v${version}`;
 ok(`Version: ${version}  Tag: ${tag}`);
 
-// 4. Check tag does not already exist
-step(`Checking tag ${tag} is not already taken`);
+// 4. Check tag status — handle both new and pre-created tags (/bump-version workflow)
+step(`Checking tag ${tag}`);
 const localTag = execSync(`git tag -l ${tag}`, { encoding: 'utf8' }).trim();
-if (localTag) fail(`Tag ${tag} already exists locally. Bump the version in package.json first.`);
-const remoteTag = execSync(`git ls-remote origin "refs/tags/${tag}"`, { encoding: 'utf8' }).trim();
-if (remoteTag) fail(`Tag ${tag} already exists on origin. Bump the version in package.json first.`);
-ok(`Tag ${tag} is available`);
+const originTag = execSync(`git ls-remote origin "refs/tags/${tag}"`, { encoding: 'utf8' }).trim();
+const publicTag = execSync(`git ls-remote ${PUBLIC_REMOTE} "refs/tags/${tag}"`, { encoding: 'utf8' }).trim();
 
-// 5. Push master to origin so the changelog commit is included before tagging
-step('Pushing master to origin (ensures changelog commit is included in tag)');
-run(`git push origin master`, { inherit: true });
-ok('master pushed to origin');
+if (publicTag) fail(`Tag ${tag} already exists on ${PUBLIC_REMOTE}. This version has already been published.`);
 
-// 6. Create annotated tag
-step(`Creating annotated tag ${tag}`);
-run(`git tag -a ${tag} -m "Release ${tag}"`);
-ok(`Created local tag ${tag}`);
+if (localTag && originTag) {
+  // Tag was pre-created by /bump-version — skip creation and origin push
+  ok(`Tag ${tag} already exists locally and on origin (created by /bump-version) — skipping creation`);
+} else if (localTag || originTag) {
+  // Partial state — push to origin if needed
+  if (!originTag) {
+    step(`Pushing tag ${tag} to origin (private)`);
+    run(`git push origin ${tag}`, { inherit: true });
+    ok('Pushed to origin');
+  } else {
+    ok(`Tag ${tag} exists on origin`);
+  }
+} else {
+  // Tag does not exist anywhere — create it (legacy workflow)
+  ok(`Tag ${tag} is available — creating`);
 
-// 7. Push tag to origin (private)
-step(`Pushing tag ${tag} to origin (private)`);
-run(`git push origin ${tag}`, { inherit: true });
-ok('Pushed to origin');
+  // Push master to origin so changelog commit is included
+  step('Pushing master to origin (ensures changelog commit is included in tag)');
+  run(`git push origin master`, { inherit: true });
+  ok('master pushed to origin');
 
-// 8. Push tag to public (triggers publish-npm workflow)
+  // Create annotated tag
+  step(`Creating annotated tag ${tag}`);
+  run(`git tag -a ${tag} -m "Release ${tag}"`);
+  ok(`Created local tag ${tag}`);
+
+  // Push tag to origin
+  step(`Pushing tag ${tag} to origin (private)`);
+  run(`git push origin ${tag}`, { inherit: true });
+  ok('Pushed to origin');
+}
+
+// Push tag to public (triggers publish-npm workflow)
 step(`Pushing tag ${tag} to ${PUBLIC_REMOTE} (public)`);
 run(`git push ${PUBLIC_REMOTE} ${tag}`, { inherit: true });
 ok(`Pushed to ${PUBLIC_REMOTE}`);

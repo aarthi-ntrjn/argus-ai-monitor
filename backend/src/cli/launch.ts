@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from 'node-pty';
 import { execSync } from 'child_process';
-import { appendFileSync, mkdirSync } from 'fs';
+import { appendFileSync, mkdirSync, existsSync, realpathSync, statSync } from 'fs';
 import { randomUUID } from 'crypto';
 import { platform, tmpdir } from 'os';
 import { join } from 'path';
@@ -17,6 +17,23 @@ function log(msg: string) {
   const line = `[${new Date().toISOString()}] ${msg}\n`;
   appendFileSync(logFile, line);
 }
+
+function failLaunch(message: string): never {
+  log(`launch failed: ${message}`);
+  process.stderr.write(`argus launch failed: ${message}\n`);
+  process.exit(1);
+}
+
+function normalizeLaunchCwd(rawCwd: string): string {
+  if (!existsSync(rawCwd)) {
+    failLaunch(`Launch directory does not exist: ${rawCwd}`);
+  }
+  if (!statSync(rawCwd).isDirectory()) {
+    failLaunch(`Launch directory is not a folder: ${rawCwd}`);
+  }
+  return realpathSync(rawCwd);
+}
+
 process.stderr.write(`[launch] log: ${logFile}\n`);
 
 // Parse --cwd <path> out of argv before passing the rest to resolveLaunchCommand.
@@ -41,6 +58,7 @@ if (toolArgs.length === 0) {
   process.exit(1);
 }
 
+cwd = normalizeLaunchCwd(cwd);
 const { sessionType, cmd, cmdArgs } = resolveLaunchCommand(toolArgs);
 const yoloActive = cmdArgs.includes('--dangerously-skip-permissions') || cmdArgs.includes('--allow-all');
 log(`launch started: sessionType=${sessionType} cmd=${cmd} args=${JSON.stringify(cmdArgs)} cwd=${cwd} yoloMode=${yoloActive}`);
@@ -70,13 +88,19 @@ for (const key of Object.keys(cleanEnv)) {
 
 const spawnStartMs = Date.now();
 log(`spawning PTY: ${ptyFile} ${JSON.stringify(ptyArgs)} at=${new Date(spawnStartMs).toISOString()}`);
-const pty = spawn(ptyFile, ptyArgs, {
-  name: 'xterm-256color',
-  cols: process.stdout.columns || 80,
-  rows: process.stdout.rows || 24,
-  cwd,
-  env: cleanEnv as Record<string, string>
-});
+let pty: ReturnType<typeof spawn>;
+try {
+  pty = spawn(ptyFile, ptyArgs, {
+    name: 'xterm-256color',
+    cols: process.stdout.columns || 80,
+    rows: process.stdout.rows || 24,
+    cwd,
+    env: cleanEnv as Record<string, string>
+  });
+} catch (err) {
+  const message = err instanceof Error ? err.message : String(err);
+  failLaunch(message);
+}
 log(`PTY spawned: pty.pid=${pty.pid} spawnMs=${Date.now() - spawnStartMs}`);
 
 // Proxy PTY output to the user's terminal
@@ -314,4 +338,3 @@ pty.onExit(({ exitCode }: { exitCode: number }) => {
     process.exit(exitCode ?? 0);
   });
 });
-
