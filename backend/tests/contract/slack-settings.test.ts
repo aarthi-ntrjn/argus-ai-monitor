@@ -56,21 +56,21 @@ describe('GET /api/v1/settings/slack', () => {
     expect(res.status).toBe(200);
   });
 
-  it('botToken is redacted as ***', async () => {
+  it('botToken is returned as the actual value', async () => {
     process.env.SLACK_BOT_TOKEN = 'xoxb-real-token';
     process.env.SLACK_CHANNEL_ID = 'C99999';
 
     const res = await request.get('/api/v1/settings/slack');
-    expect(res.body.botToken).toBe('***');
+    expect(res.body.botToken).toBe('xoxb-real-token');
   });
 
-  it('appToken is redacted as *** when set', async () => {
+  it('appToken is returned as the actual value when set', async () => {
     process.env.SLACK_BOT_TOKEN = 'xoxb-real-token';
     process.env.SLACK_CHANNEL_ID = 'C99999';
     process.env.SLACK_APP_TOKEN = 'xapp-real-token';
 
     const res = await request.get('/api/v1/settings/slack');
-    expect(res.body.appToken).toBe('***');
+    expect(res.body.appToken).toBe('xapp-real-token');
   });
 
   it('appToken is absent when SLACK_APP_TOKEN is not set', async () => {

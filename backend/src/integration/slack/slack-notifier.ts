@@ -19,6 +19,7 @@ import {
   REPOSITORY_REMOVED,
 } from '../../constants/slack-events.js';
 import * as logger from '../../utils/logger.js';
+import { loadSlackConfig } from '../../config/slack-config-loader.js';
 
 const LOG_TAG = '[SlackNotifier]';
 
@@ -36,8 +37,8 @@ export class SlackNotifier implements NotificationIntegration {
   private readonly queue: MessageQueue;
   private subscribed = false;
 
-  constructor(config: SlackConfig, sessionMonitor: SessionMonitor) {
-    this.config = { ...config };
+  constructor(sessionMonitor: SessionMonitor) {
+    this.config = { botToken: '', channelId: '', enabled: false };
     this.sessionMonitor = sessionMonitor;
     this.queue = new MessageQueue((eventType, sessionId) => {
       logger.warn(`${LOG_TAG} Send queue full, dropping ${eventType} for session ${sessionId}`);
@@ -54,6 +55,12 @@ export class SlackNotifier implements NotificationIntegration {
 
   async initialize(): Promise<boolean> {
     this.active = false;
+    const freshConfig = loadSlackConfig();
+    if (!freshConfig) {
+      logger.warn(`${LOG_TAG} Slack integration disabled: no configuration found`);
+      return false;
+    }
+    this.config = freshConfig;
     if (!this.config.botToken || !this.config.channelId) {
       logger.warn(`${LOG_TAG} Slack integration disabled: missing botToken or channelId`);
       return false;

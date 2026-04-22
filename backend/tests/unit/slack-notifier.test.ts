@@ -8,8 +8,12 @@ vi.mock('../../src/db/database.js', () => ({
   deleteSlackThread: vi.fn(),
 }));
 
+vi.mock('../../src/config/slack-config-loader.js', () => ({
+  loadSlackConfig: vi.fn(),
+}));
 
 import { SlackNotifier } from '../../src/integration/slack/slack-notifier.js';
+import { loadSlackConfig } from '../../src/config/slack-config-loader.js';
 import { getSlackThread, upsertSlackThread, deleteSlackThread } from '../../src/db/database.js';
 import type { Session } from '../../src/models/index.js';
 
@@ -42,9 +46,11 @@ const mockPostMessage = vi.fn();
 const mockMonitor = { on: vi.fn(), off: vi.fn(), emit: vi.fn() } as any;
 
 function makeNotifier(config = baseConfig) {
-  const notifier = new SlackNotifier(config as any, mockMonitor);
+  vi.mocked(loadSlackConfig).mockReturnValue(config as any);
+  const notifier = new SlackNotifier(mockMonitor);
   (notifier as any).client = { chat: { postMessage: mockPostMessage } };
   (notifier as any).active = true;
+  (notifier as any).config = { ...config };
   return notifier;
 }
 
@@ -57,19 +63,22 @@ describe('SlackNotifier', () => {
 
   describe('initialize', () => {
     it('disables when botToken is missing', async () => {
-      const notifier = new SlackNotifier({ botToken: '', channelId: 'C01234', enabled: true } as any, mockMonitor);
+      vi.mocked(loadSlackConfig).mockReturnValue({ botToken: '', channelId: 'C01234', enabled: true });
+      const notifier = new SlackNotifier(mockMonitor);
       await notifier.initialize();
       expect(notifier.isRunning).toBe(false);
     });
 
     it('disables when channelId is missing', async () => {
-      const notifier = new SlackNotifier({ botToken: 'xoxb-test', channelId: '', enabled: true } as any, mockMonitor);
+      vi.mocked(loadSlackConfig).mockReturnValue({ botToken: 'xoxb-test', channelId: '', enabled: true });
+      const notifier = new SlackNotifier(mockMonitor);
       await notifier.initialize();
       expect(notifier.isRunning).toBe(false);
     });
 
     it('disables when enabled is false', async () => {
-      const notifier = new SlackNotifier({ ...baseConfig, enabled: false }, mockMonitor);
+      vi.mocked(loadSlackConfig).mockReturnValue({ ...baseConfig, enabled: false });
+      const notifier = new SlackNotifier(mockMonitor);
       await notifier.initialize();
       expect(notifier.isRunning).toBe(false);
     });
@@ -155,12 +164,11 @@ describe('SlackNotifier', () => {
     });
 
     it('skips events not in enabledEventTypes', async () => {
-      const notifier = new SlackNotifier(
-        { ...baseConfig, enabledEventTypes: ['session.ended'] },
-        mockMonitor,
-      );
+      vi.mocked(loadSlackConfig).mockReturnValue({ ...baseConfig, enabledEventTypes: ['session.ended'] } as any);
+      const notifier = new SlackNotifier(mockMonitor);
       (notifier as any).client = { chat: { postMessage: mockPostMessage } };
       (notifier as any).active = true;
+      (notifier as any).config = { ...baseConfig, enabledEventTypes: ['session.ended'] };
       await notifier.onSessionCreated(baseSession);
       expect(mockPostMessage).not.toHaveBeenCalled();
     });
@@ -185,12 +193,11 @@ describe('SlackNotifier', () => {
     });
 
     it('skips when not in enabledEventTypes', async () => {
-      const notifier = new SlackNotifier(
-        { ...baseConfig, enabledEventTypes: ['session.ended'] },
-        mockMonitor,
-      );
+      vi.mocked(loadSlackConfig).mockReturnValue({ ...baseConfig, enabledEventTypes: ['session.ended'] } as any);
+      const notifier = new SlackNotifier(mockMonitor);
       (notifier as any).client = { chat: { postMessage: mockPostMessage } };
       (notifier as any).active = true;
+      (notifier as any).config = { ...baseConfig, enabledEventTypes: ['session.ended'] };
       (notifier as any).threadAnchors.set(baseSession.id, 'thread-ts');
       await notifier.onPendingChoice({ sessionId: baseSession.id, question: 'Proceed?', choices: [] });
       expect(mockPostMessage).not.toHaveBeenCalled();

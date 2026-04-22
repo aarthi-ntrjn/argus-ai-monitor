@@ -170,6 +170,9 @@ export interface TeamsConfig {
   teamId: string;
   channelId: string;
   ownerAadObjectId: string;
+  clientId?: string;
+  clientSecret?: string;
+  tenantId?: string;
 }
 
 export interface TeamsThread {

@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { loadConfig, saveConfig } from '../../config/config-loader.js';
-import { loadSlackConfig } from '../../config/slack-config-loader.js';
+import { loadSlackConfig, saveSlackConfig } from '../../config/slack-config-loader.js';
 import type { ArgusConfig, SlackConfig } from '../../models/index.js';
 
 const ALLOWED_KEYS = new Set<keyof ArgusConfig>([
@@ -8,6 +8,10 @@ const ALLOWED_KEYS = new Set<keyof ArgusConfig>([
   'outputRetentionMbPerSession', 'autoRegisterRepos', 'yoloMode', 'restingThresholdMinutes',
   'telemetryEnabled', 'telemetryPromptSeen',
 ]);
+
+const SLACK_EDITABLE_KEYS: (keyof SlackConfig)[] = [
+  'botToken', 'appToken', 'channelId', 'ownerUserId',
+];
 
 const settingsRoutes: FastifyPluginAsync = async (app) => {
   app.get('/api/v1/settings', async (_req, reply) => {
@@ -28,23 +32,25 @@ const settingsRoutes: FastifyPluginAsync = async (app) => {
     saveConfig(updated);
     return reply.send(updated);
   });
-  // T016: GET /api/v1/settings/slack
+
   app.get('/api/v1/settings/slack', async (_req, reply) => {
     const config = loadSlackConfig();
     if (!config) return reply.status(404).send({ error: 'NOT_CONFIGURED', message: 'Slack integration is not configured' });
-    return reply.send(redactSlackConfig(config));
+    return reply.send(config);
+  });
+
+  app.patch<{ Body: Record<string, unknown> }>('/api/v1/settings/slack', async (req, reply) => {
+    const body = req.body ?? {};
+    const current = loadSlackConfig() ?? { botToken: '', channelId: '', enabled: true };
+    const update: Partial<SlackConfig> = {};
+    for (const key of SLACK_EDITABLE_KEYS) {
+      if (key in body) (update as Record<string, unknown>)[key] = body[key];
+    }
+    const saved = { ...current, ...update };
+    saveSlackConfig(saved);
+    return reply.send(saved);
   });
 };
-
-function redactSlackConfig(config: SlackConfig): Record<string, unknown> {
-  return {
-    botToken: config.botToken ? '***' : '',
-    appToken: config.appToken ? '***' : undefined,
-    channelId: config.channelId,
-    enabled: config.enabled,
-    enabledEventTypes: config.enabledEventTypes,
-  };
-}
 
 export default settingsRoutes;
 

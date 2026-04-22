@@ -154,6 +154,8 @@ export interface TeamsSettings {
   teamId?: string;
   channelId?: string;
   ownerAadObjectId?: string;
+  clientId?: string;
+  tenantId?: string;
   connectionStatus: 'connected' | 'disconnected' | 'unconfigured';
 }
 
@@ -161,15 +163,24 @@ export async function getTeamsSettings(): Promise<TeamsSettings> {
   return apiFetch<TeamsSettings>('/settings/teams');
 }
 
+export async function patchTeamsSettings(patch: Partial<Omit<TeamsSettings, 'enabled' | 'connectionStatus'>>): Promise<TeamsSettings> {
+  return apiFetch<TeamsSettings>('/settings/teams', { method: 'PATCH', body: JSON.stringify(patch) });
+}
+
 export interface SlackSettings {
   botToken: string;
   appToken?: string;
   channelId: string;
+  ownerUserId?: string;
   enabled: boolean;
 }
 
 export async function getSlackSettings(): Promise<SlackSettings> {
   return apiFetch<SlackSettings>('/settings/slack');
+}
+
+export async function patchSlackSettings(patch: Partial<Omit<SlackSettings, 'enabled'>>): Promise<SlackSettings> {
+  return apiFetch<SlackSettings>('/settings/slack', { method: 'PATCH', body: JSON.stringify(patch) });
 }
 
 export interface IntegrationRunState {

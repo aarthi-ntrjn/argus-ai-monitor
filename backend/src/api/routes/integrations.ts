@@ -1,16 +1,20 @@
 import type { FastifyPluginAsync } from 'fastify';
 import type { SlackNotifier } from '../../integration/slack/slack-notifier.js';
-import type { SlackListener } from '../../integration/slack/slack-listener.js';
+import { SlackListener } from '../../integration/slack/slack-listener.js';
 import type { TeamsNotifier } from '../../integration/teams/teams-notifier.js';
 import type { TeamsListener } from '../../integration/teams/teams-listener.js';
 import { setIntegrationEnabled } from '../../db/database.js';
 import { telemetryService } from '../../services/telemetry-service.js';
+import { loadSlackConfig } from '../../config/slack-config-loader.js';
+import { setSlackServices } from './health.js';
+import type { SessionMonitor } from '../../services/session-monitor.js';
 
 let slackNotifier: SlackNotifier | null = null;
 let slackListener: SlackListener | null = null;
 let teamsNotifier: TeamsNotifier | null = null;
 let teamsListener: TeamsListener | null = null;
 let integrationsEnabled = false;
+let sessionMonitor: SessionMonitor | null = null;
 
 export function setIntegrationServices(
   sn: SlackNotifier | null,
@@ -18,12 +22,14 @@ export function setIntegrationServices(
   tn: TeamsNotifier | null,
   tl: TeamsListener | null,
   enabled: boolean,
+  monitor: SessionMonitor,
 ): void {
   slackNotifier = sn;
   slackListener = sl;
   teamsNotifier = tn;
   teamsListener = tl;
   integrationsEnabled = enabled;
+  sessionMonitor = monitor;
 }
 
 const integrationsRoutes: FastifyPluginAsync = async (fastify) => {
@@ -42,9 +48,17 @@ const integrationsRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   fastify.post('/api/v1/integrations/slack/start', async (_request, reply) => {
-    if (!slackNotifier) return reply.status(503).send({ error: 'Slack not configured' });
+    if (!slackNotifier) return reply.status(503).send({ error: 'Slack integration not available. Enable integrations in settings.' });
     const started = await slackNotifier.initialize();
-    slackListener?.initialize();
+    // Create listener on demand if not yet created and notifier is now connected
+    if (started && !slackListener && slackNotifier.webClient) {
+      const config = loadSlackConfig();
+      if (config) {
+        slackListener = new SlackListener(config, slackNotifier.webClient, slackNotifier);
+        setSlackServices(slackNotifier, slackListener);
+      }
+    }
+    if (slackListener) await slackListener.initialize();
     setIntegrationEnabled('slack', true);
     telemetryService.sendEvent('integration_started', { platform: 'slack' });
     return reply.send({ started });

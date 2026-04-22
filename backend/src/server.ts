@@ -99,12 +99,13 @@ export async function buildServer() {
   // Initialize Teams SDK App with Fastify adapter before static/catch-all routes
   let teamsApp: App | null = null;
   if (config.integrationsEnabled) {
+    const teamsBootConfig = loadTeamsConfig();
     teamsApp = new App({
       httpServerAdapter: new FastifyTeamsAdapter(app),
       messagingEndpoint: '/api/v1/teams/webhook',
-      clientId: process.env.CLIENT_ID,
-      clientSecret: process.env.CLIENT_SECRET,
-      tenantId: process.env.TENANT_ID,
+      clientId: teamsBootConfig.clientId,
+      clientSecret: teamsBootConfig.clientSecret,
+      tenantId: teamsBootConfig.tenantId,
     });
     teamsListener = new TeamsListener(teamsApp, app.log as any);
     await teamsListener.initialize();
@@ -195,19 +196,17 @@ export async function startServer() {
   startPruningJob();
 
   if (config.integrationsEnabled) {
-    const slackConfig = loadSlackConfig();
-    if (slackConfig) {
-      slackNotifier = new SlackNotifier(slackConfig, monitor);
-      if (getIntegrationEnabled('slack') !== false) {
-        await slackNotifier.initialize();
-
-        if (slackNotifier.webClient) {
-          slackListener = new SlackListener(slackConfig, slackNotifier.webClient, slackNotifier);
-          await slackListener.initialize();
-        }
+    // Always create SlackNotifier; initialize() loads config from file at connect time
+    slackNotifier = new SlackNotifier(monitor);
+    if (getIntegrationEnabled('slack') !== false) {
+      const initialized = await slackNotifier.initialize();
+      if (initialized && slackNotifier.webClient) {
+        const slackConfig = loadSlackConfig()!;
+        slackListener = new SlackListener(slackConfig, slackNotifier.webClient, slackNotifier);
+        await slackListener.initialize();
       }
-      setSlackServices(slackNotifier, slackListener);
     }
+    setSlackServices(slackNotifier, slackListener);
 
     if (teamsApp) {
       teamsNotifier = new TeamsNotifier(teamsApp, app.log as any);
@@ -232,7 +231,7 @@ export async function startServer() {
     }
   }
 
-  setIntegrationServices(slackNotifier, slackListener, teamsNotifier, teamsListener, config.integrationsEnabled);
+  setIntegrationServices(slackNotifier, slackListener, teamsNotifier, teamsListener, config.integrationsEnabled, monitor);
 
   process.on('SIGTERM', async () => { telemetryService.sendEvent('app_ended'); teamsNotifier?.shutdown(); teamsListener?.shutdown(); slackListener?.shutdown(); slackNotifier?.shutdown(); monitor?.stop(); await app.close(); process.exit(0); });
   process.on('SIGINT', async () => { telemetryService.sendEvent('app_ended'); teamsNotifier?.shutdown(); teamsListener?.shutdown(); slackListener?.shutdown(); slackNotifier?.shutdown(); monitor?.stop(); await app.close(); process.exit(0); });
