@@ -9,10 +9,6 @@ const SCOPES = [
   ['im:history',        'Receive direct messages'],
 ] as const;
 
-const ENV_BLOCK = `SLACK_BOT_TOKEN=xoxb-...        # required
-SLACK_CHANNEL_ID=C01234ABCDE    # required
-SLACK_APP_TOKEN=xapp-...        # optional — enables inbound commands`;
-
 const LOG_BLOCK = `[SlackNotifier] Initialized, posting to channel C01234ABCDE
 [SlackListener] Socket Mode connected, listening for app mentions and DMs`;
 
@@ -62,7 +58,7 @@ const STEPS: SetupStep[] = [
         <ol className="space-y-1.5 text-sm text-gray-600 list-decimal pl-4 mb-3">
           <li>Click <strong>Socket Mode</strong> in the sidebar and toggle it on.</li>
           <li>When prompted, create an App-level token: name it anything (e.g. <Mono>argus-socket</Mono>), add scope <Mono>connections:write</Mono>, click <strong>Generate</strong>.</li>
-          <li>Copy the <Mono>xapp-...</Mono> token — this is your <Mono>SLACK_APP_TOKEN</Mono>.</li>
+          <li>Copy the <Mono>xapp-...</Mono> token — this is your <strong>App Token</strong>.</li>
         </ol>
         <p className="text-xs text-gray-400">Skip this step if you only need outbound notifications and don't need the bot to respond to commands.</p>
       </>
@@ -84,7 +80,7 @@ const STEPS: SetupStep[] = [
       <ol className="space-y-1.5 text-sm text-gray-600 list-decimal pl-4">
         <li>Click <strong>OAuth and Permissions</strong> in the sidebar.</li>
         <li>Click <strong>Install to Workspace</strong> and allow the permissions.</li>
-        <li>Copy the <strong>Bot User OAuth Token</strong> (<Mono>xoxb-...</Mono>) — this is your <Mono>SLACK_BOT_TOKEN</Mono>.</li>
+        <li>Copy the <strong>Bot User OAuth Token</strong> (<Mono>xoxb-...</Mono>) — this is your <strong>Bot Token</strong>.</li>
       </ol>
     ),
   },
@@ -95,7 +91,7 @@ const STEPS: SetupStep[] = [
         <ol className="space-y-1.5 text-sm text-gray-600 list-decimal pl-4 mb-2">
           <li>In Slack, open the channel you want Argus to post to.</li>
           <li>Right-click the channel name → <strong>View channel details</strong>.</li>
-          <li>Scroll to the bottom and copy the Channel ID (format: <Mono>C01234ABCDE</Mono>) — this is your <Mono>SLACK_CHANNEL_ID</Mono>.</li>
+          <li>Scroll to the bottom and copy the Channel ID (format: <Mono>C01234ABCDE</Mono>) — this is your <strong>Channel ID</strong>.</li>
           <li>Invite the bot to the channel:</li>
         </ol>
         <CodeBlock value="/invite @Argus" />
@@ -106,8 +102,13 @@ const STEPS: SetupStep[] = [
     title: 'Configure Argus',
     body: (
       <>
-        <p className="text-sm text-gray-600 mb-1">Add to <Mono>backend/.env</Mono>:</p>
-        <CodeBlock value={ENV_BLOCK} />
+        <p className="text-sm text-gray-600 mb-2">Open the Argus Settings dialog and go to the <strong>Slack</strong> section. Enter the values from the previous steps:</p>
+        <ul className="space-y-1 text-sm text-gray-600 list-disc pl-4 mb-3">
+          <li><strong>Bot Token</strong> (<Mono>xoxb-...</Mono>) from the OAuth &amp; Permissions page</li>
+          <li><strong>Channel ID</strong> of the channel where Argus will post</li>
+          <li><strong>App Token</strong> (<Mono>xapp-...</Mono>) if you want inbound commands via Socket Mode</li>
+        </ul>
+        <p className="text-sm text-gray-600">Click <strong>Save</strong>.</p>
       </>
     ),
   },

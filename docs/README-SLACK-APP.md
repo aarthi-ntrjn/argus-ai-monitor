@@ -43,7 +43,7 @@ Socket Mode lets Argus receive incoming Slack messages without exposing a public
    - Name it anything (e.g. `argus-socket`).
    - Add the scope `connections:write`.
    - Click **Generate**.
-4. Copy the `xapp-...` token. This is your `SLACK_APP_TOKEN`.
+4. Copy the `xapp-...` token. This is your **App Token** (go into the App Token field in Settings).
 
 > Socket Mode is only required for the Slack-to-Argus routing feature (asking the bot questions). If you only want outbound notifications, you can skip this step and omit `SLACK_APP_TOKEN`.
 
@@ -86,32 +86,13 @@ Argus needs the channel ID (not the channel name) to post messages.
 
 ## Step 7: Configure Argus
 
-Add the three values to `backend/.env`:
+Open the Argus Settings dialog and go to the **Slack** section. Enter the values from the previous steps:
 
-```bash
-# Required: Bot User OAuth Token from Step 5
-SLACK_BOT_TOKEN=xoxb-...
+- **Bot Token** (`xoxb-...`): from Step 5
+- **Channel ID**: from Step 6
+- **App Token** (`xapp-...`): from Step 3 (optional, enables inbound commands)
 
-# Required: target channel ID from Step 6
-SLACK_CHANNEL_ID=C01234ABCDE
-
-# Optional: App-level token from Step 3 (enables Slack-to-Argus routing)
-SLACK_APP_TOKEN=xapp-...
-```
-
-Alternatively, add a `slack` section to `~/.argus/config.json`:
-
-```json
-{
-  "slack": {
-    "botToken": "xoxb-...",
-    "channelId": "C01234ABCDE",
-    "appToken": "xapp-..."
-  }
-}
-```
-
-Environment variables take precedence over the config file.
+Click **Save**. Config is stored in `~/.argus/slack.config`.
 
 ---
 

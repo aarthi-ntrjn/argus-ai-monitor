@@ -287,33 +287,29 @@ Argus can post AI session events to a Slack channel and respond to questions fro
 
 ### Configuration
 
-Set these in `backend/.env` or as environment variables:
+Open the Argus Settings dialog and go to the **Slack** section. Enter:
 
-```bash
-SLACK_BOT_TOKEN=xoxb-...       # Required: Bot User OAuth Token
-SLACK_CHANNEL_ID=C01234ABCDE   # Required: target channel ID
-SLACK_APP_TOKEN=xapp-...       # Optional: enables Slack-to-Argus routing (Socket Mode)
-```
+- **Bot Token** (`xoxb-...`): Bot User OAuth Token from step 5
+- **Channel ID**: The channel ID where Argus will post (e.g. `C01234ABCDE`)
+- **App Token** (`xapp-...`): Optional, enables Slack-to-Argus routing via Socket Mode
 
-Or add a `slack` section to `~/.argus/config.json`:
+Click **Save**. Config is stored in `~/.argus/slack.config`.
+
+To filter which session events are posted, set `enabledEventTypes` in `~/.argus/slack.config`:
 
 ```json
 {
-  "slack": {
-    "botToken": "xoxb-...",
-    "channelId": "C01234ABCDE",
-    "appToken": "xapp-...",
-    "enabled": true,
-    "enabledEventTypes": ["session.created", "session.ended"]
-  }
+  "botToken": "xoxb-...",
+  "channelId": "C01234ABCDE",
+  "enabledEventTypes": ["session.created", "session.ended"]
 }
 ```
 
-Omit `enabledEventTypes` to receive all event types. Set it to a list to filter down to specific ones.
+Omit `enabledEventTypes` to receive all event types.
 
 ### Asking the Bot Questions
 
-If `SLACK_APP_TOKEN` is set, you can ask the bot questions in Slack:
+If an App Token is configured, you can ask the bot questions in Slack:
 
 | Command | Response |
 | ------- | -------- |
