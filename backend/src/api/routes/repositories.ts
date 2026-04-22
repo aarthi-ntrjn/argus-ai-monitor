@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import { basename } from 'path';
 import { existsSync } from 'fs';
 import { join } from 'path';
+import { expandTilde } from '../../utils/path-sandbox.js';
 import {
   getRepositories,
   getRepository,
@@ -29,8 +30,9 @@ const repositoriesRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.post<{ Body: { path?: string } }>('/api/v1/repositories', async (req, reply) => {
-    const { path: repoPath } = req.body ?? {};
-    if (!repoPath) return reply.status(400).send({ error: 'MISSING_PATH', message: 'path is required', requestId: req.id });
+    const { path: rawPath } = req.body ?? {};
+    if (!rawPath) return reply.status(400).send({ error: 'MISSING_PATH', message: 'path is required', requestId: req.id });
+    const repoPath = expandTilde(rawPath);
 
     if (!existsSync(join(repoPath, '.git'))) {
       return reply.status(400).send({ error: 'NOT_GIT_REPO', message: `The selected folder is not a git repository. To add all repos inside a parent folder, select the parent with "Add Repository".`, requestId: req.id });
