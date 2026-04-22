@@ -57,7 +57,7 @@ export function SetupPage({ title, subtitle, logoSrc, prerequisites, steps }: Se
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 md:p-12">
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-4xl">
 
         <div className="mb-8">
           <button onClick={() => navigate('/')} className="icon-btn text-sm text-gray-600 hover:text-blue-600 mb-6 flex items-center gap-1.5">
