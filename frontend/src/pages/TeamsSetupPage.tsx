@@ -76,7 +76,7 @@ const STEPS: SetupStep[] = [
 const PREREQUISITES = (
   <ul className="space-y-1.5 text-sm text-gray-600 list-disc pl-4">
     <li><ExternalA href="https://microsoft.github.io/teams-sdk/">Teams CLI</ExternalA> installed: <Mono>npm install -g @microsoft/teams.cli@preview</Mono></li>
-    <li>A Microsoft Teams workspace where you are a team owner or admin. <ExternalA href="https://www.microsoft.com/en-us/microsoft-365/business/microsoft-365-plans-and-pricing">Get Microsoft 365</ExternalA> if you don't have one.</li>
+    <li>A Microsoft Teams workspace where you are a team owner or admin. Get <ExternalA href="https://www.microsoft.com/en-us/microsoft-teams/essentials">Teams Essentials</ExternalA> or an <ExternalA href="https://www.microsoft.com/en-us/microsoft-365/business/microsoft-365-plans-and-pricing">M365 tenant</ExternalA> if you don't have one.</li>
     <li>For local dev: <ExternalA href="https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/">Azure Dev Tunnels CLI</ExternalA> -- <Mono>winget install Microsoft.DevTunnel</Mono> or <Mono>brew install devtunnel</Mono>.</li>
   </ul>
 );
