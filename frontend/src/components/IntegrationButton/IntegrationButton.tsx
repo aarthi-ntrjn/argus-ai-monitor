@@ -1,9 +1,8 @@
 import { useRef, useState, useEffect } from 'react';
-import { ChevronDown, ExternalLink, Settings } from 'lucide-react';
+import { ChevronDown, ExternalLink, Pencil } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import teamsUrl from '../../images/microsoft-teams.svg?url';
 import slackUrl from '../../images/slack.svg?url';
-import { IntegrationConfigContent } from '../SettingsDialog/IntegrationConfigContent';
 import { useTeamsSettings } from '../../hooks/useTeamsSettings';
 import { useSlackSettings } from '../../hooks/useSlackSettings';
 
@@ -107,19 +106,30 @@ function IntegrationDropdown({ type, label, status, onToggle, disabled, onOpenSe
               </button>
             </div>
           ) : (
-            <>
-              <IntegrationConfigContent type={type} showSetupGuide={status !== 'connected'} />
-              <div className="mt-2 pt-2 border-t border-gray-100">
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-medium text-gray-700">{label}</p>
+              <p className="text-xs text-gray-500">
+                {status === 'connected' ? 'Integration is running.' : 'Integration is stopped.'}
+              </p>
+              <button
+                type="button"
+                onClick={handleOpenSettings}
+                className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline"
+              >
+                <Pencil size={11} aria-hidden="true" />
+                Edit in settings
+              </button>
+              {status !== 'connected' && (
                 <button
                   type="button"
-                  onClick={handleOpenSettings}
-                  className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:underline"
+                  onClick={handleSetupGuide}
+                  className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-600 hover:underline"
                 >
-                  <Settings size={11} aria-hidden="true" />
-                  Open in settings
+                  <ExternalLink size={11} aria-hidden="true" />
+                  View setup guide
                 </button>
-              </div>
-            </>
+              )}
+            </div>
           )}
         </div>
       )}
