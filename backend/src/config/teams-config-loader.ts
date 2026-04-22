@@ -25,18 +25,9 @@ export function loadTeamsConfig(): Partial<TeamsConfig> & { enabled: boolean } {
         clientSecret: parsed.clientSecret,
         tenantId: parsed.tenantId,
       };
-    } catch { /* fall through to env fallback */ }
+    } catch { /* file unreadable, return unconfigured */ }
   }
-  // Env var fallback for backward compat
-  return {
-    enabled: process.env.TEAMS_ENABLED === 'true',
-    teamId: process.env.TEAMS_TEAM_ID,
-    channelId: process.env.TEAMS_CHANNEL_ID,
-    ownerAadObjectId: process.env.TEAMS_OWNER_AAD_OBJECT_ID,
-    clientId: process.env.CLIENT_ID,
-    clientSecret: process.env.CLIENT_SECRET,
-    tenantId: process.env.TENANT_ID,
-  };
+  return { enabled: false };
 }
 
 export function saveTeamsConfig(config: Partial<TeamsConfig>): void {

@@ -27,19 +27,9 @@ export function loadSlackConfig(): SlackConfig | null {
         ownerUserId: parsed.ownerUserId,
         enabledEventTypes: parsed.enabledEventTypes,
       };
-    } catch { /* fall through to env fallback */ }
+    } catch { /* file unreadable */ }
   }
-  // Env var fallback for backward compat
-  const botToken = process.env.SLACK_BOT_TOKEN ?? '';
-  const channelId = process.env.SLACK_CHANNEL_ID ?? '';
-  if (!botToken && !channelId) return null;
-  return {
-    botToken,
-    appToken: process.env.SLACK_APP_TOKEN,
-    channelId,
-    enabled: true,
-    ownerUserId: process.env.SLACK_OWNER_USER_ID,
-  };
+  return null;
 }
 
 export function saveSlackConfig(config: Partial<SlackConfig>): void {

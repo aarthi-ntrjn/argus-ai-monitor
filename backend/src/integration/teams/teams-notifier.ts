@@ -58,8 +58,8 @@ export class TeamsNotifier implements NotificationIntegration {
   private _logCtx(): Record<string, string | undefined> {
     const config = loadTeamsConfig();
     return {
-      clientId: process.env.CLIENT_ID,
-      tenantId: process.env.TENANT_ID,
+      clientId: config.clientId,
+      tenantId: config.tenantId,
       teamId: config.teamId,
     };
   }
@@ -100,7 +100,7 @@ export class TeamsNotifier implements NotificationIntegration {
                 sessionId: session.id,
                 teamsThreadId: sent.id,
                 teamsChannelId: channelId,
-                tenantId: process.env.TENANT_ID ?? '',
+                tenantId: loadTeamsConfig().tenantId ?? '',
                 createdAt: new Date().toISOString(),
               });
               this.diffTracker.seed(session);
@@ -127,7 +127,7 @@ export class TeamsNotifier implements NotificationIntegration {
           sessionId: session.id,
           teamsThreadId: sent.id,
           teamsChannelId: channelId,
-          tenantId: process.env.TENANT_ID ?? '',
+          tenantId: loadTeamsConfig().tenantId ?? '',
           createdAt: new Date().toISOString(),
         });
         const stored = getTeamsThread(session.id);

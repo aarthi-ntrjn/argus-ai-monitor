@@ -1,24 +1,22 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import supertest from 'supertest';
 import { buildServer } from '../../src/server.js';
 import { closeDb } from '../../src/db/database.js';
+
+vi.mock('../../src/config/teams-config-loader.js', () => ({
+  loadTeamsConfig: vi.fn().mockReturnValue({ enabled: false }),
+  saveTeamsConfig: vi.fn(),
+  getTeamsConfigPath: vi.fn().mockReturnValue('/mock/.argus/teams.config'),
+}));
+
+import { loadTeamsConfig } from '../../src/config/teams-config-loader.js';
 
 describe('GET /api/v1/settings/teams', () => {
   let request: ReturnType<typeof supertest>;
   let app: Awaited<ReturnType<typeof buildServer>>['app'];
 
-  const ENV_KEYS = [
-    'TEAMS_ENABLED',
-    'TEAMS_TEAM_ID',
-    'TEAMS_CHANNEL_ID',
-    'TEAMS_OWNER_AAD_OBJECT_ID',
-    'CLIENT_ID',
-    'CLIENT_SECRET',
-  ] as const;
-
-  let savedEnv: Record<string, string | undefined> = {};
-
   beforeAll(async () => {
+    vi.mocked(loadTeamsConfig).mockReturnValue({ enabled: false });
     process.env.ARGUS_DB_PATH = ':memory:';
     closeDb();
     const result = await buildServer();
@@ -32,60 +30,43 @@ describe('GET /api/v1/settings/teams', () => {
     closeDb();
   });
 
-  beforeEach(() => {
-    for (const key of ENV_KEYS) {
-      savedEnv[key] = process.env[key];
-      delete process.env[key];
-    }
-  });
-
-  afterEach(() => {
-    for (const key of ENV_KEYS) {
-      if (savedEnv[key] === undefined) {
-        delete process.env[key];
-      } else {
-        process.env[key] = savedEnv[key];
-      }
-    }
-  });
-
-  it('returns connectionStatus: disconnected when TEAMS_ENABLED is not set', async () => {
+  it('returns connectionStatus: disconnected when no config file exists', async () => {
+    vi.mocked(loadTeamsConfig).mockReturnValue({ enabled: false });
     const res = await request.get('/api/v1/settings/teams');
     expect(res.status).toBe(200);
     expect(res.body.connectionStatus).toBe('disconnected');
   });
 
-  it('returns connectionStatus: unconfigured when enabled but CLIENT_ID/CLIENT_SECRET missing', async () => {
-    process.env.TEAMS_ENABLED = 'true';
-    process.env.TEAMS_TEAM_ID = 'T-001';
-    process.env.TEAMS_CHANNEL_ID = 'C-001';
-
+  it('returns connectionStatus: unconfigured when teamId/channelId set but clientId/clientSecret missing', async () => {
+    vi.mocked(loadTeamsConfig).mockReturnValue({ enabled: true, teamId: 'T-001', channelId: 'C-001' });
     const res = await request.get('/api/v1/settings/teams');
     expect(res.status).toBe(200);
     expect(res.body.connectionStatus).toBe('unconfigured');
   });
 
-  it('returns connectionStatus: connected when all required env vars are set', async () => {
-    process.env.TEAMS_ENABLED = 'true';
-    process.env.TEAMS_TEAM_ID = 'T-001';
-    process.env.TEAMS_CHANNEL_ID = 'C-001';
-    process.env.TEAMS_OWNER_AAD_OBJECT_ID = 'owner-id';
-    process.env.CLIENT_ID = 'client-id';
-    process.env.CLIENT_SECRET = 'client-secret';
-
+  it('returns connectionStatus: connected when all required fields are set', async () => {
+    vi.mocked(loadTeamsConfig).mockReturnValue({
+      enabled: true,
+      teamId: 'T-001',
+      channelId: 'C-001',
+      ownerAadObjectId: 'owner-id',
+      clientId: 'client-id',
+      clientSecret: 'client-secret',
+    });
     const res = await request.get('/api/v1/settings/teams');
     expect(res.status).toBe(200);
     expect(res.body.connectionStatus).toBe('connected');
   });
 
   it('response shape includes enabled, teamId, channelId, ownerAadObjectId, connectionStatus', async () => {
-    process.env.TEAMS_ENABLED = 'true';
-    process.env.TEAMS_TEAM_ID = 'T-001';
-    process.env.TEAMS_CHANNEL_ID = 'C-001';
-    process.env.TEAMS_OWNER_AAD_OBJECT_ID = 'owner-id';
-    process.env.CLIENT_ID = 'client-id';
-    process.env.CLIENT_SECRET = 'client-secret';
-
+    vi.mocked(loadTeamsConfig).mockReturnValue({
+      enabled: true,
+      teamId: 'T-001',
+      channelId: 'C-001',
+      ownerAadObjectId: 'owner-id',
+      clientId: 'client-id',
+      clientSecret: 'client-secret',
+    });
     const res = await request.get('/api/v1/settings/teams');
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('enabled');
@@ -96,10 +77,11 @@ describe('GET /api/v1/settings/teams', () => {
   });
 
   it('returns 200 in all cases', async () => {
+    vi.mocked(loadTeamsConfig).mockReturnValue({ enabled: false });
     const res1 = await request.get('/api/v1/settings/teams');
     expect(res1.status).toBe(200);
 
-    process.env.TEAMS_ENABLED = 'true';
+    vi.mocked(loadTeamsConfig).mockReturnValue({ enabled: true, teamId: 'T-001' });
     const res2 = await request.get('/api/v1/settings/teams');
     expect(res2.status).toBe(200);
   });
