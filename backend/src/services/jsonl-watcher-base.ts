@@ -4,6 +4,7 @@ import chokidar, { type FSWatcher } from 'chokidar';
 import { getMaxSequenceNumber } from '../db/database.js';
 import { OutputStore } from './output-store.js';
 import { applyActivityUpdate, applyModelUpdate, applySummaryUpdate } from './watcher-session-helpers.js';
+import * as logger from '../utils/logger.js';
 import type { SessionOutput } from '../models/index.js';
 
 export const TAIL_BYTES = 16 * 1024;
@@ -64,8 +65,12 @@ export abstract class JsonlWatcherBase {
     this.sequenceCounters.set(sessionId, getMaxSequenceNumber(sessionId) + 1);
     await this.readNewLines(sessionId, filePath);
 
-    const watcher = chokidar.watch(filePath, { persistent: false, usePolling: false });
-    watcher.on('change', () => { this.readNewLines(sessionId, filePath).catch(() => {}); });
+    const watcher = chokidar.watch(filePath, { persistent: true, usePolling: false });
+    watcher.on('change', () => {
+      this.readNewLines(sessionId, filePath).catch((err) => {
+        logger.warn(`${this.tag} readNewLines failed for ${sessionId}: ${err}`);
+      });
+    });
     this.watchers.set(sessionId, watcher);
   }
 
@@ -103,7 +108,9 @@ export abstract class JsonlWatcherBase {
       }
       if (detectedModel) applyModelUpdate(sessionId, detectedModel, this.tag);
       applySummaryUpdate(sessionId, outputs, this.tag);
-    } catch { /* ignore */ }
+    } catch (err) {
+      logger.warn(`${this.tag} failed to read JSONL for ${sessionId}: ${err}`);
+    }
   }
 
   stopWatchers(): void {
