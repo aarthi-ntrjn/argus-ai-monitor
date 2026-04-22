@@ -5,6 +5,7 @@ import { getHealth } from '../../services/api';
 import { buildBugReportUrl, buildFeatureRequestUrl, ARGUS_CHANGELOG_URL } from '../../config/feedback';
 import { SectionHeading } from '../SectionHeading';
 import { WebsiteIcon, GitHubIcon, NpmIcon } from '../BrandIcons';
+import { ClaudeIcon, CopilotIcon } from '../SessionTypeIcon/SessionTypeIcon';
 import { GeneralSettingsContent } from '../SettingsDialog/GeneralSettingsContent';
 
 interface SettingsPanelProps {
@@ -17,9 +18,36 @@ export function SettingsPanel({ settings, onToggle, onOpenAllSettings }: Setting
   const { data: healthData } = useQuery({ queryKey: ['health'], queryFn: getHealth, staleTime: Infinity });
 
   return (
-    <div className="absolute right-0 top-full mt-1 w-96 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3 max-h-[calc(100vh-4rem)] overflow-y-auto">
+    <div className="absolute right-0 top-full mt-1 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-5 max-h-[calc(100vh-4rem)] overflow-y-auto">
       <SectionHeading className="mb-2">Settings</SectionHeading>
       <GeneralSettingsContent settings={settings} onToggle={onToggle} compact />
+      <div className="mt-2 pt-2 border-t border-gray-100">
+        <div className="flex items-center gap-2">
+          <SectionHeading>Supported CLIs</SectionHeading>
+          <div className="flex items-center gap-2">
+            <a
+              href="https://docs.anthropic.com/en/docs/claude-code/getting-started"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="icon-btn text-orange-500 hover:text-orange-600"
+              aria-label="Claude Code"
+              title="Claude Code"
+            >
+              <ClaudeIcon size={14} />
+            </a>
+            <a
+              href="https://github.com/features/copilot/cli/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="icon-btn text-purple-600 hover:text-purple-700"
+              aria-label="GitHub Copilot CLI"
+              title="GitHub Copilot CLI"
+            >
+              <CopilotIcon size={14} />
+            </a>
+          </div>
+        </div>
+      </div>
       <div className="mt-2 pt-2 border-t border-gray-100 flex items-center gap-3">
         <SectionHeading className="shrink-0">
           About Argus{healthData?.version && (

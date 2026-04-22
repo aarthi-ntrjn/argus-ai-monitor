@@ -4,7 +4,7 @@ This guide walks through creating and configuring the Slack App that Argus uses 
 
 ## Prerequisites
 
-- A Slack workspace (free tier is sufficient)
+- A Slack workspace (free tier is sufficient, don't have one? [Create a Slack workspace](https://slack.com/help/articles/206845317-Create-a-Slack-workspace))
 - Admin access to the workspace, or permission to install apps
 
 ---
