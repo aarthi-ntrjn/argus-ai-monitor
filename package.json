@@ -46,6 +46,7 @@
     "dev": "npm run dev --workspace=backend",
     "build": "npm run build --workspaces",
     "test": "npm run test --workspaces",
+    "postinstall": "node ./scripts/fix-node-pty-helper.mjs",
     "prepublishOnly": "npm run build",
     "test:e2e": "npm run test:e2e --workspace=frontend",
     "test:e2e:real": "npm run test:e2e:real --workspace=frontend",
