@@ -12,7 +12,7 @@ Your command center for Claude Code and GitHub Copilot CLI sessions. Watch every
 ## Requirements
 
 - Node.js 22 LTS
-- GitHub Copilot CLI and/or Claude Code installed
+- [GitHub Copilot CLI](https://github.com/features/copilot/cli/) and/or [Claude Code](https://docs.anthropic.com/en/docs/claude-code/getting-started) installed
 
 ## Getting Started
 
@@ -112,7 +112,7 @@ The button is shown for all active sessions and is disabled (greyed out) when Ar
 
 To send prompts to a session, start it through Argus.This gives Argus a direct PTY write channel to the process.
 
-The easiest way is to click the **Launch with Argus** dropdown in any repo card header and select **Launch Claude** or **Launch Copilot**.
+The easiest way is to click the **Launch with Argus** dropdown in any repo card header and select **Launch Claude** or **Launch Copilot**. If neither tool is detected on your PATH, the dropdown shows install links for [Claude Code](https://docs.anthropic.com/en/docs/claude-code/getting-started) and [GitHub Copilot CLI](https://github.com/features/copilot/cli/).
 
 #### Headless Environments (Codespaces, SSH, no TTY)
 
