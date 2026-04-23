@@ -118,8 +118,8 @@ function TeamsConfigContent({ showSetupGuide }: { showSetupGuide: boolean }) {
     { key: 'teamId',           label: 'Team ID',               placeholder: 'e.g. 19:...' },
     { key: 'channelId',        label: 'Channel ID',            placeholder: 'e.g. 19:...' },
     { key: 'ownerAadObjectId', label: 'Owner AAD Object ID',   placeholder: 'e.g. xxxxxxxx-xxxx-...' },
-    { key: 'clientId',         label: 'Client ID (App)',        placeholder: 'Azure app client ID', secret: true },
-    { key: 'tenantId',         label: 'Tenant ID',             placeholder: 'Azure tenant ID', secret: true },
+    { key: 'clientId',         label: 'Client ID (App)',        placeholder: 'Azure app client ID' },
+    { key: 'tenantId',         label: 'Tenant ID',             placeholder: 'Azure tenant ID' },
   ];
 
   const values: Record<string, string> = {
