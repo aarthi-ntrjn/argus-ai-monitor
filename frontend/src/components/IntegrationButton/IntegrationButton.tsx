@@ -93,15 +93,15 @@ function IntegrationDropdown({ type, label, status, onToggle, disabled, onOpenSe
             <div className="flex flex-col gap-2">
               <p className="text-sm font-medium text-gray-700">{label}</p>
               <p className="text-xs text-gray-500">
-                Not configured. Set the required environment variables to enable this integration.
+                Not configured. Add your credentials to enable this integration.
               </p>
               <button
                 type="button"
-                onClick={handleSetupGuide}
+                onClick={handleOpenSettings}
                 className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline"
               >
-                <ExternalLink size={11} aria-hidden="true" />
-                Setup connection
+                <Pencil size={11} aria-hidden="true" />
+                Configure in Settings
               </button>
             </div>
           ) : (
