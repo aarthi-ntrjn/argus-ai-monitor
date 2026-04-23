@@ -121,14 +121,14 @@ function TeamsConfigContent({ showSetupGuide }: { showSetupGuide: boolean }) {
     { key: 'channelId',        label: 'Channel ID',            placeholder: 'e.g. 19:...' },
     { key: 'clientId',         label: 'Client ID (App)',        placeholder: 'Azure app client ID' },
     { key: 'tenantId',         label: 'Tenant ID',             placeholder: 'Azure tenant ID' },
-    { key: 'ownerAadObjectId', label: 'Owner AAD Object ID',   placeholder: 'e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+    { key: 'ownerSenderId', label: 'Owner Sender ID',   placeholder: 'e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
       hint: 'Restricts inbound command access to you only — Argus ignores messages from anyone else. To find: open graph.microsoft.com/v1.0/me in your browser, sign in with your Microsoft account, and copy the "id" field.' },
   ];
 
   const values: Record<string, string> = {
     teamId:           config?.teamId ?? '',
     channelId:        config?.channelId ?? '',
-    ownerAadObjectId: config?.ownerAadObjectId ?? '',
+    ownerSenderId: config?.ownerSenderId ?? '',
     clientId:         config?.clientId ?? '',
     tenantId:         config?.tenantId ?? '',
   };
@@ -164,15 +164,15 @@ function SlackConfigContent({ showSetupGuide }: { showSetupGuide: boolean }) {
     { key: 'botToken',    label: 'Bot Token',    placeholder: 'xoxb-...', secret: true },
     { key: 'appToken',    label: 'App Token',    placeholder: 'xapp-...', secret: true },
     { key: 'channelId',   label: 'Channel ID',   placeholder: 'C...' },
-    { key: 'ownerUserId', label: 'Owner User ID', placeholder: 'U...',
+    { key: 'ownerSenderId', label: 'Owner Sender ID', placeholder: 'U...',
       hint: 'Restricts inbound command access to you only — Argus ignores messages from anyone else. To find: in Slack, click your profile picture → View profile → ⋯ menu → Copy member ID.' },
   ];
 
   const values: Record<string, string> = {
-    botToken:    config?.botToken ?? '',
-    appToken:    config?.appToken ?? '',
-    channelId:   config?.channelId ?? '',
-    ownerUserId: config?.ownerUserId ?? '',
+    botToken:      config?.botToken ?? '',
+    appToken:      config?.appToken ?? '',
+    channelId:     config?.channelId ?? '',
+    ownerSenderId: config?.ownerSenderId ?? '',
   };
 
   return (

@@ -65,7 +65,7 @@ const enabledConfig = {
   tenantId: 'tenant-id',
   teamId: 'team-id',
   channelId: 'channel-id',
-  ownerAadObjectId: 'owner-aad-object-id',
+  ownerSenderId: 'owner-aad-object-id',
 };
 
 const existingThread = {
@@ -175,7 +175,7 @@ describe('TeamsNotifier', () => {
   });
 
   describe('opening message format', () => {
-    it('includes session ID, type, startedAt, ownerAadObjectId', async () => {
+    it('includes session ID, type, startedAt, ownerSenderId', async () => {
       vi.mocked(loadTeamsConfig).mockReturnValue(enabledConfig);
       vi.mocked(getTeamsThread).mockReturnValue(null);
       mockTeamsApp.send.mockResolvedValue({ id: 'thread-1' });
@@ -214,12 +214,12 @@ describe('TeamsNotifier', () => {
       );
     });
 
-    it('returns false when enabled but teamId/channelId/ownerAadObjectId are missing', async () => {
+    it('returns false when enabled but teamId/channelId/ownerSenderId are missing', async () => {
       vi.mocked(loadTeamsConfig).mockReturnValue({
         enabled: true,
         teamId: undefined,
         channelId: undefined,
-        ownerAadObjectId: undefined,
+        ownerSenderId: undefined,
       });
 
       const result = await service.initialize();

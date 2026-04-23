@@ -38,7 +38,7 @@ export class TeamsListener implements NotificationListener {
       const senderAadObjectId = (activity.from as Record<string, unknown>)?.['aadObjectId'] as string | undefined;
       this.logger.info({ senderAadObjectId, source: LOG_TAG }, 'teams.listener.message.received');
 
-      if (!senderAadObjectId || senderAadObjectId !== teamsConfig.ownerAadObjectId) {
+      if (!senderAadObjectId || senderAadObjectId !== teamsConfig.ownerSenderId) {
         this.logger.info({ senderAadObjectId, source: LOG_TAG }, 'teams.listener.message.rejected.non-owner');
         return;
       }
@@ -67,7 +67,7 @@ export class TeamsListener implements NotificationListener {
 
       const teamsConfig = loadTeamsConfig();
       const senderAadObjectId = (activity.from as Record<string, unknown>)?.['aadObjectId'] as string | undefined;
-      if (!senderAadObjectId || senderAadObjectId !== teamsConfig.ownerAadObjectId) {
+      if (!senderAadObjectId || senderAadObjectId !== teamsConfig.ownerSenderId) {
         this.logger.info({ senderAadObjectId, source: LOG_TAG }, 'teams.listener.card.action.rejected.non-owner');
         return { statusCode: 200, type: 'application/vnd.microsoft.activity.message' as const, value: 'Unauthorized' };
       }

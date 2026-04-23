@@ -8,11 +8,11 @@ export type ConnectionStatus = 'connected' | 'disconnected' | 'unconfigured';
  * If all are present but the notifier is not running, the status is 'disconnected'.
  */
 const TEAMS_REQUIRED: (keyof TeamsConfig)[] = [
-  'teamId', 'channelId', 'ownerAadObjectId', 'clientId', 'clientSecret', 'tenantId',
+  'teamId', 'channelId', 'ownerSenderId', 'clientId', 'clientSecret', 'tenantId',
 ];
 
 const SLACK_REQUIRED: (keyof SlackConfig)[] = [
-  'botToken', 'channelId', 'ownerUserId',
+  'botToken', 'channelId', 'ownerSenderId',
 ];
 
 export function getTeamsConnectionStatus(config: TeamsConfig, isRunning: boolean): ConnectionStatus {

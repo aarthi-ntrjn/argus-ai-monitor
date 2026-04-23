@@ -47,7 +47,7 @@ describe('SettingsPanel - Teams integration section', () => {
       enabled: true,
       teamId: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
       channelId: '19:xxxx@thread.tacv2',
-      ownerAadObjectId: 'owner-aad-id',
+      ownerSenderId: 'owner-aad-id',
       connectionStatus: 'connected',
     });
     vi.mocked(api.getIntegrationStatus).mockResolvedValue(teamsRunning);
@@ -62,7 +62,7 @@ describe('SettingsPanel - Teams integration section', () => {
       enabled: true,
       teamId: 'test-team-id',
       channelId: '19:xxxx@thread.tacv2',
-      ownerAadObjectId: 'owner-aad-id',
+      ownerSenderId: 'owner-aad-id',
       connectionStatus: 'connected',
     });
     renderWithQuery(<IntegrationConfigContent type="teams" />);

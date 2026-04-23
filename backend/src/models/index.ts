@@ -101,7 +101,7 @@ export interface SlackConfig {
   channelId: string;
   enabled: boolean;
   enabledEventTypes?: string[];
-  ownerUserId?: string;
+  ownerSenderId?: string;
 }
 
 export interface ArgusConfig {
@@ -169,7 +169,7 @@ export interface TeamsConfig {
   enabled: boolean;
   teamId: string;
   channelId: string;
-  ownerAadObjectId: string;
+  ownerSenderId: string;
   clientId?: string;
   clientSecret?: string;
   tenantId?: string;

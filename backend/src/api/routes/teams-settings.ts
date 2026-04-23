@@ -4,7 +4,7 @@ import { getTeamsConnectionStatus } from '../../services/integration-status.js';
 import type { TeamsConfig } from '../../models/index.js';
 
 const EDITABLE_KEYS: (keyof TeamsConfig)[] = [
-  'teamId', 'channelId', 'ownerAadObjectId', 'clientId', 'clientSecret', 'tenantId',
+  'teamId', 'channelId', 'ownerSenderId', 'clientId', 'clientSecret', 'tenantId',
 ];
 
 const teamsSettingsRoutes: FastifyPluginAsync = async (app) => {

@@ -11,7 +11,7 @@ const ALLOWED_KEYS = new Set<keyof ArgusConfig>([
 ]);
 
 const SLACK_EDITABLE_KEYS: (keyof SlackConfig)[] = [
-  'botToken', 'appToken', 'channelId', 'ownerUserId',
+  'botToken', 'appToken', 'channelId', 'ownerSenderId',
 ];
 
 const settingsRoutes: FastifyPluginAsync = async (app) => {

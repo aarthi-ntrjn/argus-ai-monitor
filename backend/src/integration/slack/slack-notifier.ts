@@ -61,8 +61,8 @@ export class SlackNotifier implements NotificationIntegration {
       return false;
     }
     this.config = freshConfig;
-    if (!this.config.botToken || !this.config.channelId || !this.config.ownerUserId) {
-      logger.warn(`${LOG_TAG} Slack integration disabled: missing botToken, channelId, or ownerUserId`);
+    if (!this.config.botToken || !this.config.channelId || !this.config.ownerSenderId) {
+      logger.warn(`${LOG_TAG} Slack integration disabled: missing botToken, channelId, or ownerSenderId`);
       return false;
     }
     if (!this.config.enabled) {

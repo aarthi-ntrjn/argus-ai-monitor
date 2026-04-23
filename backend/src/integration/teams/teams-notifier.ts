@@ -39,7 +39,7 @@ export class TeamsNotifier implements NotificationIntegration {
   async initialize(): Promise<boolean> {
     if (!this.isConfigured()) {
       const config = loadTeamsConfig();
-      this.logger.info({ enabled: config.enabled, hasTeamId: Boolean(config.teamId), hasChannelId: Boolean(config.channelId), hasOwner: Boolean(config.ownerAadObjectId) }, 'teams: not configured, skipping event subscriptions');
+      this.logger.info({ enabled: config.enabled, hasTeamId: Boolean(config.teamId), hasChannelId: Boolean(config.channelId), hasOwner: Boolean(config.ownerSenderId) }, 'teams: not configured, skipping event subscriptions');
       return false;
     }
     this.active = true;
@@ -52,7 +52,7 @@ export class TeamsNotifier implements NotificationIntegration {
     return config.enabled === true &&
       Boolean(config.teamId) &&
       Boolean(config.channelId) &&
-      Boolean(config.ownerAadObjectId);
+      Boolean(config.ownerSenderId);
   }
 
   private _logCtx(): Record<string, string | undefined> {
@@ -73,7 +73,7 @@ export class TeamsNotifier implements NotificationIntegration {
     if (!this.active) return;
     const config = loadTeamsConfig();
     if (!this.isConfigured()) {
-      this.logger.warn({ ...this._sessionCtx(session), enabled: config.enabled, hasTeamId: Boolean(config.teamId), hasChannelId: Boolean(config.channelId), hasOwner: Boolean(config.ownerAadObjectId) }, 'teams.session.created.skipped: not configured');
+      this.logger.warn({ ...this._sessionCtx(session), enabled: config.enabled, hasTeamId: Boolean(config.teamId), hasChannelId: Boolean(config.channelId), hasOwner: Boolean(config.ownerSenderId) }, 'teams.session.created.skipped: not configured');
       return;
     }
     const { channelId } = config as { channelId: string };

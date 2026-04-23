@@ -153,7 +153,7 @@ export interface TeamsSettings {
   enabled: boolean;
   teamId?: string;
   channelId?: string;
-  ownerAadObjectId?: string;
+  ownerSenderId?: string;
   clientId?: string;
   tenantId?: string;
   connectionStatus: 'connected' | 'disconnected' | 'unconfigured';
@@ -171,7 +171,7 @@ export interface SlackSettings {
   botToken: string;
   appToken?: string;
   channelId: string;
-  ownerUserId?: string;
+  ownerSenderId?: string;
   enabled: boolean;
 }
 

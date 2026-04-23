@@ -59,7 +59,7 @@ const config = {
   tenantId: 'tenant-id',
   teamId: 'team-id',
   channelId: 'channel-id',
-  ownerAadObjectId: 'owner-aad-object-id',
+  ownerSenderId: 'owner-aad-object-id',
 };
 
 describe('TeamsNotifier - session lifecycle', () => {

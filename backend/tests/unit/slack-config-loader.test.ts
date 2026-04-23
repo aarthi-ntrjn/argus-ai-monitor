@@ -33,7 +33,7 @@ describe('loadSlackConfig', () => {
   });
 
   it('returns null when file exists but has no token fields', () => {
-    mockFile({ ownerUserId: 'U123' });
+    mockFile({ ownerSenderId: 'U123' });
     expect(loadSlackConfig()).toBeNull();
   });
 

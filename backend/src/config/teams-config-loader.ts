@@ -20,7 +20,7 @@ export function loadTeamsConfig(): Partial<TeamsConfig> & { enabled: boolean } {
         enabled: parsed.enabled ?? (Boolean(parsed.teamId && parsed.channelId)),
         teamId: parsed.teamId,
         channelId: parsed.channelId,
-        ownerAadObjectId: parsed.ownerAadObjectId,
+        ownerSenderId: parsed.ownerSenderId,
         clientId: parsed.clientId,
         clientSecret: parsed.clientSecret,
         tenantId: parsed.tenantId,

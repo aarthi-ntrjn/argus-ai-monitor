@@ -38,7 +38,7 @@ describe('GET /api/v1/settings/teams', () => {
   });
 
   it('returns connectionStatus: disconnected when config is set but disabled', async () => {
-    vi.mocked(loadTeamsConfig).mockReturnValue({ enabled: false, teamId: 'T-001', channelId: 'C-001', ownerAadObjectId: 'owner-id', clientId: 'cid', clientSecret: 'csec', tenantId: 'tid' });
+    vi.mocked(loadTeamsConfig).mockReturnValue({ enabled: false, teamId: 'T-001', channelId: 'C-001', ownerSenderId: 'owner-id', clientId: 'cid', clientSecret: 'csec', tenantId: 'tid' });
     const res = await request.get('/api/v1/settings/teams');
     expect(res.status).toBe(200);
     expect(res.body.connectionStatus).toBe('disconnected');
@@ -56,7 +56,7 @@ describe('GET /api/v1/settings/teams', () => {
       enabled: true,
       teamId: 'T-001',
       channelId: 'C-001',
-      ownerAadObjectId: 'owner-id',
+      ownerSenderId: 'owner-id',
       clientId: 'client-id',
       clientSecret: 'client-secret',
       tenantId: 'tenant-id',
@@ -66,12 +66,12 @@ describe('GET /api/v1/settings/teams', () => {
     expect(res.body.connectionStatus).toBe('disconnected'); // not running at settings-check time
   });
 
-  it('response shape includes enabled, teamId, channelId, ownerAadObjectId, connectionStatus', async () => {
+  it('response shape includes enabled, teamId, channelId, ownerSenderId, connectionStatus', async () => {
     vi.mocked(loadTeamsConfig).mockReturnValue({
       enabled: true,
       teamId: 'T-001',
       channelId: 'C-001',
-      ownerAadObjectId: 'owner-id',
+      ownerSenderId: 'owner-id',
       clientId: 'client-id',
       clientSecret: 'client-secret',
     });
@@ -80,7 +80,7 @@ describe('GET /api/v1/settings/teams', () => {
     expect(res.body).toHaveProperty('enabled');
     expect(res.body).toHaveProperty('teamId');
     expect(res.body).toHaveProperty('channelId');
-    expect(res.body).toHaveProperty('ownerAadObjectId');
+    expect(res.body).toHaveProperty('ownerSenderId');
     expect(res.body).toHaveProperty('connectionStatus');
   });
 

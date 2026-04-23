@@ -24,7 +24,7 @@ export function loadSlackConfig(): SlackConfig | null {
         appToken: parsed.appToken,
         channelId,
         enabled: true,
-        ownerUserId: parsed.ownerUserId,
+        ownerSenderId: parsed.ownerSenderId,
         enabledEventTypes: parsed.enabledEventTypes,
       };
     } catch { /* file unreadable */ }
