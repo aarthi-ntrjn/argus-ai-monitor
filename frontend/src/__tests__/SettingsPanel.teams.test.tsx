@@ -5,13 +5,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { IntegrationConfigContent } from '../components/SettingsDialog/IntegrationConfigContent';
 import * as api from '../services/api';
 
-const notRunning = { integrationsEnabled: true, slack: { notifier: null, listener: null }, teams: { notifier: { running: false }, listener: null } };
-const teamsRunning = { integrationsEnabled: true, slack: { notifier: null, listener: null }, teams: { notifier: { running: true }, listener: null } };
+const notRunning = { integrationsEnabled: true, slack: { connectionStatus: 'unconfigured' as const, notifier: null, listener: null }, teams: { connectionStatus: 'unconfigured' as const, notifier: { running: false }, listener: null } };
+const teamsRunning = { integrationsEnabled: true, slack: { connectionStatus: 'unconfigured' as const, notifier: null, listener: null }, teams: { connectionStatus: 'connected' as const, notifier: { running: true }, listener: null } };
 
 vi.mock('../services/api', () => ({
   getTeamsSettings: vi.fn().mockResolvedValue({ enabled: false, connectionStatus: 'unconfigured' }),
   getSlackSettings: vi.fn().mockRejectedValue(new Error('not configured')),
-  getIntegrationStatus: vi.fn().mockResolvedValue({ integrationsEnabled: true, slack: { notifier: null, listener: null }, teams: { notifier: { running: false }, listener: null } }),
+  getIntegrationStatus: vi.fn().mockResolvedValue({ integrationsEnabled: true, slack: { connectionStatus: 'unconfigured', notifier: null, listener: null }, teams: { connectionStatus: 'unconfigured', notifier: { running: false }, listener: null } }),
   startIntegration: vi.fn().mockResolvedValue(undefined),
   stopIntegration: vi.fn().mockResolvedValue(undefined),
 }));

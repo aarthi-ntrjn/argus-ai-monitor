@@ -6,6 +6,8 @@ import type { TeamsListener } from '../../integration/teams/teams-listener.js';
 import { setIntegrationEnabled } from '../../db/database.js';
 import { telemetryService } from '../../services/telemetry-service.js';
 import { loadSlackConfig } from '../../config/slack-config-loader.js';
+import { loadTeamsConfig } from '../../config/teams-config-loader.js';
+import { getSlackConnectionStatus, getTeamsConnectionStatus } from '../../services/integration-status.js';
 import { setSlackServices } from './health.js';
 import type { SessionMonitor } from '../../services/session-monitor.js';
 
@@ -34,14 +36,20 @@ export function setIntegrationServices(
 
 const integrationsRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/api/v1/integrations', async (_request, reply) => {
+    const slackConfig = loadSlackConfig();
+    const teamsConfig = loadTeamsConfig();
+    const slackRunning = slackNotifier?.isRunning === true;
+    const teamsRunning = teamsNotifier?.isRunning === true;
     return reply.send({
       integrationsEnabled,
       slack: {
-        notifier: slackNotifier ? { running: slackNotifier.isRunning } : null,
+        connectionStatus: getSlackConnectionStatus(slackConfig, slackRunning),
+        notifier: slackNotifier ? { running: slackRunning } : null,
         listener: slackListener ? { running: slackListener.isRunning } : null,
       },
       teams: {
-        notifier: teamsNotifier ? { running: teamsNotifier.isRunning } : null,
+        connectionStatus: getTeamsConnectionStatus(teamsConfig, teamsRunning),
+        notifier: teamsNotifier ? { running: teamsRunning } : null,
         listener: teamsListener ? { running: teamsListener.isRunning } : null,
       },
     });

@@ -5,13 +5,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { IntegrationConfigContent } from '../components/SettingsDialog/IntegrationConfigContent';
 import * as api from '../services/api';
 
-const notRunning = { integrationsEnabled: true, slack: { notifier: null, listener: null }, teams: { notifier: null, listener: null } };
-const slackRunning = { integrationsEnabled: true, slack: { notifier: { running: true }, listener: null }, teams: { notifier: null, listener: null } };
+const notRunning = { integrationsEnabled: true, slack: { connectionStatus: 'unconfigured' as const, notifier: null, listener: null }, teams: { connectionStatus: 'unconfigured' as const, notifier: null, listener: null } };
+const slackRunning = { integrationsEnabled: true, slack: { connectionStatus: 'connected' as const, notifier: { running: true }, listener: null }, teams: { connectionStatus: 'unconfigured' as const, notifier: null, listener: null } };
 
 vi.mock('../services/api', () => ({
   getTeamsSettings: vi.fn().mockResolvedValue({ enabled: false, connectionStatus: 'unconfigured' }),
   getSlackSettings: vi.fn().mockRejectedValue(new Error('not configured')),
-  getIntegrationStatus: vi.fn().mockResolvedValue({ integrationsEnabled: true, slack: { notifier: null, listener: null }, teams: { notifier: null, listener: null } }),
+  getIntegrationStatus: vi.fn().mockResolvedValue({ integrationsEnabled: true, slack: { connectionStatus: 'unconfigured', notifier: null, listener: null }, teams: { connectionStatus: 'unconfigured', notifier: null, listener: null } }),
   startIntegration: vi.fn().mockResolvedValue(undefined),
   stopIntegration: vi.fn().mockResolvedValue(undefined),
 }));
@@ -35,12 +35,11 @@ describe('SettingsPanel - Slack integration section', () => {
     });
   });
 
-  it('shows "configured via environment variables" note', async () => {
-    vi.mocked(api.getSlackSettings).mockResolvedValue({ botToken: '***', channelId: 'C01234', enabled: true });
+  it('shows not-configured badge when slack config missing', async () => {
+    vi.mocked(api.getSlackSettings).mockRejectedValue(new Error('not configured'));
     renderWithQuery(<IntegrationConfigContent type="slack" />);
     await waitFor(() => {
-      const notes = screen.getAllByText(/configured via environment variables/i);
-      expect(notes.length).toBeGreaterThan(0);
+      expect(screen.getByText(/not configured/i)).toBeInTheDocument();
     });
   });
 

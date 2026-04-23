@@ -108,10 +108,10 @@ function ConfigForm({
 
 function TeamsConfigContent({ showSetupGuide }: { showSetupGuide: boolean }) {
   const { config, saving, saveError, save } = useTeamsSettings();
-  const { teamsRunning } = useIntegrationControl();
+  const { teamsStatus } = useIntegrationControl();
   const status: IntegrationVisibleStatus =
-    !config || config.connectionStatus === 'unconfigured' ? 'not-configured'
-    : teamsRunning ? 'connected'
+    teamsStatus === 'unconfigured' ? 'not-configured'
+    : teamsStatus === 'connected' ? 'connected'
     : 'disconnected';
 
   const fields: FieldDef[] = [
@@ -151,10 +151,10 @@ function TeamsConfigContent({ showSetupGuide }: { showSetupGuide: boolean }) {
 
 function SlackConfigContent({ showSetupGuide }: { showSetupGuide: boolean }) {
   const { config, saving, saveError, save } = useSlackSettings();
-  const { slackConfigured, slackRunning } = useIntegrationControl();
+  const { slackStatus } = useIntegrationControl();
   const status: IntegrationVisibleStatus =
-    !slackConfigured || !config ? 'not-configured'
-    : slackRunning ? 'connected'
+    slackStatus === 'unconfigured' ? 'not-configured'
+    : slackStatus === 'connected' ? 'connected'
     : 'disconnected';
 
   const fields: FieldDef[] = [

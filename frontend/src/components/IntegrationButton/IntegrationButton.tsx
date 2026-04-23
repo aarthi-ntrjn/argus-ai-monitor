@@ -3,8 +3,7 @@ import { ChevronDown, ExternalLink, Pencil } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import teamsUrl from '../../images/microsoft-teams.svg?url';
 import slackUrl from '../../images/slack.svg?url';
-import { useTeamsSettings } from '../../hooks/useTeamsSettings';
-import { useSlackSettings } from '../../hooks/useSlackSettings';
+import { useIntegrationControl } from '../../hooks/useIntegrationControl';
 
 export type IntegrationVisibleStatus = 'not-configured' | 'disconnected' | 'connected';
 
@@ -138,18 +137,14 @@ function IntegrationDropdown({ type, label, status, onToggle, disabled, onOpenSe
 }
 
 interface TeamsIntegrationButtonProps {
-  running: boolean;
   disabled?: boolean;
   onToggle: () => void;
   onOpenSettings: () => void;
 }
 
-export function TeamsIntegrationButton({ running, disabled, onToggle, onOpenSettings }: TeamsIntegrationButtonProps) {
-  const { config } = useTeamsSettings();
-  const status: IntegrationVisibleStatus =
-    !config || config.connectionStatus === 'unconfigured' ? 'not-configured'
-    : running ? 'connected'
-    : 'disconnected';
+export function TeamsIntegrationButton({ disabled, onToggle, onOpenSettings }: TeamsIntegrationButtonProps) {
+  const { teamsStatus } = useIntegrationControl();
+  const status: IntegrationVisibleStatus = teamsStatus === 'unconfigured' ? 'not-configured' : teamsStatus;
   return (
     <IntegrationDropdown
       type="teams"
@@ -163,19 +158,14 @@ export function TeamsIntegrationButton({ running, disabled, onToggle, onOpenSett
 }
 
 interface SlackIntegrationButtonProps {
-  running: boolean;
-  configured: boolean;
   disabled?: boolean;
   onToggle: () => void;
   onOpenSettings: () => void;
 }
 
-export function SlackIntegrationButton({ running, configured, disabled, onToggle, onOpenSettings }: SlackIntegrationButtonProps) {
-  const { config } = useSlackSettings();
-  const status: IntegrationVisibleStatus =
-    !configured || !config ? 'not-configured'
-    : running ? 'connected'
-    : 'disconnected';
+export function SlackIntegrationButton({ disabled, onToggle, onOpenSettings }: SlackIntegrationButtonProps) {
+  const { slackStatus } = useIntegrationControl();
+  const status: IntegrationVisibleStatus = slackStatus === 'unconfigured' ? 'not-configured' : slackStatus;
   return (
     <IntegrationDropdown
       type="slack"

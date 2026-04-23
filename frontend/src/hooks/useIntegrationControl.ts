@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getIntegrationStatus, startIntegration, stopIntegration } from '../services/api';
+import type { ConnectionStatus } from '../services/api';
 
 export function useIntegrationControl() {
   const qc = useQueryClient();
@@ -10,10 +11,10 @@ export function useIntegrationControl() {
   });
 
   const integrationsEnabled = data?.integrationsEnabled === true;
-  const teamsConfigured = data?.teams.notifier !== null;
-  const slackConfigured = data?.slack.notifier !== null;
-  const teamsRunning = data?.teams.notifier?.running === true;
-  const slackRunning = data?.slack.notifier?.running === true;
+  const teamsStatus: ConnectionStatus = data?.teams.connectionStatus ?? 'unconfigured';
+  const slackStatus: ConnectionStatus = data?.slack.connectionStatus ?? 'unconfigured';
+  const teamsRunning = teamsStatus === 'connected';
+  const slackRunning = slackStatus === 'connected';
 
   const { mutate: toggle, isPending } = useMutation({
     mutationFn: async (platform: 'slack' | 'teams') => {
@@ -29,5 +30,5 @@ export function useIntegrationControl() {
     },
   });
 
-  return { integrationsEnabled, teamsRunning, slackRunning, teamsConfigured, slackConfigured, toggle, isPending };
+  return { integrationsEnabled, teamsRunning, slackRunning, teamsStatus, slackStatus, toggle, isPending };
 }

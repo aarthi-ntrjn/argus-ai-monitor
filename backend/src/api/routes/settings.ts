@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { loadConfig, saveConfig } from '../../config/config-loader.js';
 import { loadSlackConfig, saveSlackConfig } from '../../config/slack-config-loader.js';
+import { getSlackConnectionStatus } from '../../services/integration-status.js';
 import type { ArgusConfig, SlackConfig } from '../../models/index.js';
 
 const ALLOWED_KEYS = new Set<keyof ArgusConfig>([
@@ -36,7 +37,7 @@ const settingsRoutes: FastifyPluginAsync = async (app) => {
   app.get('/api/v1/settings/slack', async (_req, reply) => {
     const config = loadSlackConfig();
     if (!config) return reply.status(404).send({ error: 'NOT_CONFIGURED', message: 'Slack integration is not configured' });
-    return reply.send(config);
+    return reply.send({ ...config, connectionStatus: getSlackConnectionStatus(config, false) });
   });
 
   app.patch<{ Body: Record<string, unknown> }>('/api/v1/settings/slack', async (req, reply) => {
@@ -48,7 +49,7 @@ const settingsRoutes: FastifyPluginAsync = async (app) => {
     }
     const saved = { ...current, ...update };
     saveSlackConfig(saved);
-    return reply.send(saved);
+    return reply.send({ ...saved, connectionStatus: getSlackConnectionStatus(saved, false) });
   });
 };
 

@@ -38,7 +38,7 @@ describe('GET /api/v1/settings/teams', () => {
   });
 
   it('returns connectionStatus: disconnected when config is set but disabled', async () => {
-    vi.mocked(loadTeamsConfig).mockReturnValue({ enabled: false, teamId: 'T-001', channelId: 'C-001', clientId: 'cid', clientSecret: 'csec' });
+    vi.mocked(loadTeamsConfig).mockReturnValue({ enabled: false, teamId: 'T-001', channelId: 'C-001', ownerAadObjectId: 'owner-id', clientId: 'cid', clientSecret: 'csec', tenantId: 'tid' });
     const res = await request.get('/api/v1/settings/teams');
     expect(res.status).toBe(200);
     expect(res.body.connectionStatus).toBe('disconnected');
@@ -59,10 +59,11 @@ describe('GET /api/v1/settings/teams', () => {
       ownerAadObjectId: 'owner-id',
       clientId: 'client-id',
       clientSecret: 'client-secret',
+      tenantId: 'tenant-id',
     });
     const res = await request.get('/api/v1/settings/teams');
     expect(res.status).toBe(200);
-    expect(res.body.connectionStatus).toBe('connected');
+    expect(res.body.connectionStatus).toBe('disconnected'); // not running at settings-check time
   });
 
   it('response shape includes enabled, teamId, channelId, ownerAadObjectId, connectionStatus', async () => {

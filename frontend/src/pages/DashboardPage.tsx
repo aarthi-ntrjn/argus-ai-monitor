@@ -64,7 +64,7 @@ export default function DashboardPage() {
 
   const [settings, updateSetting] = useSettings();
   const { settings: argusSettings, patchSetting } = useArgusSettings();
-  const { integrationsEnabled, teamsRunning, slackRunning, slackConfigured, toggle, isPending } = useIntegrationControl();
+  const { integrationsEnabled, toggle, isPending } = useIntegrationControl();
   const { tourStatus, seenRepoSteps, startTour, skipTour, completeTour, markRepoStepsSeen, resetOnboarding } = useOnboarding();
   const [tourRun, setTourRun] = useState(false);
   const [catchUpRun, setCatchUpRun] = useState(false);
@@ -275,14 +275,11 @@ export default function DashboardPage() {
             {integrationsEnabled && (
               <div className="flex items-center gap-3">
                 <TeamsIntegrationButton
-                  running={teamsRunning}
                   disabled={isPending}
                   onToggle={() => toggle('teams')}
                   onOpenSettings={() => openDialog('teams')}
                 />
                 <SlackIntegrationButton
-                  running={slackRunning}
-                  configured={slackConfigured}
                   disabled={isPending}
                   onToggle={() => toggle('slack')}
                   onOpenSettings={() => openDialog('slack')}

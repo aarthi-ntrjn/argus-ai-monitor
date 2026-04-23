@@ -1,17 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { loadTeamsConfig, saveTeamsConfig } from '../../config/teams-config-loader.js';
+import { getTeamsConnectionStatus } from '../../services/integration-status.js';
 import type { TeamsConfig } from '../../models/index.js';
-
-type ConnectionStatus = 'connected' | 'disconnected' | 'unconfigured';
-
-function checkConnectionStatus(config: Partial<TeamsConfig> & { enabled: boolean }): ConnectionStatus {
-  const hasAnyConfig = Boolean(config.teamId || config.channelId || config.clientId || config.clientSecret);
-  if (!hasAnyConfig) return 'unconfigured';
-  if (!config.enabled) return 'disconnected';
-  const hasAuth = Boolean(config.clientId && config.clientSecret);
-  if (!config.teamId || !config.channelId || !hasAuth) return 'unconfigured';
-  return 'connected';
-}
 
 const EDITABLE_KEYS: (keyof TeamsConfig)[] = [
   'teamId', 'channelId', 'ownerAadObjectId', 'clientId', 'clientSecret', 'tenantId',
@@ -20,7 +10,7 @@ const EDITABLE_KEYS: (keyof TeamsConfig)[] = [
 const teamsSettingsRoutes: FastifyPluginAsync = async (app) => {
   app.get('/api/v1/settings/teams', async (_req, reply) => {
     const config = loadTeamsConfig();
-    const connectionStatus = checkConnectionStatus(config);
+    const connectionStatus = getTeamsConnectionStatus(config, false);
     return reply.send({ ...config, connectionStatus });
   });
 
@@ -33,7 +23,7 @@ const teamsSettingsRoutes: FastifyPluginAsync = async (app) => {
     }
     const saved = { ...current, ...update };
     saveTeamsConfig(saved);
-    const connectionStatus = checkConnectionStatus(saved);
+    const connectionStatus = getTeamsConnectionStatus(saved, false);
     return reply.send({ ...saved, connectionStatus });
   });
 };

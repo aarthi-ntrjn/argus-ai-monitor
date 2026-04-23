@@ -183,7 +183,10 @@ export async function patchSlackSettings(patch: Partial<Omit<SlackSettings, 'ena
   return apiFetch<SlackSettings>('/settings/slack', { method: 'PATCH', body: JSON.stringify(patch) });
 }
 
+export type ConnectionStatus = 'connected' | 'disconnected' | 'unconfigured';
+
 export interface IntegrationRunState {
+  connectionStatus: ConnectionStatus;
   notifier: { running: boolean } | null;
   listener: { running: boolean } | null;
 }
