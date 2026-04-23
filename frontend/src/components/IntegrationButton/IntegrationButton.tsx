@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { ChevronDown, ExternalLink, Pencil, Square } from 'lucide-react';
+import { ChevronDown, ExternalLink, Pencil, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import teamsUrl from '../../images/microsoft-teams.svg?url';
 import slackUrl from '../../images/slack.svg?url';
@@ -66,7 +66,7 @@ function IntegrationDropdown({ type, label, status, onToggle, disabled, onOpenSe
           >
             <img src={src} alt="" width={16} height={16} aria-hidden="true" className={`transition-opacity ${iconOpacity}`} />
             {status === 'stopped'
-              ? <Square size={8} className="absolute bottom-0.5 right-0.5 fill-amber-400 text-amber-400 drop-shadow-[0_0_0_1px_white]" aria-hidden="true" />
+              ? <X size={8} className="absolute bottom-0.5 right-0.5 text-red-500 drop-shadow-[0_0_0_1px_white]" aria-hidden="true" />
               : <span className={`absolute bottom-0.5 right-0.5 w-2 h-2 rounded-full border border-white ${STATUS_DOT[status]}`} aria-hidden="true" />
             }
           </button>
@@ -74,7 +74,7 @@ function IntegrationDropdown({ type, label, status, onToggle, disabled, onOpenSe
           <div className="relative flex items-center justify-center p-1.5 rounded-l-md" title={toggleTitle} aria-label={toggleTitle}>
             <img src={src} alt="" width={16} height={16} aria-hidden="true" className={`transition-opacity ${iconOpacity}`} />
             {status === 'stopped'
-              ? <Square size={8} className="absolute bottom-0.5 right-0.5 fill-amber-400 text-amber-400 drop-shadow-[0_0_0_1px_white]" aria-hidden="true" />
+              ? <X size={8} className="absolute bottom-0.5 right-0.5 text-red-500 drop-shadow-[0_0_0_1px_white]" aria-hidden="true" />
               : <span className={`absolute bottom-0.5 right-0.5 w-2 h-2 rounded-full border border-white ${STATUS_DOT[status]}`} aria-hidden="true" />
             }
           </div>
