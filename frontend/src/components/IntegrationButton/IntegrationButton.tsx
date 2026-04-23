@@ -1,6 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { ChevronDown, ExternalLink, Pencil, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { ChevronDown, Pencil, X } from 'lucide-react';
 import teamsUrl from '../../images/microsoft-teams.svg?url';
 import slackUrl from '../../images/slack.svg?url';
 import { useIntegrationControl } from '../../hooks/useIntegrationControl';
@@ -24,7 +23,6 @@ const STATUS_DOT: Record<'not-configured' | 'connected', string> = {
 function IntegrationDropdown({ type, label, status, onToggle, disabled, onOpenSettings }: DropdownProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
   const src = type === 'teams' ? teamsUrl : slackUrl;
 
   useEffect(() => {
@@ -44,7 +42,6 @@ function IntegrationDropdown({ type, label, status, onToggle, disabled, onOpenSe
   }, [open]);
 
   const handleOpenSettings = () => { setOpen(false); onOpenSettings(); };
-  const handleSetupGuide = () => { setOpen(false); navigate(type === 'teams' ? '/setup/teams' : '/setup/slack'); };
 
   const iconOpacity = status === 'not-configured' ? 'opacity-30' : 'opacity-90';
   const toggleTitle =
@@ -123,16 +120,6 @@ function IntegrationDropdown({ type, label, status, onToggle, disabled, onOpenSe
                 <Pencil size={11} aria-hidden="true" />
                 Edit in settings
               </button>
-              {status !== 'connected' && (
-                <button
-                  type="button"
-                  onClick={handleSetupGuide}
-                  className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-600 hover:underline"
-                >
-                  <ExternalLink size={11} aria-hidden="true" />
-                  View setup guide
-                </button>
-              )}
             </div>
           )}
         </div>
