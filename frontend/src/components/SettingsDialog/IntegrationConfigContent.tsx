@@ -119,10 +119,10 @@ function TeamsConfigContent({ showSetupGuide }: { showSetupGuide: boolean }) {
   const fields: FieldDef[] = [
     { key: 'teamId',           label: 'Team ID',               placeholder: 'e.g. 19:...' },
     { key: 'channelId',        label: 'Channel ID',            placeholder: 'e.g. 19:...' },
-    { key: 'ownerAadObjectId', label: 'Owner AAD Object ID',   placeholder: 'e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
-      hint: 'Open graph.microsoft.com/v1.0/me in your browser, sign in with your Microsoft account, and copy the "id" field.' },
     { key: 'clientId',         label: 'Client ID (App)',        placeholder: 'Azure app client ID' },
     { key: 'tenantId',         label: 'Tenant ID',             placeholder: 'Azure tenant ID' },
+    { key: 'ownerAadObjectId', label: 'Owner AAD Object ID',   placeholder: 'e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+      hint: 'Restricts inbound command access to you only — Argus ignores messages from anyone else. To find: open graph.microsoft.com/v1.0/me in your browser, sign in with your Microsoft account, and copy the "id" field.' },
   ];
 
   const values: Record<string, string> = {
@@ -165,7 +165,7 @@ function SlackConfigContent({ showSetupGuide }: { showSetupGuide: boolean }) {
     { key: 'appToken',    label: 'App Token',    placeholder: 'xapp-...', secret: true },
     { key: 'channelId',   label: 'Channel ID',   placeholder: 'C...' },
     { key: 'ownerUserId', label: 'Owner User ID', placeholder: 'U...',
-      hint: 'Slack: click your profile picture → View profile → ⋯ menu → Copy member ID' },
+      hint: 'Restricts inbound command access to you only — Argus ignores messages from anyone else. To find: in Slack, click your profile picture → View profile → ⋯ menu → Copy member ID.' },
   ];
 
   const values: Record<string, string> = {
