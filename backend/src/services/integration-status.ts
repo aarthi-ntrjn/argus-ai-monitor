@@ -1,11 +1,11 @@
 import type { TeamsConfig, SlackConfig } from '../models/index.js';
 
-export type ConnectionStatus = 'connected' | 'disconnected' | 'unconfigured';
+export type ConnectionStatus = 'connected' | 'stopped' | 'unconfigured';
 
 /**
  * Required fields for each integration to be considered fully configured.
  * If any required field is missing, the status is 'unconfigured'.
- * If all are present but the notifier is not running, the status is 'disconnected'.
+ * If all are present but the notifier is not running, the status is 'stopped'.
  */
 const TEAMS_REQUIRED: (keyof TeamsConfig)[] = [
   'teamId', 'channelId', 'ownerSenderId', 'clientId', 'clientSecret', 'tenantId',
@@ -20,7 +20,7 @@ export function getTeamsConnectionStatus(config: TeamsConfig, isRunning: boolean
   if (!hasAny) return 'unconfigured';
   const complete = TEAMS_REQUIRED.every(k => Boolean(config[k]));
   if (!complete) return 'unconfigured';
-  if (!isRunning) return 'disconnected';
+  if (!isRunning) return 'stopped';
   return 'connected';
 }
 
@@ -28,6 +28,6 @@ export function getSlackConnectionStatus(config: SlackConfig | null, isRunning: 
   if (!config) return 'unconfigured';
   const complete = SLACK_REQUIRED.every(k => Boolean(config[k as keyof SlackConfig]));
   if (!complete) return 'unconfigured';
-  if (!isRunning) return 'disconnected';
+  if (!isRunning) return 'stopped';
   return 'connected';
 }

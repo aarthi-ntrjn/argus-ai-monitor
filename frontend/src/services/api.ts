@@ -156,7 +156,7 @@ export interface TeamsSettings {
   ownerSenderId?: string;
   clientId?: string;
   tenantId?: string;
-  connectionStatus: 'connected' | 'disconnected' | 'unconfigured';
+  connectionStatus: 'connected' | 'stopped' | 'unconfigured';
 }
 
 export async function getTeamsSettings(): Promise<TeamsSettings> {
@@ -183,7 +183,7 @@ export async function patchSlackSettings(patch: Partial<Omit<SlackSettings, 'ena
   return apiFetch<SlackSettings>('/settings/slack', { method: 'PATCH', body: JSON.stringify(patch) });
 }
 
-export type ConnectionStatus = 'connected' | 'disconnected' | 'unconfigured';
+export type ConnectionStatus = 'connected' | 'stopped' | 'unconfigured';
 
 export interface IntegrationRunState {
   connectionStatus: ConnectionStatus;

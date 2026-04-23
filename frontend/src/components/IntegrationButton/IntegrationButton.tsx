@@ -1,11 +1,11 @@
 import { useRef, useState, useEffect } from 'react';
-import { ChevronDown, ExternalLink, Pencil } from 'lucide-react';
+import { ChevronDown, ExternalLink, Pencil, Square } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import teamsUrl from '../../images/microsoft-teams.svg?url';
 import slackUrl from '../../images/slack.svg?url';
 import { useIntegrationControl } from '../../hooks/useIntegrationControl';
 
-export type IntegrationVisibleStatus = 'not-configured' | 'disconnected' | 'connected';
+export type IntegrationVisibleStatus = 'not-configured' | 'stopped' | 'connected';
 
 interface DropdownProps {
   type: 'teams' | 'slack';
@@ -16,9 +16,8 @@ interface DropdownProps {
   onOpenSettings: () => void;
 }
 
-const STATUS_DOT: Record<IntegrationVisibleStatus, string> = {
+const STATUS_DOT: Record<'not-configured' | 'connected', string> = {
   'not-configured': 'bg-gray-300',
-  'disconnected':   'bg-amber-400',
   'connected':      'bg-green-500',
 };
 
@@ -50,7 +49,7 @@ function IntegrationDropdown({ type, label, status, onToggle, disabled, onOpenSe
   const iconOpacity = status === 'not-configured' ? 'opacity-30' : 'opacity-90';
   const toggleTitle =
     status === 'connected' ? `${label}: running - click to stop`
-    : status === 'disconnected' ? `${label}: stopped - click to start`
+    : status === 'stopped' ? `${label}: stopped - click to start`
     : `${label}: not configured`;
 
   return (
@@ -66,12 +65,18 @@ function IntegrationDropdown({ type, label, status, onToggle, disabled, onOpenSe
             className="relative flex items-center justify-center p-1.5 rounded-l-md hover:bg-gray-50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <img src={src} alt="" width={16} height={16} aria-hidden="true" className={`transition-opacity ${iconOpacity}`} />
-            <span className={`absolute bottom-0.5 right-0.5 w-2 h-2 rounded-full border border-white ${STATUS_DOT[status]}`} aria-hidden="true" />
+            {status === 'stopped'
+              ? <Square size={8} className="absolute bottom-0.5 right-0.5 fill-amber-400 text-amber-400 drop-shadow-[0_0_0_1px_white]" aria-hidden="true" />
+              : <span className={`absolute bottom-0.5 right-0.5 w-2 h-2 rounded-full border border-white ${STATUS_DOT[status]}`} aria-hidden="true" />
+            }
           </button>
         ) : (
           <div className="relative flex items-center justify-center p-1.5 rounded-l-md" title={toggleTitle} aria-label={toggleTitle}>
             <img src={src} alt="" width={16} height={16} aria-hidden="true" className={`transition-opacity ${iconOpacity}`} />
-            <span className={`absolute bottom-0.5 right-0.5 w-2 h-2 rounded-full border border-white ${STATUS_DOT[status]}`} aria-hidden="true" />
+            {status === 'stopped'
+              ? <Square size={8} className="absolute bottom-0.5 right-0.5 fill-amber-400 text-amber-400 drop-shadow-[0_0_0_1px_white]" aria-hidden="true" />
+              : <span className={`absolute bottom-0.5 right-0.5 w-2 h-2 rounded-full border border-white ${STATUS_DOT[status]}`} aria-hidden="true" />
+            }
           </div>
         )}
         <div className="w-px self-stretch bg-gray-200" aria-hidden="true" />

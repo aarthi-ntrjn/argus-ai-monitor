@@ -37,11 +37,11 @@ describe('GET /api/v1/settings/teams', () => {
     expect(res.body.connectionStatus).toBe('unconfigured');
   });
 
-  it('returns connectionStatus: disconnected when config is set but disabled', async () => {
+  it('returns connectionStatus: stopped when config is set but disabled', async () => {
     vi.mocked(loadTeamsConfig).mockReturnValue({ enabled: false, teamId: 'T-001', channelId: 'C-001', ownerSenderId: 'owner-id', clientId: 'cid', clientSecret: 'csec', tenantId: 'tid' });
     const res = await request.get('/api/v1/settings/teams');
     expect(res.status).toBe(200);
-    expect(res.body.connectionStatus).toBe('disconnected');
+    expect(res.body.connectionStatus).toBe('stopped');
   });
 
   it('returns connectionStatus: unconfigured when teamId/channelId set but clientId/clientSecret missing', async () => {
@@ -63,7 +63,7 @@ describe('GET /api/v1/settings/teams', () => {
     });
     const res = await request.get('/api/v1/settings/teams');
     expect(res.status).toBe(200);
-    expect(res.body.connectionStatus).toBe('disconnected'); // not running at settings-check time
+    expect(res.body.connectionStatus).toBe('stopped'); // not running at settings-check time
   });
 
   it('response shape includes enabled, teamId, channelId, ownerSenderId, connectionStatus', async () => {

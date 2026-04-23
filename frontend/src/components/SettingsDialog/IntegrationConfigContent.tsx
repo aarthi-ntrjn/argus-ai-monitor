@@ -11,8 +11,8 @@ import type { IntegrationVisibleStatus } from '../IntegrationButton/IntegrationB
 
 const STATUS_BADGE: Record<IntegrationVisibleStatus, { text: string; colorClass: string }> = {
   'not-configured': { text: 'not configured', colorClass: 'bg-gray-100 text-gray-600' },
-  'disconnected':   { text: 'disconnected',   colorClass: 'bg-amber-100 text-amber-700' },
-  'connected':      { text: 'connected',       colorClass: 'bg-green-100 text-green-700' },
+  'stopped':        { text: 'stopped',         colorClass: 'bg-amber-100 text-amber-700' },
+  'connected':      { text: 'connected',        colorClass: 'bg-green-100 text-green-700' },
 };
 
 function IntegrationHeader({ label, badge }: { label: string; badge: { text: string; colorClass: string } }) {
@@ -114,7 +114,7 @@ function TeamsConfigContent({ showSetupGuide }: { showSetupGuide: boolean }) {
   const status: IntegrationVisibleStatus =
     teamsStatus === 'unconfigured' ? 'not-configured'
     : teamsStatus === 'connected' ? 'connected'
-    : 'disconnected';
+    : 'stopped';
 
   const fields: FieldDef[] = [
     { key: 'teamId',           label: 'Team ID',               placeholder: 'e.g. 19:...' },
@@ -158,7 +158,7 @@ function SlackConfigContent({ showSetupGuide }: { showSetupGuide: boolean }) {
   const status: IntegrationVisibleStatus =
     slackStatus === 'unconfigured' ? 'not-configured'
     : slackStatus === 'connected' ? 'connected'
-    : 'disconnected';
+    : 'stopped';
 
   const fields: FieldDef[] = [
     { key: 'botToken',    label: 'Bot Token',    placeholder: 'xoxb-...', secret: true },
