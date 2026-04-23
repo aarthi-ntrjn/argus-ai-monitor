@@ -161,7 +161,7 @@ function SlackConfigContent({ showSetupGuide }: { showSetupGuide: boolean }) {
     { key: 'botToken',    label: 'Bot Token',    placeholder: 'xoxb-...', secret: true },
     { key: 'appToken',    label: 'App Token',    placeholder: 'xapp-...', secret: true },
     { key: 'channelId',   label: 'Channel ID',   placeholder: 'C...' },
-    { key: 'ownerUserId', label: 'Owner User ID', placeholder: 'U...' },
+    { key: 'ownerUserId', label: 'Owner User ID', placeholder: 'U... (required, your Slack user ID)' },
   ];
 
   const values: Record<string, string> = {

@@ -84,7 +84,7 @@ export class SlackListener implements NotificationListener {
     try {
       logger.info(`${LOG_TAG} Incoming message: channel=${channel} ts=${messageTs} thread_ts=${parentThreadTs ?? 'none'} userId=${userId ?? 'unknown'} text=${JSON.stringify(text)}`);
 
-      if (this.config.ownerUserId && userId !== this.config.ownerUserId) {
+      if (!userId || userId !== this.config.ownerUserId) {
         logger.info(`${LOG_TAG} Rejected message from non-owner userId=${userId ?? 'unknown'}`);
         return;
       }
