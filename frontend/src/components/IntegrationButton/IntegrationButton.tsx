@@ -118,7 +118,7 @@ function IntegrationDropdown({ type, label, status, onToggle, disabled, onOpenSe
                 className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline"
               >
                 <Pencil size={11} aria-hidden="true" />
-                Edit in settings
+                Configure in Settings
               </button>
             </div>
           )}
