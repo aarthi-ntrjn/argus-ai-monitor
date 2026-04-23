@@ -120,7 +120,7 @@ function TeamsConfigContent({ showSetupGuide }: { showSetupGuide: boolean }) {
     { key: 'teamId',           label: 'Team ID',               placeholder: 'e.g. 19:...' },
     { key: 'channelId',        label: 'Channel ID',            placeholder: 'e.g. 19:...' },
     { key: 'ownerAadObjectId', label: 'Owner AAD Object ID',   placeholder: 'e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
-      hint: 'No Azure Portal needed: go to developer.microsoft.com/graph/graph-explorer, sign in, run GET /me, and copy the "id" field.' },
+      hint: 'Open graph.microsoft.com/v1.0/me in your browser, sign in with your Microsoft account, and copy the "id" field.' },
     { key: 'clientId',         label: 'Client ID (App)',        placeholder: 'Azure app client ID' },
     { key: 'tenantId',         label: 'Tenant ID',             placeholder: 'Azure tenant ID' },
   ];
