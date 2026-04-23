@@ -15,7 +15,7 @@ const SLACK_REQUIRED: (keyof SlackConfig)[] = [
   'botToken', 'channelId', 'ownerSenderId',
 ];
 
-export function getTeamsConnectionStatus(config: TeamsConfig, isRunning: boolean): ConnectionStatus {
+export function getTeamsConnectionStatus(config: Partial<TeamsConfig>, isRunning: boolean): ConnectionStatus {
   const hasAny = TEAMS_REQUIRED.some(k => Boolean(config[k]));
   if (!hasAny) return 'unconfigured';
   const complete = TEAMS_REQUIRED.every(k => Boolean(config[k]));

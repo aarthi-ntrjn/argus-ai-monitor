@@ -101,7 +101,7 @@ export interface SlackConfig {
   channelId: string;
   enabled: boolean;
   enabledEventTypes?: string[];
-  ownerSenderId?: string;
+  ownerSenderId: string;
 }
 
 export interface ArgusConfig {

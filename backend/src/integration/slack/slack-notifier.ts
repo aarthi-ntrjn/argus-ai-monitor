@@ -38,7 +38,7 @@ export class SlackNotifier implements NotificationIntegration {
   private subscribed = false;
 
   constructor(sessionMonitor: SessionMonitor) {
-    this.config = { botToken: '', channelId: '', enabled: false };
+    this.config = { botToken: '', channelId: '', ownerSenderId: '', enabled: false };
     this.sessionMonitor = sessionMonitor;
     this.queue = new MessageQueue((eventType, sessionId) => {
       logger.warn(`${LOG_TAG} Send queue full, dropping ${eventType} for session ${sessionId}`);

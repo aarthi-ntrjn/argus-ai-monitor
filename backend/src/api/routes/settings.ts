@@ -42,7 +42,7 @@ const settingsRoutes: FastifyPluginAsync = async (app) => {
 
   app.patch<{ Body: Record<string, unknown> }>('/api/v1/settings/slack', async (req, reply) => {
     const body = req.body ?? {};
-    const current = loadSlackConfig() ?? { botToken: '', channelId: '', enabled: true };
+    const current = loadSlackConfig() ?? { botToken: '', channelId: '', ownerSenderId: '', enabled: true };
     const update: Partial<SlackConfig> = {};
     for (const key of SLACK_EDITABLE_KEYS) {
       if (key in body) (update as Record<string, unknown>)[key] = body[key];

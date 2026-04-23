@@ -18,13 +18,14 @@ export function loadSlackConfig(): SlackConfig | null {
       const parsed = JSON.parse(readFileSync(filePath, 'utf-8')) as Partial<SlackConfig>;
       const botToken = parsed.botToken ?? '';
       const channelId = parsed.channelId ?? '';
+      const ownerSenderId = parsed.ownerSenderId ?? '';
       if (!botToken && !channelId) return null;
       return {
         botToken,
         appToken: parsed.appToken,
         channelId,
         enabled: true,
-        ownerSenderId: parsed.ownerSenderId,
+        ownerSenderId,
         enabledEventTypes: parsed.enabledEventTypes,
       };
     } catch { /* file unreadable */ }
