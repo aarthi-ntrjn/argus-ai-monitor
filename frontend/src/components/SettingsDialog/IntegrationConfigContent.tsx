@@ -45,6 +45,7 @@ interface FieldDef {
   label: string;
   placeholder?: string;
   secret?: boolean;
+  hint?: string;
 }
 
 function ConfigForm({
@@ -79,7 +80,7 @@ function ConfigForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-2.5">
-      {fields.map(({ key, label, placeholder, secret }) => (
+      {fields.map(({ key, label, placeholder, secret, hint }) => (
         <div key={key}>
           <label className="block text-xs text-gray-500 mb-0.5" htmlFor={`cfg-${key}`}>{label}</label>
           <input
@@ -91,6 +92,7 @@ function ConfigForm({
             autoComplete="off"
             className="w-full text-xs font-mono border border-gray-200 rounded px-2 py-1 text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
           />
+          {hint && <p className="text-xs text-gray-400 mt-0.5">{hint}</p>}
         </div>
       ))}
       {saveError && (
@@ -117,7 +119,8 @@ function TeamsConfigContent({ showSetupGuide }: { showSetupGuide: boolean }) {
   const fields: FieldDef[] = [
     { key: 'teamId',           label: 'Team ID',               placeholder: 'e.g. 19:...' },
     { key: 'channelId',        label: 'Channel ID',            placeholder: 'e.g. 19:...' },
-    { key: 'ownerAadObjectId', label: 'Owner AAD Object ID',   placeholder: 'e.g. xxxxxxxx-xxxx-...' },
+    { key: 'ownerAadObjectId', label: 'Owner AAD Object ID',   placeholder: 'e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+      hint: 'Azure Portal: Azure Active Directory → Users → your name → Object ID' },
     { key: 'clientId',         label: 'Client ID (App)',        placeholder: 'Azure app client ID' },
     { key: 'tenantId',         label: 'Tenant ID',             placeholder: 'Azure tenant ID' },
   ];
@@ -161,7 +164,8 @@ function SlackConfigContent({ showSetupGuide }: { showSetupGuide: boolean }) {
     { key: 'botToken',    label: 'Bot Token',    placeholder: 'xoxb-...', secret: true },
     { key: 'appToken',    label: 'App Token',    placeholder: 'xapp-...', secret: true },
     { key: 'channelId',   label: 'Channel ID',   placeholder: 'C...' },
-    { key: 'ownerUserId', label: 'Owner User ID', placeholder: 'U... (required, your Slack user ID)' },
+    { key: 'ownerUserId', label: 'Owner User ID', placeholder: 'U...',
+      hint: 'Slack: click your profile picture → View profile → ⋯ menu → Copy member ID' },
   ];
 
   const values: Record<string, string> = {
