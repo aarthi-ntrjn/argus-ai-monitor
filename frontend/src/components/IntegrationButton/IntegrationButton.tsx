@@ -113,7 +113,7 @@ function IntegrationDropdown({ type, label, status, onToggle, disabled, onOpenSe
             <div className="flex flex-col gap-2">
               <p className="text-sm font-medium text-gray-700">{label}</p>
               <p className="text-xs text-gray-500">
-                {status === 'connected' ? 'Integration is running.' : 'Integration is stopped.'}
+                {status === 'connected' ? 'Integration is running.' : 'Integration is stopped. Click to start.'}
               </p>
               <button
                 type="button"
