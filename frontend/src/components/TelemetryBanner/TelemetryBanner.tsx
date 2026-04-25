@@ -28,7 +28,7 @@ export function TelemetryBanner({ onDismiss, onOpenSettings, subtle = false }: T
         className="flex flex-wrap items-center gap-3 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-500"
       >
         <span className="flex-1">
-          Argus collects anonymous usage data to improve the product. No coding or personal information is sent.{' '}
+          Argus collects anonymous usage data including approximate location. No coding or personal information is sent.{' '}
           <span className="inline-flex items-baseline gap-1">
             <Link to="/telemetry" className={`${textActionClassName} underline whitespace-nowrap`}>What we collect</Link>
             <span aria-hidden="true">-</span>
@@ -47,7 +47,7 @@ export function TelemetryBanner({ onDismiss, onOpenSettings, subtle = false }: T
       className="flex items-center gap-3 px-4 py-2 bg-blue-50 border-b border-blue-100 text-sm text-blue-900"
     >
       <span className="flex-1">
-        Argus collects anonymous usage data to improve the product. No coding or personal information is sent.{' '}
+        Argus collects anonymous usage data including approximate location. No coding or personal information is sent.{' '}
         <span className="inline-flex items-baseline gap-1">
           <Link to="/telemetry" className={`${textActionClassName} underline whitespace-nowrap`}>What we collect</Link>
           <span aria-hidden="true">-</span>

@@ -283,7 +283,7 @@ Argus collects anonymous usage data to help improve the product. No personal inf
 | `session_stopped` | A session is stopped via Argus |
 | `request_error` | An HTTP request to the Argus API returns a 4xx or 5xx error |
 
-Each event includes: an anonymous installation ID (a random UUID stored in `~/.argus/telemetry-id`), the Argus version, and a timestamp. No file paths, prompts, session content, or user-identifying information are included. The `request_error` event additionally includes a sanitized error message (file paths and IDs stripped), the HTTP status code, and the origin function name.
+Each event includes: an anonymous installation ID (a random UUID stored in `~/.argus/telemetry-id`), the Argus version, a timestamp, and the server's outbound IP address with the last octet zeroed (e.g. 203.0.113.0). The masked IP enables country and city-level GeoIP in PostHog; the full IP address is never transmitted. No file paths, prompts, session content, or user-identifying information are included. The `request_error` event additionally includes a sanitized error message (file paths and IDs stripped), the HTTP status code, and the origin function name.
 
 **How to disable:**
 

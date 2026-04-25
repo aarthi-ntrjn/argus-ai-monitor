@@ -5,6 +5,7 @@ import { homedir } from 'os';
 import { randomUUID } from 'crypto';
 import type { TelemetryEventType } from '../models/index.js';
 import { loadConfig } from '../config/config-loader.js';
+import type { IpMaskingService } from './ip-masking-service.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -20,6 +21,15 @@ export class TelemetryService {
   private installationId: string | null = null;
   private appVersion: string | null = null;
   private enabledCache: { value: boolean; expiresAt: number } | null = null;
+  private ipMaskingService: IpMaskingService | null;
+
+  constructor(ipMaskingService?: IpMaskingService | null) {
+    this.ipMaskingService = ipMaskingService ?? null;
+  }
+
+  setIpMaskingService(service: IpMaskingService): void {
+    this.ipMaskingService = service;
+  }
 
   private isTelemetryEnabled(): boolean {
     const now = Date.now();
@@ -74,11 +84,12 @@ export class TelemetryService {
 
     const installationId = this.loadOrCreateInstallationId();
     const appVersion = this.readAppVersion();
+    const maskedIp = this.ipMaskingService?.getMaskedIp() ?? null;
     const payload = {
       api_key: POSTHOG_API_KEY,
       distinct_id: installationId,
       event: type,
-      properties: { appVersion, $geoip_disable: true, $ip: '', ...extra },
+      properties: { appVersion, ...(maskedIp ? { $ip: maskedIp } : {}), ...extra },
       timestamp: new Date().toISOString(),
     };
 

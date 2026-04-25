@@ -23,6 +23,7 @@ import toolsRoutes from './api/routes/tools.js';
 import settingsRoutes from './api/routes/settings.js';
 import telemetryRoutes from './api/routes/telemetry.js';
 import { telemetryService } from './services/telemetry-service.js';
+import { IpMaskingService } from './services/ip-masking-service.js';
 import { SessionMonitor } from './services/session-monitor.js';
 import { startPruningJob } from './services/pruning-job.js';
 import type { Session, Repository } from './models/index.js';
@@ -135,6 +136,10 @@ export async function buildServer() {
 export async function startServer() {
   const { app, config } = await buildServer();
 
+  const ipMaskingService = new IpMaskingService();
+  await ipMaskingService.initialize();
+  telemetryService.setIpMaskingService(ipMaskingService);
+
   monitor = new SessionMonitor();
   const claudeDetector = monitor.getClaudeCodeDetector();
   setClaudeDetector(claudeDetector);
@@ -159,8 +164,8 @@ export async function startServer() {
   await monitor.start();
   startPruningJob();
 
-  process.on('SIGTERM', async () => { telemetryService.sendEvent('app_ended'); monitor?.stop(); await app.close(); process.exit(0); });
-  process.on('SIGINT', async () => { telemetryService.sendEvent('app_ended'); monitor?.stop(); await app.close(); process.exit(0); });
+  process.on('SIGTERM', async () => { telemetryService.sendEvent('app_ended'); ipMaskingService.destroy(); monitor?.stop(); await app.close(); process.exit(0); });
+  process.on('SIGINT', async () => { telemetryService.sendEvent('app_ended'); ipMaskingService.destroy(); monitor?.stop(); await app.close(); process.exit(0); });
 
   await app.listen({ port: config.port, host: '127.0.0.1' });
   app.log.info({ port: config.port }, 'Argus server started');
