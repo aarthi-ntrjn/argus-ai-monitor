@@ -63,7 +63,7 @@ export default function DashboardPage() {
   const settingsRef = useRef<HTMLDivElement>(null);
 
   const [settings, updateSetting] = useSettings();
-  const { settings: argusSettings, patchSetting } = useArgusSettings();
+  const { settings: argusSettings, isLoading: argusSettingsLoading, patchSetting } = useArgusSettings();
   const { integrationsEnabled, toggle, isPending } = useIntegrationControl();
   const { tourStatus, seenRepoSteps, startTour, skipTour, completeTour, markRepoStepsSeen, resetOnboarding } = useOnboarding();
   const [tourRun, setTourRun] = useState(false);
@@ -163,7 +163,7 @@ export default function DashboardPage() {
     }
   };
 
-  if (reposLoading || sessionsLoading) {
+  if (reposLoading || sessionsLoading || argusSettingsLoading) {
     return (
       <div className="h-screen flex flex-col overflow-hidden bg-slate-50">
         <header className="shrink-0 bg-slate-50 border-b border-gray-200">
