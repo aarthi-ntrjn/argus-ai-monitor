@@ -63,14 +63,16 @@ export default function DashboardPage() {
   const settingsRef = useRef<HTMLDivElement>(null);
 
   const [settings, updateSetting] = useSettings();
-  const { settings: argusSettings, isLoading: argusSettingsLoading, patchSetting } = useArgusSettings();
+  const { settings: argusSettings } = useArgusSettings();
   const { integrationsEnabled, toggle, isPending } = useIntegrationControl();
   const { tourStatus, seenRepoSteps, startTour, skipTour, completeTour, markRepoStepsSeen, resetOnboarding } = useOnboarding();
   const [tourRun, setTourRun] = useState(false);
   const [catchUpRun, setCatchUpRun] = useState(false);
 
+  const [telemetryBannerDismissed, setTelemetryBannerDismissed] = useState(false);
+
   const handleTelemetryDismiss = () => {
-    patchSetting({ telemetryPromptSeen: true });
+    setTelemetryBannerDismissed(true);
   };
 
   const {
@@ -163,7 +165,7 @@ export default function DashboardPage() {
     }
   };
 
-  if (reposLoading || sessionsLoading || argusSettingsLoading) {
+  if (reposLoading || sessionsLoading) {
     return (
       <div className="h-screen flex flex-col overflow-hidden bg-slate-50">
         <header className="shrink-0 bg-slate-50 border-b border-gray-200">
@@ -224,7 +226,7 @@ export default function DashboardPage() {
             <p className="text-xl font-semibold text-gray-400">No repositories added yet.</p>
             <p className="text-xl text-gray-400">Click "<span className="font-semibold">Add Repositories</span>" to start managing sessions.</p>
           </div>
-          {argusSettings?.telemetryPromptSeen === false && (
+          {!telemetryBannerDismissed && (
             <div className="pt-8 max-w-lg mx-auto w-full text-left">
               <TelemetryBanner
                 onDismiss={handleTelemetryDismiss}
