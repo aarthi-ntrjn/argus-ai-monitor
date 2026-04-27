@@ -254,7 +254,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2">
             <div className="relative">
               <Button
-                variant="primary"
+                variant={repos.length === 0 ? 'primary' : 'outline'}
                 data-tour-id="dashboard-add-repo"
                 onClick={handleAddRepo}
                 disabled={adding}
