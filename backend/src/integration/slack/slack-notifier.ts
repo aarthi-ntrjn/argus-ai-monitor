@@ -115,8 +115,12 @@ export class SlackNotifier implements NotificationIntegration {
   // -------------------------------------------------------------------------
 
   async onSessionCreated(session: Session): Promise<void> {
+    logger.info(`${LOG_TAG} slack.session.created.received: session=${session.id} status=${session.status}`);
     if (!this.active || !this.client) return;
-    if (!this.isEventEnabled(SESSION_CREATED)) return;
+    if (!this.isEventEnabled(SESSION_CREATED)) {
+      logger.info(`${LOG_TAG} slack.session.created.skipped: event not enabled`);
+      return;
+    }
 
     const repo = session.repositoryId ? getRepository(session.repositoryId) : undefined;
     const blocks = buildSessionStartBlocks(session, repo);
@@ -125,6 +129,9 @@ export class SlackNotifier implements NotificationIntegration {
     const existingThreadTs = this.threadAnchors.get(session.id) ?? getSlackThread(session.id)?.slackThreadTs ?? null;
     if (existingThreadTs) {
       this.threadAnchors.set(session.id, existingThreadTs);
+      logger.info(`${LOG_TAG} slack.thread.reused: session=${session.id} ts=${existingThreadTs}`);
+    } else {
+      logger.info(`${LOG_TAG} slack.thread.creating: session=${session.id} repo=${repo?.name ?? '(unknown)'}`);
     }
 
     this.queue.enqueue(async () => {
@@ -146,6 +153,9 @@ export class SlackNotifier implements NotificationIntegration {
           if (isNewTopLevel) {
             this.threadAnchors.set(session.id, result.ts);
             upsertSlackThread({ id: randomUUID(), sessionId: session.id, slackThreadTs: result.ts, slackChannelId: this.config.channelId, workspaceId: this.workspaceId, createdAt: new Date().toISOString() });
+            logger.info(`${LOG_TAG} slack.thread.created: session=${session.id} ts=${result.ts}`);
+          } else {
+            logger.info(`${LOG_TAG} slack.thread.reused.notified: session=${session.id} ts=${result.ts}`);
           }
           this.diffTracker.seed(session);
         }
@@ -153,6 +163,7 @@ export class SlackNotifier implements NotificationIntegration {
         if ((err as any)?.data?.error === 'message_not_found') {
           // Stale anchor: the parent message was deleted (e.g. after channel cleanup).
           // Clear the stale anchor and retry as a new top-level post.
+          logger.warn(`${LOG_TAG} slack.thread.stale.detected: session=${session.id}`);
           this.threadAnchors.delete(session.id);
           deleteSlackThread(session.id);
           try {
@@ -165,22 +176,30 @@ export class SlackNotifier implements NotificationIntegration {
               this.threadAnchors.set(session.id, result.ts);
               upsertSlackThread({ id: randomUUID(), sessionId: session.id, slackThreadTs: result.ts, slackChannelId: this.config.channelId, workspaceId: this.workspaceId, createdAt: new Date().toISOString() });
               this.diffTracker.seed(session);
+              logger.info(`${LOG_TAG} slack.thread.stale.recovered: session=${session.id} ts=${result.ts}`);
             }
           } catch (retryErr) {
-            logger.error(`${LOG_TAG} Failed to re-post session start for ${session.id} after stale anchor:`, retryErr);
+            logger.error(`${LOG_TAG} slack.thread.stale.recover.failed: session=${session.id}`, retryErr);
           }
         } else {
-          logger.error(`${LOG_TAG} Failed to post session start for ${session.id}:`, err);
+          logger.error(`${LOG_TAG} slack.thread.create.failed: session=${session.id}`, err);
         }
       }
     }, SESSION_CREATED, session.id);
   }
 
   async onSessionEnded(session: Session): Promise<void> {
+    logger.info(`${LOG_TAG} slack.session.ended.received: session=${session.id} status=${session.status}`);
     if (!this.active || !this.client) return;
-    if (!this.isEventEnabled(SESSION_ENDED)) return;
+    if (!this.isEventEnabled(SESSION_ENDED)) {
+      logger.info(`${LOG_TAG} slack.session.ended.skipped: event not enabled`);
+      return;
+    }
 
     const threadTs = this.threadAnchors.get(session.id);
+    if (!threadTs) {
+      logger.warn(`${LOG_TAG} slack.session.ended.skipped: no thread anchor for session=${session.id}`);
+    }
     const blocks = buildSessionEndBlocks(session);
     this.queue.enqueue(async () => {
       try {
@@ -193,19 +212,32 @@ export class SlackNotifier implements NotificationIntegration {
         this.threadAnchors.delete(session.id);
         this.diffTracker.clear(session.id);
         deleteSlackThread(session.id);
+        logger.info(`${LOG_TAG} slack.session.ended.posted: session=${session.id} status=${session.status}`);
       } catch (err) {
-        logger.error(`${LOG_TAG} Failed to post session end for ${session.id}:`, err);
+        logger.error(`${LOG_TAG} slack.session.end.notify.failed: session=${session.id}`, err);
       }
     }, SESSION_ENDED, session.id);
   }
 
   async onSessionUpdated(session: Session): Promise<void> {
+    logger.info(`${LOG_TAG} slack.session.updated.received: session=${session.id} status=${session.status}`);
     if (!this.active || !this.client) return;
-    if (!this.isEventEnabled(SESSION_UPDATED)) return;
+    if (!this.isEventEnabled(SESSION_UPDATED)) {
+      logger.info(`${LOG_TAG} slack.session.updated.skipped: event not enabled`);
+      return;
+    }
 
     const changes = this.diffTracker.update(session);
-    if (changes === null || changes.length === 0) return;
+    if (changes === null) {
+      logger.info(`${LOG_TAG} slack.session.updated.skipped: no baseline, recording current state for session=${session.id}`);
+      return;
+    }
+    if (changes.length === 0) {
+      logger.info(`${LOG_TAG} slack.session.updated.skipped: no meaningful changes for session=${session.id}`);
+      return;
+    }
 
+    logger.info(`${LOG_TAG} slack.session.updated.posting: session=${session.id} changes=${changes.map(c => c.label).join(',')}`);
     const blocks = buildSessionUpdatedBlocks(session, changes);
     this.queue.enqueue(async () => {
       // Resolve thread anchor: check in-memory first, then fall back to DB for sessions
@@ -219,7 +251,7 @@ export class SlackNotifier implements NotificationIntegration {
         }
       }
       if (!threadTs) {
-        logger.error(`${LOG_TAG} No thread anchor for ${SESSION_UPDATED} session ${session.id}, cannot post`);
+        logger.error(`${LOG_TAG} slack.session.updated.skipped: no thread anchor for session=${session.id}`);
         return;
       }
       try {
@@ -229,15 +261,19 @@ export class SlackNotifier implements NotificationIntegration {
           blocks,
           thread_ts: threadTs,
         });
+        logger.info(`${LOG_TAG} slack.session.updated.posted: session=${session.id}`);
       } catch (err) {
-        logger.error(`${LOG_TAG} Failed to post session update for ${session.id}:`, err);
+        logger.error(`${LOG_TAG} slack.session.update.notify.failed: session=${session.id}`, err);
       }
     }, SESSION_UPDATED, session.id);
   }
 
   async onSessionOutput(sessionId: string, outputs: SessionOutput[]): Promise<void> {
     if (!this.active || !this.client) return;
-    if (!this.isEventEnabled(SESSION_AI_RESPONSE)) return;
+    if (!this.isEventEnabled(SESSION_AI_RESPONSE)) {
+      logger.info(`${LOG_TAG} slack.session.output.skipped: event not enabled for session=${sessionId}`);
+      return;
+    }
 
     const relevant = outputs.filter((o) => o.type === 'message' && o.content.trim() && !o.isMeta &&
       (o.role === 'assistant' || o.role === 'user'));
@@ -255,8 +291,9 @@ export class SlackNotifier implements NotificationIntegration {
           text,
           thread_ts: threadTs,
         });
+        logger.info(`${LOG_TAG} slack.session.output.posted: session=${sessionId} chars=${text.length}`);
       } catch (err) {
-        logger.error(`${LOG_TAG} Failed to post AI response for session ${sessionId}:`, err);
+        logger.error(`${LOG_TAG} slack.session.output.failed: session=${sessionId}`, err);
       }
     }, SESSION_AI_RESPONSE, sessionId);
   }
@@ -276,8 +313,9 @@ export class SlackNotifier implements NotificationIntegration {
           blocks,
           thread_ts: threadTs,
         });
+        logger.info(`${LOG_TAG} slack.pending_choice.posted: session=${choice.sessionId}`);
       } catch (err) {
-        logger.error(`${LOG_TAG} Failed to post pending choice for session ${choice.sessionId}:`, err);
+        logger.error(`${LOG_TAG} slack.pending_choice.failed: session=${choice.sessionId}`, err);
       }
     }, SESSION_PENDING_CHOICE, choice.sessionId);
   }
