@@ -1,8 +1,8 @@
 import { normalize } from 'path';
 import WebSocket from 'ws';
-import * as logger from '../utils/logger.js';
+import { createTaggedLogger } from '../utils/logger.js';
 
-const log = logger.createTaggedLogger('[PtyRegistry]', '\x1b[35m'); // magenta
+const log = createTaggedLogger('[PtyRegistry]', '\x1b[35m'); // magenta
 import type { SessionType } from '../models/index.js';
 
 function normalizePath(p: string): string {
@@ -52,7 +52,7 @@ export class PtyRegistry {
   // pid is the initial tool PID: null on Windows (resolved later via update_pid),
   // or the same as hostPid on non-Windows (pty.pid is directly the tool process).
   registerPending(ptyLaunchId: string, ws: WebSocket, repoPath: string, hostPid: number, pid: number | null = null, sessionType: SessionType = 'claude-code'): void {
-    logger.info(`[PtyRegistry] registerPending ptyLaunchId=${ptyLaunchId} hostPid=${hostPid} pid=${pid} sessionType=${sessionType} repoPath="${repoPath}"`);
+    log.info(` registerPending ptyLaunchId=${ptyLaunchId} hostPid=${hostPid} pid=${pid} sessionType=${sessionType} repoPath="${repoPath}"`);
     this.pendingByLaunchId.set(ptyLaunchId, { ptyLaunchId, ws, hostPid, pid, sessionType, repoPath });
   }
 
@@ -61,7 +61,7 @@ export class PtyRegistry {
   updatePendingPid(ptyLaunchId: string, pid: number): void {
     const pending = this.pendingByLaunchId.get(ptyLaunchId);
     if (pending) {
-      logger.info(`[PtyRegistry] updatePendingPid ptyLaunchId=${ptyLaunchId} pid=${pid}`);
+      log.info(` updatePendingPid ptyLaunchId=${ptyLaunchId} pid=${pid}`);
       pending.pid = pid;
     }
   }
@@ -76,7 +76,7 @@ export class PtyRegistry {
   // Stores the mapping so claimForSession can do a direct O(1) lookup instead of scanning
   // all pending entries by repoPath.
   linkToSession(ptyLaunchId: string, sessionId: string): void {
-    logger.info(`[PtyRegistry] linkToSession ptyLaunchId=${ptyLaunchId} sessionId=${sessionId}`);
+    log.info(` linkToSession ptyLaunchId=${ptyLaunchId} sessionId=${sessionId}`);
     this.preLinked.set(ptyLaunchId, sessionId);
   }
 
@@ -89,7 +89,7 @@ export class PtyRegistry {
       if (preSessionId !== sessionId) continue;
       const pending = this.pendingByLaunchId.get(id);
       if (!pending) { this.preLinked.delete(id); continue; }
-      logger.info(`[PtyRegistry] claimForSession PRE-LINKED sessionId=${sessionId} ptyLaunchId=${id} hostPid=${pending.hostPid} pid=${pending.pid}`);
+      log.info(` claimForSession PRE-LINKED sessionId=${sessionId} ptyLaunchId=${id} hostPid=${pending.hostPid} pid=${pending.pid}`);
       this.connections.set(sessionId, pending.ws);
       this.ptyLaunchToClaimedId.set(id, sessionId);
       this.pendingByLaunchId.delete(id);
@@ -102,16 +102,16 @@ export class PtyRegistry {
     for (const [id, pending] of this.pendingByLaunchId) {
       if (normalizePath(pending.repoPath) !== key) continue;
       if (pending.sessionType !== sessionType) {
-        logger.info(`[PtyRegistry] claimForSession TYPE MISMATCH ptyLaunchId=${id} sessionId=${sessionId} expected=${sessionType} got=${pending.sessionType} repoPath="${repoPath}" — skipping`);
+        log.info(` claimForSession TYPE MISMATCH ptyLaunchId=${id} sessionId=${sessionId} expected=${sessionType} got=${pending.sessionType} repoPath="${repoPath}", skipping`);
         continue;
       }
-      logger.info(`[PtyRegistry] claimForSession OK sessionId=${sessionId} ptyLaunchId=${id} hostPid=${pending.hostPid} pid=${pending.pid} sessionType=${sessionType} repoPath="${repoPath}"`);
+      log.info(` claimForSession OK sessionId=${sessionId} ptyLaunchId=${id} hostPid=${pending.hostPid} pid=${pending.pid} sessionType=${sessionType} repoPath="${repoPath}"`);
       this.connections.set(sessionId, pending.ws);
       this.ptyLaunchToClaimedId.set(id, sessionId);
       this.pendingByLaunchId.delete(id);
       return { pid: pending.pid, hostPid: pending.hostPid, ptyLaunchId: id };
     }
-    logger.info(`[PtyRegistry] claimForSession MISS sessionId=${sessionId} expected=${sessionType} repoPath="${repoPath}"`);
+    log.info(` claimForSession MISS sessionId=${sessionId} expected=${sessionType} repoPath="${repoPath}"`);
     return null;
   }
 
@@ -121,10 +121,10 @@ export class PtyRegistry {
   promotePendingToSession(ptyLaunchId: string, sessionId: string): { pid: number | null; hostPid: number } | null {
     const pending = this.pendingByLaunchId.get(ptyLaunchId);
     if (!pending) {
-      logger.info(`[PtyRegistry] promotePendingToSession MISS ptyLaunchId=${ptyLaunchId} sessionId=${sessionId}`);
+      log.info(` promotePendingToSession MISS ptyLaunchId=${ptyLaunchId} sessionId=${sessionId}`);
       return null;
     }
-    logger.info(`[PtyRegistry] promotePendingToSession ptyLaunchId=${ptyLaunchId} sessionId=${sessionId} hostPid=${pending.hostPid}`);
+    log.info(` promotePendingToSession ptyLaunchId=${ptyLaunchId} sessionId=${sessionId} hostPid=${pending.hostPid}`);
     this.connections.set(sessionId, pending.ws);
     this.ptyLaunchToClaimedId.set(ptyLaunchId, sessionId);
     this.pendingByLaunchId.delete(ptyLaunchId);
@@ -148,7 +148,7 @@ export class PtyRegistry {
   // Stores the resolved tool PID for an already-claimed session.
   // Called when update_pid arrives but the DB session row doesn't exist yet.
   updateClaimedPid(sessionId: string, pid: number): void {
-    logger.info(`[PtyRegistry] updateClaimedPid sessionId=${sessionId} pid=${pid}`);
+    log.info(` updateClaimedPid sessionId=${sessionId} pid=${pid}`);
     this.claimedPids.set(sessionId, pid);
   }
 
@@ -159,12 +159,12 @@ export class PtyRegistry {
 
   // Clean up a pending connection that never got claimed (e.g. claude crashed before first hook).
   unregisterPending(repoPath: string, ptyLaunchId: string): void {
-    logger.warn(`[PtyRegistry] unregisterPending ptyLaunchId=${ptyLaunchId} repoPath="${repoPath}"`);
+    log.warn(` unregisterPending ptyLaunchId=${ptyLaunchId} repoPath="${repoPath}"`);
     this.pendingByLaunchId.delete(ptyLaunchId);
   }
 
   unregister(sessionId: string): void {
-    logger.warn(`[PtyRegistry] unregister sessionId=${sessionId}`);
+    log.warn(` unregister sessionId=${sessionId}`);
     this.connections.delete(sessionId);
     this.claimedPids.delete(sessionId);
   }
@@ -175,14 +175,14 @@ export class PtyRegistry {
 
   sendPrompt(sessionId: string, actionId: string, prompt: string, timeoutMs = 30_000, skipEnter = false): Promise<void> {
     const ws = this.connections.get(sessionId);
-    logger.info(`[PtyRegistry.sendPrompt] sessionId=${sessionId} wsFound=${!!ws} wsState=${ws?.readyState}`);
+    log.info(`sendPrompt: sessionId=${sessionId} wsFound=${!!ws} wsState=${ws?.readyState}`);
     if (!ws) {
       return Promise.reject(new Error(`Session ${sessionId} launcher is not connected to Argus`));
     }
 
     if (ws.readyState !== WebSocket.OPEN) {
       // Stale entry — WS closed between the has() check and now. Clean up and reject.
-      logger.warn(`[PtyRegistry] removing stale connection sessionId=${sessionId} wsState=${ws.readyState}`);
+      log.warn(` removing stale connection sessionId=${sessionId} wsState=${ws.readyState}`);
       this.connections.delete(sessionId);
       return Promise.reject(new Error(`Session ${sessionId} launcher is not connected to Argus`));
     }
@@ -190,20 +190,20 @@ export class PtyRegistry {
     return new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.pending.delete(actionId);
-        logger.info(`[PtyRegistry.sendPrompt] TIMEOUT — no ack received within ${timeoutMs}ms actionId=${actionId} sessionId=${sessionId}`);
+        log.info(`sendPrompt: TIMEOUT — no ack received within ${timeoutMs}ms actionId=${actionId} sessionId=${sessionId}`);
         reject(new Error(`Prompt delivery timed out after ${timeoutMs}ms`));
       }, timeoutMs);
 
       this.pending.set(actionId, { resolve, reject, timeout });
       const msg = JSON.stringify({ type: 'send_prompt', actionId, prompt, skipEnter });
-      logger.info(`[PtyRegistry.sendPrompt] sending WS message actionId=${actionId} promptLen=${prompt.length}`);
+      log.info(`sendPrompt: sending WS message actionId=${actionId} promptLen=${prompt.length}`);
       ws.send(msg);
     });
   }
 
   handleAck(actionId: string, success: boolean, error?: string): void {
     const entry = this.pending.get(actionId);
-    logger.info(`[PtyRegistry.handleAck] actionId=${actionId} success=${success} found=${!!entry} error=${error ?? ''}`);
+    log.info(`handleAck: actionId=${actionId} success=${success} found=${!!entry} error=${error ?? ''}`);
     if (!entry) return;
 
     clearTimeout(entry.timeout);
@@ -219,4 +219,7 @@ export class PtyRegistry {
 
 // Module-level singleton used by the server
 export const ptyRegistry = new PtyRegistry();
+
+
+
 

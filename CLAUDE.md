@@ -51,9 +51,28 @@ The Teams and Slack integrations live under `backend/src/integration/{teams,slac
 
 ## Logging
 
-- **Always prefix log messages with `[ComponentName]`** — every `logger.info`, `logger.warn`, etc. call must begin with a `[ComponentName]` tag so logs are easy to filter and attribute. Examples: `[CopilotDetector]`, `[PtyRegistry]`, `[Launcher]`, `[SessionMonitor]`.
-- **Use `createTaggedLogger` for components that need a distinct color.** Import from `utils/logger.ts` and call `createTaggedLogger('[ComponentName]', ansiColor)`. The returned logger automatically prepends the colored tag in TTY environments. Current assignments: `[PtyRegistry]` uses magenta (`\x1b[35m`).
-- **No em dashes in log messages.** Use a comma or colon instead (consistent with the Writing Style rule).
+**Always use `createTaggedLogger` for backend components.** Import from `utils/logger.ts` and create a module-level logger:
+
+```ts
+import { createTaggedLogger } from '../utils/logger.js';
+const log = createTaggedLogger('[ComponentName]', '\x1b[Xm'); // pick a color
+```
+
+Use `log.info`, `log.warn`, `log.error`, `log.debug` everywhere in that file. Never use `import * as logger` — it produces uncolored output and requires manually embedding `[ComponentName]` in every string.
+
+**Never use `console.log`, `console.info`, `console.warn`, or `console.error`** anywhere in backend source files. They bypass the shared logger's level filtering and formatting. The only exception is `utils/logger.ts` itself, which is the logger implementation.
+
+**Route handlers use the Fastify request logger** (`request.log`, `reply.log`) for per-request structured logging. That is fine and intentional — do not replace it with `createTaggedLogger`.
+
+**Color assignments** (use a different color for each new component):
+
+| Component | Color |
+|---|---|
+| `[PtyRegistry]` | magenta `\x1b[35m` |
+| `[TeamsNotifier]` / `[TeamsListener]` | cyan `\x1b[36m` |
+| `[SlackNotifier]` / `[SlackListener]` | green `\x1b[32m` |
+
+**No em dashes in log messages.** Use a comma or colon instead (consistent with the Writing Style rule).
 
 ## Error Handling
 

@@ -4,6 +4,7 @@ import { homedir } from 'os';
 import { mkdirSync } from 'fs';
 import { SCHEMA_SQL } from './schema.js';
 import type { Repository, Session, SessionOutput, ControlAction, TodoItem, TeamsThread, SlackThread } from '../models/index.js';
+import * as logger from '../utils/logger.js';
 
 const DB_PATH = process.env.ARGUS_DB_PATH ?? join(homedir(), '.argus', 'argus.db');
 
@@ -126,20 +127,20 @@ export function deleteRepository(id: string): void {
   const db = getDb();
 
   const sessionIds = (db.prepare('SELECT id FROM sessions WHERE repository_id = ?').all(id) as Array<{ id: string }>).map(r => r.id);
-  console.log(`[deleteRepository] repo=${id} sessions=${JSON.stringify(sessionIds)}`);
+  logger.info(`[deleteRepository] repo=${id} sessions=${JSON.stringify(sessionIds)}`);
 
   if (sessionIds.length > 0) {
     const placeholders = sessionIds.map(() => '?').join(',');
     const caCount = (db.prepare(`SELECT COUNT(*) as n FROM control_actions WHERE session_id IN (${placeholders})`).get(...sessionIds) as { n: number }).n;
     const soCount = (db.prepare(`SELECT COUNT(*) as n FROM session_output WHERE session_id IN (${placeholders})`).get(...sessionIds) as { n: number }).n;
-    console.log(`[deleteRepository] control_actions to delete=${caCount}, session_output to delete=${soCount}`);
+    logger.info(`[deleteRepository] control_actions to delete=${caCount}, session_output to delete=${soCount}`);
   }
 
   const caResult = db.prepare('DELETE FROM control_actions WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
   const soResult = db.prepare('DELETE FROM session_output WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
   const ttResult = db.prepare('DELETE FROM teams_threads WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
   const stResult = db.prepare('DELETE FROM slack_threads WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
-  console.log(`[deleteRepository] deleted control_actions=${caResult.changes}, session_output=${soResult.changes}, teams_threads=${ttResult.changes}, slack_threads=${stResult.changes}`);
+  logger.info(`[deleteRepository] deleted control_actions=${caResult.changes}, session_output=${soResult.changes}, teams_threads=${ttResult.changes}, slack_threads=${stResult.changes}`);
 
   // Verify no child records remain before deleting sessions
   if (sessionIds.length > 0) {
@@ -148,12 +149,12 @@ export function deleteRepository(id: string): void {
     const soRemaining = (db.prepare(`SELECT COUNT(*) as n FROM session_output WHERE session_id IN (${placeholders})`).get(...sessionIds) as { n: number }).n;
     const ttRemaining = (db.prepare(`SELECT COUNT(*) as n FROM teams_threads WHERE session_id IN (${placeholders})`).get(...sessionIds) as { n: number }).n;
     const stRemaining = (db.prepare(`SELECT COUNT(*) as n FROM slack_threads WHERE session_id IN (${placeholders})`).get(...sessionIds) as { n: number }).n;
-    console.log(`[deleteRepository] remaining after cleanup: control_actions=${caRemaining}, session_output=${soRemaining}, teams_threads=${ttRemaining}, slack_threads=${stRemaining}`);
+    logger.info(`[deleteRepository] remaining after cleanup: control_actions=${caRemaining}, session_output=${soRemaining}, teams_threads=${ttRemaining}, slack_threads=${stRemaining}`);
   }
 
   db.prepare('DELETE FROM sessions WHERE repository_id = ?').run(id);
   db.prepare('DELETE FROM repositories WHERE id = ?').run(id);
-  console.log(`[deleteRepository] done repo=${id}`);
+  logger.info(`[deleteRepository] done repo=${id}`);
 }
 
 export interface SessionFilters { repositoryId?: string; status?: string; type?: string; limit?: number; }
