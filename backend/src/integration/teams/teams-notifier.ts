@@ -12,8 +12,6 @@ import { SessionDiffTracker } from '../../services/session-diff-tracker.js';
 import type { SessionChange } from '../../services/session-diff-tracker.js';
 import { createTaggedLogger } from '../../utils/logger.js';
 
-const log = createTaggedLogger('[TeamsNotifier]', '\x1b[36m'); // cyan
-
 function field(label: string, value: string): string {
   return `**${label}:** ${value}`;
 }
@@ -27,20 +25,26 @@ export class TeamsNotifier implements NotificationIntegration {
   private active = false;
   private readonly queue: MessageQueue;
 
-  constructor(private readonly teamsApp: App) {
+  constructor(
+    private readonly teamsApp: App,
+    private readonly log = createTaggedLogger('[TeamsNotifier]', '\x1b[36m'),
+  ) {
     this.queue = new MessageQueue((eventType, sessionId) => {
-      log.warn(`teams: send queue full, dropping ${eventType} for session ${sessionId}`);
+      this.log.warn(`teams: send queue full, dropping ${eventType} for session ${sessionId}`);
     });
   }
 
   async initialize(): Promise<boolean> {
     if (!this.isConfigured()) {
       const config = loadTeamsConfig();
-      log.info(`teams: not configured, skipping event subscriptions enabled=${config.enabled} hasTeamId=${Boolean(config.teamId)} hasChannelId=${Boolean(config.channelId)} hasOwner=${Boolean(config.ownerSenderId)}`);
+      this.log.info(
+        { enabled: config.enabled, hasTeamId: Boolean(config.teamId), hasChannelId: Boolean(config.channelId), hasOwner: Boolean(config.ownerSenderId) },
+        'teams: not configured, skipping event subscriptions',
+      );
       return false;
     }
     this.active = true;
-    log.info('teams: configured, subscribing to session events');
+    this.log.info('teams: configured, subscribing to session events');
     return true;
   }
 
@@ -53,28 +57,28 @@ export class TeamsNotifier implements NotificationIntegration {
   }
 
   async onSessionCreated(session: Session): Promise<void> {
-    log.info(`teams.session.created.received: session=${session.id} type=${session.type} status=${session.status}`);
+    this.log.info(`teams.session.created.received: session=${session.id} type=${session.type} status=${session.status}`);
     if (!this.active) return;
     const config = loadTeamsConfig();
     if (!this.isConfigured()) {
-      log.warn(`teams.session.created.skipped: not configured session=${session.id}`);
+      this.log.warn(`teams.session.created.skipped: not configured session=${session.id}`);
       return;
     }
     const { channelId } = config as { channelId: string };
 
     const existing = getTeamsThread(session.id);
     if (existing) {
-      log.info(`teams.thread.reused: session=${session.id} teamsThreadId=${existing.teamsThreadId}`);
+      this.log.info(`teams.thread.reused: session=${session.id} teamsThreadId=${existing.teamsThreadId}`);
       this.diffTracker.seed(session);
       this.queue.enqueue(async () => {
         try {
           const threadConvId = `${channelId};messageid=${existing.teamsThreadId}`;
           await this.teamsApp.api.conversations.activities(threadConvId).create(this._buildReconnectMessage(session));
-          log.info(`teams.thread.reused.notified: session=${session.id} teamsThreadId=${existing.teamsThreadId}`);
+          this.log.info(`teams.thread.reused.notified: session=${session.id} teamsThreadId=${existing.teamsThreadId}`);
         } catch (err) {
           if (isTeamsThreadNotFound(err)) {
             // Stale anchor: the parent message was deleted. Clear the row and create a new thread.
-            log.warn(`teams.thread.stale.detected: session=${session.id}`);
+            this.log.warn(`teams.thread.stale.detected: session=${session.id}`);
             deleteTeamsThread(session.id);
             const repo = getRepository(session.repositoryId);
             try {
@@ -88,12 +92,12 @@ export class TeamsNotifier implements NotificationIntegration {
                 createdAt: new Date().toISOString(),
               });
               this.diffTracker.seed(session);
-              log.info(`teams.thread.stale.recovered: session=${session.id} teamsThreadId=${sent.id}`);
+              this.log.info(`teams.thread.stale.recovered: session=${session.id} teamsThreadId=${sent.id}`);
             } catch (retryErr) {
-              log.error(`teams.thread.stale.recover.failed: session=${session.id}`, retryErr);
+              this.log.error(`teams.thread.stale.recover.failed: session=${session.id}`, retryErr);
             }
           } else {
-            log.warn(`teams.thread.reused.notify.failed: session=${session.id}`, err);
+            this.log.warn(`teams.thread.reused.notify.failed: session=${session.id}`, err);
           }
         }
       }, 'session.created', session.id);
@@ -101,11 +105,11 @@ export class TeamsNotifier implements NotificationIntegration {
     }
 
     const repo = getRepository(session.repositoryId);
-    log.info(`teams.thread.creating: session=${session.id} repo=${repo?.name ?? '(unknown)'}`);
+    this.log.info(`teams.thread.creating: session=${session.id} repo=${repo?.name ?? '(unknown)'}`);
     this.queue.enqueue(async () => {
       try {
         const sent = await this.teamsApp.send(channelId, this._buildOpeningMessage(session, repo));
-        log.info(`teams.thread.send.response: session=${session.id} sentId=${sent?.id}`);
+        this.log.info(`teams.thread.send.response: session=${session.id} sentId=${sent?.id}`);
         upsertTeamsThread({
           id: randomUUID(),
           sessionId: session.id,
@@ -114,41 +118,41 @@ export class TeamsNotifier implements NotificationIntegration {
           tenantId: loadTeamsConfig().tenantId ?? '',
           createdAt: new Date().toISOString(),
         });
-        log.info(`teams.thread.created: session=${session.id} teamsThreadId=${sent.id}`);
+        this.log.info(`teams.thread.created: session=${session.id} teamsThreadId=${sent.id}`);
         this.diffTracker.seed(session);
       } catch (err) {
-        log.error(`teams.thread.create.failed: session=${session.id}`, err);
+        this.log.error(`teams.thread.create.failed: session=${session.id}`, err);
       }
     }, 'session.created', session.id);
   }
 
   async onSessionUpdated(session: Session): Promise<void> {
-    log.info(`teams.session.updated.received: session=${session.id} status=${session.status} model=${session.model} pid=${session.pid}`);
+    this.log.info(`teams.session.updated.received: session=${session.id} status=${session.status} model=${session.model} pid=${session.pid}`);
     if (!this.active) return;
     if (!this.isConfigured()) {
-      log.warn(`teams.session.updated.skipped: not configured session=${session.id}`);
+      this.log.warn(`teams.session.updated.skipped: not configured session=${session.id}`);
       return;
     }
 
     const thread = getTeamsThread(session.id);
-    log.info(`teams.session.updated.thread-lookup: session=${session.id} threadFound=${!!thread} teamsThreadId=${thread?.teamsThreadId}`);
+    this.log.info(`teams.session.updated.thread-lookup: session=${session.id} threadFound=${!!thread} teamsThreadId=${thread?.teamsThreadId}`);
     if (!thread) {
-      log.info(`teams.session.updated: no thread, delegating to onSessionCreated: session=${session.id}`);
+      this.log.info(`teams.session.updated: no thread, delegating to onSessionCreated: session=${session.id}`);
       await this.onSessionCreated(session);
       return;
     }
 
     const changes = this.diffTracker.update(session);
     if (changes === null) {
-      log.info(`teams.session.updated.skipped: no baseline, recording current state session=${session.id}`);
+      this.log.info(`teams.session.updated.skipped: no baseline, recording current state session=${session.id}`);
       return;
     }
     if (changes.length === 0) {
-      log.info(`teams.session.updated.skipped: no meaningful changes session=${session.id}`);
+      this.log.info(`teams.session.updated.skipped: no meaningful changes session=${session.id}`);
       return;
     }
 
-    log.info(`teams.session.updated.posting: session=${session.id} changes=${changes.map(c => c.label).join(',')}`);
+    this.log.info(`teams.session.updated.posting: session=${session.id} changes=${changes.map(c => c.label).join(',')}`);
 
     const config = loadTeamsConfig();
     const { channelId } = config as { channelId: string };
@@ -158,9 +162,9 @@ export class TeamsNotifier implements NotificationIntegration {
       try {
         const threadConvId = `${channelId};messageid=${thread.teamsThreadId}`;
         await this.teamsApp.api.conversations.activities(threadConvId).create(activity);
-        log.info(`teams.session.updated.posted: session=${session.id}`);
+        this.log.info(`teams.session.updated.posted: session=${session.id}`);
       } catch (err) {
-        log.error(`teams.session.update.notify.failed: session=${session.id}`, err);
+        this.log.error(`teams.session.update.notify.failed: session=${session.id}`, err);
       }
     }, 'session.updated', session.id);
   }
@@ -169,7 +173,7 @@ export class TeamsNotifier implements NotificationIntegration {
     if (!this.active) return;
     const config = loadTeamsConfig();
     if (!config.enabled) {
-      log.info(`teams.session.output.skipped: not enabled session=${sessionId}`);
+      this.log.info(`teams.session.output.skipped: not enabled session=${sessionId}`);
       return;
     }
     const relevant = outputs.filter(o => o.type === 'message' && o.content.trim() && !o.isMeta &&
@@ -186,9 +190,9 @@ export class TeamsNotifier implements NotificationIntegration {
       try {
         const threadConvId = `${channelId};messageid=${thread.teamsThreadId}`;
         await this.teamsApp.api.conversations.activities(threadConvId).create(new MessageActivity(text));
-        log.info(`teams.session.output.posted: session=${sessionId} chars=${text.length}`);
+        this.log.info(`teams.session.output.posted: session=${sessionId} chars=${text.length}`);
       } catch (err) {
-        log.error(`teams.session.output.failed: session=${sessionId}`, err);
+        this.log.error(`teams.session.output.failed: session=${sessionId}`, err);
       }
     }, 'session.output', sessionId);
   }
@@ -207,27 +211,27 @@ export class TeamsNotifier implements NotificationIntegration {
       try {
         const threadConvId = `${channelId};messageid=${thread.teamsThreadId}`;
         await this.teamsApp.api.conversations.activities(threadConvId).create(activity);
-        log.info(`teams.pending_choice.posted: session=${choice.sessionId}`);
+        this.log.info(`teams.pending_choice.posted: session=${choice.sessionId}`);
       } catch (err) {
-        log.error(`teams.pending_choice.failed: session=${choice.sessionId}`, err);
+        this.log.error(`teams.pending_choice.failed: session=${choice.sessionId}`, err);
       }
     }, 'session.pending_choice', choice.sessionId);
   }
 
   async onSessionEnded(session: Session): Promise<void> {
-    log.info(`teams.session.ended.received: session=${session.id} status=${session.status}`);
+    this.log.info(`teams.session.ended.received: session=${session.id} status=${session.status}`);
     if (!this.active) return;
     const config = loadTeamsConfig();
     if (!this.isConfigured()) {
-      log.warn(`teams.session.ended.skipped: not configured session=${session.id}`);
+      this.log.warn(`teams.session.ended.skipped: not configured session=${session.id}`);
       return;
     }
     const { channelId } = config as { channelId: string };
 
     const thread = getTeamsThread(session.id);
-    log.info(`teams.session.ended.thread-lookup: session=${session.id} threadFound=${!!thread} teamsThreadId=${thread?.teamsThreadId}`);
+    this.log.info(`teams.session.ended.thread-lookup: session=${session.id} threadFound=${!!thread} teamsThreadId=${thread?.teamsThreadId}`);
     if (!thread) {
-      log.warn(`teams.session.ended.skipped: no thread session=${session.id}`);
+      this.log.warn(`teams.session.ended.skipped: no thread session=${session.id}`);
       return;
     }
 
@@ -238,9 +242,9 @@ export class TeamsNotifier implements NotificationIntegration {
         await this.teamsApp.api.conversations.activities(threadConvId).create(activity);
         deleteTeamsThread(session.id);
         this.diffTracker.clear(session.id);
-        log.info(`teams.session.ended: session=${session.id} status=${session.status}`);
+        this.log.info(`teams.session.ended: session=${session.id} status=${session.status}`);
       } catch (err) {
-        log.error(`teams.session.end.notify.failed: session=${session.id}`, err);
+        this.log.error(`teams.session.end.notify.failed: session=${session.id}`, err);
       }
     }, 'session.ended', session.id);
   }
