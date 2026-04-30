@@ -4,9 +4,9 @@ import type { SlackConfig, NotificationListener } from '../../models/index.js';
 import { getSessions, getSession } from '../../db/database.js';
 import { SessionController } from '../../services/session-controller.js';
 import type { SlackNotifier } from './slack-notifier.js';
-import * as logger from '../../utils/logger.js';
+import { createTaggedLogger } from '../../utils/logger.js';
 
-const LOG_TAG = '[SlackListener]';
+const log = createTaggedLogger('[SlackListener]', '\x1b[32m'); // green
 
 const SUPPORTED_COMMANDS = ['sessions', 'session', 'status', 'help'];
 
@@ -34,11 +34,11 @@ export class SlackListener implements NotificationListener {
 
   async initialize(): Promise<boolean> {
     if (this.socketClient) {
-      logger.info(`${LOG_TAG} Already running, skipping re-initialize`);
+      log.info(`Already running, skipping re-initialize`);
       return true;
     }
     if (!this.config.appToken) {
-      logger.info(`${LOG_TAG} Socket Mode disabled: SLACK_APP_TOKEN not configured (inbound routing unavailable)`);
+      log.info(`Socket Mode disabled: SLACK_APP_TOKEN not configured (inbound routing unavailable)`);
       return false;
     }
 
@@ -59,9 +59,9 @@ export class SlackListener implements NotificationListener {
     });
 
     this.socketClient.start().then(() => {
-      logger.info(`${LOG_TAG} Socket Mode connected, listening for app mentions and DMs`);
+      log.info(`Socket Mode connected, listening for app mentions and DMs`);
     }).catch((err: unknown) => {
-      logger.error(`${LOG_TAG} Failed to start Socket Mode client:`, err);
+      log.error(`Failed to start Socket Mode client:`, err);
     });
     return true;
   }
@@ -69,10 +69,10 @@ export class SlackListener implements NotificationListener {
   shutdown(): void {
     if (this.socketClient) {
       this.socketClient.disconnect().catch((err: unknown) => {
-        logger.error(`${LOG_TAG} Error during disconnect:`, err);
+        log.error(`Error during disconnect:`, err);
       });
       this.socketClient = null;
-      logger.info(`${LOG_TAG} Disconnected`);
+      log.info(`Disconnected`);
     }
   }
 
@@ -82,10 +82,10 @@ export class SlackListener implements NotificationListener {
 
   private async handleIncoming(text: string, channel: string, messageTs: string, userId: string | undefined, parentThreadTs?: string): Promise<void> {
     try {
-      logger.info(`${LOG_TAG} Incoming message: channel=${channel} ts=${messageTs} thread_ts=${parentThreadTs ?? 'none'} userId=${userId ?? 'unknown'} text=${JSON.stringify(text)}`);
+      log.info(`Incoming message: channel=${channel} ts=${messageTs} thread_ts=${parentThreadTs ?? 'none'} userId=${userId ?? 'unknown'} text=${JSON.stringify(text)}`);
 
       if (!userId || userId !== this.config.ownerSenderId) {
-        logger.info(`${LOG_TAG} Rejected message from non-owner userId=${userId ?? 'unknown'}`);
+        log.info(`Rejected message from non-owner userId=${userId ?? 'unknown'}`);
         return;
       }
 
@@ -95,7 +95,7 @@ export class SlackListener implements NotificationListener {
         await this.webClient.chat.postMessage({ channel, blocks, thread_ts: replyThreadTs, text: 'Argus response' });
       }
     } catch (err) {
-      logger.error(`${LOG_TAG} Failed to handle incoming message:`, err);
+      log.error(`Failed to handle incoming message:`, err);
     }
   }
 
@@ -192,7 +192,7 @@ export class SlackListener implements NotificationListener {
       }];
     }
 
-    logger.info(`${LOG_TAG} Sending prompt to session ${sessionId}: ${JSON.stringify(prompt)}`);
+    log.info(`Sending prompt to session ${sessionId}: ${JSON.stringify(prompt)}`);
     const action = await this.sessionController.sendPrompt(sessionId, prompt);
 
     if (action.status === 'failed') {
@@ -248,3 +248,4 @@ interface Block {
   type: string;
   [key: string]: unknown;
 }
+
