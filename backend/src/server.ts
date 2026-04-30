@@ -73,9 +73,8 @@ export async function buildServer() {
   const app = Fastify({
     logger: {
       level: process.env.LOG_LEVEL ?? 'info',
-      customLevels: { teams: 35 },
       transport: process.env.NODE_ENV !== 'production'
-        ? { target: 'pino-pretty', options: { colorize: true, singleLine: true, customLevels: '35:TEAMS', customColors: 'teams:cyanBright' } }
+        ? { target: 'pino-pretty', options: { colorize: true, singleLine: true } }
         : undefined,
     },
     genReqId: () => randomUUID(),
@@ -107,7 +106,7 @@ export async function buildServer() {
       clientSecret: teamsBootConfig.clientSecret,
       tenantId: teamsBootConfig.tenantId,
     });
-    teamsListener = new TeamsListener(teamsApp, app.log as any);
+    teamsListener = new TeamsListener(teamsApp);
     await teamsListener.initialize();
     await teamsApp.initialize();
   }
@@ -209,7 +208,7 @@ export async function startServer() {
     setSlackServices(slackNotifier, slackListener);
 
     if (teamsApp) {
-      teamsNotifier = new TeamsNotifier(teamsApp, app.log as any);
+      teamsNotifier = new TeamsNotifier(teamsApp);
 
       if (getIntegrationEnabled('teams') !== false && await teamsNotifier.initialize()) {
         monitor.on('session.created', (session: Session) => {

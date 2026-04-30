@@ -4,19 +4,16 @@ import { getSessions, getSession, getTeamsThreadByTeamsId } from '../../db/datab
 import type { NotificationListener } from '../../models/index.js';
 import { SessionController } from '../../services/session-controller.js';
 import { loadTeamsConfig } from '../../config/teams-config-loader.js';
-import type { TeamsLogger } from './teams-notifier.js';
+import { createTaggedLogger } from '../../utils/logger.js';
 
-const LOG_TAG = 'teams-listener';
+const log = createTaggedLogger('[TeamsListener]', '\x1b[36m'); // cyan
 
 export class TeamsListener implements NotificationListener {
   private readonly sessionController: SessionController;
   private active = false;
   private handlerRegistered = false;
 
-  constructor(
-    private readonly teamsApp: App,
-    private readonly logger: TeamsLogger,
-  ) {
+  constructor(private readonly teamsApp: App) {
     this.sessionController = new SessionController();
   }
 
@@ -36,10 +33,10 @@ export class TeamsListener implements NotificationListener {
       if (!this.active) return;
       const teamsConfig = loadTeamsConfig();
       const senderAadObjectId = (activity.from as Record<string, unknown>)?.['aadObjectId'] as string | undefined;
-      this.logger.info({ senderAadObjectId, source: LOG_TAG }, 'teams.listener.message.received');
+      log.info(`teams.listener.message.received: senderAadObjectId=${senderAadObjectId}`);
 
       if (!senderAadObjectId || senderAadObjectId !== teamsConfig.ownerSenderId) {
-        this.logger.info({ senderAadObjectId, source: LOG_TAG }, 'teams.listener.message.rejected.non-owner');
+        log.info(`teams.listener.message.rejected.non-owner: senderAadObjectId=${senderAadObjectId}`);
         return;
       }
 
@@ -48,7 +45,7 @@ export class TeamsListener implements NotificationListener {
       const text = raw.replace(/<at>[^<]*<\/at>/g, '').trim();
       if (!text) return;
 
-      this.logger.info({ text, source: LOG_TAG }, 'teams.listener.message.command.received');
+      log.info(`teams.listener.message.command.received: text=${text}`);
 
       try {
         const response = await this.handleArgusQuery(text, conversationId);
@@ -56,7 +53,7 @@ export class TeamsListener implements NotificationListener {
           await send(new MessageActivity(response));
         }
       } catch (err) {
-        this.logger.error({ err, source: LOG_TAG }, 'teams.listener.message.failed');
+        log.error('teams.listener.message.failed', err);
       }
     });
 
@@ -68,13 +65,13 @@ export class TeamsListener implements NotificationListener {
       const teamsConfig = loadTeamsConfig();
       const senderAadObjectId = (activity.from as Record<string, unknown>)?.['aadObjectId'] as string | undefined;
       if (!senderAadObjectId || senderAadObjectId !== teamsConfig.ownerSenderId) {
-        this.logger.info({ senderAadObjectId, source: LOG_TAG }, 'teams.listener.card.action.rejected.non-owner');
+        log.info(`teams.listener.card.action.rejected.non-owner: senderAadObjectId=${senderAadObjectId}`);
         return { statusCode: 200, type: 'application/vnd.microsoft.activity.message' as const, value: 'Unauthorized' };
       }
 
       const sessionId = data.sessionId as string;
       const choiceText = data.choiceText as string;
-      this.logger.info({ sessionId, choiceText, source: LOG_TAG }, 'teams.listener.card.action.pending_choice');
+      log.info(`teams.listener.card.action.pending_choice: session=${sessionId} choiceText=${choiceText}`);
 
       try {
         const action = await this.sessionController.sendPrompt(sessionId, choiceText);
@@ -84,7 +81,7 @@ export class TeamsListener implements NotificationListener {
         }
         return { statusCode: 200, type: 'application/vnd.microsoft.activity.message' as const, value: `Sent: ${choiceText}` };
       } catch (err) {
-        this.logger.error({ err, sessionId, source: LOG_TAG }, 'teams.listener.card.action.failed');
+        log.error(`teams.listener.card.action.failed: session=${sessionId}`, err);
         return { statusCode: 200, type: 'application/vnd.microsoft.activity.message' as const, value: 'Error processing choice' };
       }
     });
@@ -93,7 +90,7 @@ export class TeamsListener implements NotificationListener {
 
   shutdown(): void {
     this.active = false;
-    this.logger.info({}, 'teams.listener.shutdown');
+    log.info('teams.listener.shutdown');
   }
 
   // -------------------------------------------------------------------------
@@ -174,7 +171,7 @@ export class TeamsListener implements NotificationListener {
       return `Session \`${thread.sessionId}\` no longer exists.`;
     }
 
-    this.logger.info({ sessionId: thread.sessionId, source: LOG_TAG }, 'teams.listener.send.dispatching');
+    log.info(`teams.listener.send.dispatching: session=${thread.sessionId}`);
     const action = await this.sessionController.sendPrompt(thread.sessionId, prompt);
 
     if (action.status === 'failed') {
@@ -201,3 +198,4 @@ function extractThreadId(conversationId: string | undefined): string | null {
   const match = conversationId.match(/messageid=([^;]+)/);
   return match ? match[1] : null;
 }
+
