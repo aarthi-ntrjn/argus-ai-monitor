@@ -35,6 +35,9 @@ async function mockApi(page: import('@playwright/test').Page) {
   await page.route('**/api/v1/integrations', route =>
     route.fulfill({ contentType: 'application/json', body: JSON.stringify({ integrationsEnabled: false, slack: { connectionStatus: 'unconfigured', notifier: null, listener: null }, teams: { connectionStatus: 'unconfigured', notifier: null, listener: null } }) })
   );
+  await page.route('**/api/v1/settings', route =>
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify({ port: 7411, watchDirectories: [], sessionRetentionHours: 24, outputRetentionMbPerSession: 10, autoRegisterRepos: false, yoloMode: false, restingThresholdMinutes: 20, telemetryEnabled: false, telemetryPromptSeen: true }) })
+  );
   await page.route('**/ws**', route => route.abort());
 }
 
@@ -130,6 +133,8 @@ test.describe('US3: Restart Tour from Settings', () => {
 
     // Open settings
     await page.getByRole('button', { name: /settings/i }).click();
+    await page.getByRole('button', { name: /advanced settings/i }).click();
+    await page.getByRole('button', { name: /about/i }).click();
     await expect(page.getByRole('button', { name: /restart tour/i })).toBeVisible();
 
     // Click Restart Tour
@@ -151,6 +156,8 @@ test.describe('US4: Reset Onboarding', () => {
 
     // Open settings and click Restart Tour
     await page.getByRole('button', { name: /settings/i }).click();
+    await page.getByRole('button', { name: /advanced settings/i }).click();
+    await page.getByRole('button', { name: /about/i }).click();
     await expect(page.getByRole('button', { name: /restart tour/i })).toBeVisible();
     await page.getByRole('button', { name: /restart tour/i }).click();
 
