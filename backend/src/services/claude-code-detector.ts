@@ -123,17 +123,14 @@ export class ClaudeCodeDetector {
     const registryEntries = registry.scanEntries();
 
     for (const entry of registryEntries) {
-      // Guard 1: process is running
-      if (!isPidRunning(entry.pid)) continue;
-
-      // Guard 2: session not already ended in DB
-      // Guard 3 (only when guard 2 fails): verify process name to catch PID reuse
+      // Guard 1: process is running (cheap signal-0 check)
+      // Guard 2: verify the process at this PID is actually the expected AI tool — catches
+      //   stale registry entries pointing to recycled PIDs (PID reuse by an unrelated process).
       const existingSession = getSession(entry.sessionId);
-      if (existingSession?.status === 'ended') {
-        if (!isExpectedProcess(entry.pid, 'claude-code')) {
-          logger.info(`[ClaudeDetector] PID reuse detected: session ${entry.sessionId} is ended but pid ${entry.pid} is running with wrong name — skipping`);
-          continue;
-        }
+      if (!isPidRunning(entry.pid)) continue;
+      if (!isExpectedProcess(entry.pid, 'claude-code')) {
+        logger.info(`[ClaudeDetector] PID reuse detected: pid ${entry.pid} is running with wrong name, skipping (sessionId=${entry.sessionId} existingStatus=${existingSession?.status ?? 'new'})`);
+        continue;
       }
 
       const normalizedCwd = normalize(entry.cwd.trimEnd().replace(/[/\\]+$/, ''));
