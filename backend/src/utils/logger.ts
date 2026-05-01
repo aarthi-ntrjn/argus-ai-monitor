@@ -8,7 +8,7 @@ const isEnabled = (l: Level) => levelIndex(l) >= levelIndex(envLevel);
 const ts = () => {
   const d = new Date();
   const pad = (n: number, len = 2) => String(n).padStart(len, '0');
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`;
+  return `[${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}]`;
 };
 const USE_COLOR = process.stdout.isTTY && process.env.NODE_ENV !== 'production';
 const RESET = '\x1b[0m';
