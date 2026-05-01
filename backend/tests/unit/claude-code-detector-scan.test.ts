@@ -11,14 +11,16 @@ vi.mock('ps-list', () => ({
   default: vi.fn(async () => mockPsListResult),
 }));
 
-// isPidRunning is called by scanExistingSessions to verify registry entries are live.
-// Default: all PIDs are considered live (registry entries are trusted in tests).
+// isPidRunning and isExpectedProcess are called by scanExistingSessions to verify registry entries.
+// Default: all PIDs are considered live and belong to the expected process.
 let mockIsPidRunningResult = true;
+let mockIsExpectedProcessResult = true;
 vi.mock('../../src/services/process-utils.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../src/services/process-utils.js')>();
   return {
     ...actual,
     isPidRunning: vi.fn(() => mockIsPidRunningResult),
+    isExpectedProcess: vi.fn(() => mockIsExpectedProcessResult),
   };
 });
 
@@ -75,9 +77,10 @@ describe('ClaudeCodeDetector.scanExistingSessions', () => {
     process.env.ARGUS_DB_PATH = join(tmpdir(), `argus-claude-scan-test-${randomUUID()}.db`);
     vi.resetModules();
 
-    // Reset to default: Claude is running, mtime is recent, PIDs are live
+    // Reset to default: Claude is running, mtime is recent, PIDs are live and name-checked
     mockPsListResult = [{ pid: 4242, name: 'claude', cmd: 'claude' }];
     mockIsPidRunningResult = true;
+    mockIsExpectedProcessResult = true;
     mockMtime = new Date();
     fakeJsonlFiles = ['test-session-abc123.jsonl'];
     fakeRegistryEntries = { 'test-session-abc123': { pid: 4242, sessionId: 'test-session-abc123', cwd: FAKE_REPO_PATH } };
@@ -227,6 +230,49 @@ describe('ClaudeCodeDetector.scanExistingSessions', () => {
     // and leaves PID assignment to the session registry scanner
     expect(session?.status).toBe('active');
     expect(session?.pid).toBeNull();
+  });
+
+  it('does not activate when PID is alive but belongs to wrong process (new session)', async () => {
+    // PID is alive but isExpectedProcess returns false — a recycled PID owned by an unrelated process.
+    mockIsPidRunningResult = true;
+    mockIsExpectedProcessResult = false;
+
+    const { ClaudeCodeDetector } = await import('../../src/services/claude-code-detector.js');
+    await new ClaudeCodeDetector().scanExistingSessions();
+
+    const session = dbModule.getSession('test-session-abc123');
+    expect(session).toBeUndefined(); // never activated
+  });
+
+  it('does not re-activate when PID is alive but belongs to wrong process (active session in DB)', async () => {
+    // Ghost: DB has the session as active, PID is alive but belongs to an unrelated process.
+    mockIsPidRunningResult = true;
+    mockIsExpectedProcessResult = false;
+    const now = new Date().toISOString();
+    const sessionId = 'test-session-abc123';
+    dbModule.upsertSession({
+      id: sessionId,
+      repositoryId: 'repo-scan-test',
+      type: 'claude-code',
+      launchMode: null,
+      pid: 4242,
+      pidSource: null,
+      status: 'active',
+      startedAt: now,
+      endedAt: null,
+      lastActivityAt: now,
+      summary: null,
+      expiresAt: null,
+      model: null,
+    });
+
+    const { ClaudeCodeDetector } = await import('../../src/services/claude-code-detector.js');
+    await new ClaudeCodeDetector().scanExistingSessions();
+
+    // Session stays active (scanExistingSessions doesn't end sessions; reconcile does)
+    // but the key check is that activateFoundSession was NOT called again (no upsert with new timestamp)
+    const session = dbModule.getSession(sessionId);
+    expect(session?.lastActivityAt).toBe(now); // unchanged, not re-activated
   });
 
   // T089 regression: scanExistingSessions must use JSONL filename as session ID,
