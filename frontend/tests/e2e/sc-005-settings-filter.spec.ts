@@ -28,6 +28,9 @@ function mockApis(page: import('@playwright/test').Page) {
     page.route('**/api/v1/sessions**', route =>
       route.fulfill({ contentType: 'application/json', body: JSON.stringify(SESSIONS) })
     ),
+    page.route('**/api/v1/integrations', route =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify({ integrationsEnabled: false, slack: { connectionStatus: 'unconfigured', notifier: null, listener: null }, teams: { connectionStatus: 'unconfigured', notifier: null, listener: null } }) })
+    ),
   ]);
 }
 
@@ -135,6 +138,9 @@ function mockTwoRepoApis(page: import('@playwright/test').Page, sessions = TWO_R
     ),
     page.route('**/api/v1/sessions**', route =>
       route.fulfill({ contentType: 'application/json', body: JSON.stringify(sessions) })
+    ),
+    page.route('**/api/v1/integrations', route =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify({ integrationsEnabled: false, slack: { connectionStatus: 'unconfigured', notifier: null, listener: null }, teams: { connectionStatus: 'unconfigured', notifier: null, listener: null } }) })
     ),
   ]);
 }

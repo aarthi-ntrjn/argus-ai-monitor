@@ -37,6 +37,9 @@ async function mockApis(page: import('@playwright/test').Page) {
     page.route('**/api/v1/sessions/session-def-456/output**', route =>
       route.fulfill({ contentType: 'application/json', body: JSON.stringify({ items: [], nextBefore: null, total: 0 }) })
     ),
+    page.route('**/api/v1/integrations', route =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify({ integrationsEnabled: false, slack: { connectionStatus: 'unconfigured', notifier: null, listener: null }, teams: { connectionStatus: 'unconfigured', notifier: null, listener: null } }) })
+    ),
   ]);
 }
 

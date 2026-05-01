@@ -94,6 +94,9 @@ async function mockApis(
     page.route('**/api/v1/repositories', route =>
       route.fulfill({ contentType: 'application/json', body: JSON.stringify([REPO]) })
     ),
+    page.route('**/api/v1/integrations', route =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify({ integrationsEnabled: false, slack: { connectionStatus: 'unconfigured', notifier: null, listener: null }, teams: { connectionStatus: 'unconfigured', notifier: null, listener: null } }) })
+    ),
     // Broad sessions route — registered first, checked last (LIFO)
     page.route('**/api/v1/sessions**', route =>
       route.fulfill({ contentType: 'application/json', body: JSON.stringify(sessions) })

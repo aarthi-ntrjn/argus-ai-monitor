@@ -97,6 +97,9 @@ async function stubDashboard(
   await page.route('**/api/v1/argus/settings', route =>
     route.fulfill({ contentType: 'application/json', body: JSON.stringify({ port: 7411, yoloMode: false }) })
   );
+  await page.route('**/api/v1/integrations', route =>
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify({ integrationsEnabled: false, slack: { connectionStatus: 'unconfigured', notifier: null, listener: null }, teams: { connectionStatus: 'unconfigured', notifier: null, listener: null } }) })
+  );
   // Use routeWebSocket to intercept the WS connection instead of aborting the HTTP upgrade.
   // Tests that need to deliver events pass a wsHandler; others get a silent mock connection.
   await page.routeWebSocket('**/ws', wsHandler ?? (() => {}));

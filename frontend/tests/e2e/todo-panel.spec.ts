@@ -92,6 +92,9 @@ async function mockApis(
         await route.continue();
       }
     }),
+    page.route('**/api/v1/integrations', route =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify({ integrationsEnabled: false, slack: { connectionStatus: 'unconfigured', notifier: null, listener: null }, teams: { connectionStatus: 'unconfigured', notifier: null, listener: null } }) })
+    ),
   ]);
 
   return todoList;

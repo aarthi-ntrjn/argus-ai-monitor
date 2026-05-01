@@ -44,6 +44,9 @@ test.describe('SC-027: Kill Session', () => {
     await page.route('**/api/v1/sessions**', route =>
       route.fulfill({ contentType: 'application/json', body: JSON.stringify(sessions) })
     );
+    await page.route('**/api/v1/integrations', route =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify({ integrationsEnabled: false, slack: { connectionStatus: 'unconfigured', notifier: null, listener: null }, teams: { connectionStatus: 'unconfigured', notifier: null, listener: null } }) })
+    );
   }
 
   test('kill button visible on dashboard card for active session with PID', async ({ page }) => {

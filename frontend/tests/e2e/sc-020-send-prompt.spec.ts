@@ -61,6 +61,9 @@ async function mockDashboard(page: import('@playwright/test').Page, session: typ
       route.fulfill({ contentType: 'application/json', body: JSON.stringify([session]) })
     ),
     stubOutput(page, session.id),
+    page.route('**/api/v1/integrations', route =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify({ integrationsEnabled: false, slack: { connectionStatus: 'unconfigured', notifier: null, listener: null }, teams: { connectionStatus: 'unconfigured', notifier: null, listener: null } }) })
+    ),
     page.route('**/ws**', route => route.abort()),
   ]);
 }

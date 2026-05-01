@@ -54,6 +54,9 @@ async function mockApis(page: import('@playwright/test').Page) {
     page.route('**/api/v1/sessions/session-def-456', route =>
       route.fulfill({ contentType: 'application/json', body: JSON.stringify(SESSION_NO_MODEL) })
     ),
+    page.route('**/api/v1/integrations', route =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify({ integrationsEnabled: false, slack: { connectionStatus: 'unconfigured', notifier: null, listener: null }, teams: { connectionStatus: 'unconfigured', notifier: null, listener: null } }) })
+    ),
   ]);
 }
 
@@ -151,6 +154,9 @@ test.describe('SC-007: Output Stream & Model Display', () => {
           }),
         })
       ),
+      page.route('**/api/v1/integrations', route =>
+        route.fulfill({ contentType: 'application/json', body: JSON.stringify({ integrationsEnabled: false, slack: { connectionStatus: 'unconfigured', notifier: null, listener: null }, teams: { connectionStatus: 'unconfigured', notifier: null, listener: null } }) })
+      ),
     ]);
     await page.goto('/');
     await expect(page.getByText('Feature work')).toBeVisible({ timeout: 5000 });
@@ -176,6 +182,9 @@ test.describe('SC-007: Output Stream & Model Display', () => {
           }),
         })
       ),
+      page.route('**/api/v1/integrations', route =>
+        route.fulfill({ contentType: 'application/json', body: JSON.stringify({ integrationsEnabled: false, slack: { connectionStatus: 'unconfigured', notifier: null, listener: null }, teams: { connectionStatus: 'unconfigured', notifier: null, listener: null } }) })
+      ),
     ]);
     await page.goto('/');
     await expect(page.getByText('Feature work')).toBeVisible({ timeout: 5000 });
@@ -200,6 +209,9 @@ test.describe('SC-007: Output Stream & Model Display', () => {
             nextBefore: null, total: 1,
           }),
         })
+      ),
+      page.route('**/api/v1/integrations', route =>
+        route.fulfill({ contentType: 'application/json', body: JSON.stringify({ integrationsEnabled: false, slack: { connectionStatus: 'unconfigured', notifier: null, listener: null }, teams: { connectionStatus: 'unconfigured', notifier: null, listener: null } }) })
       ),
     ]);
     await page.goto('/');
