@@ -11,9 +11,6 @@ export default defineConfig({
       '/hooks': 'http://localhost:7411',
     },
   },
-  preview: {
-    proxy: {},
-  },
   build: {
     outDir: 'dist',
     rollupOptions: {
