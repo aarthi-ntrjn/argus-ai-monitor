@@ -22,6 +22,7 @@ const DEFAULTS: ArgusConfig = {
   restingThresholdMinutes: 20,
   telemetryEnabled: true,
   telemetryPromptSeen: false,
+  integrationsEnabled: false,
 };
 
 export function loadConfig(): ArgusConfig {
@@ -47,6 +48,12 @@ export function saveConfig(config: ArgusConfig): void {
   const configPath = getConfigPath();
   const configDir = getConfigDir();
   mkdirSync(configDir, { recursive: true });
-  writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+  // Preserve any unknown keys (e.g. slack) already in the file
+  let existing: Record<string, unknown> = {};
+  try {
+    existing = JSON.parse(readFileSync(configPath, 'utf-8'));
+  } catch { /* use empty */ }
+  writeFileSync(configPath, JSON.stringify({ ...existing, ...config }, null, 2), 'utf-8');
 }
+
 

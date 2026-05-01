@@ -83,6 +83,7 @@ export interface ControlAction {
   createdAt: string;
   completedAt: string | null;
   result: string | null;
+  source: string | null;
 }
 
 export interface TodoItem {
@@ -92,6 +93,15 @@ export interface TodoItem {
   done: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SlackConfig {
+  botToken: string;
+  appToken?: string;
+  channelId: string;
+  enabled: boolean;
+  enabledEventTypes?: string[];
+  ownerSenderId: string;
 }
 
 export interface ArgusConfig {
@@ -104,6 +114,7 @@ export interface ArgusConfig {
   restingThresholdMinutes: number;
   telemetryEnabled: boolean;
   telemetryPromptSeen: boolean;
+  integrationsEnabled: boolean;
 }
 
 export type TelemetryEventType =
@@ -115,7 +126,9 @@ export type TelemetryEventType =
   | 'session_stopped'
   | 'todo_added'
   | 'repo_diff_opened'
-  | 'request_error';
+  | 'request_error'
+  | 'integration_started'
+  | 'integration_stopped';
 
 export const TELEMETRY_EVENT_TYPES = new Set<TelemetryEventType>([
   'app_started',
@@ -127,6 +140,8 @@ export const TELEMETRY_EVENT_TYPES = new Set<TelemetryEventType>([
   'todo_added',
   'repo_diff_opened',
   'request_error',
+  'integration_started',
+  'integration_stopped',
 ]);
 
 export interface TelemetryEvent {
@@ -150,3 +165,46 @@ export interface PendingChoice {
   allQuestions?: PendingChoiceItem[];
 }
 
+export interface TeamsConfig {
+  enabled: boolean;
+  teamId: string;
+  channelId: string;
+  ownerSenderId: string;
+  clientId?: string;
+  clientSecret?: string;
+  tenantId?: string;
+}
+
+export interface TeamsThread {
+  id: string;
+  sessionId: string;
+  teamsThreadId: string;
+  teamsChannelId: string;
+  tenantId: string;
+  createdAt: string;
+}
+
+export interface SlackThread {
+  id: string;
+  sessionId: string;
+  slackThreadTs: string;
+  slackChannelId: string;
+  workspaceId: string;
+  createdAt: string;
+}
+
+export interface NotificationIntegration {
+  readonly isRunning: boolean;
+  initialize(): Promise<boolean>;
+  onSessionCreated(session: Session): Promise<void>;
+  onSessionUpdated(session: Session): Promise<void>;
+  onSessionEnded(session: Session): Promise<void>;
+  onSessionOutput(sessionId: string, outputs: SessionOutput[]): Promise<void>;
+  shutdown(): void;
+}
+
+export interface NotificationListener {
+  readonly isRunning: boolean;
+  initialize(): Promise<boolean>;
+  shutdown(): void;
+}

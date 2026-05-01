@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -58,11 +58,11 @@ async function stubDashboard(page: import('@playwright/test').Page) {
     }
     await route.fulfill({ contentType: 'application/json', body: JSON.stringify(currentSettings) });
   });
-  await page.route('**/ws**', route => route.abort());
 }
 
 async function openSettings(page: import('@playwright/test').Page) {
   await page.getByRole('button', { name: /settings/i }).click();
+  await page.getByRole('button', { name: /advanced settings/i }).click();
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

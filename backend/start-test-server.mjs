@@ -16,21 +16,28 @@ process.env.TELEMETRY_URL = '';
 // Kill any process already listening on the port so the bind never fails.
 if (port) {
   try {
-    const out = execSync(`netstat -ano`, { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] });
-    for (const line of out.split('\n')) {
-      if (line.includes(`:${port}`) && line.includes('LISTENING')) {
-        const pid = line.trim().split(/\s+/).pop();
-        if (pid && pid !== '0') {
-          try {
-            execSync(`powershell -Command "Stop-Process -Id ${pid} -Force -ErrorAction SilentlyContinue"`,
-              { stdio: 'ignore' });
-          } catch { /* already gone */ }
+    if (process.platform === 'win32') {
+      const out = execSync('netstat -ano', { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] });
+      for (const line of out.split('\n')) {
+        if (line.includes(`:${port}`) && line.includes('LISTENING')) {
+          const pid = line.trim().split(/\s+/).pop();
+          if (pid && pid !== '0') {
+            try {
+              execSync(`powershell -Command "Stop-Process -Id ${pid} -Force -ErrorAction SilentlyContinue"`, { stdio: 'ignore' });
+            } catch { /* already gone */ }
+          }
         }
+      }
+    } else {
+      // Linux/macOS: lsof -ti:<port> prints the PID(s) using the port
+      const pids = execSync(`lsof -ti:${port}`, { encoding: 'utf-8' }).trim();
+      for (const pid of pids.split('\n').filter(Boolean)) {
+        try { execSync(`kill -9 ${pid}`, { stdio: 'ignore' }); } catch { /* already gone */ }
       }
     }
     // Give the OS a moment to release the port
     await new Promise(r => setTimeout(r, 400));
-  } catch { /* netstat not available — ignore */ }
+  } catch { /* port not in use or command unavailable */ }
 }
 
 const { startServer } = await import('./src/server.ts');

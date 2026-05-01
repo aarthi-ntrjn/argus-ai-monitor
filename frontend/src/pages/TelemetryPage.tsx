@@ -18,7 +18,7 @@ export default function TelemetryPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 md:p-12">
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto max-w-5xl">
         <div className="mb-8">
           <button onClick={() => navigate('/')} className="icon-btn text-sm font-medium text-gray-700 hover:text-blue-600 mb-6 flex items-center gap-1">
             <ArrowLeft size={14} />Back

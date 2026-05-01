@@ -96,16 +96,17 @@ test.describe('SC-020 (real server): Send Prompt — API contract', () => {
     const WebSocket = (await import('ws')).default;
     const { randomUUID } = await import('crypto');
 
-    // tempId: the launcher-side temp UUID. Not a DB session ID.
+    // tempId: the launcher-side ptyLaunchId — passed as ?id= query param.
     const tempId = randomUUID();
     // claudeSessionId: the UUID Claude assigns when it fires its first hook.
     const claudeSessionId = randomUUID();
 
     // Keep the WS connected so the pending entry is available when the hook fires.
-    const ws = new WebSocket(`ws://127.0.0.1:7412/launcher`);
+    // The server requires ?id=<ptyLaunchId> — connections without it are closed immediately.
+    const ws = new WebSocket(`ws://127.0.0.1:7412/launcher?id=${tempId}`);
     await new Promise<void>((resolve, reject) => {
       ws.on('open', () => {
-        ws.send(JSON.stringify({ type: 'register', sessionId: tempId, cwd: TEST_REPO_A, pid: 0 }));
+        ws.send(JSON.stringify({ type: 'register', cwd: TEST_REPO_A, hostPid: process.pid, pid: null, sessionType: 'claude-code' }));
         setTimeout(resolve, 100);
       });
       ws.on('error', reject);
@@ -136,12 +137,13 @@ test.describe('SC-020 (real server): Send Prompt — API contract', () => {
     const tempId = randomUUID();
     const claudeSessionId = randomUUID();
 
-    // Keep the launcher connected for the duration of the test
-    const ws = new WebSocket(`ws://127.0.0.1:7412/launcher`);
+    // Keep the launcher connected for the duration of the test.
+    // The server requires ?id=<ptyLaunchId> — connections without it are closed immediately.
+    const ws = new WebSocket(`ws://127.0.0.1:7412/launcher?id=${tempId}`);
 
     await new Promise<void>((resolve, reject) => {
       ws.on('open', () => {
-        ws.send(JSON.stringify({ type: 'register', sessionId: tempId, cwd: TEST_REPO_A, pid: 0 }));
+        ws.send(JSON.stringify({ type: 'register', cwd: TEST_REPO_A, hostPid: process.pid, pid: null, sessionType: 'claude-code' }));
         setTimeout(resolve, 100);
       });
       ws.on('error', reject);

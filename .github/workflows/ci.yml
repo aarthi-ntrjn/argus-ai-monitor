@@ -86,6 +86,12 @@ jobs:
         # All API calls are intercepted by page.route() — no backend required.
         run: npm run test:e2e --workspace=frontend
 
+      - name: Run e2e real-server tests
+        # Starts a real Argus backend on port 7412 with an isolated SQLite DB.
+        # Tests cover actual DB writes, hooks endpoint, and WebSocket launcher
+        # contract — behavior the mocked suite cannot verify.
+        run: npm run test:e2e:real --workspace=frontend
+
       - name: Audit for critical CVEs
         # Fail if any package in the lockfile has a critical vulnerability.
         # This catches known CVEs that may have been introduced via dependency updates.

@@ -95,7 +95,12 @@ const repositoriesRoutes: FastifyPluginAsync = async (app) => {
     const existing = getRepository(id);
     if (!existing) return reply.status(404).send({ error: 'NOT_FOUND', message: `Repository ${id} not found`, requestId: req.id });
 
-    deleteRepository(id);
+    try {
+      deleteRepository(id);
+    } catch (err) {
+      logger.error('[Repositories] deleteRepository failed', { id, err });
+      return reply.status(500).send({ error: 'DELETE_FAILED', message: 'Failed to delete repository. Check server logs for details.', requestId: req.id });
+    }
 
     // Remove Claude hooks if no repositories remain
     const remaining = getRepositories();

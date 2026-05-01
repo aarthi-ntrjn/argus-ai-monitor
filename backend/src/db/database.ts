@@ -3,7 +3,8 @@ import { join, dirname, normalize } from 'path';
 import { homedir } from 'os';
 import { mkdirSync } from 'fs';
 import { SCHEMA_SQL } from './schema.js';
-import type { Repository, Session, SessionOutput, ControlAction, TodoItem } from '../models/index.js';
+import type { Repository, Session, SessionOutput, ControlAction, TodoItem, TeamsThread, SlackThread } from '../models/index.js';
+import * as logger from '../utils/logger.js';
 
 const DB_PATH = process.env.ARGUS_DB_PATH ?? join(homedir(), '.argus', 'argus.db');
 
@@ -47,14 +48,29 @@ export function getDb(): Database.Database {
     }
     const yoloColInfo = (db.pragma('table_info(sessions)') as Array<{ name: string; notnull: number }>)
       .find(c => c.name === 'yolo_mode');
-    if (!yoloColInfo) {
+    if (!sessionCols.includes('yolo_mode')) {
       db.exec('ALTER TABLE sessions ADD COLUMN yolo_mode INTEGER DEFAULT NULL');
-    } else if (yoloColInfo.notnull === 1) {
-      // Migrate from NOT NULL DEFAULT 0 to nullable — preserve existing true values
+    } else if (yoloColInfo && yoloColInfo.notnull === 1) {
+      // Migrate from NOT NULL DEFAULT 0 to nullable -- preserve existing true values
       db.exec('ALTER TABLE sessions ADD COLUMN yolo_mode_new INTEGER DEFAULT NULL');
       db.exec('UPDATE sessions SET yolo_mode_new = 1 WHERE yolo_mode = 1');
       db.exec('ALTER TABLE sessions DROP COLUMN yolo_mode');
       db.exec('ALTER TABLE sessions RENAME COLUMN yolo_mode_new TO yolo_mode');
+    }
+    const teamsCols = (db.pragma('table_info(teams_threads)') as Array<{ name: string }>).map(c => c.name);
+    if (!teamsCols.includes('tenant_id')) db.exec("ALTER TABLE teams_threads ADD COLUMN tenant_id TEXT NOT NULL DEFAULT ''");
+    const slackThreadsCols = (db.pragma('table_info(slack_threads)') as Array<{ name: string }>).map(c => c.name);
+    if (!slackThreadsCols.includes('workspace_id')) db.exec("ALTER TABLE slack_threads ADD COLUMN workspace_id TEXT NOT NULL DEFAULT ''");
+    const controlCols = (db.pragma('table_info(control_actions)') as Array<{ name: string }>).map(c => c.name);
+    if (!controlCols.includes('source')) db.exec('ALTER TABLE control_actions ADD COLUMN source TEXT');
+    if (sessionCols.includes('slack_thread_ts')) {
+      // Migrate existing slack thread data into the new slack_threads table then drop the column
+      db.prepare(`
+        INSERT OR IGNORE INTO slack_threads (id, session_id, slack_thread_ts, slack_channel_id, created_at)
+        SELECT lower(hex(randomblob(16))), id, slack_thread_ts, ?, started_at
+        FROM sessions WHERE slack_thread_ts IS NOT NULL
+      `).run(process.env.SLACK_CHANNEL_ID ?? '');
+      db.exec('ALTER TABLE sessions DROP COLUMN slack_thread_ts');
     }
   }
   return db;
@@ -109,10 +125,36 @@ export function updateRepositoryRemoteUrl(id: string, remoteUrl: string | null):
 
 export function deleteRepository(id: string): void {
   const db = getDb();
-  db.prepare('DELETE FROM control_actions WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
-  db.prepare('DELETE FROM session_output WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
+
+  const sessionIds = (db.prepare('SELECT id FROM sessions WHERE repository_id = ?').all(id) as Array<{ id: string }>).map(r => r.id);
+  logger.info(`[deleteRepository] repo=${id} sessions=${JSON.stringify(sessionIds)}`);
+
+  if (sessionIds.length > 0) {
+    const placeholders = sessionIds.map(() => '?').join(',');
+    const caCount = (db.prepare(`SELECT COUNT(*) as n FROM control_actions WHERE session_id IN (${placeholders})`).get(...sessionIds) as { n: number }).n;
+    const soCount = (db.prepare(`SELECT COUNT(*) as n FROM session_output WHERE session_id IN (${placeholders})`).get(...sessionIds) as { n: number }).n;
+    logger.info(`[deleteRepository] control_actions to delete=${caCount}, session_output to delete=${soCount}`);
+  }
+
+  const caResult = db.prepare('DELETE FROM control_actions WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
+  const soResult = db.prepare('DELETE FROM session_output WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
+  const ttResult = db.prepare('DELETE FROM teams_threads WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
+  const stResult = db.prepare('DELETE FROM slack_threads WHERE session_id IN (SELECT id FROM sessions WHERE repository_id = ?)').run(id);
+  logger.info(`[deleteRepository] deleted control_actions=${caResult.changes}, session_output=${soResult.changes}, teams_threads=${ttResult.changes}, slack_threads=${stResult.changes}`);
+
+  // Verify no child records remain before deleting sessions
+  if (sessionIds.length > 0) {
+    const placeholders = sessionIds.map(() => '?').join(',');
+    const caRemaining = (db.prepare(`SELECT COUNT(*) as n FROM control_actions WHERE session_id IN (${placeholders})`).get(...sessionIds) as { n: number }).n;
+    const soRemaining = (db.prepare(`SELECT COUNT(*) as n FROM session_output WHERE session_id IN (${placeholders})`).get(...sessionIds) as { n: number }).n;
+    const ttRemaining = (db.prepare(`SELECT COUNT(*) as n FROM teams_threads WHERE session_id IN (${placeholders})`).get(...sessionIds) as { n: number }).n;
+    const stRemaining = (db.prepare(`SELECT COUNT(*) as n FROM slack_threads WHERE session_id IN (${placeholders})`).get(...sessionIds) as { n: number }).n;
+    logger.info(`[deleteRepository] remaining after cleanup: control_actions=${caRemaining}, session_output=${soRemaining}, teams_threads=${ttRemaining}, slack_threads=${stRemaining}`);
+  }
+
   db.prepare('DELETE FROM sessions WHERE repository_id = ?').run(id);
   db.prepare('DELETE FROM repositories WHERE id = ?').run(id);
+  logger.info(`[deleteRepository] done repo=${id}`);
 }
 
 export interface SessionFilters { repositoryId?: string; status?: string; type?: string; limit?: number; }
@@ -210,9 +252,16 @@ export function getMaxSequenceNumber(sessionId: string): number {
 
 export function insertControlAction(action: ControlAction): void {
   getDb().prepare(
-    'INSERT INTO control_actions (id, session_id, type, payload, status, created_at, completed_at, result) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO control_actions (id, session_id, type, payload, status, created_at, completed_at, result, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
   ).run(action.id, action.sessionId, action.type, action.payload ? JSON.stringify(action.payload) : null,
-    action.status, action.createdAt, action.completedAt, action.result);
+    action.status, action.createdAt, action.completedAt, action.result, action.source ?? null);
+}
+
+export function getControlActions(sessionId: string): ControlAction[] {
+  const rows = getDb().prepare(
+    'SELECT id, session_id as sessionId, type, payload, status, created_at as createdAt, completed_at as completedAt, result, source FROM control_actions WHERE session_id = ? ORDER BY created_at ASC'
+  ).all(sessionId) as Array<Omit<ControlAction, 'payload'> & { payload: string | null }>;
+  return rows.map(r => ({ ...r, payload: r.payload ? JSON.parse(r.payload) : null }));
 }
 
 export function updateControlAction(id: string, status: string, completedAt: string | null, result: string | null): void {
@@ -250,6 +299,64 @@ export function deleteTodo(id: string): boolean {
   return result.changes > 0;
 }
 
+export function upsertTeamsThread(thread: TeamsThread): void {
+  getDb().prepare(`
+    INSERT OR REPLACE INTO teams_threads (id, session_id, teams_thread_id, teams_channel_id, tenant_id, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(thread.id, thread.sessionId, thread.teamsThreadId, thread.teamsChannelId, thread.tenantId, thread.createdAt);
+}
+
+export function getTeamsThread(sessionId: string): TeamsThread | null {
+  return getDb().prepare(
+    'SELECT id, session_id as sessionId, teams_thread_id as teamsThreadId, teams_channel_id as teamsChannelId, tenant_id as tenantId, created_at as createdAt FROM teams_threads WHERE session_id = ?'
+  ).get(sessionId) as TeamsThread | null;
+}
+
+export function getTeamsThreadByTeamsId(teamsThreadId: string): TeamsThread | null {
+  return getDb().prepare(
+    'SELECT id, session_id as sessionId, teams_thread_id as teamsThreadId, teams_channel_id as teamsChannelId, tenant_id as tenantId, created_at as createdAt FROM teams_threads WHERE teams_thread_id = ?'
+  ).get(teamsThreadId) as TeamsThread | null;
+}
+
+export function deleteTeamsThread(sessionId: string): void {
+  getDb().prepare('DELETE FROM teams_threads WHERE session_id = ?').run(sessionId);
+}
+
+export function upsertSlackThread(thread: SlackThread): void {
+  getDb().prepare(`
+    INSERT OR REPLACE INTO slack_threads (id, session_id, slack_thread_ts, slack_channel_id, workspace_id, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(thread.id, thread.sessionId, thread.slackThreadTs, thread.slackChannelId, thread.workspaceId, thread.createdAt);
+}
+
+export function getSlackThread(sessionId: string): SlackThread | null {
+  return getDb().prepare(
+    'SELECT id, session_id as sessionId, slack_thread_ts as slackThreadTs, slack_channel_id as slackChannelId, workspace_id as workspaceId, created_at as createdAt FROM slack_threads WHERE session_id = ?'
+  ).get(sessionId) as SlackThread | null;
+}
+
+export function getSlackThreadByTs(threadTs: string): SlackThread | null {
+  return getDb().prepare(
+    'SELECT id, session_id as sessionId, slack_thread_ts as slackThreadTs, slack_channel_id as slackChannelId, workspace_id as workspaceId, created_at as createdAt FROM slack_threads WHERE slack_thread_ts = ?'
+  ).get(threadTs) as SlackThread | null;
+}
+
+export function deleteSlackThread(sessionId: string): void {
+  getDb().prepare('DELETE FROM slack_threads WHERE session_id = ?').run(sessionId);
+}
+
+export function getIntegrationEnabled(id: string): boolean | null {
+  const row = getDb().prepare('SELECT enabled FROM integrations WHERE id = ?').get(id) as { enabled: number } | undefined;
+  if (!row) return null; // never explicitly set — use default (initialize normally)
+  return row.enabled === 1;
+}
+
+export function setIntegrationEnabled(id: string, enabled: boolean): void {
+  getDb().prepare(
+    'INSERT OR REPLACE INTO integrations (id, enabled, updated_at) VALUES (?, ?, ?)'
+  ).run(id, enabled ? 1 : 0, new Date().toISOString());
+}
+
 export function getServerState(key: string): string | null {
   const row = getDb().prepare('SELECT value FROM server_state WHERE key = ?').get(key) as { value: string } | undefined;
   return row?.value ?? null;
@@ -258,4 +365,3 @@ export function getServerState(key: string): string | null {
 export function setServerState(key: string, value: string): void {
   getDb().prepare('INSERT INTO server_state (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, value);
 }
-

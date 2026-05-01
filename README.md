@@ -236,7 +236,7 @@ New to Argus? An interactive tour launches automatically on your first visit.Dis
 
 ## Logging
 
-All server logs include an ISO 8601 timestamp prefix. Log verbosity is controlled by the `LOG_LEVEL` environment variable, which applies to both the application logger and the HTTP request logger (Fastify/pino):
+All server logs include a local-time timestamp in `[HH:MM:ss.mmm]` format followed by the log level. Log verbosity is controlled by the `LOG_LEVEL` environment variable, which applies to both the application logger and the HTTP request logger (Fastify/pino):
 
 | `LOG_LEVEL` | What you see |
 | ----------- | ------------ |
@@ -249,6 +249,8 @@ All server logs include an ISO 8601 timestamp prefix. Log verbosity is controlle
 ```bash
 LOG_LEVEL=debug node dist/server.js
 ```
+
+For a full breakdown of the two logging systems (Fastify request logger vs `createTaggedLogger`), see [docs/design/logging.md](docs/design/logging.md).
 
 ## Storage
 
@@ -266,6 +268,67 @@ Default port: **7411**. Override in `~/.argus/config.json`:
   "port": 7411,
   "sessionRetentionHours": 24
 }
+```
+
+## Slack Integration
+
+Argus can post AI session events to a Slack channel and respond to questions from the Slack bot. Both features run on Slack's free tier.
+
+### One-time Setup
+
+1. Go to [api.slack.com/apps](https://api.slack.com/apps) and create a new app in your workspace.
+2. Under **OAuth and Permissions**, add these Bot Token Scopes:
+   - `chat:write` (post messages)
+   - `channels:read` (look up channels)
+   - `app_mentions:read` (receive @mentions)
+   - `im:history` (receive direct messages)
+3. Under **Socket Mode**, enable Socket Mode and generate an App-level token with the `connections:write` scope. Copy the `xapp-...` token.
+4. Under **Event Subscriptions**, subscribe to bot events: `app_mention` and `message.im`.
+5. Install the app to your workspace. Copy the **Bot User OAuth Token** (`xoxb-...`).
+6. Invite the bot to your notification channel: `/invite @YourBotName`.
+
+### Configuration
+
+Open the Argus Settings dialog and go to the **Slack** section. Enter:
+
+- **Bot Token** (`xoxb-...`): Bot User OAuth Token from step 5
+- **Channel ID**: The channel ID where Argus will post (e.g. `C01234ABCDE`)
+- **App Token** (`xapp-...`): Optional, enables Slack-to-Argus routing via Socket Mode
+
+Click **Save**. Config is stored in `~/.argus/slack.config`.
+
+To filter which session events are posted, set `enabledEventTypes` in `~/.argus/slack.config`:
+
+```json
+{
+  "botToken": "xoxb-...",
+  "channelId": "C01234ABCDE",
+  "enabledEventTypes": ["session.created", "session.ended"]
+}
+```
+
+Omit `enabledEventTypes` to receive all event types.
+
+### Asking the Bot Questions
+
+If an App Token is configured, you can ask the bot questions in Slack:
+
+| Command | Response |
+| ------- | -------- |
+| `@YourBot sessions` | Lists all active AI sessions |
+| `@YourBot status <sessionId>` | Shows details for a specific session |
+| `@YourBot help` | Lists available commands |
+
+You can also send these commands as direct messages to the bot.
+
+### Runtime Configuration
+
+Change the channel or enabled event types without restarting Argus:
+
+```bash
+curl -X PATCH http://localhost:7411/api/v1/settings/slack \
+  -H "Content-Type: application/json" \
+  -d '{"channelId": "C99999NEW", "enabledEventTypes": ["session.created", "session.ended"]}'
 ```
 
 ## Telemetry
@@ -290,7 +353,49 @@ Each event includes: an anonymous installation ID (a random UUID stored in `~/.a
 - On first launch, a banner appears with a checkbox. Uncheck "Send telemetry" before clicking "Got it".
 - At any time, open Settings (gear icon) and uncheck "Send anonymous usage telemetry" under the Privacy section.
 
+## Microsoft Teams Integration
+
+Argus can mirror every CLI session to a Microsoft Teams channel, streaming output in real-time and accepting commands via thread replies.
+
+### How it works
+
+- When a new Claude Code or Copilot session starts, Argus opens a Teams thread in your configured channel.
+- Session output is buffered and posted as updates to that thread every few seconds.
+- When the session ends, a final status message is posted.
+- You (the session owner) can reply to the thread to send a prompt directly to the running session.
+
+### Setup
+
+1. **Register a Bot Framework bot** in the [Azure portal](https://portal.azure.com) and create a client secret.
+2. **Install the bot** into the Teams channel where you want session threads to appear.
+3. **Configure Argus** via the Settings panel in the UI, or by writing `~/.argus/teams-config.json`:
+
+```json
+{
+  "enabled": true,
+  "botAppId": "<your Azure App ID>",
+  "botAppPassword": "<your client secret>",
+  "channelId": "<Teams channel ID>",
+  "serviceUrl": "https://smba.trafficmanager.net/<region>/",
+  "tenantId": "<optional: Azure AD tenant ID>",
+  "ownerTeamsUserId": "<your Teams user ID (29:xxxx)>"
+}
+```
+
+The `ownerTeamsUserId` identifies who is allowed to send commands via thread replies. Only messages from this user are routed to the session.
+
+### Incoming webhook endpoint
+
+Bot Framework delivers incoming messages to:
+
+```
+POST http://<argus-host>/api/botframework/messages
+```
+
+Configure this URL in your bot's messaging endpoint in the Azure portal.
+
 ## For Contributors
+
 
 See [docs/README-CONTRIBUTORS.md](docs/README-CONTRIBUTORS.md) for architecture, dev setup, API reference, security model, CI pipeline, and development guides.
 

@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './fixtures';
 
 const SESSION_ID = 'session-detail-8c20d263-780c-4321-abcd-ef1234567890';
 
