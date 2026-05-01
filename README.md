@@ -236,7 +236,7 @@ New to Argus? An interactive tour launches automatically on your first visit.Dis
 
 ## Logging
 
-All server logs include an ISO 8601 timestamp prefix. Log verbosity is controlled by the `LOG_LEVEL` environment variable, which applies to both the application logger and the HTTP request logger (Fastify/pino):
+All server logs include a local-time timestamp in `[HH:MM:ss.mmm]` format followed by the log level. Log verbosity is controlled by the `LOG_LEVEL` environment variable, which applies to both the application logger and the HTTP request logger (Fastify/pino):
 
 | `LOG_LEVEL` | What you see |
 | ----------- | ------------ |
@@ -249,6 +249,8 @@ All server logs include an ISO 8601 timestamp prefix. Log verbosity is controlle
 ```bash
 LOG_LEVEL=debug node dist/server.js
 ```
+
+For a full breakdown of the two logging systems (Fastify request logger vs `createTaggedLogger`), see [docs/design/logging.md](docs/design/logging.md).
 
 ## Storage
 
