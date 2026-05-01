@@ -13,10 +13,10 @@ export const debug = (...args: unknown[]): void => {
   if (isEnabled('debug')) console.log(ts(), '[debug]', ...args);
 };
 export const info = (...args: unknown[]): void => {
-  if (isEnabled('info')) console.log(ts(), ...args);
+  if (isEnabled('info')) console.log(ts(), '[info]', ...args);
 };
 export const warn = (...args: unknown[]): void => {
-  if (isEnabled('warn')) console.warn(ts(), ...args);
+  if (isEnabled('warn')) console.warn(ts(), '[warn]', ...args);
 };
 export const error = (...args: unknown[]): void => {
   if (isEnabled('error')) console.error(ts(), ...args);
@@ -26,9 +26,9 @@ export function createTaggedLogger(tag: string, ansiColor: string) {
   const prefix = USE_COLOR ? `${ansiColor}${tag}${RESET}` : tag;
   return {
     debug: (...args: unknown[]) => { if (isEnabled('debug')) console.log(ts(), '[debug]', prefix, ...args); },
-    info:  (...args: unknown[]) => { if (isEnabled('info'))  console.log(ts(), prefix, ...args); },
-    warn:  (...args: unknown[]) => { if (isEnabled('warn'))  console.warn(ts(), prefix, ...args); },
-    error: (...args: unknown[]) => { if (isEnabled('error')) console.error(ts(), prefix, ...args); },
+    info:  (...args: unknown[]) => { if (isEnabled('info'))  console.log(ts(), '[info]',  prefix, ...args); },
+    warn:  (...args: unknown[]) => { if (isEnabled('warn'))  console.warn(ts(), '[warn]',  prefix, ...args); },
+    error: (...args: unknown[]) => { if (isEnabled('error')) console.error(ts(), '[error]', prefix, ...args); },
   };
 }
 
