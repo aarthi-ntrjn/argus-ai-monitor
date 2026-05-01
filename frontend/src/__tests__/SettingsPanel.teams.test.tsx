@@ -57,7 +57,7 @@ describe('SettingsPanel - Teams integration section', () => {
     });
   });
 
-  it('displays team ID read-only when config is loaded', async () => {
+  it('displays team ID value when config is loaded', async () => {
     vi.mocked(api.getTeamsSettings).mockResolvedValue({
       enabled: true,
       teamId: 'test-team-id',
@@ -67,15 +67,14 @@ describe('SettingsPanel - Teams integration section', () => {
     });
     renderWithQuery(<IntegrationConfigContent type="teams" />);
     await waitFor(() => {
-      expect(screen.getByText('test-team-id')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('test-team-id')).toBeInTheDocument();
     });
   });
 
-  it('shows not set when team ID is missing', async () => {
+  it('shows empty team ID field when config is missing', async () => {
     renderWithQuery(<IntegrationConfigContent type="teams" />);
-    await waitFor(() => {
-      expect(screen.getAllByText(/not set/i).length).toBeGreaterThan(0);
-    });
+    await waitFor(() => screen.getByText(/microsoft teams/i));
+    expect(screen.getByRole('textbox', { name: /team id/i })).toHaveValue('');
   });
 
   it('does not render a save button', async () => {

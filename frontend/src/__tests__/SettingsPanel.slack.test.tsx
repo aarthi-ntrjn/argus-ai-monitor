@@ -62,20 +62,19 @@ describe('SettingsPanel - Slack integration section', () => {
     });
   });
 
-  it('displays channel ID value read-only', async () => {
+  it('displays channel ID value when config is loaded', async () => {
     vi.mocked(api.getSlackSettings).mockResolvedValue({ botToken: '***', channelId: 'C09876ZYXWV', enabled: true });
     renderWithQuery(<IntegrationConfigContent type="slack" />);
     await waitFor(() => {
-      expect(screen.getByText('C09876ZYXWV')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('C09876ZYXWV')).toBeInTheDocument();
     });
   });
 
-  it('shows "not set" for appToken when absent', async () => {
+  it('shows empty app token field when appToken is absent', async () => {
     vi.mocked(api.getSlackSettings).mockResolvedValue({ botToken: '***', channelId: 'C01234', enabled: true });
     renderWithQuery(<IntegrationConfigContent type="slack" />);
-    await waitFor(() => {
-      expect(screen.getAllByText(/not set/i).length).toBeGreaterThan(0);
-    });
+    await waitFor(() => screen.getByText(/^slack$/i));
+    expect(screen.getByLabelText(/app token/i)).toHaveValue('');
   });
 
   it('does not render a save or edit button for Slack', async () => {
