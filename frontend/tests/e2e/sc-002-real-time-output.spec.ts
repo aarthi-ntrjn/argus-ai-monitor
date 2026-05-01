@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 test.describe('SC-002: Real-time Output', () => {
   test('shows new output when session.output WS event received', async ({ page }) => {
@@ -21,8 +21,6 @@ test.describe('SC-002: Real-time Output', () => {
         body: JSON.stringify({ items: [], nextBefore: null, total: 0 }),
       });
     });
-
-    await page.route('**/ws**', route => route.abort());
 
     await page.goto(`/sessions/${sessionId}`);
     await expect(page.getByRole('region', { name: /session output/i })).toBeVisible({ timeout: 5000 });

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 const REPOS_RESPONSE = [
   {
@@ -29,19 +29,6 @@ async function mockApi(page: import('@playwright/test').Page) {
   await page.route('**/api/v1/sessions**', route =>
     route.fulfill({ contentType: 'application/json', body: JSON.stringify(SESSIONS_RESPONSE) })
   );
-  await page.route('**/api/v1/tools**', route =>
-    route.fulfill({ contentType: 'application/json', body: JSON.stringify({ claude: true, copilot: false, claudeCmd: 'claude', copilotCmd: null }) })
-  );
-  await page.route('**/api/v1/integrations', route =>
-    route.fulfill({ contentType: 'application/json', body: JSON.stringify({ integrationsEnabled: false, slack: { connectionStatus: 'unconfigured', notifier: null, listener: null }, teams: { connectionStatus: 'unconfigured', notifier: null, listener: null } }) })
-  );
-  await page.route('**/api/v1/settings', route =>
-    route.fulfill({ contentType: 'application/json', body: JSON.stringify({ port: 7411, watchDirectories: [], sessionRetentionHours: 24, outputRetentionMbPerSession: 10, autoRegisterRepos: false, yoloMode: false, restingThresholdMinutes: 20, telemetryEnabled: false, telemetryPromptSeen: true }) })
-  );
-  await page.route('**/api/v1/todos**', route =>
-    route.fulfill({ contentType: 'application/json', body: JSON.stringify([]) })
-  );
-  await page.route('**/ws**', route => route.abort());
 }
 
 async function clearOnboarding(page: import('@playwright/test').Page) {

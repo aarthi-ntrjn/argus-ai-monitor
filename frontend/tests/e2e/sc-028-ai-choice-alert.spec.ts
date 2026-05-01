@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -96,18 +96,6 @@ async function stubDashboard(
   );
   await page.route('**/api/v1/argus/settings', route =>
     route.fulfill({ contentType: 'application/json', body: JSON.stringify({ port: 7411, yoloMode: false }) })
-  );
-  await page.route('**/api/v1/integrations', route =>
-    route.fulfill({ contentType: 'application/json', body: JSON.stringify({ integrationsEnabled: false, slack: { connectionStatus: 'unconfigured', notifier: null, listener: null }, teams: { connectionStatus: 'unconfigured', notifier: null, listener: null } }) })
-  );
-  await page.route('**/api/v1/settings', route =>
-    route.fulfill({ contentType: 'application/json', body: JSON.stringify({ port: 7411, watchDirectories: [], sessionRetentionHours: 24, outputRetentionMbPerSession: 10, autoRegisterRepos: false, yoloMode: false, restingThresholdMinutes: 20, telemetryEnabled: false, telemetryPromptSeen: true }) })
-  );
-  await page.route('**/api/v1/tools**', route =>
-    route.fulfill({ contentType: 'application/json', body: JSON.stringify({ claude: true, copilot: false, claudeCmd: 'claude', copilotCmd: null }) })
-  );
-  await page.route('**/api/v1/todos**', route =>
-    route.fulfill({ contentType: 'application/json', body: JSON.stringify([]) })
   );
   // Use routeWebSocket to intercept the WS connection instead of aborting the HTTP upgrade.
   // Tests that need to deliver events pass a wsHandler; others get a silent mock connection.

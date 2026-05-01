@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './fixtures';
 
 const SESSION_ID = 'session-detail-8c20d263-780c-4321-abcd-ef1234567890';
 
@@ -32,7 +32,6 @@ async function mockSession(
         body: JSON.stringify({ items: outputItems, nextBefore: null, total: outputItems.length }),
       })
     ),
-    page.route('**/ws**', route => route.abort()),
   ]);
 }
 
@@ -178,7 +177,6 @@ test.describe('Session Detail Page', () => {
     await page.route(`**/api/v1/sessions/${SESSION_ID}/output**`, route =>
       route.fulfill({ contentType: 'application/json', body: JSON.stringify({ items: [], nextBefore: null, total: 0 }) })
     );
-    await page.route('**/ws**', route => route.abort());
     await page.goto(`/sessions/${SESSION_ID}`);
     await expect(page.getByText('Session not found.')).toBeVisible({ timeout: 5000 });
   });
@@ -190,7 +188,6 @@ test.describe('Session Detail Page', () => {
     await page.route(`**/api/v1/sessions/${SESSION_ID}/output**`, route =>
       route.fulfill({ contentType: 'application/json', body: JSON.stringify({ items: [], nextBefore: null, total: 0 }) })
     );
-    await page.route('**/ws**', route => route.abort());
     await page.goto(`/sessions/${SESSION_ID}`);
     await expect(page.getByText('Session not found.')).toBeVisible({ timeout: 5000 });
     await expect(page.getByRole('button', { name: /Back/i })).toBeVisible();
