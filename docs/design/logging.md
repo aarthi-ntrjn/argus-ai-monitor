@@ -35,8 +35,8 @@ Used by all backend components that run outside the HTTP request lifecycle.
 
 **Format:**
 ```
-2026-05-01T10:51:45.140Z [info] [SlackNotifier] slack.session.updated.received: session=... status=active
-2026-05-01T10:51:45.141Z [warn] [TeamsNotifier] teams.session.updated.skipped: no meaningful changes
+2026-05-01T03:51:45.140 [info] [SlackNotifier] slack.session.updated.received: session=... status=active
+2026-05-01T03:51:45.141 [warn] [TeamsNotifier] teams.session.updated.skipped: no meaningful changes
 ```
 
 **Capabilities:**

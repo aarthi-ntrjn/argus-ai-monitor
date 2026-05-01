@@ -5,7 +5,11 @@ const envLevel = (process.env.LOG_LEVEL ?? 'info') as Level;
 const levelIndex = (l: Level) => LEVELS.indexOf(l);
 const isEnabled = (l: Level) => levelIndex(l) >= levelIndex(envLevel);
 
-const ts = () => new Date().toISOString();
+const ts = () => {
+  const d = new Date();
+  const pad = (n: number, len = 2) => String(n).padStart(len, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`;
+};
 const USE_COLOR = process.stdout.isTTY && process.env.NODE_ENV !== 'production';
 const RESET = '\x1b[0m';
 
