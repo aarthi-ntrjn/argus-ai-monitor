@@ -5,7 +5,9 @@ import { homedir } from 'os';
 import { randomUUID } from 'crypto';
 import type { TelemetryEventType } from '../models/index.js';
 import { loadConfig } from '../config/config-loader.js';
-import * as logger from '../utils/logger.js';
+import { createTaggedLogger } from '../utils/logger.js';
+
+const log = createTaggedLogger('[Telemetry]', '\x1b[90m'); // dark gray
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -54,9 +56,9 @@ export class TelemetryService {
       mkdirSync(dirname(idPath), { recursive: true });
       writeFileSync(idPath, id, 'utf-8');
     } catch (err) {
-      logger.warn('[telemetry] failed to persist installation ID', String(err));
+      log.warn('failed to persist installation ID', String(err));
     }
-    logger.info('[telemetry] generated new installation ID');
+    log.info('generated new installation ID');
     this.installationId = id;
     return id;
   }
@@ -91,7 +93,7 @@ export class TelemetryService {
       timestamp: new Date().toISOString(),
     };
 
-    logger.info(`[telemetry] sendEvent type=${type} appVersion=${appVersion}`);
+    log.info(`sendEvent type=${type} appVersion=${appVersion}`);
 
     void (async () => {
       try {
