@@ -34,6 +34,12 @@ export const TOOLS_RESPONSE = {
  */
 export const test = base.extend({
   page: async ({ page }, use) => {
+    await page.route('**/api/v1/repositories', route =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify([]) })
+    );
+    await page.route('**/api/v1/sessions**', route =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify([]) })
+    );
     await page.route('**/api/v1/integrations', route =>
       route.fulfill({ contentType: 'application/json', body: JSON.stringify(INTEGRATIONS_RESPONSE) })
     );
