@@ -14,14 +14,6 @@ process.env.TELEMETRY_URL = 'http://localhost:19999/capture/';
 // Dynamic import so env is set first
 const { TelemetryService } = await import('../../src/services/telemetry-service.js');
 
-function makeFakeIpMaskingService(maskedIp: string | null) {
-  return {
-    getMaskedIp: () => maskedIp,
-    initialize: async () => {},
-    destroy: () => {},
-  };
-}
-
 describe('TelemetryService', () => {
   let service: InstanceType<typeof TelemetryService>;
 
@@ -133,40 +125,6 @@ describe('TelemetryService', () => {
       expect(payload.properties).not.toHaveProperty('$geoip_disable');
     });
 
-    it('injects $ip as x.x.x.0 when IpMaskingService returns a masked value', () => {
-      const serviceWithIp = new TelemetryService(makeFakeIpMaskingService('203.0.113.0'));
-      let capturedBody: string | undefined;
-      vi.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => {
-        capturedBody = init?.body as string;
-        return Promise.resolve(new Response(null, { status: 200 }));
-      });
-      serviceWithIp.sendEvent('app_started');
-      const payload = JSON.parse(capturedBody ?? '{}');
-      expect(payload.properties.$ip).toBe('203.0.113.0');
-    });
-
-    it('omits $ip entirely (not empty string) when IpMaskingService returns null', () => {
-      const serviceNoIp = new TelemetryService(makeFakeIpMaskingService(null));
-      let capturedBody: string | undefined;
-      vi.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => {
-        capturedBody = init?.body as string;
-        return Promise.resolve(new Response(null, { status: 200 }));
-      });
-      serviceNoIp.sendEvent('app_started');
-      const payload = JSON.parse(capturedBody ?? '{}');
-      expect(payload.properties).not.toHaveProperty('$ip');
-    });
-
-    it('omits $ip when no IpMaskingService is provided (default behaviour)', () => {
-      let capturedBody: string | undefined;
-      vi.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => {
-        capturedBody = init?.body as string;
-        return Promise.resolve(new Response(null, { status: 200 }));
-      });
-      service.sendEvent('app_started');
-      const payload = JSON.parse(capturedBody ?? '{}');
-      expect(payload.properties).not.toHaveProperty('$ip');
-    });
   });
 
   describe('resilience', () => {

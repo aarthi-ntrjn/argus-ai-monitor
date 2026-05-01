@@ -34,7 +34,7 @@ export default function TelemetryPage() {
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">What is included</h2>
           <ul className="space-y-2 text-sm text-gray-700">
             <li>
-              <span className="font-medium text-gray-900">Approximate location:</span> the server's outbound IP address with the last octet zeroed (e.g. 203.0.113.0). This gives PostHog country and city-level GeoIP data. The full IP address is never transmitted.
+              <span className="font-medium text-gray-900">Approximate location:</span> country and region derived from your server's IP address via PostHog's built-in GeoIP enrichment. The raw IP address is not stored in any analytics event record.
             </li>
             <li>
               <span className="font-medium text-gray-900">Anonymous installation ID:</span>a random UUID generated on first run. It is not linked to your identity, account, or machine.
@@ -86,7 +86,7 @@ export default function TelemetryPage() {
             <li>File paths or repository names</li>
             <li>Prompts or session content</li>
             <li>Usernames or account information</li>
-            <li>Full IP address or hostname</li>
+            <li>Full IP address or hostname (IP is used transiently for GeoIP lookup but never stored)</li>
             <li>Operating system or hardware details</li>
           </ul>
         </section>

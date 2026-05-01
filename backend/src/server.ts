@@ -29,7 +29,6 @@ import settingsRoutes from './api/routes/settings.js';
 import teamsSettingsRoutes from './api/routes/teams-settings.js';
 import telemetryRoutes from './api/routes/telemetry.js';
 import { telemetryService } from './services/telemetry-service.js';
-import { IpMaskingService } from './services/ip-masking-service.js';
 import { SessionMonitor } from './services/session-monitor.js';
 import { startPruningJob } from './services/pruning-job.js';
 import { TeamsNotifier } from './integration/teams/teams-notifier.js';
@@ -171,10 +170,6 @@ export async function buildServer() {
 export async function startServer() {
   const { app, config, teamsApp } = await buildServer();
 
-  const ipMaskingService = new IpMaskingService();
-  await ipMaskingService.initialize();
-  telemetryService.setIpMaskingService(ipMaskingService);
-
   monitor = new SessionMonitor();
   const claudeDetector = monitor.getClaudeCodeDetector();
   setClaudeDetector(claudeDetector);
@@ -237,8 +232,8 @@ export async function startServer() {
 
   setIntegrationServices(slackNotifier, slackListener, teamsNotifier, teamsListener, config.integrationsEnabled, monitor);
 
-  process.on('SIGTERM', async () => { telemetryService.sendEvent('app_ended'); ipMaskingService.destroy(); teamsNotifier?.shutdown(); teamsListener?.shutdown(); slackListener?.shutdown(); slackNotifier?.shutdown(); monitor?.stop(); await app.close(); process.exit(0); });
-  process.on('SIGINT', async () => { telemetryService.sendEvent('app_ended'); ipMaskingService.destroy(); teamsNotifier?.shutdown(); teamsListener?.shutdown(); slackListener?.shutdown(); slackNotifier?.shutdown(); monitor?.stop(); await app.close(); process.exit(0); });
+  process.on('SIGTERM', async () => { telemetryService.sendEvent('app_ended'); teamsNotifier?.shutdown(); teamsListener?.shutdown(); slackListener?.shutdown(); slackNotifier?.shutdown(); monitor?.stop(); await app.close(); process.exit(0); });
+  process.on('SIGINT', async () => { telemetryService.sendEvent('app_ended'); teamsNotifier?.shutdown(); teamsListener?.shutdown(); slackListener?.shutdown(); slackNotifier?.shutdown(); monitor?.stop(); await app.close(); process.exit(0); });
 
   await app.listen({ port: config.port, host: '127.0.0.1' });
   app.log.info({ port: config.port }, 'Argus server started');

@@ -46,7 +46,7 @@ describe('Telemetry relay API', () => {
       fetchSpy.mockRestore();
     });
 
-    it('$ip in payload, when present, matches /^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.0$/', async () => {
+    it('event payload does not contain $ip', async () => {
       let capturedBody: string | undefined;
       const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => {
         capturedBody = init?.body as string;
@@ -55,10 +55,7 @@ describe('Telemetry relay API', () => {
       await request.post('/api/v1/telemetry/event').send({ type: 'app_started' });
       if (capturedBody) {
         const payload = JSON.parse(capturedBody);
-        if ('$ip' in payload.properties) {
-          expect(payload.properties.$ip).toMatch(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.0$/);
-          expect(payload.properties.$ip).not.toBe('');
-        }
+        expect(payload.properties).not.toHaveProperty('$ip');
       }
       fetchSpy.mockRestore();
     });

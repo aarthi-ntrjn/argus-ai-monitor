@@ -5,7 +5,6 @@ import { homedir } from 'os';
 import { randomUUID } from 'crypto';
 import type { TelemetryEventType } from '../models/index.js';
 import { loadConfig } from '../config/config-loader.js';
-import type { IpMaskingService } from './ip-masking-service.js';
 import { createTaggedLogger } from '../utils/logger.js';
 
 const log = createTaggedLogger('[Telemetry]', '\x1b[90m'); // dark gray
@@ -24,16 +23,7 @@ export class TelemetryService {
   private installationId: string | null = null;
   private appVersion: string | null = null;
   private enabledCache: { value: boolean; expiresAt: number } | null = null;
-  private ipMaskingService: IpMaskingService | null;
   private integrationStatus: Record<string, boolean> = {};
-
-  constructor(ipMaskingService?: IpMaskingService | null) {
-    this.ipMaskingService = ipMaskingService ?? null;
-  }
-
-  setIpMaskingService(service: IpMaskingService): void {
-    this.ipMaskingService = service;
-  }
 
   setIntegrationStatus(platform: string, running: boolean): void {
     this.integrationStatus[platform] = running;
@@ -92,7 +82,6 @@ export class TelemetryService {
 
     const installationId = this.loadOrCreateInstallationId();
     const appVersion = this.readAppVersion();
-    const maskedIp = this.ipMaskingService?.getMaskedIp() ?? null;
     const integrationProps = Object.fromEntries(
       Object.entries(this.integrationStatus).map(([k, v]) => [`${k}_enabled`, v]),
     );
@@ -100,7 +89,7 @@ export class TelemetryService {
       api_key: POSTHOG_API_KEY,
       distinct_id: installationId,
       event: type,
-      properties: { appVersion, ...(maskedIp ? { $ip: maskedIp } : { $geoip_disable: true, $ip: '' }), ...integrationProps, ...extra },
+      properties: { appVersion, ...integrationProps, ...extra },
       timestamp: new Date().toISOString(),
     };
 
