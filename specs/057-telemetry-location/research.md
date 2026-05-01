@@ -2,99 +2,53 @@
 
 **Branch**: `057-telemetry-location` | **Date**: 2026-04-25
 
-## R-001: Outbound IP Detection in Node.js (Cross-Platform)
+## R-001: GeoIP Enrichment Strategy
 
-**Decision**: Use `lan-network` npm package for IP detection. It uses UDP sockets with 3 fallback strategies (gateway socket, broadcast socket, and raw socket) to reliably find the outbound IP — the same approach as a raw `net.Socket` probe but with more robust error handling.
+**Decision**: Rely on PostHog's native GeoIP enrichment pipeline. Remove `$geoip_disable: true` and `$ip: ''` from the telemetry event properties. Do not add any `$ip` property; PostHog uses the connection IP of each incoming HTTP request for GeoIP enrichment automatically.
 
-**Package**: `lan-network` v0.2.1 — MIT, 13.9M monthly downloads, actively maintained by @kitten (Phil Pluckthun). Zero production dependencies.
+**Configure PostHog "Capture no IP"**: In PostHog Settings → Project → General → IP data capture configuration, set the project to "Capture no IP". PostHog will then perform GeoIP enrichment transiently (resolving country, region) and discard the raw IP rather than storing it in event records. This is a one-time manual dashboard step, not a code change.
 
-**Rationale**: `lan-network` uses the same fundamental UDP socket trick (select interface by routing to a public address) but handles more edge cases (multiple interfaces, socket errors, fallbacks). It is already used by popular tools in the ecosystem, explaining its high download count.
+**Rationale**: The earlier planned approach (detect outbound IP via `lan-network`, zero last octet, set `$ip` on each event) provided only marginal privacy benefit. PostHog already receives the real connection IP at the TCP level regardless of the `$ip` property value. The "Capture no IP" project setting achieves the same outcome (country/region stored, raw IP discarded) with no client-side complexity.
 
-**Approach**:
-```ts
-import { lanNetwork } from 'lan-network';
-
-async function detectOutboundIp(): Promise<string | null> {
-  const result = await lanNetwork();
-  // lan-network falls back to 127.0.0.1 (internal: true) if no external route found
-  if (result.internal) return null;
-  return result.address;
-}
-```
-
-**Alternatives considered**:
-- Raw `net.Socket` probe to `8.8.8.8:53`: works but has no fallbacks — a single socket error fails detection entirely. `lan-network` is strictly more robust.
-- `os.networkInterfaces()`: returns all interface IPs but cannot determine which one is used for outbound traffic. Fails in multi-homed environments.
-- External HTTP service (e.g., `api.ipify.org`): adds a network round-trip, external dependency, and latency. Fails in air-gapped installs.
-- DNS lookup of hostname: unreliable; loopback or LAN IPs may be returned.
+**Alternatives considered and superseded**:
+- `lan-network` + subnet masking (`x.x.x.0`): removed. Added `lan-network` dependency, hourly refresh interval, `IpMaskingService` class, `initialize()`/`destroy()` lifecycle, and a vitest `resolve.alias` workaround — all for protection that PostHog's project setting provides natively.
+- PostHog `before_send` hook: cannot access the machine's IP address; would still require `lan-network`. Rejected.
+- `ip: false` (Mixpanel-style): drops IP entirely, providing no GeoIP at all. Rejected per FR-001.
 
 ---
 
 ## R-002: IPv4 Last-Octet Masking
 
-**Decision**: Zero the last octet of the detected IPv4 address (`x.x.x.0`). For IPv6, send an empty string (no masking logic implemented for IPv6 in v1).
-
-**Rationale**: A /24 subnet mask preserves country and region/state resolution in all major GeoIP databases including MaxMind (used by PostHog). The first three octets locate the ISP block, which is sufficient for geographic attribution. IPv6 GeoIP is less reliable and Argus is primarily used on developer machines where IPv4 is the outbound address.
-
-**Implementation**:
-```ts
-function maskIpLastOctet(ip: string): string {
-  const parts = ip.split('.');
-  if (parts.length === 4) {
-    parts[3] = '0';
-    return parts.join('.');
-  }
-  return ''; // IPv6 or unexpected format: omit $ip
-}
-```
-
-**Alternatives considered**:
-- Mask last two octets (`x.x.0.0`): reduces to country-only resolution; loses region/state. Rejected per spec FR-002.
-- No masking (full IP): violates the explicit privacy requirement agreed in clarification Q1.
+**Status**: *Superseded by R-001.* No client-side masking is performed. PostHog handles GeoIP natively.
 
 ---
 
 ## R-003: Cache Refresh Strategy for Network Changes
 
-**Decision**: Cache the masked IP in memory at startup. Refresh by polling `os.networkInterfaces()` every 60 minutes and comparing the result to the cached value. If the outbound-eligible interface set changes, re-run `lan-network.getNetworkIP()` to get the new IP.
-
-**Rationale**: No well-maintained, cross-platform npm package exists for network-change events in Node.js. After exhaustive npm search, all candidates either target browsers (Web Network API), mobile (Capacitor), or are unmaintained. The pragmatic zero-dependency alternative — polling `os.networkInterfaces()` every 60 minutes and diffing — is simple, cross-platform, and sufficient for the use case (VPN connect/disconnect, network switch). Hourly polling is acceptable lag for a background telemetry service.
-
-**Implementation note**: At startup, snapshot `os.networkInterfaces()`. Start a `setInterval` at 60 minutes (3600000ms). On each tick, compare current interfaces to the snapshot.If any IPv4 non-internal interface has changed (added, removed, or address changed), re-run `getNetworkIP()`. If re-detection succeeds, update `maskedIp`. If it fails, retain the previous cached value (degraded mode). On success, update the snapshot. Stop the interval on `destroy()`.
-
-**Alternatives considered**:
-- Dedicated npm package for network-change events: no suitable cross-platform package exists in the npm ecosystem (researched April 2026).
-- Platform-specific native APIs (Windows `NotifyIpInterfaceChange`, macOS `SCDynamicStore`, Linux `netlink`): no new npm deps, but requires OS-conditional code branches. Rejected as overly complex.
-- No refresh (detect once only): fails for VPN users who connect mid-session. Rejected.
+**Status**: *Superseded by R-001.* No IP caching or refresh interval is needed. There is no `IpMaskingService`.
 
 ---
 
 ## R-004: PostHog `$ip` Property Behavior
 
-**Decision**: Set `$ip` to the subnet-masked value on every event. Remove `$geoip_disable: true` entirely.
+**Decision**: Remove both `$geoip_disable: true` and `$ip: ''` from the properties object. Set neither field. PostHog's ingestion pipeline uses the connection IP for GeoIP enrichment when no `$ip` override is present and `$geoip_disable` is absent.
 
-**Rationale**: PostHog's ingestion pipeline uses the `$ip` event property (if present and non-empty) as the IP for GeoIP enrichment, overriding the connection IP. Setting `$ip: "x.x.x.0"` gives PostHog a valid IP to resolve. Removing `$geoip_disable: true` re-enables PostHog's GeoIP enrichment pipeline. The combination of both changes is required: removing only `$geoip_disable` would send the actual outbound IP; setting only `$ip` without removing `$geoip_disable` would still suppress enrichment.
-
-**Current code** (`telemetry-service.ts` line 81):
+**Current code** (`telemetry-service.ts` before this feature):
 ```ts
 properties: { appVersion, $geoip_disable: true, $ip: '', ...extra }
 ```
 
-**Target**:
+**Final implementation**:
 ```ts
-properties: { appVersion, ...(maskedIp ? { $ip: maskedIp } : {}), ...extra }
+properties: { appVersion, ...integrationProps, ...extra }
 ```
 
-**Alternatives considered**:
-- PostHog project-level "Anonymize IPs" setting: full IP still travels to PostHog on the wire. Rejected (violates privacy requirement).
-- Setting `$ip` to empty string and removing `$geoip_disable`: PostHog falls back to connection IP (full IP). Rejected.
+No `$ip`, no `$geoip_disable`. PostHog resolves country and region from the connection IP. Raw IP is discarded by PostHog when "Capture no IP" is enabled.
 
 ---
 
 ## R-005: Frontend Privacy Disclosure Updates
 
 **Decision**: Update two locations in the frontend:
-1. `TelemetryPage.tsx`: Add "Approximate location" to the "What is included" list. Remove "IP address or hostname" from "What is never collected". Add a note explaining the /24 subnet masking.
-2. `TelemetryBanner.tsx`: The current text "No coding or personal information is sent" remains accurate (location is not personal information at /24 granularity), but should be updated to proactively mention location to avoid surprise. Change to: "Argus collects anonymous usage data including approximate location."
-
-**Rationale**: FR-003, FR-004, FR-005 all require disclosure updates. The TelemetryPage change is the primary disclosure surface. The banner update is a secondary notice for users who never navigate to the full page.
+1. `TelemetryPage.tsx`: Updated "Approximate location" entry to describe PostHog's native GeoIP enrichment (connection IP used transiently; not stored in event records when "Capture no IP" is enabled). Updated "never collected" IP entry to clarify the IP is used transiently for geolocation but not stored.
+2. `TelemetryBanner.tsx`: Existing text did not require changes (it accurately described that no personal information is sent).

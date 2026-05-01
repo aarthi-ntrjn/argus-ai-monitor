@@ -2,18 +2,18 @@
 
 **Feature Branch**: `057-telemetry-location`
 **Created**: 2026-04-22
-**Status**: Draft
+**Status**: Implemented
 **Input**: User description: "get location information from telemetry"
 
 ## Clarifications
 
 ### Session 2026-04-24
 
-- Q: What is the PostHog IP suppression/enrichment mechanism, and how should location enrichment be implemented? → A: Argus masks the last octet of its own outbound IP (IPv4 /24 subnet, e.g., `x.x.x.0`) and sets the `$ip` property on each PostHog event. The full IP address is never transmitted to PostHog.
+- Q: What is the PostHog IP suppression/enrichment mechanism, and how should location enrichment be implemented? → A: PostHog's ingestion pipeline natively performs GeoIP enrichment using the connection IP of the HTTP request. Argus does not need to detect or transmit an IP address at all. Instead, the PostHog project is configured to **"Capture no IP"** (Settings → Project → General → IP data capture configuration), which causes PostHog to perform GeoIP enrichment transiently (country, region) and then discard the raw IP rather than storing it in event records. No client-side IP detection or masking is needed. *(Note: an earlier draft of this clarification described a subnet-masking approach using `lan-network` and setting `$ip` on each event. That approach was superseded during implementation in favour of the simpler PostHog-native solution.)*
 - Q: What is the required granularity for location data — is region always included or best-effort? → A: Country is always present; region is included when PostHog's GeoIP can resolve it (best-effort, no separate configuration).
 - Q: Where should the location-specific opt-out UI live, and should it be implemented? → A: Descoped entirely. The main telemetry on/off toggle is the only control needed. No granular location opt-out will be implemented.
 - Q: Is any GDPR or compliance handling needed for EU installations? → A: No. Telemetry is opt-out (enabled by default). The product currently has no users, so there is no re-consent burden and no existing user data to protect.
-- Q: When is IP detection/masking performed, and should failures be logged? → A: Detect and mask at startup, cache the result, and refresh when a network-change event is detected. Log a warning (non-fatal) if IP detection fails; events are still sent without `$ip`.
+- Q: When is IP detection/masking performed, and should failures be logged? → A: *Superseded.* No IP detection or masking is performed by Argus. PostHog handles GeoIP natively from the connection IP. The "Capture no IP" project setting in PostHog controls whether the raw IP is retained after enrichment.
 
 ---
 
@@ -65,28 +65,26 @@ Explicitly out of scope. The main telemetry on/off toggle is sufficient. No gran
 
 - What happens when the Argus server is running behind a proxy or VPN? The location reflected in telemetry will be that of the proxy/VPN exit node, not the user's actual location. This is acceptable and should be noted in the privacy disclosure.
 - What happens when the analytics provider cannot determine a location from the IP? The event is recorded without location enrichment; no fallback or error is raised.
-- What happens for users who installed Argus before this change and have not opted out of telemetry? No re-consent or re-prompting is required. The product currently has no users, so this scenario does not apply at launch. The updated Telemetry & Privacy page serves as the disclosure going forward.
-- Only the subnet-masked IP (`x.x.x.0`) is ever transmitted to PostHog. The full IP address is never sent. The privacy disclosure should state this explicitly: Argus transmits only a /24 subnet-masked IP for geolocation, not the full address.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: System MUST include country-level location enrichment in each telemetry event when telemetry is enabled, derived from the IP address of the Argus server process.
-- **FR-009**: System MUST mask the last octet of the Argus server's outbound IP address before including it in any PostHog event (set `$ip` property to `x.x.x.0` format). The full IP address MUST NOT be transmitted to PostHog.
+- **FR-001**: System MUST include country-level location enrichment in each telemetry event when telemetry is enabled, derived from the IP address of the HTTP connection as seen by PostHog. No client-side IP detection is required.
+- **FR-009**: ~~System MUST mask the last octet of the Argus server's outbound IP address.~~ *Superseded: Argus does not transmit an `$ip` property. PostHog uses its connection IP natively. The PostHog project's "Capture no IP" setting (Settings → Project → General) prevents raw IP from being stored in event records.*
 - **FR-002**: System MUST include country in every enriched telemetry event. Region/state SHOULD be included when PostHog's GeoIP can resolve it (best-effort); it is not required to be present on every event.
 - **FR-003**: System MUST update the Telemetry & Privacy page to accurately describe approximate location as a collected data item, including how it is derived (IP-based geolocation).
 - **FR-004**: System MUST remove "IP address" from the "What is never collected" list on the Telemetry & Privacy page, since IP is now transiently used for geolocation lookup.
 - **FR-005**: System MUST update the telemetry consent banner and any summary text that describes what is collected to reflect location enrichment.
 - **FR-006**: When telemetry is disabled, System MUST NOT transmit any location data (existing opt-out behavior is preserved).
 - **FR-007**: ~~System SHOULD allow users to suppress location enrichment specifically (opt out of location only) without disabling all telemetry.~~ *Descoped: the main telemetry toggle is the only control.*
-- **FR-008**: System MUST detect and mask the Argus server's outbound IP at startup, cache the masked value, and refresh it when a network-change event is detected. If IP detection fails, System MUST log a warning (non-fatal) and continue sending events without the `$ip` property; no error is surfaced to the user and no event is dropped.
+- **FR-008**: ~~System MUST detect and mask the Argus server's outbound IP at startup, cache the masked value, and refresh it when a network-change event is detected.~~ *Superseded: No client-side IP handling is required. GeoIP enrichment is fully managed by PostHog's ingestion pipeline.*
 
 ### Key Entities
 
-- **TelemetryEvent**: An analytics event sent on user actions (e.g., `app_started`, `session_started`). Currently contains installation ID, app version, timestamp, and session metadata. Will gain an optional location property containing country (and optionally region/city).
-- **LocationData**: Approximate geographic location derived from the Argus server's subnet-masked IP address (last octet zeroed before transmission). Country is always present when GeoIP resolves. Region/state is included when PostHog's GeoIP can resolve it; it is not guaranteed on every event. City is not collected.
-- **TelemetrySettings**: The user-configurable settings for telemetry. A single boolean (enabled/disabled). No location-specific flag; location enrichment is always active when telemetry is enabled.
+- **TelemetryEvent**: An analytics event sent on user actions (e.g., `app_started`, `session_started`). Contains installation ID, app version, timestamp, and session metadata. No `$ip` property is set by Argus; PostHog derives location from the connection IP of each incoming HTTP request.
+- **LocationData**: Approximate geographic location derived by PostHog from the connection IP. Country is always present when GeoIP resolves. Region/state is included when PostHog's GeoIP can resolve it; it is not guaranteed on every event. City is not collected. Raw IP is not stored in event records when the PostHog project has "Capture no IP" enabled.
+- **TelemetrySettings**: The user-configurable settings for telemetry. A single boolean (enabled/disabled). No location-specific flag; location enrichment is always active when telemetry is enabled (via PostHog's native GeoIP pipeline).
 
 ## Success Criteria *(mandatory)*
 
@@ -100,8 +98,8 @@ Explicitly out of scope. The main telemetry on/off toggle is sufficient. No gran
 
 ## Assumptions
 
-- Location is derived from the IP address of the Argus server process. The server detects its outbound IP at startup, masks the last octet, and caches the result. The cache is refreshed when a network-change event is detected (via a lightweight cross-platform npm package). For users behind proxies or VPNs, the location will reflect the proxy/VPN exit node.
-- PostHog supports IP-based GeoIP enrichment via the `$ip` event property. Setting `$ip` to the subnet-masked value on each event enables PostHog's native GeoIP pipeline.
+- Location is derived by PostHog from the connection IP of each telemetry HTTP request. Argus does not perform any IP detection, masking, or caching. For users behind proxies or VPNs, the location will reflect the proxy/VPN exit node.
+- PostHog is configured with "Capture no IP" (Settings → Project → General → IP data capture configuration). This causes PostHog to perform GeoIP enrichment transiently and discard the raw IP, so it is not stored in event records.
 - No re-consent handling is required. Telemetry is opt-out (enabled by default). The product currently has no users, so there is no existing user data or consent state to migrate. The updated Telemetry & Privacy page is the sole disclosure mechanism.
 - Location opt-out (FR-007) is explicitly out of scope. Location enrichment is always active when telemetry is enabled. The only way to suppress location data is to disable telemetry entirely.
 - Argus is a self-hosted developer tool. Telemetry is opt-out (enabled by default) and anonymous. There is no legal obligation to re-obtain consent from existing users, and there are currently no existing users.

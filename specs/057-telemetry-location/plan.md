@@ -5,18 +5,20 @@
 
 ## Summary
 
-Enable country (and best-effort region) location enrichment in PostHog telemetry by replacing the existing GeoIP suppression flags with a subnet-masked IP. The Argus backend detects its outbound IP at startup using `lan-network` (UDP socket with 3 fallback strategies), zeros the last octet, caches the result, and refreshes it hourly by diffing `os.networkInterfaces()`. If detection fails, a warning is logged and events proceed without `$ip`. One new npm dependency (`lan-network`) is added to the backend. The TelemetryPage and TelemetryBanner are updated to accurately reflect the updated data collection policy.
+Enable country (and best-effort region) location enrichment in PostHog telemetry by removing the existing GeoIP suppression flags (`$geoip_disable: true`, `$ip: ''`) and relying on PostHog's native GeoIP enrichment pipeline. PostHog automatically enriches events with country and region using the connection IP of each incoming HTTP request. The raw IP is not stored in event records when the PostHog project is configured with "Capture no IP" (Settings → Project → General → IP data capture configuration). This eliminates the need for any client-side IP detection, masking, or caching, and removes the `lan-network` dependency. The TelemetryPage and TelemetryBanner are updated to accurately reflect the updated data collection policy.
+
+> **Implementation note**: An earlier design planned to use `lan-network` for outbound IP detection and set a subnet-masked `$ip` property on each PostHog event. During implementation, this was superseded by the simpler PostHog-native approach above.
 
 ## Technical Context
 
 **Language/Version**: TypeScript 5.9, Node.js ESM (tsx/tsc)
-**Primary Dependencies**: Fastify 5, Node.js built-in `net` module (outbound IP probe), PostHog via HTTP fetch
-**Storage**: N/A (masked IP cached in-memory only; no new persistence)
+**Primary Dependencies**: Fastify 5, Node.js built-in `net` module, PostHog via HTTP fetch
+**Storage**: N/A (no new in-memory state or persistence)
 **Testing**: Vitest 3 (unit: `backend/tests/unit/`, contract: `backend/tests/contract/`)
 **Target Platform**: Cross-platform server (Windows, macOS, Linux)
 **Project Type**: Web service (Fastify backend + React/Vite frontend)
-**Performance Goals**: IP detection < 200ms at startup (one-time); per-event overhead: zero (cached value reused)
-**Constraints**: Full IP must never be transmitted to PostHog; one new npm dependency (`lan-network` for outbound IP detection); hourly `os.networkInterfaces()` polling for change detection; no new config surface
+**Performance Goals**: Zero per-event overhead (no IP detection; no extra computation on the hot path)
+**Constraints**: No client-side IP transmission to PostHog; no new npm dependencies; PostHog "Capture no IP" project setting required (manual dashboard step); no new config surface
 **Scale/Scope**: Single-user localhost developer tool
 
 ## Constitution Check
@@ -58,22 +60,20 @@ specs/057-telemetry-location/
 backend/
 ├── src/
 │   └── services/
-│       ├── telemetry-service.ts     # Modify: remove $geoip_disable, inject masked $ip
-│       └── ip-masking-service.ts    # New: outbound IP detection, masking, caching
+│       └── telemetry-service.ts     # Modified: removed $geoip_disable and $ip; PostHog uses connection IP natively
 └── tests/
     ├── unit/
-    │   ├── telemetry-service.test.ts     # Modify: assert $geoip_disable absent, $ip format
-    │   └── ip-masking-service.test.ts    # New: unit tests for masking logic
+    │   └── telemetry-service.test.ts     # Modified: assert $geoip_disable absent, $ip never present
     └── contract/
-        └── telemetry.test.ts             # Modify: assert location payload shape
+        └── telemetry.test.ts             # Modified: assert $ip is never present in payload
 
 frontend/
 └── src/
     ├── pages/
-    │   └── TelemetryPage.tsx             # Modify: add location to collected, remove IP from never-collected
+    │   └── TelemetryPage.tsx             # Modified: updated location disclosure; IP transient use described
     └── components/
         └── TelemetryBanner/
-            └── TelemetryBanner.tsx       # Modify: update summary text to reflect location
+            └── TelemetryBanner.tsx       # No change required (existing text remained accurate)
 ```
 
 **Structure Decision**: Web application (Option 2). No new source directories; changes are isolated to the existing `services/` layer (backend) and two existing frontend components.
