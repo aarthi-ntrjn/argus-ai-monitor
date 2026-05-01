@@ -99,8 +99,8 @@ test.describe('SC-005 (real server): Dashboard Settings — Repos with No Sessio
 
   test('settings panel opens and shows all three toggles against real backend', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('button', { name: /settings/i })).toBeVisible({ timeout: 5000 });
-    await page.getByRole('button', { name: /settings/i }).click();
+    await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible({ timeout: 5000 });
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await expect(page.getByRole('checkbox', { name: /hide ended sessions/i })).toBeVisible({ timeout: 3000 });
     await expect(page.getByRole('checkbox', { name: /hide repos with no active sessions/i })).toBeVisible();
     await expect(page.getByRole('checkbox', { name: /hide inactive sessions/i })).toBeVisible();
@@ -109,7 +109,7 @@ test.describe('SC-005 (real server): Dashboard Settings — Repos with No Sessio
   test('toggling hideReposWithNoActiveSessions via panel immediately hides repos with no sessions', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'test-repo-alpha' })).toBeVisible({ timeout: 5000 });
-    await page.getByRole('button', { name: /settings/i }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page.getByRole('checkbox', { name: /hide repos with no active sessions/i }).check();
     await expect(page.getByRole('heading', { name: 'test-repo-alpha' })).not.toBeVisible();
     await expect(page.getByText(/no repositories/i)).toBeVisible({ timeout: 2000 });
@@ -121,7 +121,7 @@ test.describe('SC-005 (real server): Dashboard Settings — Repos with No Sessio
     });
     await page.goto('/');
     await expect(page.getByText(/no repositories/i)).toBeVisible({ timeout: 5000 });
-    await page.getByRole('button', { name: /settings/i }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page.getByRole('checkbox', { name: /hide repos with no active sessions/i }).uncheck();
     await expect(page.getByRole('heading', { name: 'test-repo-alpha' })).toBeVisible({ timeout: 2000 });
     await expect(page.getByRole('heading', { name: 'test-repo-beta' })).toBeVisible({ timeout: 2000 });
