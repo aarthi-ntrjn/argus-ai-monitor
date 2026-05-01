@@ -261,6 +261,7 @@ export class CopilotCliDetector {
     return { launchMode, resolvedPid, resolvedHostPid, resolvedPidSource, resolvedPtyLaunchId };
   }
 
+
   /**
    * Scan all copilot session directories and return a map of session ID → PID
    * from inuse.<PID>.lock files. This is the copilot equivalent of

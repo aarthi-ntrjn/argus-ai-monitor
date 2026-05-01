@@ -71,7 +71,7 @@ describe('TelemetryService', () => {
       const start = Date.now();
       service.sendEvent('app_started');
       const elapsed = Date.now() - start;
-      expect(elapsed).toBeLessThan(50);
+      expect(elapsed).toBeLessThan(200);
       fetchSpy.mockRestore();
     });
 

@@ -16,6 +16,8 @@ Auto-generated from all feature plans. Last updated: 2026-04-20
 - TypeScript 5.x, React 18 + React, Tailwind CSS, Vitest, Playwright (026-configurable-resting)
 - `localStorage` via the existing `useSettings` hook (`argus:settings` key) (026-configurable-resting)
 - N/A (reads from existing session output query cache; no new persistence) (028-ai-choice-alert)
+- TypeScript 5, Node.js >=22 (backend); React 18 + TypeScript 5 (frontend) + Fastify 5, better-sqlite3, Vitest; Microsoft Graph API (via native `fetch`) + `@azure/msal-node` (Device Code Flow + token refresh) (031-teams-channel-integration)
+- SQLite (better-sqlite3) — new `teams_threads` table with `delta_link`; Teams credentials stored in `~/.argus/teams-config.json` (031-teams-channel-integration)
 - TypeScript (Node.js 20 backend, React 18 frontend) + Fastify, better-sqlite3, React Query, Tailwind CSS, Vite (032-repo-compare-session-focus)
 - SQLite via better-sqlite3; runtime migration pattern (ALTER TABLE IF NOT EXISTS column) (032-repo-compare-session-focus)
 - [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION] + [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION] (043-marketing-landing-page)

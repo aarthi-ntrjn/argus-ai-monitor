@@ -46,7 +46,10 @@ export class SessionMonitor extends EventEmitter {
     this.scanner = new RepositoryScanner(config.watchDirectories);
     this.cliDetector = new CopilotCliDetector();
     this.claudeDetector = new ClaudeCodeDetector();
-    this.claudeDetector.setSessionCreatedCallback((session) => this.emit('session.created', session));
+    this.claudeDetector.setSessionCreatedCallback((session) => {
+      this.lastEmittedSessions.set(session.id, this.sessionSignature(session));
+      this.emit('session.created', session);
+    });
     this.sessionRegistry = new ClaudeSessionRegistry();
   }
 
@@ -58,6 +61,7 @@ export class SessionMonitor extends EventEmitter {
     // reconcileStaleSessions() has already ended any dead ones, so what remains is live.
     for (const session of getSessions({ status: 'active' })) {
       this.knownSessionIds.add(session.id);
+      this.lastEmittedSessions.set(session.id, this.sessionSignature(session));
       this.emit('session.created', session);
     }
 
@@ -174,6 +178,13 @@ export class SessionMonitor extends EventEmitter {
           updateSessionStatus(session.id, 'ended', now);
           this.claudeDetector.closeSessionWatcher(session.id);
           this.emit('session.ended', { ...session, status: 'ended', endedAt: now });
+          continue;
+        }
+
+        const sig = this.sessionSignature(session);
+        if (this.lastEmittedSessions.get(session.id) !== sig) {
+          this.lastEmittedSessions.set(session.id, sig);
+          this.emit('session.updated', session);
         }
       }
     } catch { /* ignore — liveness check is best-effort */ }

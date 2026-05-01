@@ -350,7 +350,7 @@ describe('SessionMonitor.reconcileClaudeCodeSessions — active/ended logic', ()
   // T005: alive PID → stays active
   it('T005: should stay active when PID is alive', async () => {
     const id = `t005-${randomUUID()}`;
-    mockPsListResult = [{ pid: 9999, name: 'other' }, { pid: 12345, name: 'claude' }];
+    mockPsListResult = [{ pid: 9999, name: 'other' }, { pid: 12345, name: 'claude', cmd: 'claude' }];
     upsertSession(baseSession(id, 'active', 12345));
 
     const monitor = new SessionMonitor();

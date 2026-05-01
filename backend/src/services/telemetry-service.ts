@@ -5,6 +5,7 @@ import { homedir } from 'os';
 import { randomUUID } from 'crypto';
 import type { TelemetryEventType } from '../models/index.js';
 import { loadConfig } from '../config/config-loader.js';
+import * as logger from '../utils/logger.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -20,6 +21,11 @@ export class TelemetryService {
   private installationId: string | null = null;
   private appVersion: string | null = null;
   private enabledCache: { value: boolean; expiresAt: number } | null = null;
+  private integrationStatus: Record<string, boolean> = {};
+
+  setIntegrationStatus(platform: string, running: boolean): void {
+    this.integrationStatus[platform] = running;
+  }
 
   private isTelemetryEnabled(): boolean {
     const now = Date.now();
@@ -48,9 +54,9 @@ export class TelemetryService {
       mkdirSync(dirname(idPath), { recursive: true });
       writeFileSync(idPath, id, 'utf-8');
     } catch (err) {
-      console.error('[telemetry] failed to persist installation ID', { error: String(err) });
+      logger.warn('[telemetry] failed to persist installation ID', String(err));
     }
-    console.info('[telemetry] generated new installation ID');
+    logger.info('[telemetry] generated new installation ID');
     this.installationId = id;
     return id;
   }
@@ -74,15 +80,18 @@ export class TelemetryService {
 
     const installationId = this.loadOrCreateInstallationId();
     const appVersion = this.readAppVersion();
+    const integrationProps = Object.fromEntries(
+      Object.entries(this.integrationStatus).map(([k, v]) => [`${k}_enabled`, v]),
+    );
     const payload = {
       api_key: POSTHOG_API_KEY,
       distinct_id: installationId,
       event: type,
-      properties: { appVersion, $geoip_disable: true, $ip: '', ...extra },
+      properties: { appVersion, $geoip_disable: true, $ip: '', ...integrationProps, ...extra },
       timestamp: new Date().toISOString(),
     };
 
-    console.info('[telemetry] sendEvent', { type, appVersion, ...extra });
+    logger.info(`[telemetry] sendEvent type=${type} appVersion=${appVersion}`);
 
     void (async () => {
       try {

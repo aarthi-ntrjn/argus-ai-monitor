@@ -9,6 +9,7 @@ import { ClaudeJsonlWatcher } from './claude-jsonl-watcher.js';
 import { broadcast } from '../api/ws/event-dispatcher.js';
 import { detectYoloModeFromPids, isPidRunning, isExpectedProcess } from './process-utils.js';
 import type { Session, Repository, PendingChoice, PendingChoiceItem } from '../models/index.js';
+import { pendingChoiceEvents } from './pending-choice-events.js';
 
 const CLAUDE_SETTINGS_PATH = join(homedir(), '.claude', 'settings.json');
 const HOOK_COMMAND = 'curl -sf -X POST http://127.0.0.1:7411/hooks/claude -H "Content-Type: application/json" -d @- 2>/dev/null || true';
@@ -231,12 +232,14 @@ export class ClaudeCodeDetector {
     const { question, choices } = allQuestions[0];
     this.pendingChoices.set(sessionId, { question, choices, allQuestions });
     broadcast({ type: 'session.pending_choice', timestamp: now, data: { sessionId, question, choices, allQuestions } });
+    pendingChoiceEvents.emit('session.pending_choice', { sessionId, question, choices, allQuestions });
   }
 
   private handlePostAskQuestion(sessionId: string, existing: Session | null | undefined, now: string): void {
     if (!existing) return;
     this.pendingChoices.delete(sessionId);
     broadcast({ type: 'session.pending_choice.resolved', timestamp: now, data: { sessionId } });
+    pendingChoiceEvents.emit('session.pending_choice.resolved', sessionId);
   }
 
   private async createPtySession(sessionId: string, repo: Repository, claimed: { pid: number | null; hostPid: number; ptyLaunchId: string }, now: string): Promise<void> {

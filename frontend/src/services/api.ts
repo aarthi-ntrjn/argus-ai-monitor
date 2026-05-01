@@ -149,6 +149,66 @@ export async function patchArgusSettings(patch: Partial<ArgusConfig>): Promise<A
   return apiFetch<ArgusConfig>('/settings', { method: 'PATCH', body: JSON.stringify(patch) });
 }
 
+export interface TeamsSettings {
+  enabled: boolean;
+  teamId?: string;
+  channelId?: string;
+  ownerSenderId?: string;
+  clientId?: string;
+  tenantId?: string;
+  connectionStatus: 'connected' | 'stopped' | 'unconfigured';
+}
+
+export async function getTeamsSettings(): Promise<TeamsSettings> {
+  return apiFetch<TeamsSettings>('/settings/teams');
+}
+
+export async function patchTeamsSettings(patch: Partial<Omit<TeamsSettings, 'enabled' | 'connectionStatus'>>): Promise<TeamsSettings> {
+  return apiFetch<TeamsSettings>('/settings/teams', { method: 'PATCH', body: JSON.stringify(patch) });
+}
+
+export interface SlackSettings {
+  botToken: string;
+  appToken?: string;
+  channelId: string;
+  ownerSenderId?: string;
+  enabled: boolean;
+}
+
+export async function getSlackSettings(): Promise<SlackSettings> {
+  return apiFetch<SlackSettings>('/settings/slack');
+}
+
+export async function patchSlackSettings(patch: Partial<Omit<SlackSettings, 'enabled'>>): Promise<SlackSettings> {
+  return apiFetch<SlackSettings>('/settings/slack', { method: 'PATCH', body: JSON.stringify(patch) });
+}
+
+export type ConnectionStatus = 'connected' | 'stopped' | 'unconfigured';
+
+export interface IntegrationRunState {
+  connectionStatus: ConnectionStatus;
+  notifier: { running: boolean } | null;
+  listener: { running: boolean } | null;
+}
+
+export interface IntegrationStatus {
+  integrationsEnabled: boolean;
+  slack: IntegrationRunState;
+  teams: IntegrationRunState;
+}
+
+export async function getIntegrationStatus(): Promise<IntegrationStatus> {
+  return apiFetch<IntegrationStatus>('/integrations');
+}
+
+export async function startIntegration(platform: 'slack' | 'teams'): Promise<void> {
+  await apiFetch<unknown>(`/integrations/${platform}/start`, { method: 'POST' });
+}
+
+export async function stopIntegration(platform: 'slack' | 'teams'): Promise<void> {
+  await apiFetch<unknown>(`/integrations/${platform}/stop`, { method: 'POST' });
+}
+
 export async function getHealth(): Promise<{ status: string; version: string; uptime: number }> {
   const res = await fetch('/api/health');
   if (!res.ok) throw new Error('Health check failed');
