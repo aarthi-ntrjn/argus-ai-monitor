@@ -12,10 +12,15 @@ Argus uses two logging systems in the backend. This document explains the spec, 
 
 Used exclusively in HTTP route handlers via `request.log` and `reply.log`.
 
-**Format (development, with pino-pretty or raw):**
+**Format (development, with pino-pretty):**
 ```
 [03:50:35.632] INFO (38124): incoming request {"reqId":"abff...","req":{...}}
 [03:50:35.633] INFO (38124): request completed {"reqId":"abff...","res":{"statusCode":200},"responseTime":0.46}
+```
+
+**Format (production, raw JSON):**
+```json
+{"level":30,"time":1746095435632,"reqId":"abff...","req":{"method":"GET","url":"/api/v1/sessions"},"msg":"incoming request"}
 ```
 
 **Capabilities:**
@@ -35,8 +40,8 @@ Used by all backend components that run outside the HTTP request lifecycle.
 
 **Format:**
 ```
-2026-05-01T03:51:45.140 [info] [SlackNotifier] slack.session.updated.received: session=... status=active
-2026-05-01T03:51:45.141 [warn] [TeamsNotifier] teams.session.updated.skipped: no meaningful changes
+[03:51:45.140] INFO  [SlackNotifier] slack.session.updated.received: session=... status=active
+[03:51:45.141] WARN  [TeamsNotifier] teams.session.updated.skipped: no meaningful changes
 ```
 
 **Capabilities:**
@@ -55,6 +60,7 @@ Used by all backend components that run outside the HTTP request lifecycle.
 | `[PtyRegistry]` | magenta `\x1b[35m` |
 | `[TeamsNotifier]` / `[TeamsListener]` | cyan `\x1b[36m` |
 | `[SlackNotifier]` / `[SlackListener]` | green `\x1b[32m` |
+| `[Telemetry]` | dark gray `\x1b[90m` |
 
 ---
 
@@ -112,8 +118,7 @@ Replace Fastify's request logger with `createTaggedLogger` in route handlers.
 - Colored, readable output locally; structured JSON for HTTP tracing.
 
 **Disadvantages:**
-- Two visually distinct log formats appear in the same terminal output.
-- A developer reading logs must know which system produced a given line.
+- Two log producers appear in the same terminal output. The Fastify lines include a PID `(38124)` while component lines do not; otherwise the timestamp and level format are aligned.
 
 **Verdict:** Adopted. The format difference is a minor readability cost; the functional benefits of each system outweigh the inconsistency.
 
@@ -128,4 +133,13 @@ Replace Fastify's request logger with `createTaggedLogger` in route handlers.
    const log = createTaggedLogger('[MyComponent]', '\x1b[33m'); // yellow
    ```
 3. Use `log.info`, `log.warn`, `log.error`, `log.debug` throughout the file.
-4. Register the tag and color in the table above.
+4. Add the tag and color to the color assignments table above.
+
+**Log level colors** (applied automatically, no action needed):
+
+| Level | Color |
+|---|---|
+| `DEBUG` | blue `\x1b[34m` |
+| `INFO` | green `\x1b[32m` |
+| `WARN` | yellow `\x1b[33m` |
+| `ERROR` | red `\x1b[31m` |
