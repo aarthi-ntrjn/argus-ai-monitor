@@ -61,6 +61,12 @@ async function stubDashboard(page: import('@playwright/test').Page) {
   await page.route('**/api/v1/integrations', route =>
     route.fulfill({ contentType: 'application/json', body: JSON.stringify({ integrationsEnabled: false, slack: { connectionStatus: 'unconfigured', notifier: null, listener: null }, teams: { connectionStatus: 'unconfigured', notifier: null, listener: null } }) })
   );
+  await page.route('**/api/v1/tools**', route =>
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify({ claude: true, copilot: false, claudeCmd: 'claude', copilotCmd: null }) })
+  );
+  await page.route('**/api/v1/todos**', route =>
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify([]) })
+  );
   await page.route('**/ws**', route => route.abort());
 }
 

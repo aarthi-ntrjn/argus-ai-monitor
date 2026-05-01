@@ -67,6 +67,12 @@ async function mockDashboard(page: import('@playwright/test').Page, session: typ
     page.route('**/api/v1/settings', route =>
       route.fulfill({ contentType: 'application/json', body: JSON.stringify({ port: 7411, watchDirectories: [], sessionRetentionHours: 24, outputRetentionMbPerSession: 10, autoRegisterRepos: false, yoloMode: false, restingThresholdMinutes: 20, telemetryEnabled: false, telemetryPromptSeen: true }) })
     ),
+    page.route('**/api/v1/tools**', route =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify({ claude: true, copilot: false, claudeCmd: 'claude', copilotCmd: null }) })
+    ),
+    page.route('**/api/v1/todos**', route =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify([]) })
+    ),
     page.route('**/ws**', route => route.abort()),
   ]);
 }

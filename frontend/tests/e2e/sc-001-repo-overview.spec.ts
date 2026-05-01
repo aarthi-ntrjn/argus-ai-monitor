@@ -27,6 +27,13 @@ test.describe('SC-001: Repository Overview', () => {
     await page.route('**/api/v1/settings', route =>
       route.fulfill({ contentType: 'application/json', body: JSON.stringify({ port: 7411, watchDirectories: [], sessionRetentionHours: 24, outputRetentionMbPerSession: 10, autoRegisterRepos: false, yoloMode: false, restingThresholdMinutes: 20, telemetryEnabled: false, telemetryPromptSeen: true }) })
     );
+    await page.route('**/api/v1/tools**', route =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify({ claude: true, copilot: false, claudeCmd: 'claude', copilotCmd: null }) })
+    );
+    await page.route('**/api/v1/todos**', route =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify([]) })
+    );
+    await page.route('**/ws**', route => route.abort());
   });
 
   test('shows both repository cards within 5s', async ({ page }) => {

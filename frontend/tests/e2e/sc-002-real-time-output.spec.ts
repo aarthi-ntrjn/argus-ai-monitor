@@ -22,6 +22,8 @@ test.describe('SC-002: Real-time Output', () => {
       });
     });
 
+    await page.route('**/ws**', route => route.abort());
+
     await page.goto(`/sessions/${sessionId}`);
     await expect(page.getByRole('region', { name: /session output/i })).toBeVisible({ timeout: 5000 });
 

@@ -25,6 +25,7 @@ test.describe('SC-004: Stop Session', () => {
     await page.route(`**/api/v1/sessions/${SESSION_ID}/output**`, route =>
       route.fulfill({ contentType: 'application/json', body: JSON.stringify(EMPTY_OUTPUT) })
     );
+    await page.route('**/ws**', route => route.abort());
   });
 
   test('prompt bar is visible for active PTY session', async ({ page }) => {
