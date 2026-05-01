@@ -20,7 +20,7 @@ Two goals:
 
 **Purpose**: Understand the current call graph and confirm no regressions before changes.
 
-- [ ] T001 Read `backend/src/services/telemetry-service.ts` and `backend/src/api/routes/integrations.ts` to confirm all `sendEvent` call sites and integration start/stop handlers
+- [x] T001 Read `backend/src/services/telemetry-service.ts` and `backend/src/api/routes/integrations.ts` to confirm all `sendEvent` call sites and integration start/stop handlers
 
 ---
 
@@ -30,8 +30,8 @@ Two goals:
 
 **⚠️ CRITICAL**: US1 and US2 enrichment both depend on this phase.
 
-- [ ] T002 Add `private integrationStatus: Record<string, boolean> = {}` field and `setIntegrationStatus(platform: string, running: boolean): void` method to `TelemetryService` in `backend/src/services/telemetry-service.ts`
-- [ ] T003 In `TelemetryService.sendEvent`, merge `integrationStatus` into the event `properties` payload automatically — keys formatted as `{platform}_enabled` (e.g., `teams_enabled: true`) — so every event type gets this context without callers changing anything in `backend/src/services/telemetry-service.ts`
+- [x] T002 Add `private integrationStatus: Record<string, boolean> = {}` field and `setIntegrationStatus(platform: string, running: boolean): void` method to `TelemetryService` in `backend/src/services/telemetry-service.ts`
+- [x] T003 In `TelemetryService.sendEvent`, merge `integrationStatus` into the event `properties` payload automatically — keys formatted as `{platform}_enabled` (e.g., `teams_enabled: true`) — so every event type gets this context without callers changing anything in `backend/src/services/telemetry-service.ts`
 
 **Checkpoint**: Foundation ready — integration status now flows into every event.
 
@@ -45,9 +45,9 @@ Two goals:
 
 ### Implementation for User Story 1
 
-- [ ] T004 [US1] In `backend/src/api/routes/integrations.ts`, call `telemetryService.setIntegrationStatus('slack', true)` after `slackNotifier.initialize()` succeeds and `telemetryService.setIntegrationStatus('slack', false)` after `slackNotifier.shutdown()` (alongside the existing `sendEvent` calls already there)
-- [ ] T005 [US1] In `backend/src/api/routes/integrations.ts`, call `telemetryService.setIntegrationStatus('teams', true)` after `teamsNotifier.initialize()` succeeds and `telemetryService.setIntegrationStatus('teams', false)` after `teamsNotifier.shutdown()` (alongside the existing `sendEvent` calls already there)
-- [ ] T006 [US1] In `backend/src/server.ts`, after all integrations are optionally initialized at startup, call `telemetryService.setIntegrationStatus('slack', slackNotifier?.isRunning === true)` and `telemetryService.setIntegrationStatus('teams', teamsNotifier?.isRunning === true)` so `app_started` carries the correct initial state
+- [x] T004 [US1] In `backend/src/api/routes/integrations.ts`, call `telemetryService.setIntegrationStatus('slack', true)` after `slackNotifier.initialize()` succeeds and `telemetryService.setIntegrationStatus('slack', false)` after `slackNotifier.shutdown()` (alongside the existing `sendEvent` calls already there)
+- [x] T005 [US1] In `backend/src/api/routes/integrations.ts`, call `telemetryService.setIntegrationStatus('teams', true)` after `teamsNotifier.initialize()` succeeds and `telemetryService.setIntegrationStatus('teams', false)` after `teamsNotifier.shutdown()` (alongside the existing `sendEvent` calls already there)
+- [x] T006 [US1] In `backend/src/server.ts`, after all integrations are optionally initialized at startup, call `telemetryService.setIntegrationStatus('slack', slackNotifier?.isRunning === true)` and `telemetryService.setIntegrationStatus('teams', teamsNotifier?.isRunning === true)` so `app_started` carries the correct initial state
 
 **Checkpoint**: US1 complete — open PostHog Live Events, confirm integration properties appear on every event type.
 
@@ -61,8 +61,8 @@ Two goals:
 
 ### Implementation for User Story 2
 
-- [ ] T007 [US2] Verify that `integration_started` and `integration_stopped` events already fire correctly in `backend/src/api/routes/integrations.ts` (lines 71, 80, 89, 98) — no code change needed if correct, just confirm
-- [ ] T008 [US2] Confirm that because `setIntegrationStatus` is called before `sendEvent` in T004/T005, the `integration_started` event will automatically include `teams_enabled`/`slack_enabled` in its payload via the T003 merge — verify ordering is correct in `backend/src/api/routes/integrations.ts`
+- [x] T007 [US2] Verify that `integration_started` and `integration_stopped` events already fire correctly in `backend/src/api/routes/integrations.ts` (lines 71, 80, 89, 98) — no code change needed if correct, just confirm
+- [x] T008 [US2] Confirm that because `setIntegrationStatus` is called before `sendEvent` in T004/T005, the `integration_started` event will automatically include `teams_enabled`/`slack_enabled` in its payload via the T003 merge — verify ordering is correct in `backend/src/api/routes/integrations.ts`
 
 **Checkpoint**: US2 complete — `integration_started`/`integration_stopped` events carry full integration context.
 
@@ -70,9 +70,9 @@ Two goals:
 
 ## Phase 5: Polish & Cross-Cutting Concerns
 
-- [ ] T009 [P] Build backend to confirm no TypeScript errors: `npm run build --workspace=backend`
-- [ ] T010 [P] Run backend tests to confirm no regressions: `npm run test --workspace=backend`
-- [ ] T011 Commit all changes with message: `feat(telemetry): add integration status context to all events`
+- [x] T009 [P] Build backend to confirm no TypeScript errors: `npm run build --workspace=backend`
+- [x] T010 [P] Run backend tests to confirm no regressions: `npm run test --workspace=backend`
+- [x] T011 Commit all changes with message: `feat(telemetry): add integration status context to all events`
 
 ---
 
