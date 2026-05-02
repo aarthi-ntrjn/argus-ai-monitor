@@ -5,6 +5,11 @@ import { SessionController } from '../../services/session-controller.js';
 import { ptyRegistry } from '../../services/pty-registry.js';
 import { telemetryService } from '../../services/telemetry-service.js';
 
+let _claudeDetector: { getPendingChoice(sessionId: string): unknown } | null = null;
+
+export function setSessionClaudeDetector(detector: { getPendingChoice(sessionId: string): unknown }): void {
+  _claudeDetector = detector;
+}
 
 function withPtyConnected<T extends { id: string; launchMode?: string | null }>(session: T): T & { ptyConnected: boolean | null } {
   return { ...session, ptyConnected: session.launchMode === 'pty' ? ptyRegistry.has(session.id) : null };
@@ -114,7 +119,8 @@ const sessionsRoutes: FastifyPluginAsync = async (app) => {
         const session = getSession(req.params.id);
         if (!session) return reply.status(404).send({ error: 'NOT_FOUND', message: `Session ${req.params.id} not found` });
 
-        const action = await sessionController.sendPrompt(req.params.id, prompt, false);
+        const skipEnter = !!_claudeDetector?.getPendingChoice(req.params.id);
+        const action = await sessionController.sendPrompt(req.params.id, prompt, skipEnter);
         return reply.status(202).send({ actionId: action.id, status: action.status });
       } catch (err: unknown) {
         const e = err as { code?: string; message?: string };
