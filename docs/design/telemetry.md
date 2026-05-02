@@ -70,18 +70,23 @@ Each event sent to PostHog has this shape:
   event: TelemetryEventType,
   properties: {
     appVersion: string,       // e.g. "0.3.1"
-    slack_enabled?: boolean,  // set on app_started
-    teams_enabled?: boolean,  // set on app_started
-    sessionType?: string,     // "claude-code" | "copilot-cli"
-    sessionId?: string,       // random UUID per session (not linked to user)
-    launchMode?: string,      // "connected" | "readonly"
-    yoloMode?: boolean,
-    platform?: string,        // "slack" | "teams"
-    ...extra                  // additional event-specific fields
+    ...eventProperties,       // event-specific properties (see table below)
   },
   timestamp: string,          // ISO 8601 UTC
 }
 ```
+
+Event-specific properties included in `properties`:
+
+| Property | Type | Events |
+|---|---|---|
+| `slack_enabled` | `boolean` | `app_started` |
+| `teams_enabled` | `boolean` | `app_started` |
+| `sessionType` | `"claude-code" \| "copilot-cli"` | `session_started`, `session_ended`, `session_stopped`, `session_prompt_sent` |
+| `sessionId` | `string` (UUID) | `session_started`, `session_ended`, `session_stopped`, `session_prompt_sent` |
+| `launchMode` | `"connected" \| "readonly"` | `session_started`, `session_ended`, `session_stopped`, `session_prompt_sent` |
+| `yoloMode` | `boolean` | `session_started`, `session_ended`, `session_stopped`, `session_prompt_sent` |
+| `platform` | `"slack" \| "teams"` | `integration_started`, `integration_stopped` |
 
 No `$ip` or `$geoip_disable` properties are set. PostHog derives location from the connection IP natively (see GeoIP section below).
 
