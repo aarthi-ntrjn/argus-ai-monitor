@@ -228,6 +228,7 @@ const sendPromptInterwriteDelayV2 = async (prompt: string, skipEnter = false): P
   // Single-char prompts (choice index digits) respect skipEnter; longer prompts always need Enter.
   if (!skipEnter || prompt.length > 1) {
     // Without this keyboard mimic of '\r', Windows does not recognize the end of the sentence.
+    log(`pty.write enter`);
     pty.write('\r');
   }
   log(`focus-out`);
