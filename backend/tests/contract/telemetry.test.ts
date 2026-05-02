@@ -32,6 +32,34 @@ describe('Telemetry relay API', () => {
       expect(res.status).toBe(204);
     });
 
+    it('event payload does not contain $geoip_disable', async () => {
+      let capturedBody: string | undefined;
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => {
+        capturedBody = init?.body as string;
+        return Promise.resolve(new Response(null, { status: 200 }));
+      });
+      await request.post('/api/v1/telemetry/event').send({ type: 'app_started' });
+      if (capturedBody) {
+        const payload = JSON.parse(capturedBody);
+        expect(payload.properties).not.toHaveProperty('$geoip_disable');
+      }
+      fetchSpy.mockRestore();
+    });
+
+    it('event payload does not contain $ip', async () => {
+      let capturedBody: string | undefined;
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => {
+        capturedBody = init?.body as string;
+        return Promise.resolve(new Response(null, { status: 200 }));
+      });
+      await request.post('/api/v1/telemetry/event').send({ type: 'app_started' });
+      if (capturedBody) {
+        const payload = JSON.parse(capturedBody);
+        expect(payload.properties).not.toHaveProperty('$ip');
+      }
+      fetchSpy.mockRestore();
+    });
+
     it('returns 204 for session_started with sessionType', async () => {
       const res = await request
         .post('/api/v1/telemetry/event')

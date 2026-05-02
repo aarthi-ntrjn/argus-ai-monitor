@@ -3,6 +3,7 @@ import { getSessions, getSession, updateSessionStatus } from '../../db/database.
 import { OutputStore } from '../../services/output-store.js';
 import { SessionController } from '../../services/session-controller.js';
 import { ptyRegistry } from '../../services/pty-registry.js';
+import { telemetryService } from '../../services/telemetry-service.js';
 
 let _claudeDetector: { getPendingChoice(sessionId: string): unknown } | null = null;
 
@@ -96,7 +97,14 @@ const sessionsRoutes: FastifyPluginAsync = async (app) => {
       const now = new Date().toISOString();
       updateSessionStatus(req.params.id, 'ended', now);
       const { broadcast: broadcastEvent } = await import('../ws/event-dispatcher.js');
-      broadcastEvent({ type: 'session.ended', timestamp: now, data: { ...session, status: 'ended' as const, endedAt: now } });
+      const ended = { ...session, status: 'ended' as const, endedAt: now };
+      broadcastEvent({ type: 'session.ended', timestamp: now, data: ended });
+      telemetryService.sendEvent('session_ended', {
+        sessionType: session.type,
+        sessionId: session.id,
+        launchMode: session.launchMode === 'pty' ? 'connected' : 'readonly',
+        yoloMode: session.yoloMode,
+      });
       return reply.send({ status: 'ended' });
     }
   );

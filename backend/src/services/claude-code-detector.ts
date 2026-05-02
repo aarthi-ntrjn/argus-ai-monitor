@@ -10,6 +10,7 @@ import { broadcast } from '../api/ws/event-dispatcher.js';
 import { detectYoloModeFromPids, isPidRunning, isExpectedProcess } from './process-utils.js';
 import type { Session, Repository, PendingChoice, PendingChoiceItem } from '../models/index.js';
 import { pendingChoiceEvents } from './pending-choice-events.js';
+import { telemetryService } from './telemetry-service.js';
 
 const CLAUDE_SETTINGS_PATH = join(homedir(), '.claude', 'settings.json');
 const HOOK_COMMAND = 'curl -sf -X POST http://127.0.0.1:7411/hooks/claude -H "Content-Type: application/json" -d @- 2>/dev/null || true';
@@ -178,7 +179,14 @@ export class ClaudeCodeDetector {
     if (!existing) return;
     updateSessionStatus(sessionId, 'ended', now);
     this.jsonlWatcher.closeWatcher(sessionId);
-    broadcast({ type: 'session.ended', timestamp: now, data: { ...existing, status: 'ended', endedAt: now } });
+    const ended = { ...existing, status: 'ended' as const, endedAt: now };
+    broadcast({ type: 'session.ended', timestamp: now, data: ended });
+    telemetryService.sendEvent('session_ended', {
+      sessionType: existing.type,
+      sessionId: existing.id,
+      launchMode: existing.launchMode === 'pty' ? 'connected' : 'readonly',
+      yoloMode: existing.yoloMode,
+    });
   }
 
   private handlePreAskQuestion(sessionId: string, existing: Session | null | undefined, payload: HookPayload, now: string): void {

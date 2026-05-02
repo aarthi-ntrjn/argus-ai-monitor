@@ -337,9 +337,14 @@ export class SessionMonitor extends EventEmitter {
       for (const [id, session] of this.activeSessionMap) {
         if (!currentScanIds.has(id)) {
           const now = new Date().toISOString();
-          updateSessionStatus(id, 'ended', now);
-          const endedSession: Session = { ...session, status: 'ended', endedAt: now };
-          this.emit('session.ended', endedSession);
+          // Another path (launcher WS, dismiss, etc.) may have already marked the session
+          // ended and fired telemetry. Only emit session.ended if the DB still shows active.
+          const currentSession = getSession(id);
+          if (currentSession?.status !== 'ended') {
+            updateSessionStatus(id, 'ended', now);
+            const endedSession: Session = { ...session, status: 'ended', endedAt: now };
+            this.emit('session.ended', endedSession);
+          }
           this.activeSessionMap.delete(id);
           this.lastEmittedSessions.delete(id);
           this.restingNotifiedSessions.delete(id);

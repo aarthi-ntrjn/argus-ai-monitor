@@ -113,6 +113,18 @@ describe('TelemetryService', () => {
       const payload = JSON.parse(capturedBody ?? '{}');
       expect(payload.properties?.sessionType).toBe('claude-code');
     });
+
+    it('does NOT include $geoip_disable in payload', () => {
+      let capturedBody: string | undefined;
+      vi.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => {
+        capturedBody = init?.body as string;
+        return Promise.resolve(new Response(null, { status: 200 }));
+      });
+      service.sendEvent('app_started');
+      const payload = JSON.parse(capturedBody ?? '{}');
+      expect(payload.properties).not.toHaveProperty('$geoip_disable');
+    });
+
   });
 
   describe('resilience', () => {

@@ -229,7 +229,6 @@ export default function DashboardPage() {
               <TelemetryBanner
                 onDismiss={handleTelemetryDismiss}
                 onOpenSettings={() => openDialog('general')}
-                subtle
               />
             </div>
           )}

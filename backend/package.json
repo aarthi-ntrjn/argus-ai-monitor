@@ -19,6 +19,8 @@
     "@fastify/swagger-ui": "5.2.5",
     "@fastify/websocket": "11.2.0",
     "@microsoft/teams.apps": "^2.0.7",
+    "@slack/socket-mode": "^2.0.6",
+    "@slack/web-api": "^7.15.1",
     "better-sqlite3": "12.8.0",
     "chokidar": "3.6.0",
     "dotenv": "^17.4.2",
@@ -30,9 +32,7 @@
     "pino-pretty": "11.3.0",
     "ps-list": "8.1.1",
     "uuid": "9.0.1",
-    "ws": "8.20.0",
-    "@slack/web-api": "^7.15.1",
-    "@slack/socket-mode": "^2.0.6"
+    "ws": "8.20.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "7.6.13",

@@ -11,7 +11,7 @@ describe('TelemetryBanner', () => {
 
     render(
       <MemoryRouter>
-        <TelemetryBanner onDismiss={onDismiss} onOpenSettings={onOpenSettings} subtle />
+        <TelemetryBanner onDismiss={onDismiss} onOpenSettings={onOpenSettings} />
       </MemoryRouter>
     );
 
@@ -26,7 +26,7 @@ describe('TelemetryBanner', () => {
 
     render(
       <MemoryRouter>
-        <TelemetryBanner onDismiss={onDismiss} onOpenSettings={vi.fn()} subtle />
+        <TelemetryBanner onDismiss={onDismiss} onOpenSettings={vi.fn()} />
       </MemoryRouter>
     );
 

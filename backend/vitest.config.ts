@@ -1,6 +1,9 @@
 import { defineConfig } from 'vitest/config';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { tmpdir } from 'os';
+import { fileURLToPath } from 'url';
+
+const __dir = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   test: {
