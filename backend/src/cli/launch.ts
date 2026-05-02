@@ -225,8 +225,8 @@ const sendPromptInterwriteDelayV2 = async (prompt: string, skipEnter = false): P
   log(`pty.write promptLen=${prompt.length} prompt=${JSON.stringify(prompt)}`);
   pty.write(prompt);
   await delay(WRITE_DELAY_MS);
-  // skipEnter is true when ask_user|AskUserQuestion tool is being handled
-  if (!skipEnter) {
+  // Single-char prompts (choice index digits) respect skipEnter; longer prompts always need Enter.
+  if (!skipEnter || prompt.length > 1) {
     // Without this keyboard mimic of '\r', Windows does not recognize the end of the sentence.
     pty.write('\r');
   }
