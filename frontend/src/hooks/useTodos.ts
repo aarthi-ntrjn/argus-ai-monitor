@@ -1,13 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { UseQueryResult, UseMutationResult } from '@tanstack/react-query';
 import { getTodos, createTodo, toggleTodo, updateTodoText, deleteTodo } from '../services/api';
+import type { TodoItem } from '../types';
 
 const QUERY_KEY = ['todos'];
 
-export function useTodos() {
+export function useTodos(): UseQueryResult<TodoItem[], Error> {
   return useQuery({ queryKey: QUERY_KEY, queryFn: getTodos });
 }
 
-export function useCreateTodo() {
+export function useCreateTodo(): UseMutationResult<TodoItem, Error, string> {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (text: string) => createTodo(text),
@@ -15,7 +17,7 @@ export function useCreateTodo() {
   });
 }
 
-export function useUpdateTodoText() {
+export function useUpdateTodoText(): UseMutationResult<TodoItem, Error, { id: string; text: string }> {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, text }: { id: string; text: string }) => updateTodoText(id, text),
@@ -23,7 +25,7 @@ export function useUpdateTodoText() {
   });
 }
 
-export function useToggleTodo() {
+export function useToggleTodo(): UseMutationResult<TodoItem, Error, { id: string; done: boolean }> {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, done }: { id: string; done: boolean }) => toggleTodo(id, done),
@@ -31,7 +33,7 @@ export function useToggleTodo() {
   });
 }
 
-export function useDeleteTodo() {
+export function useDeleteTodo(): UseMutationResult<void, Error, string> {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteTodo(id),

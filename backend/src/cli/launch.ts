@@ -97,7 +97,7 @@ try {
     cwd,
     env: cleanEnv as Record<string, string>
   });
-} catch (err) {
+} catch (err: unknown) {
   const message = err instanceof Error ? err.message : String(err);
   failLaunch(message);
 }
@@ -253,7 +253,7 @@ client.onSendPrompt(async (actionId: string, prompt: string, skipEnter: boolean)
   try {
     await sendPromptInterwriteDelayV2(prompt, skipEnter);    
     client.ackDelivered(actionId);
-  } catch (err) {
+  } catch (err: unknown) {
     log(`prompt delivery failed: ${err}`);
     client.ackFailed(actionId, err instanceof Error ? err.message : 'prompt delivery failed');
   }
@@ -318,7 +318,7 @@ if (isWin) {
       } else {
         log(`pid resolver: attempt ${pidAttempts} — ${targetExe} not yet in process tree`);
       }
-    } catch (err) {
+    } catch (err: unknown) {
       log(`pid resolver: unexpected error on attempt ${pidAttempts} — ${err}`);
     }
   }, 500);

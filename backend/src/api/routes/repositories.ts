@@ -66,7 +66,7 @@ const repositoriesRoutes: FastifyPluginAsync = async (app) => {
     new ClaudeCodeDetector().injectHooks();
     logger.debug(`[Repositories] injectHooks — ${Date.now() - tHooks}ms`);
 
-    broadcast({ type: 'repository.added', timestamp: new Date().toISOString(), data: repo as unknown as Record<string, unknown> });
+    broadcast({ type: 'repository.added', timestamp: new Date().toISOString(), data: repo });
     logger.debug(`[Repositories] POST handler total before triggers — ${Date.now() - tRepo}ms`);
     _monitor?.triggerScan();
     _monitor?.triggerCopilotScan();
@@ -80,7 +80,7 @@ const repositoriesRoutes: FastifyPluginAsync = async (app) => {
       if (remoteUrl !== repo.remoteUrl) {
         updateRepositoryRemoteUrl(repo.id, remoteUrl);
         const updated = { ...repo, remoteUrl };
-        broadcast({ type: 'repository.updated', timestamp: new Date().toISOString(), data: updated as unknown as Record<string, unknown> });
+        broadcast({ type: 'repository.updated', timestamp: new Date().toISOString(), data: updated });
         return true;
       }
       return false;

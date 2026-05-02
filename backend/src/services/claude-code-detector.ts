@@ -178,7 +178,7 @@ export class ClaudeCodeDetector {
     if (!existing) return;
     updateSessionStatus(sessionId, 'ended', now);
     this.jsonlWatcher.closeWatcher(sessionId);
-    broadcast({ type: 'session.ended', timestamp: now, data: { ...existing, status: 'ended', endedAt: now } as unknown as Record<string, unknown> });
+    broadcast({ type: 'session.ended', timestamp: now, data: { ...existing, status: 'ended', endedAt: now } });
   }
 
   private handlePreAskQuestion(sessionId: string, existing: Session | null | undefined, payload: HookPayload, now: string): void {
@@ -288,7 +288,7 @@ export class ClaudeCodeDetector {
     session.lastActivityAt = now;
     upsertSession(session);
     if (existing) {
-      broadcast({ type: 'session.updated', timestamp: now, data: session as unknown as Record<string, unknown> });
+      broadcast({ type: 'session.updated', timestamp: now, data: session });
     } else {
       this.sessionCreatedCallback?.(session);
     }

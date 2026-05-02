@@ -9,7 +9,7 @@ export function applyActivityUpdate(sessionId: string): void {
   if (!active) return;
   const updated = { ...active, lastActivityAt: now };
   upsertSession(updated);
-  broadcast({ type: 'session.updated', timestamp: now, data: updated as unknown as Record<string, unknown> });
+  broadcast({ type: 'session.updated', timestamp: now, data: updated });
 }
 
 export function applyModelUpdate(sessionId: string, model: string, tag: string): void {
@@ -18,7 +18,7 @@ export function applyModelUpdate(sessionId: string, model: string, tag: string):
   logger.info(`${tag} model detected sessionId=${sessionId} model=${model}`);
   const updated = { ...existing, model };
   upsertSession(updated);
-  broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: updated as unknown as Record<string, unknown> });
+  broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: updated });
 }
 
 export function applySummaryUpdate(sessionId: string, outputs: SessionOutput[], tag: string): void {
@@ -33,5 +33,5 @@ export function applySummaryUpdate(sessionId: string, outputs: SessionOutput[], 
   logger.info(`${tag} summary updated sessionId=${sessionId}`);
   const updated = { ...existing, summary };
   upsertSession(updated);
-  broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: updated as unknown as Record<string, unknown> });
+  broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: updated });
 }

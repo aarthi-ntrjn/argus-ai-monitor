@@ -32,7 +32,7 @@ export class OutputStore {
       broadcast({
         type: 'session.output.batch',
         timestamp: new Date().toISOString(),
-        data: { sessionId, outputs: inserted as unknown as Record<string, unknown>[] },
+        data: { sessionId, outputs: inserted },
       });
       outputEvents.emit('session.output.batch', sessionId, outputs);
       for (const fn of this.listeners) fn(sessionId, inserted);

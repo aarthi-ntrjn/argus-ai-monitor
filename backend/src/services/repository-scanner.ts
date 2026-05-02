@@ -111,7 +111,7 @@ export class RepositoryScanner {
       remoteUrl,
     };
     insertRepository(repo);
-    broadcast({ type: 'repository.added', timestamp: new Date().toISOString(), data: repo as unknown as Record<string, unknown> });
+    broadcast({ type: 'repository.added', timestamp: new Date().toISOString(), data: repo });
     return repo;
   }
 }
