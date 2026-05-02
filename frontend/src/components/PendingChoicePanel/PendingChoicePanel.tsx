@@ -128,7 +128,7 @@ export default function PendingChoicePanel({ pendingChoice, session, idx, onAdva
                     variant="outline"
                     size="sm"
                     disabled={sending}
-                    onClick={e => { e.stopPropagation(); handleChoice(String(i + 1)); }}
+                    onClick={e => { e.stopPropagation(); handleChoice(c); }}
                     className="text-left flex flex-col items-start h-auto py-1.5"
                   >
                     <span className="font-semibold">{i + 1}. {c}</span>
