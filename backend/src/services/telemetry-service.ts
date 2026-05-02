@@ -26,10 +26,10 @@ export class TelemetryService {
   private installationId: string | null = null;
   private appVersion: string | null = null;
   private enabledCache: { value: boolean; expiresAt: number } | null = null;
-  private integrationStatus: Record<string, boolean> = {};
+  private integrationStatus: Record<string, 'on' | 'off' | 'na'> = {};
 
-  setIntegrationStatus(platform: string, running: boolean): void {
-    this.integrationStatus[platform] = running;
+  setIntegrationStatus(platform: string, status: 'on' | 'off' | 'na'): void {
+    this.integrationStatus[platform] = status;
   }
 
   private isTelemetryEnabled(): boolean {
@@ -86,7 +86,7 @@ export class TelemetryService {
     const installationId = this.loadOrCreateInstallationId();
     const appVersion = this.readAppVersion();
     const integrationProps = Object.fromEntries(
-      Object.entries(this.integrationStatus).map(([k, v]) => [`${k}_enabled`, v]),
+      Object.entries(this.integrationStatus).map(([k, v]) => [`${k}_status`, v]),
     );
     const payload = {
       api_key: POSTHOG_API_KEY,

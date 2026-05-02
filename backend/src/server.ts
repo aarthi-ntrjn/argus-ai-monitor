@@ -237,8 +237,8 @@ export async function startServer(): Promise<FastifyInstance> {
 
   await app.listen({ port: config.port, host: '127.0.0.1' });
   app.log.info({ port: config.port }, 'Argus server started');
-  telemetryService.setIntegrationStatus('slack', slackNotifier?.isRunning === true);
-  telemetryService.setIntegrationStatus('teams', teamsNotifier?.isRunning === true);
+  telemetryService.setIntegrationStatus('slack', slackNotifier == null ? 'na' : slackNotifier.isRunning ? 'on' : 'off');
+  telemetryService.setIntegrationStatus('teams', teamsNotifier == null ? 'na' : teamsNotifier.isRunning ? 'on' : 'off');
   telemetryService.sendEvent('app_started');
   return app;
 }

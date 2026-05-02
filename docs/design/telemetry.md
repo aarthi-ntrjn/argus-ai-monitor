@@ -82,8 +82,8 @@ Event-specific properties included in `properties`:
 
 | Property | Type | Events |
 |---|---|---|
-| `slack_enabled` | `boolean` | `app_started` |
-| `teams_enabled` | `boolean` | `app_started` |
+| `slack_status` | `"on" \| "off" \| "na"` | all events |
+| `teams_status` | `"on" \| "off" \| "na"` | all events |
 | `sessionType` | `"claude-code" \| "copilot-cli"` | `session_started`, `session_ended`, `session_stopped`, `session_prompt_sent` |
 | `sessionId` | `string` (UUID) | `session_started`, `session_ended`, `session_stopped`, `session_prompt_sent` |
 | `launchMode` | `"connected" \| "readonly"` | `session_started`, `session_ended`, `session_stopped`, `session_prompt_sent` |
@@ -126,7 +126,7 @@ It maintains:
 - `installationId`: read from disk once, then cached in memory.
 - `appVersion`: read from `package.json` once, then cached.
 - `enabledCache`: 5-second TTL cache of `telemetryEnabled`.
-- `integrationStatus`: map of `{ platform: boolean }` updated by integration routes.
+- `integrationStatus`: map of `{ platform: "on" | "off" | "na" }` updated by integration routes and on startup. `"na"` means the integration is not configured.
 
 ---
 
