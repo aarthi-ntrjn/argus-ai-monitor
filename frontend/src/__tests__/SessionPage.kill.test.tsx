@@ -31,8 +31,10 @@ function renderSessionPage(sessionOverrides = {}) {
     model: null,
     yoloMode: false,
     pid: 12345,
+    hostPid: null,
     pidSource: 'pty_registry' as const,
     launchMode: null,
+    reconciled: false,
     ...sessionOverrides,
   };
 

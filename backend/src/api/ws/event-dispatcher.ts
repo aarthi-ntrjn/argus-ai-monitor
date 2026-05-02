@@ -1,10 +1,29 @@
 import type { WebSocket } from 'ws';
+import type { Session, Repository, SessionOutput, ControlAction, PendingChoiceItem } from '../../models/index.js';
 
-interface WsEvent {
-  type: string;
-  timestamp: string;
-  data: Record<string, unknown>;
-}
+export type WsEventType =
+  | 'session.created'
+  | 'session.updated'
+  | 'session.ended'
+  | 'session.pending_choice'
+  | 'session.pending_choice.resolved'
+  | 'session.output.batch'
+  | 'action.updated'
+  | 'repository.added'
+  | 'repository.updated'
+  | 'repository.removed';
+
+export type WsEvent =
+  | { type: 'session.created'; timestamp: string; data: Session }
+  | { type: 'session.updated'; timestamp: string; data: Session }
+  | { type: 'session.ended'; timestamp: string; data: Session }
+  | { type: 'session.pending_choice'; timestamp: string; data: { sessionId: string; question: string; choices: string[]; allQuestions?: PendingChoiceItem[] } }
+  | { type: 'session.pending_choice.resolved'; timestamp: string; data: { sessionId: string } }
+  | { type: 'session.output.batch'; timestamp: string; data: { sessionId: string; outputs: SessionOutput[] } }
+  | { type: 'action.updated'; timestamp: string; data: ControlAction }
+  | { type: 'repository.added'; timestamp: string; data: Repository }
+  | { type: 'repository.updated'; timestamp: string; data: Repository }
+  | { type: 'repository.removed'; timestamp: string; data: { id: string } };
 
 const clients = new Set<WebSocket>();
 

@@ -31,7 +31,7 @@ export async function findGitRepos(dirPath: string, results: Array<{ path: strin
   return results;
 }
 
-export async function fsRoutes(app: FastifyInstance) {
+export async function fsRoutes(app: FastifyInstance): Promise<void> {
   app.post('/api/v1/fs/scan-folder', async (request, reply) => {
     const body = request.body as { path?: string };
     const scanPath = body?.path ? normalize(expandTilde(body.path)) : null;
@@ -47,7 +47,7 @@ export async function fsRoutes(app: FastifyInstance) {
       const repos = await findGitRepos(scanPath);
       app.log.info({ scanPath, count: repos.length }, 'Scan complete');
       return reply.send({ repos });
-    } catch (err) {
+    } catch (err: unknown) {
       app.log.error({ scanPath, err }, 'Scan failed');
       return reply.status(500).send({ error: 'SCAN_FAILED', message: 'Failed to scan folder.', requestId: request.id, repos: [] });
     }

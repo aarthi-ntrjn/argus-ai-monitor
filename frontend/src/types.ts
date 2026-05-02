@@ -39,6 +39,7 @@ export interface Session {
   launchMode: SessionLaunchMode | null;
   ptyConnected?: boolean | null;
   pid: number | null;
+  hostPid: number | null;
   pidSource: PidSource | null;
   status: SessionStatus;
   startedAt: string;
@@ -47,6 +48,7 @@ export interface Session {
   summary: string | null;
   expiresAt: string | null;
   model: string | null;
+  reconciled: boolean;
   yoloMode: boolean | null;
 }
 
