@@ -16,7 +16,7 @@ import { SlackNotifier } from './integration/slack/slack-notifier.js';
 import { SlackListener } from './integration/slack/slack-listener.js';
 import { addClient, removeClient, broadcast } from './api/ws/event-dispatcher.js';
 import repositoriesRoutes, { setMonitor } from './api/routes/repositories.js';
-import sessionsRoutes, { setSessionClaudeDetector } from './api/routes/sessions.js';
+import sessionsRoutes from './api/routes/sessions.js';
 import hooksRoutes, { setClaudeDetector } from './api/routes/hooks.js';
 import healthRoutes, { setSlackServices } from './api/routes/health.js';
 import integrationsRoutes, { setIntegrationServices } from './api/routes/integrations.js';
@@ -173,8 +173,7 @@ export async function startServer(): Promise<FastifyInstance> {
   monitor = new SessionMonitor();
   const claudeDetector = monitor.getClaudeCodeDetector();
   setClaudeDetector(claudeDetector);
-  setSessionClaudeDetector(claudeDetector);
-  setMonitor(monitor);
+setMonitor(monitor);
 
   monitor.on('session.created', (session: Session) => {
     broadcast({ type: 'session.created', timestamp: new Date().toISOString(), data: session });
