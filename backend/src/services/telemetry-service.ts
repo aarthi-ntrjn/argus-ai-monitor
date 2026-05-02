@@ -7,7 +7,7 @@ import type { TelemetryEventType } from '../models/index.js';
 import { loadConfig } from '../config/config-loader.js';
 import { createTaggedLogger } from '../utils/logger.js';
 
-const log = createTaggedLogger('[Telemetry]', '\x1b[36m'); // cyan
+const log = createTaggedLogger('[Telemetry]', '\x1b[31m'); // red
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
