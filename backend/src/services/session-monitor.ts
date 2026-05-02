@@ -235,7 +235,7 @@ export class SessionMonitor extends EventEmitter {
             updateRepositoryBranch(repo.id, branch);
             const updated = getRepository(repo.id);
             if (updated) {
-              broadcast({ type: 'repository.updated', timestamp: new Date().toISOString(), data: updated as unknown as Record<string, unknown> });
+              broadcast({ type: 'repository.updated', timestamp: new Date().toISOString(), data: updated });
             }
           }
         } catch { /* ignore — branch refresh is best-effort */ }
@@ -272,7 +272,7 @@ export class SessionMonitor extends EventEmitter {
         logger.info(`[ClaudeRegistry] pid assigned sessionId=${entry.sessionId} pid=${entry.pid} (was ${existing.pid}) yoloMode=${yoloMode}`);
         const updated = { ...existing, pid: entry.pid, pidSource: 'session_registry' as const, yoloMode };
         upsertSession(updated);
-        broadcast({ type: 'session.updated', timestamp: now, data: updated as unknown as Record<string, unknown> });
+        broadcast({ type: 'session.updated', timestamp: now, data: updated });
       }
     } else {
       this.createSessionFromRegistryEntry(entry, now);
@@ -384,7 +384,7 @@ export class SessionMonitor extends EventEmitter {
           if (!this.restingNotifiedSessions.has(session.id)) {
             this.restingNotifiedSessions.add(session.id);
             logger.info(`[SessionMonitor] resting transition sessionId=${session.id} lastActivityAt=${session.lastActivityAt} ageMin=${Math.round(age / 60000)}`);
-            broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: session as unknown as Record<string, unknown> });
+            broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: session });
           }
         } else {
           // Session has recent activity — reset so we broadcast again next time it goes resting

@@ -96,7 +96,7 @@ const sessionsRoutes: FastifyPluginAsync = async (app) => {
       const now = new Date().toISOString();
       updateSessionStatus(req.params.id, 'ended', now);
       const { broadcast: broadcastEvent } = await import('../ws/event-dispatcher.js');
-      broadcastEvent({ type: 'session.ended', timestamp: now, data: { ...session, status: 'ended', endedAt: now } as unknown as Record<string, unknown> });
+      broadcastEvent({ type: 'session.ended', timestamp: now, data: { ...session, status: 'ended' as const, endedAt: now } });
       return reply.send({ status: 'ended' });
     }
   );

@@ -24,6 +24,8 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     expiresAt: null,
     model: null,
     yoloMode: false,
+    hostPid: null,
+    reconciled: false,
     ...overrides,
   };
 }

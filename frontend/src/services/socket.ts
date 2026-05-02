@@ -1,7 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 import type { Session, SessionOutput } from '../types';
 
-type EventHandler = (data: Record<string, unknown>) => void;
+type EventHandler = (data: unknown) => void;
 
 const handlers = new Map<string, Set<EventHandler>>();
 let ws: WebSocket | null = null;
@@ -16,7 +16,7 @@ function getWsUrl(): string {
 
 function handleMessage(event: MessageEvent): void {
   try {
-    const msg = JSON.parse(event.data as string) as { type: string; data: Record<string, unknown> };
+    const msg = JSON.parse(event.data as string) as { type: string; data: unknown };
     const typeHandlers = handlers.get(msg.type);
     if (typeHandlers) {
       typeHandlers.forEach((h) => h(msg.data));
@@ -115,14 +115,14 @@ function applyOutputBatchEvent(qc: QueryClient, sessionId: string, outputs: Sess
 
 export function initSocketHandlers(qc: QueryClient): void {
   onEvent('session.created', (data) => {
-    const session = data as unknown as Session;
+    const session = data as Session;
     qc.setQueryData<Session[]>(['sessions'], (old) => old ? [session, ...old] : [session]);
   });
   onEvent('session.updated', (data) => {
-    updateSessionInCache(qc, data as unknown as Session);
+    updateSessionInCache(qc, data as Session);
   });
   onEvent('session.ended', (data) => {
-    updateSessionInCache(qc, data as unknown as Session);
+    updateSessionInCache(qc, data as Session);
   });
   onEvent('repository.added', () => {
     qc.invalidateQueries({ queryKey: ['repositories'] });

@@ -137,10 +137,10 @@ const launcherRoutes: FastifyPluginAsync = async (fastify) => {
             if (existingSession.status === 'ended') {
               const restored = { ...existingSession, status: 'active' as const, endedAt: null, lastActivityAt: now };
               upsertSession(restored);
-              broadcast({ type: 'session.updated', timestamp: now, data: { ...restored, ptyConnected: true } as unknown as Record<string, unknown> });
+              broadcast({ type: 'session.updated', timestamp: now, data: { ...restored, ptyConnected: true } });
               fastify.log.info({ ptyLaunchId, sessionId: existingSession.id }, '[Launcher] restored session to active after server restart');
             } else {
-              broadcast({ type: 'session.updated', timestamp: now, data: { ...existingSession, ptyConnected: true } as unknown as Record<string, unknown> });
+              broadcast({ type: 'session.updated', timestamp: now, data: { ...existingSession, ptyConnected: true } });
             }
           }
         }
@@ -186,7 +186,7 @@ const launcherRoutes: FastifyPluginAsync = async (fastify) => {
             const yoloMode = session.yoloMode || detectYoloModeFromPids(msg.pid, session.hostPid ?? null, session.type);
             const updated = { ...session, pid: msg.pid, yoloMode };
             upsertSession(updated);
-            broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: updated as unknown as Record<string, unknown> });
+            broadcast({ type: 'session.updated', timestamp: new Date().toISOString(), data: updated });
             fastify.log.info({ claudeSessionId, pid: msg.pid, yoloMode }, '[Launcher] updated session with resolved tool PID');
           } else {
             // Session row not yet inserted (update_pid raced ahead of the first scan).
@@ -205,11 +205,13 @@ const launcherRoutes: FastifyPluginAsync = async (fastify) => {
           const now = new Date().toISOString();
           updateSessionStatus(claudeSessionId, 'ended', now);
           const session = getSession(claudeSessionId);
-          broadcast({
-            type: 'session.ended',
-            timestamp: now,
-            data: (session ?? { id: claudeSessionId }) as unknown as Record<string, unknown>,
-          });
+          if (session) {
+            broadcast({
+              type: 'session.ended',
+              timestamp: now,
+              data: session,
+            });
+          }
           fastify.log.info({ claudeSessionId, exitCode: msg.exitCode }, '[Launcher] session ended');
         }
       }
@@ -230,14 +232,14 @@ const launcherRoutes: FastifyPluginAsync = async (fastify) => {
           const livePid = session.hostPid ?? session.pid;
           if (livePid !== null && isPidRunning(livePid)) {
             // Process is still alive — launcher is reconnecting. Mark as connecting, not ended.
-            broadcast({ type: 'session.updated', timestamp: now, data: { ...session, ptyConnected: false } as unknown as Record<string, unknown> });
+            broadcast({ type: 'session.updated', timestamp: now, data: { ...session, ptyConnected: false } });
             fastify.log.info({ claudeSessionId, code }, '[Launcher] disconnected but process alive, marked connecting');
           } else {
             updateSessionStatus(claudeSessionId, 'ended', now);
             broadcast({
               type: 'session.ended',
               timestamp: now,
-              data: { ...session, status: 'ended', endedAt: now } as unknown as Record<string, unknown>,
+              data: { ...session, status: 'ended' as const, endedAt: now },
             });
             fastify.log.info({ claudeSessionId, code }, '[Launcher] disconnected, session marked ended');
           }

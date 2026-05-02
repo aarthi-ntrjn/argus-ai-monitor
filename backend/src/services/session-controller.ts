@@ -215,7 +215,7 @@ export class SessionController {
     broadcast({
       type: 'action.updated',
       timestamp: new Date().toISOString(),
-      data: action as unknown as Record<string, unknown>,
+      data: action,
     });
   }
 }
