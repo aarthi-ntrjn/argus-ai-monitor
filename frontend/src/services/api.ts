@@ -82,6 +82,10 @@ export async function interruptSession(id: string): Promise<{ actionId: string; 
   return apiFetch<{ actionId: string; status: string }>(`/sessions/${id}/interrupt`, { method: 'POST' });
 }
 
+export async function rejectTool(id: string): Promise<{ status: string }> {
+  return apiFetch<{ status: string }>(`/sessions/${id}/reject-tool`, { method: 'POST' });
+}
+
 export async function dismissSession(id: string): Promise<{ status: string }> {
   return apiFetch<{ status: string }>(`/sessions/${id}/dismiss`, { method: 'POST' });
 }

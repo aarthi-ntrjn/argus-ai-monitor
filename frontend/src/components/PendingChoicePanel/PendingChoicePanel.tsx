@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { sendPrompt } from '../../services/api';
+import { sendPrompt, rejectTool } from '../../services/api';
 import type { Session } from '../../types';
 import type { PendingChoice, PendingChoiceItem } from '../../utils/sessionUtils';
 import { Button } from '../Button';
@@ -19,16 +19,21 @@ export default function PendingChoicePanel({ pendingChoice, session, idx, onAdva
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [customAnswer, setCustomAnswer] = useState('');
 
   useEffect(() => {
     setError(null);
     setSubmitted(false);
+    setShowCustomInput(false);
+    setCustomAnswer('');
   }, [pendingChoice]);
 
   const canSend = session.launchMode === 'pty' && session.ptyConnected !== false;
   const showSubmitPanel = questions.length > 1;
   const allSelected = idx >= questions.length;
   const current = questions[Math.min(idx, questions.length - 1)];
+  const isClaudeCode = session.type === 'claude-code';
 
   const handleChoice = async (choice: string) => {
     if (!canSend) return;
@@ -68,6 +73,26 @@ export default function PendingChoicePanel({ pendingChoice, session, idx, onAdva
     } finally {
       setSending(false);
     }
+  };
+
+  const handleReject = async () => {
+    setSending(true);
+    setError(null);
+    try {
+      await rejectTool(session.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reject tool');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleCustomSubmit = async () => {
+    const text = customAnswer.trim();
+    if (!text) return;
+    setShowCustomInput(false);
+    setCustomAnswer('');
+    await handleChoice(text);
   };
 
   return (
@@ -144,6 +169,49 @@ export default function PendingChoicePanel({ pendingChoice, session, idx, onAdva
                     )}
                   </div>
                 )
+              )}
+
+              {isClaudeCode && canSend && (
+                <>
+                  {showCustomInput ? (
+                    <div className="flex gap-1 mt-0.5" onClick={e => e.stopPropagation()}>
+                      <input
+                        type="text"
+                        value={customAnswer}
+                        autoFocus
+                        onChange={e => setCustomAnswer(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); handleCustomSubmit(); } if (e.key === 'Escape') { setShowCustomInput(false); } }}
+                        className="flex-1 text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                        placeholder="Type your answer..."
+                      />
+                      <Button size="sm" variant="primary" disabled={sending || !customAnswer.trim()} onClick={e => { e.stopPropagation(); handleCustomSubmit(); }}>
+                        Send
+                      </Button>
+                      <Button size="sm" variant="ghost" disabled={sending} onClick={e => { e.stopPropagation(); setShowCustomInput(false); }}>
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={sending}
+                      onClick={e => { e.stopPropagation(); setShowCustomInput(true); }}
+                      className="text-left justify-start"
+                    >
+                      <span className="font-semibold">{current.choices.length + 1}. Type your own answer</span>
+                    </Button>
+                  )}
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    disabled={sending}
+                    onClick={e => { e.stopPropagation(); handleReject(); }}
+                    className="text-left justify-start"
+                  >
+                    <span className="font-semibold">{current.choices.length + 2}. Reject tool</span>
+                  </Button>
+                </>
               )}
             </div>
           )}
