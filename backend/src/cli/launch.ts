@@ -222,7 +222,7 @@ const sendPromptInterwriteDelayV2 = async (prompt: string, skipEnter = false): P
   log(`focus-in`);
   pty.write('\x1b[I');
   await delay(WRITE_DELAY_MS);
-  log(`pty.write promptLen=${prompt.length}`);
+  log(`pty.write promptLen=${prompt.length} prompt=${JSON.stringify(prompt)}`);
   pty.write(prompt);
   await delay(WRITE_DELAY_MS);
   // skipEnter is true when ask_user|AskUserQuestion tool is being handled
