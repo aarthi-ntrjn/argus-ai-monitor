@@ -1,6 +1,11 @@
 import { execSync } from 'child_process';
+import { readFileSync } from 'fs';
+import { createRequire } from 'module';
 import { platform } from 'os';
+import { basename } from 'path';
 import type { SessionType } from '../models/index.js';
+
+const PLATFORM = platform();
 
 const YOLO_FLAGS: Record<SessionType, string> = {
   'claude-code': '--dangerously-skip-permissions',
@@ -23,37 +28,76 @@ function detectYoloMode(pid: number, type: SessionType): boolean | null {
 
 function getProcessCommandLine(pid: number): string | null {
   try {
-    if (platform() === 'win32') {
+    if (PLATFORM === 'win32') {
       const out = execSync(
         `powershell -NoProfile -Command "(Get-CimInstance Win32_Process -Filter 'ProcessId = ${pid}' -ErrorAction SilentlyContinue).CommandLine"`,
         { encoding: 'utf-8', timeout: 3000 }
       ).trim();
       return out || null;
-    } else {
-      const out = execSync(`ps -o args= -p ${pid}`, {
-        encoding: 'utf-8',
-        timeout: 3000,
-      }).trim();
-      return out || null;
     }
+    if (PLATFORM === 'linux') {
+      // Direct /proc read — no child-process spawn needed on Linux.
+      const raw = readFileSync(`/proc/${pid}/cmdline`);
+      return raw.toString('utf8').replace(/\0/g, ' ').trim() || null;
+    }
+    // macOS: no /proc, fall back to ps.
+    const out = execSync(`ps -o args= -p ${pid}`, {
+      encoding: 'utf-8',
+      timeout: 3000,
+    }).trim();
+    return out || null;
   } catch {
     return null;
   }
 }
 
-/**
- * Get the base process name for the given PID on Windows only.
- * Uses Get-Process (Win32 API, no WMI).
- */
-function getProcessName(pid: number): string | null {
+// Lazy-initialized Windows-native process name lookup via koffi FFI.
+// Avoids spawning a PowerShell process on every scan cycle.
+type Win32GetNameFn = (pid: number) => string | null;
+let _win32GetName: Win32GetNameFn | null | undefined = undefined;
+
+function initWin32GetName(): Win32GetNameFn | null {
+  if (PLATFORM !== 'win32') return null;
   try {
-    return execSync(
-      `powershell -NoProfile -Command "(Get-Process -Id ${pid} -ErrorAction SilentlyContinue).Name"`,
-      { encoding: 'utf-8', timeout: 3000 }
-    ).trim() || null;
+    // Use createRequire so the load is synchronous and any failure is caught here.
+    const _require = createRequire(import.meta.url);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const koffi = _require('koffi') as any;
+    const kernel32 = koffi.load('kernel32.dll');
+
+    const PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+    const WCHAR_BUFSIZE = 32767; // supports extended-length paths
+
+    const OpenProcess = kernel32.func(
+      'void* __stdcall OpenProcess(uint32 dwDesiredAccess, bool bInheritHandle, uint32 dwProcessId)'
+    );
+    const CloseHandle = kernel32.func('bool __stdcall CloseHandle(void* hObject)');
+    const QueryFullProcessImageNameW = kernel32.func(
+      'bool __stdcall QueryFullProcessImageNameW(void* hProcess, uint32 dwFlags, void* lpExeName, _Inout_ uint32* lpdwSize)'
+    );
+
+    return (pid: number): string | null => {
+      const handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
+      if (!handle) return null;
+      try {
+        const buf = Buffer.alloc(WCHAR_BUFSIZE * 2); // 2 bytes per UTF-16 char
+        const size = [WCHAR_BUFSIZE]; // in: capacity; out: chars written (excluding NUL)
+        const ok = QueryFullProcessImageNameW(handle, 0, buf, size);
+        if (!ok || size[0] === 0) return null;
+        const fullPath = buf.toString('utf16le', 0, size[0] * 2);
+        return basename(fullPath).replace(/\.exe$/i, '');
+      } finally {
+        CloseHandle(handle);
+      }
+    };
   } catch {
-    return null;
+    return null; // koffi unavailable — isExpectedProcess will fail open
   }
+}
+
+function getProcessNameWin32(pid: number): string | null {
+  if (_win32GetName === undefined) _win32GetName = initWin32GetName();
+  return _win32GetName ? _win32GetName(pid) : null;
 }
 
 function isAiToolCmdLine(cmdLine: string, type: SessionType): boolean {
@@ -72,17 +116,20 @@ function isAiToolName(name: string, type: SessionType): boolean {
 
 /**
  * Guard 3: verify the process at the given PID is the expected AI tool.
- * Fails open (returns true) when the command line cannot be read.
+ * Fails open (returns true) when the process name cannot be read.
  *
- * On Linux/Mac we use the full command line (ps -o args=) rather than the short
- * kernel name (/proc/pid/comm). The kernel name is useless here: it returns "node"
- * for any Node.js binary regardless of the script being run (e.g. /usr/local/bin/copilot).
- * On Windows we fall back to the short process name from Get-Process because
- * Get-CimInstance CommandLine is slower and less reliable for this check.
+ * On Windows: uses koffi FFI to call QueryFullProcessImageNameW directly —
+ * sub-millisecond, no child-process spawn.
+ * On Linux: reads /proc/<pid>/cmdline — no process spawn needed.
+ * On macOS: falls back to spawning ps.
+ *
+ * The full command line (not just the kernel short name) is used on Linux/Mac
+ * because Node.js binaries (e.g. /usr/local/bin/copilot) report as "node" in
+ * /proc/pid/comm regardless of the script being run.
  */
 export function isExpectedProcess(pid: number, type: SessionType): boolean {
-  if (platform() === 'win32') {
-    const name = getProcessName(pid);
+  if (PLATFORM === 'win32') {
+    const name = getProcessNameWin32(pid);
     if (!name) return true; // cannot verify — fail open
     return isAiToolName(name, type);
   }
