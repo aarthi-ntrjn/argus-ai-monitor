@@ -204,13 +204,14 @@ const launcherRoutes: FastifyPluginAsync = async (fastify) => {
         const claudeSessionId = ptyLaunchId ? ptyRegistry.getClaimedId(ptyLaunchId) : null;
         if (claudeSessionId) {
           const now = new Date().toISOString();
-          updateSessionStatus(claudeSessionId, 'ended', now);
           const session = getSession(claudeSessionId);
-          if (session) {
+          const alreadyEnded = !session || session.status === 'ended';
+          updateSessionStatus(claudeSessionId, 'ended', now);
+          if (session && !alreadyEnded) {
             broadcast({
               type: 'session.ended',
               timestamp: now,
-              data: session,
+              data: { ...session, status: 'ended' as const, endedAt: now },
             });
             telemetryService.sendEvent('session_ended', {
               sessionType: session.type,
