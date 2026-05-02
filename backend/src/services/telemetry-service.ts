@@ -96,7 +96,7 @@ export class TelemetryService {
       timestamp: new Date().toISOString(),
     };
 
-    log.info(`sendEvent type=${type} appVersion=${appVersion}`);
+    log.info(`sendEvent type=${type} appVersion=${appVersion} props=${JSON.stringify({ os_platform: OS_PLATFORM, os_arch: OS_ARCH, ...integrationProps, ...extra })}`);
 
     void (async () => {
       try {
