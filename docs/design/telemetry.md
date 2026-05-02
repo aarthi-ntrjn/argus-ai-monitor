@@ -86,7 +86,7 @@ Event-specific properties included in `properties`:
 | `sessionId` | `string` (UUID) | `session_started`, `session_ended`, `session_stopped`, `session_prompt_sent` |
 | `launchMode` | `"connected" \| "readonly"` | `session_started`, `session_ended`, `session_stopped`, `session_prompt_sent` |
 | `yoloMode` | `boolean` | `session_started`, `session_ended`, `session_stopped`, `session_prompt_sent` |
-| `platform` | `"slack" \| "teams"` | `integration_started`, `integration_stopped` |
+| `integration_platform` | `"slack" \| "teams"` | `integration_started`, `integration_stopped` |
 
 No `$ip` or `$geoip_disable` properties are set. PostHog derives location from the connection IP natively (see GeoIP section below).
 

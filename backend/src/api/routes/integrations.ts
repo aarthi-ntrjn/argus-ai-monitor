@@ -69,7 +69,7 @@ const integrationsRoutes: FastifyPluginAsync = async (fastify) => {
     if (slackListener) await slackListener.initialize();
     setIntegrationEnabled('slack', true);
     telemetryService.setIntegrationStatus('slack', true);
-    telemetryService.sendEvent('integration_started', { platform: 'slack' });
+    telemetryService.sendEvent('integration_started', { integration_platform: 'slack' });
     return reply.send({ started });
   });
 
@@ -79,7 +79,7 @@ const integrationsRoutes: FastifyPluginAsync = async (fastify) => {
     slackNotifier.shutdown();
     setIntegrationEnabled('slack', false);
     telemetryService.setIntegrationStatus('slack', false);
-    telemetryService.sendEvent('integration_stopped', { platform: 'slack' });
+    telemetryService.sendEvent('integration_stopped', { integration_platform: 'slack' });
     return reply.send({ stopped: true });
   });
 
@@ -89,7 +89,7 @@ const integrationsRoutes: FastifyPluginAsync = async (fastify) => {
     teamsListener?.initialize();
     setIntegrationEnabled('teams', true);
     telemetryService.setIntegrationStatus('teams', true);
-    telemetryService.sendEvent('integration_started', { platform: 'teams' });
+    telemetryService.sendEvent('integration_started', { integration_platform: 'teams' });
     return reply.send({ started });
   });
 
@@ -99,7 +99,7 @@ const integrationsRoutes: FastifyPluginAsync = async (fastify) => {
     teamsNotifier.shutdown();
     setIntegrationEnabled('teams', false);
     telemetryService.setIntegrationStatus('teams', false);
-    telemetryService.sendEvent('integration_stopped', { platform: 'teams' });
+    telemetryService.sendEvent('integration_stopped', { integration_platform: 'teams' });
     return reply.send({ stopped: true });
   });
 };
