@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { homedir } from 'os';
+import { homedir, platform, arch } from 'os';
 import { randomUUID } from 'crypto';
 import type { TelemetryEventType } from '../models/index.js';
 import { loadConfig } from '../config/config-loader.js';
@@ -18,6 +18,9 @@ const POSTHOG_URL = 'https://app.posthog.com/capture/';
 function getIdPath(): string {
   return process.env.ARGUS_TELEMETRY_ID_PATH ?? join(homedir(), '.argus', 'telemetry-id');
 }
+
+const OS_PLATFORM = ({ darwin: 'macos', win32: 'windows' } as Record<string, string>)[platform()] ?? 'linux';
+const OS_ARCH = arch();
 
 export class TelemetryService {
   private installationId: string | null = null;
@@ -89,7 +92,7 @@ export class TelemetryService {
       api_key: POSTHOG_API_KEY,
       distinct_id: installationId,
       event: type,
-      properties: { appVersion, ...integrationProps, ...extra },
+      properties: { appVersion, os_platform: OS_PLATFORM, os_arch: OS_ARCH, ...integrationProps, ...extra },
       timestamp: new Date().toISOString(),
     };
 

@@ -26,7 +26,7 @@ Telemetry is **opt-out** (enabled by default). The user can disable it at any ti
 - File paths, repository names, or code content.
 - Usernames, account names, or any identity linked to a person.
 - Full IP address (it must not appear in stored event records).
-- OS or hardware fingerprints.
+- OS or hardware fingerprints beyond the platform name and CPU architecture.
 
 ### Privacy constraints
 
@@ -70,6 +70,8 @@ Each event sent to PostHog has this shape:
   event: TelemetryEventType,
   properties: {
     appVersion: string,       // e.g. "0.3.1"
+    os_platform: string,      // "windows" | "macos" | "linux"
+    os_arch: string,          // "x64" | "arm64" | etc.
     ...eventProperties,       // event-specific properties (see table below)
   },
   timestamp: string,          // ISO 8601 UTC
