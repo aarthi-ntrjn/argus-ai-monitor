@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { sendPrompt, rejectTool } from '../../services/api';
+import { sendPrompt } from '../../services/api';
 import type { Session } from '../../types';
 import type { PendingChoice, PendingChoiceItem } from '../../utils/sessionUtils';
 import { Button } from '../Button';
@@ -65,18 +65,6 @@ export default function PendingChoicePanel({ pendingChoice, session, idx, onAdva
       setSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send');
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const handleReject = async () => {
-    setSending(true);
-    setError(null);
-    try {
-      await rejectTool(session.id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to reject tool');
     } finally {
       setSending(false);
     }
@@ -170,13 +158,13 @@ export default function PendingChoicePanel({ pendingChoice, session, idx, onAdva
                     <span className="font-semibold">{current.choices.length + 1}. Type your own answer</span>
                   </Button>
                   <Button
-                    variant="danger"
+                    variant="outline"
                     size="sm"
                     disabled={sending}
-                    onClick={e => { e.stopPropagation(); handleReject(); }}
-                    className="text-left justify-start"
+                    onClick={e => { e.stopPropagation(); void sendPrompt(session.id, '\x1b', { raw: true }); }}
+                    className="text-left justify-start text-gray-400 border-gray-200"
                   >
-                    <span className="font-semibold">{current.choices.length + 2}. Reject tool</span>
+                    Press Esc to interrupt
                   </Button>
                 </>
               )}
