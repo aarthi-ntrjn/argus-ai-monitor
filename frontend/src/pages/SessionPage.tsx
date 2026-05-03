@@ -62,6 +62,7 @@ export default function SessionPage() {
           <button onClick={() => navigate('/')} className="icon-btn text-sm font-medium text-gray-700 hover:text-blue-600 mb-2 flex items-center gap-1">
             <ArrowLeft size={14} />Back
           </button>
+          {repo && <RepoContextBar repo={repo} />}
           <div className="bg-white rounded-lg shadow px-3 pt-3 pb-2" data-tour-id="session-status">
             <SessionMetaRow
               session={session}
@@ -77,7 +78,6 @@ export default function SessionPage() {
               This session has ended.
             </div>
           )}
-          {repo && <RepoContextBar repo={repo} />}
         </div>
       </div>
 
