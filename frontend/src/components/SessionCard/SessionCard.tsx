@@ -42,6 +42,12 @@ function SessionCard({ session, selected, onSelect }: Props) {
   const [customChoiceNumber, setCustomChoiceNumber] = useState<string | null>(null);
   useEffect(() => { setQuestionIdx(0); setCustomChoiceNumber(null); }, [hookPendingChoice]);
 
+  const pendingQuestions = hookPendingChoice?.allQuestions ?? (hookPendingChoice ? [{ question: hookPendingChoice.question, choices: hookPendingChoice.choices }] : []);
+  const currentQuestion = pendingQuestions[Math.min(questionIdx, pendingQuestions.length - 1)];
+  const implicitChoiceNumber = currentQuestion && currentQuestion.choices.length > 0
+    ? String(currentQuestion.choices.length + 1)
+    : null;
+
   const promptBarRef = useRef<SessionPromptBarHandle>(null);
 
   const items = lastOutput?.items ?? [];
@@ -89,7 +95,7 @@ function SessionCard({ session, selected, onSelect }: Props) {
 
       {session.launchMode === 'pty' && (
         <div onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
-          <SessionPromptBar ref={promptBarRef} session={session} customChoiceNumber={customChoiceNumber} onCustomAnswerSent={() => setCustomChoiceNumber(null)} onPromptSent={pendingChoice ? () => setQuestionIdx(i => i + 1) : undefined} />
+          <SessionPromptBar ref={promptBarRef} session={session} customChoiceNumber={customChoiceNumber} implicitChoiceNumber={pendingChoice ? implicitChoiceNumber : null} onCustomAnswerSent={() => setCustomChoiceNumber(null)} onPromptSent={pendingChoice ? () => setQuestionIdx(i => i + 1) : undefined} />
         </div>
       )}
 

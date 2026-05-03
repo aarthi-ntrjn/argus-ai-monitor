@@ -9,6 +9,7 @@ import { usePromptHistory } from '../../hooks/usePromptHistory';
 interface Props {
   session: Session;
   customChoiceNumber?: string | null;
+  implicitChoiceNumber?: string | null;
   onCustomAnswerSent?: () => void;
   onPromptSent?: () => void;
 }
@@ -19,7 +20,7 @@ export interface SessionPromptBarHandle {
 
 type ConnectionState = 'readonly' | 'connecting' | 'connected';
 
-const SessionPromptBar = forwardRef<SessionPromptBarHandle, Props>(function SessionPromptBar({ session, customChoiceNumber, onCustomAnswerSent, onPromptSent }, ref) {
+const SessionPromptBar = forwardRef<SessionPromptBarHandle, Props>(function SessionPromptBar({ session, customChoiceNumber, implicitChoiceNumber, onCustomAnswerSent, onPromptSent }, ref) {
   const connectionState: ConnectionState =
     session.launchMode !== 'pty' ? 'readonly' :
     session.ptyConnected === false ? 'connecting' : 'connected';
@@ -46,8 +47,9 @@ const SessionPromptBar = forwardRef<SessionPromptBarHandle, Props>(function Sess
     setError(null);
     setSending(true);
     try {
-      if (customChoiceNumber) {
-        await sendPromptWithChoice(session.id, customChoiceNumber, text);
+      const effectiveChoiceNumber = customChoiceNumber ?? implicitChoiceNumber;
+      if (effectiveChoiceNumber) {
+        await sendPromptWithChoice(session.id, effectiveChoiceNumber, text);
         onCustomAnswerSent?.();
       } else {
         await sendPrompt(session.id, text);
