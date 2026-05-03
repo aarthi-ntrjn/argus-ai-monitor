@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.15] - 2026-05-03
+
+### Added
+
+- **Choice panel, type your own answer**: Both Claude Code and Copilot sessions now show a "Type your own answer" button in the Attention Needed panel. Clicking it forwards the implicit choice number to the prompt bar and focuses it; submitting sends the choice number and custom text together as a single action. Typing directly in the prompt bar while a choice is pending also routes through the same path automatically.
+- **Choice panel, Esc to interrupt**: The Reject button has been replaced with a gray "Press Esc to interrupt" button, and the Escape key in the prompt bar now sends a raw ESC signal directly to the PTY for application-level interruption.
+- **Attention Needed auto-dismiss**: The Attention Needed banner now dismisses automatically when the session is interrupted or when a clarify rejection is detected.
+- **Session detail page, repo context bar**: Repository and branch context is now shown in a dedicated RepoContextBar on the session detail page only, instead of being embedded in the output pane header.
+- **Teams and Slack integration**: Full Teams and Slack notification integrations with start/stop controls in the header, an editable Settings dialog with General/Teams/Slack tabs, standalone setup guide pages, and a 4-state connection UX (unconfigured, stopped, connecting, connected). Supports prompt injection from Teams and Slack threads.
+- **Settings panel links**: The Settings panel version row now links to the website, GitHub repository, and npm package. A feedback row provides quick links to file bug reports and feature requests.
+- **Telemetry enrichment**: Telemetry events now include OS platform and architecture. Location enrichment is provided via PostHog native GeoIP. Integration status is reported as a rich enum instead of a boolean.
+
+### Fixed
+
+- **ESC interrupt**: ESC prompt now correctly triggers the interrupt path regardless of the `skipEnter` flag.
+- **Session page, ended banner**: Ended sessions now display a dead-session banner in place of the prompt bar.
+- **Dashboard, session selection**: The selected session is now preserved on page refresh by deferring auto-switch until sessions have loaded.
+- **Copilot ask_user, no choices**: The Attention Needed panel now correctly displays the question text when the ask_user tool provides no numbered choices (T126).
+- **Process detection**: Ghost PID guard added to ClaudeCodeDetector; process name is verified against the lock file PID to prevent false-positives from PID reuse; copilot.exe.old is handled correctly during auto-update.
+- **Telemetry**: Duplicate session_ended events are suppressed across all end paths for PTY Claude sessions.
+- **Logging**: Log level labels are now colorized and timestamps use local time in createTaggedLogger output.
+- **Output pane header**: Branch badge, diff link, and session GUID are now positioned consistently to match the repository card layout.
+
+### Changed
+
+- **Process utilities (Windows)**: Replaced PowerShell and WMI process spawns with koffi FFI and NtQueryInformationProcess for significantly lower-overhead process name and command-line lookup on Windows.
+- **Backend logging**: All backend components standardized to createTaggedLogger with colored component tags and structured output.
+
+---
+
 ## [0.1.14] - 2026-04-21
 
 ### Added
