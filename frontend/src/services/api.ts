@@ -94,6 +94,10 @@ export async function sendPrompt(id: string, prompt: string, opts?: { raw?: bool
   return apiFetch<ControlAction>(`/sessions/${id}/send`, { method: 'POST', body: JSON.stringify({ prompt, ...(opts?.raw ? { raw: true } : {}) }) });
 }
 
+export async function sendPromptWithChoice(id: string, choiceNumber: string, prompt: string): Promise<ControlAction> {
+  return apiFetch<ControlAction>(`/sessions/${id}/send-with-choice`, { method: 'POST', body: JSON.stringify({ choiceNumber, prompt }) });
+}
+
 export async function getTodos(): Promise<TodoItem[]> {
   return apiFetch<TodoItem[]>('/todos');
 }

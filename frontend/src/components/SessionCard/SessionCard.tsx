@@ -39,7 +39,8 @@ function SessionCard({ session, selected, onSelect }: Props) {
   const kill = useKillSession();
 
   const [questionIdx, setQuestionIdx] = useState(0);
-  useEffect(() => { setQuestionIdx(0); }, [hookPendingChoice]);
+  const [customChoiceNumber, setCustomChoiceNumber] = useState<string | null>(null);
+  useEffect(() => { setQuestionIdx(0); setCustomChoiceNumber(null); }, [hookPendingChoice]);
 
   const promptBarRef = useRef<SessionPromptBarHandle>(null);
 
@@ -66,7 +67,7 @@ function SessionCard({ session, selected, onSelect }: Props) {
 
       {/* Summary / topic */}
       {pendingChoice !== null ? (
-        <PendingChoicePanel pendingChoice={pendingChoice} session={session} idx={questionIdx} onAdvance={() => setQuestionIdx(i => i + 1)} onFocusPromptBar={() => promptBarRef.current?.focusInput()} />
+        <PendingChoicePanel pendingChoice={pendingChoice} session={session} idx={questionIdx} onAdvance={() => setQuestionIdx(i => i + 1)} onFocusPromptBar={() => promptBarRef.current?.focusInput()} onTypeAnswer={(n) => { setCustomChoiceNumber(n); promptBarRef.current?.focusInput(); }} />
       ) : (
         <p className={`text-sm mt-2 truncate ${session.summary ? 'text-gray-600' : 'text-gray-500 italic'}`}>
           {session.summary || 'Nothing sent yet'}
@@ -88,7 +89,7 @@ function SessionCard({ session, selected, onSelect }: Props) {
 
       {session.launchMode === 'pty' && (
         <div onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
-          <SessionPromptBar ref={promptBarRef} session={session} onPromptSent={pendingChoice ? () => setQuestionIdx(i => i + 1) : undefined} />
+          <SessionPromptBar ref={promptBarRef} session={session} customChoiceNumber={customChoiceNumber} onCustomAnswerSent={() => setCustomChoiceNumber(null)} onPromptSent={pendingChoice ? () => setQuestionIdx(i => i + 1) : undefined} />
         </div>
       )}
 

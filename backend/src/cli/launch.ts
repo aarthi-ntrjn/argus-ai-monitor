@@ -253,6 +253,12 @@ const sendPromptInterwriteDelayV2 = async (prompt: string, skipEnter = false): P
 //   pty.write('\x1b[O');
 // };
 
+const sendChoiceWithAnswer = async (choiceNumber: string, answer: string): Promise<void> => {
+  log(`sendChoiceWithAnswer choice=${choiceNumber} answerLen=${answer.length}`);
+  await sendPromptInterwriteDelayV2(choiceNumber, false);
+  await sendPromptInterwriteDelayV2(answer, false);
+};
+
 // When Argus sends a prompt, deliver it to the PTY.
 // On any OS: use sendPromptInterwriteDelay (inter-write delays required for the Console API).
 // All other cases: use sendPromptNoDelay.
@@ -267,6 +273,17 @@ client.onSendPrompt(async (actionId: string, prompt: string, skipEnter: boolean)
     client.ackDelivered(actionId);
   } catch (err: unknown) {
     log(`prompt delivery failed: ${err}`);
+    client.ackFailed(actionId, err instanceof Error ? err.message : 'prompt delivery failed');
+  }
+});
+
+client.onSendChoiceWithPrompt(async (actionId: string, choiceNumber: string, prompt: string) => {
+  log(`onSendChoiceWithPrompt actionId=${actionId} choiceNumber=${choiceNumber} promptLen=${prompt.length}`);
+  try {
+    await sendChoiceWithAnswer(choiceNumber, prompt);
+    client.ackDelivered(actionId);
+  } catch (err: unknown) {
+    log(`choice+prompt delivery failed: ${err}`);
     client.ackFailed(actionId, err instanceof Error ? err.message : 'prompt delivery failed');
   }
 });

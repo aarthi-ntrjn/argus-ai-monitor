@@ -9,12 +9,14 @@ interface RegisterInfo {
 }
 
 type PromptCallback = (actionId: string, prompt: string, skipEnter: boolean) => void | Promise<void>;
+type ChoiceWithPromptCallback = (actionId: string, choiceNumber: string, prompt: string) => void | Promise<void>;
 
 export class ArgusLaunchClient {
   private ws!: WebSocket;
   private url: string;
   private registerInfo: RegisterInfo | null = null;
   private promptCallback: PromptCallback | null = null;
+  private choiceWithPromptCallback: ChoiceWithPromptCallback | null = null;
   private isClosing = false;
   private pendingPid: number | null = null;
   private log: (msg: string) => void;
@@ -46,6 +48,10 @@ export class ArgusLaunchClient {
 
   onSendPrompt(cb: PromptCallback): void {
     this.promptCallback = cb;
+  }
+
+  onSendChoiceWithPrompt(cb: ChoiceWithPromptCallback): void {
+    this.choiceWithPromptCallback = cb;
   }
 
   ackDelivered(actionId: string): void {
@@ -92,7 +98,7 @@ export class ArgusLaunchClient {
   }
 
   private handleMessage(data: Buffer): void {
-    let msg: { type: string; actionId?: string; prompt?: string; skipEnter?: boolean };
+    let msg: { type: string; actionId?: string; prompt?: string; skipEnter?: boolean; choiceNumber?: string };
     try {
       msg = JSON.parse(data.toString());
     } catch {
@@ -114,6 +120,10 @@ export class ArgusLaunchClient {
 
     if (msg.type === 'send_prompt' && msg.actionId && msg.prompt !== undefined) {
       this.promptCallback?.(msg.actionId, msg.prompt, !!msg.skipEnter);
+    }
+
+    if (msg.type === 'send_choice_with_prompt' && msg.actionId && msg.choiceNumber !== undefined && msg.prompt !== undefined) {
+      this.choiceWithPromptCallback?.(msg.actionId, msg.choiceNumber, msg.prompt);
     }
   }
 

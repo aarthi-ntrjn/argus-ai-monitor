@@ -10,9 +10,10 @@ interface Props {
   idx: number;
   onAdvance: () => void;
   onFocusPromptBar?: () => void;
+  onTypeAnswer?: (choiceNumber: string) => void;
 }
 
-export default function PendingChoicePanel({ pendingChoice, session, idx, onAdvance, onFocusPromptBar }: Props) {
+export default function PendingChoicePanel({ pendingChoice, session, idx, onAdvance, onFocusPromptBar, onTypeAnswer }: Props) {
   const questions: PendingChoiceItem[] = pendingChoice.allQuestions ?? [
     { question: pendingChoice.question, choices: pendingChoice.choices },
   ];
@@ -152,10 +153,10 @@ export default function PendingChoicePanel({ pendingChoice, session, idx, onAdva
                     variant="outline"
                     size="sm"
                     disabled={sending}
-                    onClick={e => { e.stopPropagation(); void handleChoice(String(current.choices.length + 1)); onFocusPromptBar?.(); }}
+                    onClick={e => { e.stopPropagation(); onTypeAnswer?.(String(current.choices.length + 1)); onFocusPromptBar?.(); }}
                     className="text-left justify-start"
                   >
-                    <span className="font-semibold">{current.choices.length + 1}. Type your own answer</span>
+                    Type an answer
                   </Button>
                   <Button
                     variant="outline"

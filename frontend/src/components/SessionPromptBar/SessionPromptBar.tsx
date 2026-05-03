@@ -1,13 +1,15 @@
 import { useState, useRef, useImperativeHandle, forwardRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CornerDownLeft } from 'lucide-react';
-import { sendPrompt, getSessionOutput } from '../../services/api';
+import { sendPrompt, sendPromptWithChoice, getSessionOutput } from '../../services/api';
 import type { Session } from '../../types';
 import { Button } from '../Button';
 import { usePromptHistory } from '../../hooks/usePromptHistory';
 
 interface Props {
   session: Session;
+  customChoiceNumber?: string | null;
+  onCustomAnswerSent?: () => void;
   onPromptSent?: () => void;
 }
 
@@ -17,7 +19,7 @@ export interface SessionPromptBarHandle {
 
 type ConnectionState = 'readonly' | 'connecting' | 'connected';
 
-const SessionPromptBar = forwardRef<SessionPromptBarHandle, Props>(function SessionPromptBar({ session, onPromptSent }, ref) {
+const SessionPromptBar = forwardRef<SessionPromptBarHandle, Props>(function SessionPromptBar({ session, customChoiceNumber, onCustomAnswerSent, onPromptSent }, ref) {
   const connectionState: ConnectionState =
     session.launchMode !== 'pty' ? 'readonly' :
     session.ptyConnected === false ? 'connecting' : 'connected';
@@ -44,7 +46,12 @@ const SessionPromptBar = forwardRef<SessionPromptBarHandle, Props>(function Sess
     setError(null);
     setSending(true);
     try {
-      await sendPrompt(session.id, text);
+      if (customChoiceNumber) {
+        await sendPromptWithChoice(session.id, customChoiceNumber, text);
+        onCustomAnswerSent?.();
+      } else {
+        await sendPrompt(session.id, text);
+      }
       history.addEntry(text);
       setPrompt('');
       onPromptSent?.();
