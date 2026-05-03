@@ -85,7 +85,7 @@ export default function OutputPane({ session, repo, onClose, className, 'data-to
               </div>
             </>
           ) : null}
-          <span className="font-mono text-[10px] text-gray-400 truncate">{session.id}</span>
+          <span className="text-xs font-medium text-gray-600 truncate">Session <span className="font-mono text-[10px] text-gray-500">{session.id}</span></span>
         </div>
         <div className="flex items-center gap-2">
           <Button
