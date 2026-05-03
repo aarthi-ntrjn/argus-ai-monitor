@@ -73,11 +73,6 @@ export default function SessionPage() {
               <p className="font-mono text-sm text-gray-800 mt-2 px-1">{session.summary}</p>
             )}
           </div>
-          {ENDED_STATUSES.has(session.status) && (
-            <div role="alert" className="mt-2 px-3 py-2 bg-gray-100 border border-gray-300 rounded text-gray-600 text-sm">
-              This session has ended.
-            </div>
-          )}
         </div>
       </div>
 
@@ -92,7 +87,13 @@ export default function SessionPage() {
           />
 
           <div data-tour-id="session-prompt-bar" className="mt-2 shrink-0">
-            <SessionPromptBar session={session} />
+            {ENDED_STATUSES.has(session.status) ? (
+              <div role="alert" className="px-3 py-2 bg-gray-100 border border-gray-300 rounded text-gray-600 text-sm text-center">
+                This session has ended.
+              </div>
+            ) : (
+              <SessionPromptBar session={session} />
+            )}
           </div>
 
         </div>
