@@ -219,19 +219,13 @@ const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 // };
 
 const sendPromptInterwriteDelayV2 = async (prompt: string, skipEnter = false): Promise<void> => {
-  // Raw single-char control signals (e.g. ESC) must be written bare — wrapping them in
-  // focus-in/focus-out changes what the process sees and breaks their intended effect.
-  const isRawControlChar = skipEnter && prompt.length === 1;
-
-  if (!isRawControlChar) {
-    log(`focus-in`);
-    pty.write('\x1b[I');
-    await delay(WRITE_DELAY_MS);
-  }
+  log(`focus-in`);
+  pty.write('\x1b[I');
+  await delay(WRITE_DELAY_MS);
   log(`pty.write promptLen=${prompt.length} prompt=${JSON.stringify(prompt)}`);
   pty.write(prompt);
   await delay(WRITE_DELAY_MS);
-  // Single-char raw signals skip Enter; longer prompts always need it.
+  // Single-char prompts (choice index digits) respect skipEnter; longer prompts always need Enter.
   if (!skipEnter || prompt.length > 1) {
     // Without this keyboard mimic of '\r', Windows does not recognize the end of the sentence.
     log(`pty.write enter`);
@@ -239,11 +233,9 @@ const sendPromptInterwriteDelayV2 = async (prompt: string, skipEnter = false): P
   } else {
     log(`pty.write enter skipped (skipEnter=true, promptLen=1)`);
   }
-  if (!isRawControlChar) {
-    log(`focus-out`);
-    pty.write('\x1b[O');
-    await delay(WRITE_DELAY_MS);
-  }
+  log(`focus-out`);
+  pty.write('\x1b[O');
+  await delay(WRITE_DELAY_MS);
 };
 
 // sendPromptNoDelay: POSIX pty.write path without inter-write delays. Even on POSIX, we are seeing bug where enter is not getting sent.
