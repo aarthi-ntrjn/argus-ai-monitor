@@ -265,7 +265,7 @@ const sendChoiceWithAnswer = async (choiceNumber: string, answer: string): Promi
 client.onSendPrompt(async (actionId: string, prompt: string, skipEnter: boolean) => {
   log(`onSendPrompt actionId=${actionId} promptLen=${prompt.length} skipEnter=${skipEnter}`);
   try {
-    if (skipEnter && prompt === '\x1b') {
+    if (prompt === '\x1b') {
       sendInterrupt();
     } else {
       await sendPromptInterwriteDelayV2(prompt, skipEnter);
