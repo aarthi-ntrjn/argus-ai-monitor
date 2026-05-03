@@ -58,24 +58,6 @@ export default function SessionPromptBar({ session, onPromptSent }: Props) {
     }
   };
 
-  const handleSendRaw = async () => {
-    const text = prompt.trim();
-    if (!text) return;
-    setSending(true);
-    setError(null);
-    try {
-      await sendPrompt(session.id, text, { raw: true });
-      history.addEntry(text);
-      setPrompt('');
-      onPromptSent?.();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : '';
-      setError(msg === 'Failed to fetch' ? 'Failed to send — server not reachable' : (msg || 'Failed to send'));
-    } finally {
-      setSending(false);
-      setTimeout(() => inputRef.current?.focus(), 0);
-    }
-  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -85,11 +67,7 @@ export default function SessionPromptBar({ session, onPromptSent }: Props) {
     if (e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation();
-      if (prompt.trim()) {
-        handleSendRaw();
-      } else {
-        handleInterrupt();
-      }
+      handleInterrupt();
     }
     if (e.key === 'ArrowUp') {
       e.preventDefault();
