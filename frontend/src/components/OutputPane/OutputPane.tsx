@@ -59,11 +59,15 @@ export default function OutputPane({ session, repo, onClose, className, 'data-to
         <div className="flex flex-col min-w-0">
           {repo ? (
             <>
-              <span className="text-xs font-semibold text-gray-700 truncate">
-                {repo.name}
-                {repo.branch && <span className="ml-1 font-normal text-gray-500">({repo.branch})</span>}
-              </span>
-              <span className="text-[10px] text-gray-400 truncate" title={repo.path}>{repo.path}</span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs font-semibold text-gray-900 truncate">{repo.name}</span>
+                {repo.branch && (
+                  <span className="inline-flex items-center gap-1 text-xs font-mono text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
+                    ⎇ {repo.branch}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 font-mono truncate" title={repo.path}>{repo.path}</p>
             </>
           ) : null}
           <span className="font-mono text-[10px] text-gray-400 truncate">{session.id}</span>
