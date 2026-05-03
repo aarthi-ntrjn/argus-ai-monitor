@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CornerDownLeft } from 'lucide-react';
-import { sendPrompt, interruptSession, getSessionOutput } from '../../services/api';
+import { sendPrompt, getSessionOutput } from '../../services/api';
 import type { Session } from '../../types';
 import { Button } from '../Button';
 import { usePromptHistory } from '../../hooks/usePromptHistory';
@@ -49,16 +49,6 @@ export default function SessionPromptBar({ session, onPromptSent }: Props) {
     }
   };
 
-  const handleInterrupt = async () => {
-    setError(null);
-    try {
-      await interruptSession(session.id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to interrupt');
-    }
-  };
-
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -67,7 +57,7 @@ export default function SessionPromptBar({ session, onPromptSent }: Props) {
     if (e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation();
-      handleInterrupt();
+      void sendPrompt(session.id, '\x1b', { raw: true });
     }
     if (e.key === 'ArrowUp') {
       e.preventDefault();
