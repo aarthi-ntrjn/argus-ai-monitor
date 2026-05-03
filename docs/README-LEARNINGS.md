@@ -5,6 +5,17 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 
 ---
 
+## T126 — Copilot ask_user question text not shown when no choices provided
+
+**Date**: 2026-05-02
+**Symptom**: When a Copilot session triggers an `ask_user` call with only a question and no choices, the Attention Needed panel appears but shows no question text.
+**Root cause**: `copilot-cli-jsonl-parser.ts` `extractContent()` uses a single-value shortcut: when `data.arguments` has exactly one key (just `question`, no `choices`), it returns the raw string value rather than JSON.stringify-ing the object. `CopilotJsonlWatcher.onNewOutputs()` then tries `JSON.parse(output.content)` on that raw string, which throws a SyntaxError. The catch block discarded the error and left `question = ''`, so an empty question was broadcast. The comment "content may not be JSON when choices is absent" acknowledged the case but provided no recovery.
+**Why it was missed**: The existing test for `pending_choice` detection only covered the multi-arg case (`question` + `choices`), which produces valid JSON. The single-arg (no choices) path was never tested, and the silent empty-string fallback in the catch block gave no observable signal during normal use.
+**How to prevent**: When a catch block has a comment explaining a known expected case, it must also handle that case, not just swallow the error. Any `catch { /* comment */ }` with no recovery code should be treated as a bug during review.
+**Fix summary**: In `copilot-jsonl-watcher.ts` `onNewOutputs()`, changed the catch block to set `question = output.content` so the raw string is used as the question when JSON parsing fails.
+
+---
+
 ## T123 — Branch name not updated on dashboard
 
 **Date**: 2026-04-14

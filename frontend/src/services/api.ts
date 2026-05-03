@@ -82,12 +82,20 @@ export async function interruptSession(id: string): Promise<{ actionId: string; 
   return apiFetch<{ actionId: string; status: string }>(`/sessions/${id}/interrupt`, { method: 'POST' });
 }
 
+export async function rejectTool(id: string): Promise<{ status: string }> {
+  return apiFetch<{ status: string }>(`/sessions/${id}/reject-tool`, { method: 'POST' });
+}
+
 export async function dismissSession(id: string): Promise<{ status: string }> {
   return apiFetch<{ status: string }>(`/sessions/${id}/dismiss`, { method: 'POST' });
 }
 
-export async function sendPrompt(id: string, prompt: string): Promise<ControlAction> {
-  return apiFetch<ControlAction>(`/sessions/${id}/send`, { method: 'POST', body: JSON.stringify({ prompt }) });
+export async function sendPrompt(id: string, prompt: string, opts?: { raw?: boolean }): Promise<ControlAction> {
+  return apiFetch<ControlAction>(`/sessions/${id}/send`, { method: 'POST', body: JSON.stringify({ prompt, ...(opts?.raw ? { raw: true } : {}) }) });
+}
+
+export async function sendPromptWithChoice(id: string, choiceNumber: string, prompt: string): Promise<ControlAction> {
+  return apiFetch<ControlAction>(`/sessions/${id}/send-with-choice`, { method: 'POST', body: JSON.stringify({ choiceNumber, prompt }) });
 }
 
 export async function getTodos(): Promise<TodoItem[]> {

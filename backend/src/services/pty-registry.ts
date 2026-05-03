@@ -201,6 +201,33 @@ export class PtyRegistry {
     });
   }
 
+  sendChoiceWithPrompt(sessionId: string, actionId: string, choiceNumber: string, prompt: string, timeoutMs = 30_000): Promise<void> {
+    const ws = this.connections.get(sessionId);
+    log.info(`sendChoiceWithPrompt: sessionId=${sessionId} wsFound=${!!ws} wsState=${ws?.readyState}`);
+    if (!ws) {
+      return Promise.reject(new Error(`Session ${sessionId} launcher is not connected to Argus`));
+    }
+
+    if (ws.readyState !== WebSocket.OPEN) {
+      log.warn(` removing stale connection sessionId=${sessionId} wsState=${ws.readyState}`);
+      this.connections.delete(sessionId);
+      return Promise.reject(new Error(`Session ${sessionId} launcher is not connected to Argus`));
+    }
+
+    return new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        this.pending.delete(actionId);
+        log.info(`sendChoiceWithPrompt: TIMEOUT — no ack received within ${timeoutMs}ms actionId=${actionId} sessionId=${sessionId}`);
+        reject(new Error(`Prompt delivery timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+
+      this.pending.set(actionId, { resolve, reject, timeout });
+      const msg = JSON.stringify({ type: 'send_choice_with_prompt', actionId, choiceNumber, prompt });
+      log.info(`sendChoiceWithPrompt: sending WS message actionId=${actionId} choiceNumber=${choiceNumber} promptLen=${prompt.length}`);
+      ws.send(msg);
+    });
+  }
+
   handleAck(actionId: string, success: boolean, error?: string): void {
     const entry = this.pending.get(actionId);
     log.info(`handleAck: actionId=${actionId} success=${success} found=${!!entry} error=${error ?? ''}`);

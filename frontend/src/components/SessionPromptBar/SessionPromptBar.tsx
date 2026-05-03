@@ -1,19 +1,26 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useImperativeHandle, forwardRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CornerDownLeft } from 'lucide-react';
-import { sendPrompt, interruptSession, getSessionOutput } from '../../services/api';
+import { sendPrompt, sendPromptWithChoice, getSessionOutput } from '../../services/api';
 import type { Session } from '../../types';
 import { Button } from '../Button';
 import { usePromptHistory } from '../../hooks/usePromptHistory';
 
 interface Props {
   session: Session;
+  customChoiceNumber?: string | null;
+  implicitChoiceNumber?: string | null;
+  onCustomAnswerSent?: () => void;
   onPromptSent?: () => void;
+}
+
+export interface SessionPromptBarHandle {
+  focusInput(): void;
 }
 
 type ConnectionState = 'readonly' | 'connecting' | 'connected';
 
-export default function SessionPromptBar({ session, onPromptSent }: Props) {
+const SessionPromptBar = forwardRef<SessionPromptBarHandle, Props>(function SessionPromptBar({ session, customChoiceNumber, implicitChoiceNumber, onCustomAnswerSent, onPromptSent }, ref) {
   const connectionState: ConnectionState =
     session.launchMode !== 'pty' ? 'readonly' :
     session.ptyConnected === false ? 'connecting' : 'connected';
@@ -21,6 +28,10 @@ export default function SessionPromptBar({ session, onPromptSent }: Props) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    focusInput() { inputRef.current?.focus(); },
+  }));
 
   const { data: outputData } = useQuery({
     queryKey: ['session-output', session.id],
@@ -36,7 +47,13 @@ export default function SessionPromptBar({ session, onPromptSent }: Props) {
     setError(null);
     setSending(true);
     try {
-      await sendPrompt(session.id, text);
+      const effectiveChoiceNumber = customChoiceNumber ?? implicitChoiceNumber;
+      if (effectiveChoiceNumber) {
+        await sendPromptWithChoice(session.id, effectiveChoiceNumber, text);
+        onCustomAnswerSent?.();
+      } else {
+        await sendPrompt(session.id, text);
+      }
       history.addEntry(text);
       setPrompt('');
       onPromptSent?.();
@@ -49,15 +66,6 @@ export default function SessionPromptBar({ session, onPromptSent }: Props) {
     }
   };
 
-  const handleInterrupt = async () => {
-    setError(null);
-    try {
-      await interruptSession(session.id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to interrupt');
-    }
-  };
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -66,7 +74,7 @@ export default function SessionPromptBar({ session, onPromptSent }: Props) {
     if (e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation();
-      handleInterrupt();
+      void sendPrompt(session.id, '\x1b', { raw: true });
     }
     if (e.key === 'ArrowUp') {
       e.preventDefault();
@@ -133,4 +141,6 @@ export default function SessionPromptBar({ session, onPromptSent }: Props) {
       {error && <p role="alert" className="text-xs text-red-600 mt-0.5">{error}</p>}
     </div>
   );
-}
+});
+
+export default SessionPromptBar;

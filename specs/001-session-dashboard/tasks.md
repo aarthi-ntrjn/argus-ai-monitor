@@ -469,3 +469,7 @@ Each phase checkpoint delivers independently demonstrable value:
 ### Addendum: Bug — @homebridge/node-pty-prebuilt-multiarch dead dependency breaks Node 25
 
 - [X] T125 Remove dead dependency `@homebridge/node-pty-prebuilt-multiarch` from `package.json` (root) and `backend/package.json`: the package is listed as a dependency in both files but is never imported anywhere in the codebase (all PTY usage imports from `node-pty` directly). Its engine constraint `>=18.0.0 <25.0.0` causes `npm warn EBADENGINE` on Node 25.x. Fix: delete the `"@homebridge/node-pty-prebuilt-multiarch": "^0.13.1"` entry from the `dependencies` section of both `package.json` and `backend/package.json`, then run `npm install` to remove it from `package-lock.json`.
+
+### Addendum: Bug — Copilot ask_user question text not shown when no choices provided
+
+- [X] T126 Fix `backend/src/services/copilot-jsonl-watcher.ts` `onNewOutputs()`: when Copilot CLI calls `ask_user` with only a `question` argument and no `choices`, `copilot-cli-jsonl-parser.ts` `extractContent()` returns the raw question string (not JSON-wrapped) because the single-value shortcut `vals.length === 1` triggers. In `onNewOutputs()`, `JSON.parse(output.content)` then throws a SyntaxError. The catch block says "content may not be JSON when choices is absent" but leaves `question = ''`, so an empty question is broadcast and the UI renders no question text. Fix: in the catch block of `onNewOutputs()`, set `question = output.content` so the raw string is used as the question directly instead of being silently discarded.

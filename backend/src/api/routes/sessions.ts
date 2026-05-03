@@ -4,10 +4,11 @@ import { OutputStore } from '../../services/output-store.js';
 import { SessionController } from '../../services/session-controller.js';
 import { ptyRegistry } from '../../services/pty-registry.js';
 import { telemetryService } from '../../services/telemetry-service.js';
+import { broadcast } from '../ws/event-dispatcher.js';
 
-let _claudeDetector: { getPendingChoice(sessionId: string): unknown } | null = null;
+let _claudeDetector: { getPendingChoice(sessionId: string): unknown; clearPendingChoice(sessionId: string): void } | null = null;
 
-export function setSessionClaudeDetector(detector: { getPendingChoice(sessionId: string): unknown }): void {
+export function setSessionClaudeDetector(detector: { getPendingChoice(sessionId: string): unknown; clearPendingChoice(sessionId: string): void }): void {
   _claudeDetector = detector;
 }
 
@@ -71,6 +72,8 @@ const sessionsRoutes: FastifyPluginAsync = async (app) => {
     async (req, reply) => {
       try {
         const action = await sessionController.interruptSession(req.params.id);
+        _claudeDetector?.clearPendingChoice(req.params.id);
+        broadcast({ type: 'session.pending_choice.resolved', timestamp: new Date().toISOString(), data: { sessionId: req.params.id } });
         return reply.status(202).send({ actionId: action.id, status: action.status });
       } catch (err: unknown) {
         const e = err as { code?: string; message?: string };
@@ -109,17 +112,17 @@ const sessionsRoutes: FastifyPluginAsync = async (app) => {
     }
   );
 
-  app.post<{ Params: { id: string }; Body: { prompt?: string } }>(
+  app.post<{ Params: { id: string }; Body: { prompt?: string; raw?: boolean } }>(
     '/api/v1/sessions/:id/send',
     async (req, reply) => {
-      const { prompt } = req.body ?? {};
+      const { prompt, raw } = req.body ?? {};
       if (!prompt) return reply.status(400).send({ error: 'MISSING_PROMPT', message: 'prompt is required' });
 
       try {
         const session = getSession(req.params.id);
         if (!session) return reply.status(404).send({ error: 'NOT_FOUND', message: `Session ${req.params.id} not found` });
 
-        const skipEnter = !!_claudeDetector?.getPendingChoice(req.params.id);
+        const skipEnter = raw ? true : !!_claudeDetector?.getPendingChoice(req.params.id);
         const action = await sessionController.sendPrompt(req.params.id, prompt, skipEnter);
         return reply.status(202).send({ actionId: action.id, status: action.status });
       } catch (err: unknown) {
@@ -128,6 +131,45 @@ const sessionsRoutes: FastifyPluginAsync = async (app) => {
         if (e.code === 'CONFLICT') return reply.status(409).send({ error: 'CONFLICT', message: e.message });
         throw err;
       }
+    }
+  );
+
+  app.post<{ Params: { id: string }; Body: { choiceNumber?: string; prompt?: string } }>(
+    '/api/v1/sessions/:id/send-with-choice',
+    async (req, reply) => {
+      const { choiceNumber, prompt } = req.body ?? {};
+      if (!choiceNumber) return reply.status(400).send({ error: 'MISSING_CHOICE_NUMBER', message: 'choiceNumber is required' });
+      if (!prompt) return reply.status(400).send({ error: 'MISSING_PROMPT', message: 'prompt is required' });
+
+      try {
+        const session = getSession(req.params.id);
+        if (!session) return reply.status(404).send({ error: 'NOT_FOUND', message: `Session ${req.params.id} not found` });
+
+        const action = await sessionController.sendChoiceWithPrompt(req.params.id, choiceNumber, prompt);
+        return reply.status(202).send({ actionId: action.id, status: action.status });
+      } catch (err: unknown) {
+        const e = err as { code?: string; message?: string };
+        if (e.code === 'NOT_FOUND') return reply.status(404).send({ error: 'NOT_FOUND', message: e.message });
+        if (e.code === 'CONFLICT') return reply.status(409).send({ error: 'CONFLICT', message: e.message });
+        throw err;
+      }
+    }
+  );
+
+  app.post<{ Params: { id: string } }>(
+    '/api/v1/sessions/:id/reject-tool',
+    async (req, reply) => {
+      const session = getSession(req.params.id);
+      if (!session) return reply.status(404).send({ error: 'NOT_FOUND', message: `Session ${req.params.id} not found` });
+
+      try {
+        // Send Ctrl+C to cancel the pending tool in the PTY
+        await sessionController.sendPrompt(req.params.id, '\x03', true);
+      } catch { /* best effort — clear the pending choice regardless */ }
+
+      _claudeDetector?.clearPendingChoice(req.params.id);
+      broadcast({ type: 'session.pending_choice.resolved', timestamp: new Date().toISOString(), data: { sessionId: req.params.id } });
+      return reply.send({ status: 'rejected' });
     }
   );
 };

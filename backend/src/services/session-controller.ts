@@ -145,6 +145,47 @@ export class SessionController {
     return action;
   }
 
+  async sendChoiceWithPrompt(sessionId: string, choiceNumber: string, prompt: string): Promise<ControlAction> {
+    const session = getSession(sessionId);
+    if (!session) throw Object.assign(new Error(`Session ${sessionId} not found`), { code: 'NOT_FOUND' });
+    if (session.status === 'ended' || session.status === 'completed') {
+      throw Object.assign(new Error('Session already ended'), { code: 'CONFLICT' });
+    }
+    if (session.launchMode !== 'pty' || !ptyRegistry.has(sessionId)) {
+      const action: ControlAction = {
+        id: randomUUID(), sessionId, type: 'send_prompt', payload: { choiceNumber, prompt },
+        status: 'failed', createdAt: new Date().toISOString(), completedAt: new Date().toISOString(),
+        result: 'Prompt delivery requires starting this session via argus launch', source: null,
+      };
+      insertControlAction(action);
+      this.broadcastAction(action);
+      return action;
+    }
+
+    const action: ControlAction = {
+      id: randomUUID(), sessionId, type: 'send_prompt', payload: { choiceNumber, prompt },
+      status: 'pending', createdAt: new Date().toISOString(), completedAt: null, result: null, source: null,
+    };
+    insertControlAction(action);
+    this.broadcastAction(action);
+
+    ptyRegistry.sendChoiceWithPrompt(sessionId, action.id, choiceNumber, prompt)
+      .then(() => {
+        const now = new Date().toISOString();
+        logger.info(`[sendChoiceWithPrompt] DELIVERED actionId=${action.id} sessionId=${sessionId}`);
+        updateControlAction(action.id, 'completed', now, null);
+        this.broadcastAction({ ...action, status: 'completed', completedAt: now });
+      })
+      .catch((err: Error) => {
+        const now = new Date().toISOString();
+        logger.info(`[sendChoiceWithPrompt] FAILED actionId=${action.id} sessionId=${sessionId} error=${err.message}`);
+        updateControlAction(action.id, 'failed', now, err.message);
+        this.broadcastAction({ ...action, status: 'failed', completedAt: now, result: err.message });
+      });
+
+    return action;
+  }
+
   async interruptSession(sessionId: string): Promise<ControlAction> {
     const session = getSession(sessionId);
     if (!session) throw Object.assign(new Error(`Session ${sessionId} not found`), { code: 'NOT_FOUND' });

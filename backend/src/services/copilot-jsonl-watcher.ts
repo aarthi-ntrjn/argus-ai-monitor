@@ -24,7 +24,10 @@ export class CopilotJsonlWatcher extends JsonlWatcherBase {
           if (Array.isArray(parsed.choices)) {
             choices = (parsed.choices as unknown[]).filter((c): c is string => typeof c === 'string');
           }
-        } catch { /* content may not be JSON when choices is absent */ }
+        } catch {
+          // content is the raw question string (single-arg ask_user with no choices)
+          question = output.content;
+        }
 
         if (output.toolCallId) {
           this.pendingAskUserCallIds.set(sessionId, output.toolCallId);

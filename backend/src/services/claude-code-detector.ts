@@ -49,6 +49,14 @@ export class ClaudeCodeDetector {
     return this.pendingChoices.get(sessionId) ?? null;
   }
 
+  clearPendingChoice(sessionId: string): void {
+    if (!this.pendingChoices.has(sessionId)) return;
+    this.pendingChoices.delete(sessionId);
+    const now = new Date().toISOString();
+    broadcast({ type: 'session.pending_choice.resolved', timestamp: now, data: { sessionId } });
+    pendingChoiceEvents.emit('session.pending_choice.resolved', sessionId);
+  }
+
   injectHooks(): void {
     try {
       mkdirSync(dirname(CLAUDE_SETTINGS_PATH), { recursive: true });

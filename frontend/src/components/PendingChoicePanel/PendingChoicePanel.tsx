@@ -9,9 +9,11 @@ interface Props {
   session: Session;
   idx: number;
   onAdvance: () => void;
+  onFocusPromptBar?: () => void;
+  onTypeAnswer?: (choiceNumber: string) => void;
 }
 
-export default function PendingChoicePanel({ pendingChoice, session, idx, onAdvance }: Props) {
+export default function PendingChoicePanel({ pendingChoice, session, idx, onAdvance, onFocusPromptBar, onTypeAnswer }: Props) {
   const questions: PendingChoiceItem[] = pendingChoice.allQuestions ?? [
     { question: pendingChoice.question, choices: pendingChoice.choices },
   ];
@@ -29,7 +31,6 @@ export default function PendingChoicePanel({ pendingChoice, session, idx, onAdva
   const showSubmitPanel = questions.length > 1;
   const allSelected = idx >= questions.length;
   const current = questions[Math.min(idx, questions.length - 1)];
-
   const handleChoice = async (choice: string) => {
     if (!canSend) return;
     setSending(true);
@@ -128,7 +129,7 @@ export default function PendingChoicePanel({ pendingChoice, session, idx, onAdva
                     variant="outline"
                     size="sm"
                     disabled={sending}
-                    onClick={e => { e.stopPropagation(); handleChoice(c); }}
+                    onClick={e => { e.stopPropagation(); handleChoice(String(i + 1)); }}
                     className="text-left flex flex-col items-start h-auto py-1.5"
                   >
                     <span className="font-semibold">{i + 1}. {c}</span>
@@ -144,6 +145,29 @@ export default function PendingChoicePanel({ pendingChoice, session, idx, onAdva
                     )}
                   </div>
                 )
+              )}
+
+              {canSend && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={sending}
+                    onClick={e => { e.stopPropagation(); onTypeAnswer?.(String(current.choices.length + 1)); onFocusPromptBar?.(); }}
+                    className="text-left justify-start"
+                  >
+                    Type an answer
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={sending}
+                    onClick={e => { e.stopPropagation(); void sendPrompt(session.id, '\x1b', { raw: true }); }}
+                    className="text-left justify-start text-gray-400 border-gray-200"
+                  >
+                    Press Esc to interrupt
+                  </Button>
+                </>
               )}
             </div>
           )}

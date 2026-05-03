@@ -218,17 +218,25 @@ const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 //   await delay(WRITE_DELAY_MS);
 // };
 
+const sendInterrupt = (): void => {
+  log(`pty.write interrupt`);
+  pty.write('\x1b');
+};
+
 const sendPromptInterwriteDelayV2 = async (prompt: string, skipEnter = false): Promise<void> => {
   log(`focus-in`);
   pty.write('\x1b[I');
   await delay(WRITE_DELAY_MS);
-  log(`pty.write promptLen=${prompt.length}`);
+  log(`pty.write promptLen=${prompt.length} prompt=${JSON.stringify(prompt)}`);
   pty.write(prompt);
   await delay(WRITE_DELAY_MS);
-  // skipEnter is true when ask_user|AskUserQuestion tool is being handled
-  if (!skipEnter) {
+  // Single-char prompts (choice index digits) respect skipEnter; longer prompts always need Enter.
+  if (!skipEnter || prompt.length > 1) {
     // Without this keyboard mimic of '\r', Windows does not recognize the end of the sentence.
+    log(`pty.write enter`);
     pty.write('\r');
+  } else {
+    log(`pty.write enter skipped (skipEnter=true, promptLen=1)`);
   }
   log(`focus-out`);
   pty.write('\x1b[O');
@@ -245,16 +253,37 @@ const sendPromptInterwriteDelayV2 = async (prompt: string, skipEnter = false): P
 //   pty.write('\x1b[O');
 // };
 
+const sendChoiceWithAnswer = async (choiceNumber: string, answer: string): Promise<void> => {
+  log(`sendChoiceWithAnswer choice=${choiceNumber} answerLen=${answer.length}`);
+  await sendPromptInterwriteDelayV2(choiceNumber, false);
+  await sendPromptInterwriteDelayV2(answer, false);
+};
+
 // When Argus sends a prompt, deliver it to the PTY.
 // On any OS: use sendPromptInterwriteDelay (inter-write delays required for the Console API).
 // All other cases: use sendPromptNoDelay.
 client.onSendPrompt(async (actionId: string, prompt: string, skipEnter: boolean) => {
   log(`onSendPrompt actionId=${actionId} promptLen=${prompt.length} skipEnter=${skipEnter}`);
   try {
-    await sendPromptInterwriteDelayV2(prompt, skipEnter);    
+    if (skipEnter && prompt === '\x1b') {
+      sendInterrupt();
+    } else {
+      await sendPromptInterwriteDelayV2(prompt, skipEnter);
+    }
     client.ackDelivered(actionId);
   } catch (err: unknown) {
     log(`prompt delivery failed: ${err}`);
+    client.ackFailed(actionId, err instanceof Error ? err.message : 'prompt delivery failed');
+  }
+});
+
+client.onSendChoiceWithPrompt(async (actionId: string, choiceNumber: string, prompt: string) => {
+  log(`onSendChoiceWithPrompt actionId=${actionId} choiceNumber=${choiceNumber} promptLen=${prompt.length}`);
+  try {
+    await sendChoiceWithAnswer(choiceNumber, prompt);
+    client.ackDelivered(actionId);
+  } catch (err: unknown) {
+    log(`choice+prompt delivery failed: ${err}`);
     client.ackFailed(actionId, err instanceof Error ? err.message : 'prompt delivery failed');
   }
 });
