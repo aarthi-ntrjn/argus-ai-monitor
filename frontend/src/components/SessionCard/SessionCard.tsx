@@ -1,4 +1,4 @@
-import { memo, useState, useEffect } from 'react';
+import { memo, useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -6,7 +6,7 @@ import type { Session } from '../../types';
 import { getSessionOutput } from '../../services/api';
 import { isInactive, type PendingChoice } from '../../utils/sessionUtils';
 import { useArgusSettings } from '../../hooks/useArgusSettings';
-import SessionPromptBar from '../SessionPromptBar/SessionPromptBar';
+import SessionPromptBar, { type SessionPromptBarHandle } from '../SessionPromptBar/SessionPromptBar';
 import SessionMetaRow from '../SessionMetaRow/SessionMetaRow';
 import { useKillSession } from '../../hooks/useKillSession';
 import { KillSessionDialog } from '../KillSessionDialog/KillSessionDialog';
@@ -39,7 +39,16 @@ function SessionCard({ session, selected, onSelect }: Props) {
   const kill = useKillSession();
 
   const [questionIdx, setQuestionIdx] = useState(0);
-  useEffect(() => { setQuestionIdx(0); }, [hookPendingChoice]);
+  const [customChoiceNumber, setCustomChoiceNumber] = useState<string | null>(null);
+  useEffect(() => { setQuestionIdx(0); setCustomChoiceNumber(null); }, [hookPendingChoice]);
+
+  const pendingQuestions = hookPendingChoice?.allQuestions ?? (hookPendingChoice ? [{ question: hookPendingChoice.question, choices: hookPendingChoice.choices }] : []);
+  const currentQuestion = pendingQuestions[Math.min(questionIdx, pendingQuestions.length - 1)];
+  const implicitChoiceNumber = currentQuestion && currentQuestion.choices.length > 0
+    ? String(currentQuestion.choices.length + 1)
+    : null;
+
+  const promptBarRef = useRef<SessionPromptBarHandle>(null);
 
   const items = lastOutput?.items ?? [];
   const previewItem =
@@ -64,7 +73,7 @@ function SessionCard({ session, selected, onSelect }: Props) {
 
       {/* Summary / topic */}
       {pendingChoice !== null ? (
-        <PendingChoicePanel pendingChoice={pendingChoice} session={session} idx={questionIdx} onAdvance={() => setQuestionIdx(i => i + 1)} />
+        <PendingChoicePanel pendingChoice={pendingChoice} session={session} idx={questionIdx} onAdvance={() => setQuestionIdx(i => i + 1)} onFocusPromptBar={() => promptBarRef.current?.focusInput()} onTypeAnswer={(n) => { setCustomChoiceNumber(n); promptBarRef.current?.focusInput(); }} />
       ) : (
         <p className={`text-sm mt-2 truncate ${session.summary ? 'text-gray-600' : 'text-gray-500 italic'}`}>
           {session.summary || 'Nothing sent yet'}
@@ -86,7 +95,7 @@ function SessionCard({ session, selected, onSelect }: Props) {
 
       {session.launchMode === 'pty' && (
         <div onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
-          <SessionPromptBar session={session} onPromptSent={pendingChoice ? () => setQuestionIdx(i => i + 1) : undefined} />
+          <SessionPromptBar ref={promptBarRef} session={session} customChoiceNumber={customChoiceNumber} implicitChoiceNumber={pendingChoice ? implicitChoiceNumber : null} onCustomAnswerSent={() => setCustomChoiceNumber(null)} onPromptSent={pendingChoice ? () => setQuestionIdx(i => i + 1) : undefined} />
         </div>
       )}
 

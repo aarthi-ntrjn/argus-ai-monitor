@@ -131,16 +131,12 @@ export class CopilotCliDetector {
     const existingSession = getSession(sessionId);
 
     // Guard 1: process is running (cheap signal-0 check)
-    // Guard 2: session is not already ended in DB
-    // Guard 3 (only when guard 1 passes but guard 2 fails): verify process name matches
-    //   — catches PID reuse where an unrelated process inherited a previously-used PID.
+    // Guard 2: verify the process at this PID is actually the expected AI tool — catches
+    //   stale lock files pointing to recycled PIDs (PID reuse by an unrelated process).
     const pidAlive = pid !== null && isPidRunning(pid);
-    const isRunning = pidAlive && (
-      existingSession?.status !== 'ended' ||
-      isExpectedProcess(pid!, SessionTypes.COPILOT_CLI)
-    );
+    const isRunning = pidAlive && isExpectedProcess(pid!, SessionTypes.COPILOT_CLI);
     if (pidAlive && !isRunning) {
-      logger.info(`[CopilotDetector] PID reuse detected: session ${sessionId} is ended but pid ${pid} is running with wrong name — skipping`);
+      logger.info(`[CopilotDetector] PID reuse detected: pid ${pid} is running with wrong name — skipping (sessionId=${sessionId} existingStatus=${existingSession?.status ?? 'new'})`);
     }
 
     // Skip directories for sessions already recorded as ended: no lock file means
@@ -260,6 +256,7 @@ export class CopilotCliDetector {
 
     return { launchMode, resolvedPid, resolvedHostPid, resolvedPidSource, resolvedPtyLaunchId };
   }
+
 
   /**
    * Scan all copilot session directories and return a map of session ID → PID

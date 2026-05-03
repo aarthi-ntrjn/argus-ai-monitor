@@ -5,6 +5,17 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 
 ---
 
+## T126 — Copilot ask_user question text not shown when no choices provided
+
+**Date**: 2026-05-02
+**Symptom**: When a Copilot session triggers an `ask_user` call with only a question and no choices, the Attention Needed panel appears but shows no question text.
+**Root cause**: `copilot-cli-jsonl-parser.ts` `extractContent()` uses a single-value shortcut: when `data.arguments` has exactly one key (just `question`, no `choices`), it returns the raw string value rather than JSON.stringify-ing the object. `CopilotJsonlWatcher.onNewOutputs()` then tries `JSON.parse(output.content)` on that raw string, which throws a SyntaxError. The catch block discarded the error and left `question = ''`, so an empty question was broadcast. The comment "content may not be JSON when choices is absent" acknowledged the case but provided no recovery.
+**Why it was missed**: The existing test for `pending_choice` detection only covered the multi-arg case (`question` + `choices`), which produces valid JSON. The single-arg (no choices) path was never tested, and the silent empty-string fallback in the catch block gave no observable signal during normal use.
+**How to prevent**: When a catch block has a comment explaining a known expected case, it must also handle that case, not just swallow the error. Any `catch { /* comment */ }` with no recovery code should be treated as a bug during review.
+**Fix summary**: In `copilot-jsonl-watcher.ts` `onNewOutputs()`, changed the catch block to set `question = output.content` so the raw string is used as the question when JSON parsing fails.
+
+---
+
 ## T123 — Branch name not updated on dashboard
 
 **Date**: 2026-04-14
@@ -358,6 +369,17 @@ Each entry explains what went wrong, why it was missed, and how to prevent it.
 **Why it was missed**: The reconnect path was added in T114 and tested for `workspace_id` and `register` replay, but the test used `pid: 1` in `registerInfo` directly — it never exercised the case where `pid` starts as `null` and is resolved later via `updatePid()` while the WS is already open.
 **How to prevent**: Any field that can be updated after initial registration (pid, workspaceSessionId) must be kept in sync in the object used for reconnect replay. Treat `registerInfo` as the source of truth for what the next `register` message will contain, and update it eagerly on every mutation.
 **Fix summary**: Added `if (this.registerInfo) { this.registerInfo = { ...this.registerInfo, pid }; }` at the top of `updatePid()` in `backend/src/cli/argus-launch-client.ts`, before the `isOpen` check.
+
+---
+
+## T124 — Historical JSONL outputs re-sent to Slack/Teams on session detection
+
+**Date**: 2026-04-18
+**Symptom**: When Argus detects an existing Claude Code session, all historical messages from the session's JSONL file are re-sent as new Slack and Teams notifications, flooding the channel with past conversation.
+**Root cause**: `ClaudeJsonlWatcher.watchFile()` sets `filePositions` to 0 (start of file) and calls `readNewLines()` immediately, reading the entire JSONL history. `readNewLines()` passes all parsed outputs to `outputStore.insertOutput()`, which unconditionally fires output listeners (Teams) and emits `session.output.batch` (Slack) for every batch, regardless of whether the data is historical or new.
+**Why it was missed**: The initial read was designed to populate the UI output stream from history — a legitimate need. But `insertOutput()` treated every call identically: DB write plus notification. The dual purpose (populate UI vs. notify integrations) was never separated.
+**How to prevent**: Any function that inserts data for UI replay (bootstrapping a cache from stored/historical records) must not trigger side-effect notifications designed for live events. Annotate call sites with the intent: historical reads should always pass `{ skipNotifications: true }` so the distinction is explicit in code rather than implicit in timing.
+**Fix summary**: Added `options?: { skipNotifications?: boolean }` to `OutputStore.insertOutput()` in `backend/src/services/output-store.ts`. Changed `ClaudeJsonlWatcher.watchFile()` to call `readNewLines(..., { skipNotifications: true })` for the initial historical read. Subsequent `chokidar` change events call `readNewLines()` without the flag, so live output continues to notify normally.
 
 ---
 

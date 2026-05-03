@@ -70,6 +70,12 @@ jobs:
       - name: Run frontend unit tests
         run: npm test --workspace=frontend
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('package-lock.json') }}
+
       - name: Install Playwright browser
         # Only installs Chromium — the only browser used in playwright.config.ts.
         # --with-deps installs the OS-level libraries Chromium needs on Ubuntu.
@@ -79,6 +85,12 @@ jobs:
         # Uses vite preview (port 4173) to serve the already-built dist/.
         # All API calls are intercepted by page.route() — no backend required.
         run: npm run test:e2e --workspace=frontend
+
+      - name: Run e2e real-server tests
+        # Starts a real Argus backend on port 7412 with an isolated SQLite DB.
+        # Tests cover actual DB writes, hooks endpoint, and WebSocket launcher
+        # contract — behavior the mocked suite cannot verify.
+        run: npm run test:e2e:real --workspace=frontend
 
       - name: Audit for critical CVEs
         # Fail if any package in the lockfile has a critical vulnerability.

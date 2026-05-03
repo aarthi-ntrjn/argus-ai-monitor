@@ -4,12 +4,16 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SettingsPanel } from '../components/SettingsPanel/SettingsPanel';
+import { GeneralSettingsContent } from '../components/SettingsDialog/GeneralSettingsContent';
 import type { DashboardSettings } from '../types';
 import * as api from '../services/api';
 
 vi.mock('../services/api', () => ({
   getArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false, yoloMode: false, restingThresholdMinutes: 20 } as any),
   patchArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false, yoloMode: false, restingThresholdMinutes: 20 } as any),
+  getTeamsSettings: vi.fn().mockResolvedValue({ enabled: false, connectionStatus: 'unconfigured' }),
+  patchTeamsSettings: vi.fn().mockResolvedValue({ enabled: false, connectionStatus: 'unconfigured' }),
+  getSlackSettings: vi.fn().mockRejectedValue(new Error('not configured')),
   getHealth: vi.fn().mockResolvedValue({ status: 'ok', version: '1.2.3', uptime: 0 }),
   rescanRemoteUrls: vi.fn().mockResolvedValue(undefined),
 }));
@@ -101,14 +105,14 @@ describe('SettingsPanel', () => {
 
     it('renders a threshold input synced from argus settings', async () => {
       vi.mocked(api.getArgusSettings).mockResolvedValueOnce({ autoRegisterRepos: false, yoloMode: false, restingThresholdMinutes: 15 } as any);
-      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
+      renderWithQuery(<GeneralSettingsContent settings={allOff} onToggle={vi.fn()} />);
       await waitFor(() => {
         expect(screen.getByRole('spinbutton', { name: /resting after/i })).toHaveValue(15);
       });
     });
 
     it('calls patchArgusSettings with the parsed integer on valid blur', async () => {
-      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
+      renderWithQuery(<GeneralSettingsContent settings={allOff} onToggle={vi.fn()} />);
       const input = screen.getByRole('spinbutton', { name: /resting after/i });
       fireEvent.change(input, { target: { value: '5' } });
       await userEvent.tab();
@@ -117,7 +121,7 @@ describe('SettingsPanel', () => {
     });
 
     it('shows an inline error and does NOT call patchArgusSettings for value 0', async () => {
-      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
+      renderWithQuery(<GeneralSettingsContent settings={allOff} onToggle={vi.fn()} />);
       const input = screen.getByRole('spinbutton', { name: /resting after/i });
       await userEvent.clear(input);
       await userEvent.type(input, '0');
@@ -127,7 +131,7 @@ describe('SettingsPanel', () => {
     });
 
     it('shows an inline error and does NOT call patchArgusSettings with the invalid value > 60', async () => {
-      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
+      renderWithQuery(<GeneralSettingsContent settings={allOff} onToggle={vi.fn()} />);
       const input = screen.getByRole('spinbutton', { name: /resting after/i });
       await userEvent.clear(input);
       await userEvent.type(input, '99');
@@ -137,7 +141,7 @@ describe('SettingsPanel', () => {
     });
 
     it('shows an inline error and does NOT call patchArgusSettings for empty input', async () => {
-      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
+      renderWithQuery(<GeneralSettingsContent settings={allOff} onToggle={vi.fn()} />);
       const input = screen.getByRole('spinbutton', { name: /resting after/i });
       await userEvent.tripleClick(input);
       await userEvent.keyboard('{Backspace}');
@@ -155,19 +159,19 @@ describe('SettingsPanel', () => {
     });
 
     it('renders the Reset button', () => {
-      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
+      renderWithQuery(<GeneralSettingsContent settings={allOff} onToggle={vi.fn()} />);
       expect(screen.getByRole('button', { name: /reset/i })).toBeInTheDocument();
     });
 
     it('clicking Reset calls patchArgusSettings(20) and sets input to 20', async () => {
-      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
+      renderWithQuery(<GeneralSettingsContent settings={allOff} onToggle={vi.fn()} />);
       await userEvent.click(screen.getByRole('button', { name: /reset/i }));
       expect(api.patchArgusSettings).toHaveBeenCalledWith({ restingThresholdMinutes: 20 });
       expect(screen.getByRole('spinbutton', { name: /resting after/i })).toHaveValue(20);
     });
 
     it('clicking Reset clears any existing validation error', async () => {
-      renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
+      renderWithQuery(<GeneralSettingsContent settings={allOff} onToggle={vi.fn()} />);
       const input = screen.getByRole('spinbutton', { name: /resting after/i });
       await userEvent.clear(input);
       await userEvent.type(input, '0');
@@ -182,7 +186,7 @@ describe('SettingsPanel', () => {
     it('renders website, GitHub, and npm links', () => {
       renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
       expect(screen.getByRole('link', { name: /website/i })).toHaveAttribute('href', 'https://aarthi-ntrjn.github.io/argus');
-      expect(screen.getByRole('link', { name: /github/i })).toHaveAttribute('href', 'https://github.com/aarthi-ntrjn/argus');
+      expect(screen.getByRole('link', { name: 'GitHub' })).toHaveAttribute('href', 'https://github.com/aarthi-ntrjn/argus');
       expect(screen.getByRole('link', { name: /npm/i })).toHaveAttribute('href', 'https://www.npmjs.com/package/argus-ai-hub');
     });
 
@@ -190,7 +194,7 @@ describe('SettingsPanel', () => {
       renderWithQuery(<SettingsPanel settings={allOff} onToggle={vi.fn()} />);
       const links = [
         screen.getByRole('link', { name: /website/i }),
-        screen.getByRole('link', { name: /github/i }),
+        screen.getByRole('link', { name: 'GitHub' }),
         screen.getByRole('link', { name: /npm/i }),
       ];
       for (const link of links) {

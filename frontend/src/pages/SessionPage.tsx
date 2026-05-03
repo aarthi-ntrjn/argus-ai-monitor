@@ -1,12 +1,15 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
-import { getSession } from '../services/api';
+import { getSession, getRepositories } from '../services/api';
 import OutputPane from '../components/OutputPane/OutputPane';
 import SessionPromptBar from '../components/SessionPromptBar/SessionPromptBar';
 import SessionMetaRow from '../components/SessionMetaRow/SessionMetaRow';
+import RepoContextBar from '../components/RepoContextBar/RepoContextBar';
 import { useKillSession } from '../hooks/useKillSession';
 import { KillSessionDialog } from '../components/KillSessionDialog/KillSessionDialog';
+
+const ENDED_STATUSES = new Set(['completed', 'ended']);
 
 
 export default function SessionPage() {
@@ -19,6 +22,14 @@ export default function SessionPage() {
     queryFn: () => getSession(id!),
     enabled: !!id,
   });
+
+  const { data: repos = [] } = useQuery({
+    queryKey: ['repositories'],
+    queryFn: getRepositories,
+    enabled: !!session,
+  });
+
+  const repo = session ? repos.find(r => r.id === session.repositoryId) : undefined;
 
   if (sessionLoading) {
     return (
@@ -51,6 +62,7 @@ export default function SessionPage() {
           <button onClick={() => navigate('/')} className="icon-btn text-sm font-medium text-gray-700 hover:text-blue-600 mb-2 flex items-center gap-1">
             <ArrowLeft size={14} />Back
           </button>
+          {repo && <RepoContextBar repo={repo} />}
           <div className="bg-white rounded-lg shadow px-3 pt-3 pb-2" data-tour-id="session-status">
             <SessionMetaRow
               session={session}
@@ -65,7 +77,7 @@ export default function SessionPage() {
       </div>
 
       {/* Output stream + prompt bar — fills remaining height */}
-      <div className="flex-1 min-h-0 flex flex-col px-4 md:px-8 pb-4 md:pb-6 mt-4">
+      <div className="flex-1 min-h-0 flex flex-col px-4 md:px-8 pb-4 md:pb-6 mt-2">
         <div className="max-w-4xl mx-auto w-full flex-1 min-h-0 flex flex-col">
 
           <OutputPane
@@ -75,7 +87,13 @@ export default function SessionPage() {
           />
 
           <div data-tour-id="session-prompt-bar" className="mt-2 shrink-0">
-            <SessionPromptBar session={session} />
+            {ENDED_STATUSES.has(session.status) ? (
+              <div role="alert" className="px-3 py-2 bg-gray-100 border border-gray-300 rounded text-gray-600 text-sm text-center">
+                This session has ended.
+              </div>
+            ) : (
+              <SessionPromptBar session={session} />
+            )}
           </div>
 
         </div>

@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS session_output (
 CREATE TABLE IF NOT EXISTS control_actions (
   id TEXT PRIMARY KEY, session_id TEXT NOT NULL REFERENCES sessions(id),
   type TEXT NOT NULL, payload TEXT, status TEXT NOT NULL,
-  created_at TEXT NOT NULL, completed_at TEXT, result TEXT
+  created_at TEXT NOT NULL, completed_at TEXT, result TEXT, source TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_repo ON sessions(repository_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
@@ -37,6 +37,29 @@ CREATE TABLE IF NOT EXISTS todos (
   updated_at TEXT    NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_todos_user ON todos(user_id);
+CREATE TABLE IF NOT EXISTS teams_threads (
+  id                        TEXT PRIMARY KEY,
+  session_id                TEXT NOT NULL UNIQUE REFERENCES sessions(id),
+  teams_thread_id           TEXT NOT NULL UNIQUE,
+  teams_channel_id          TEXT NOT NULL,
+  tenant_id                 TEXT NOT NULL,
+  created_at                TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_teams_threads_session ON teams_threads(session_id);
+CREATE TABLE IF NOT EXISTS slack_threads (
+  id               TEXT PRIMARY KEY,
+  session_id       TEXT NOT NULL UNIQUE REFERENCES sessions(id),
+  slack_thread_ts  TEXT NOT NULL UNIQUE,
+  slack_channel_id TEXT NOT NULL,
+  workspace_id     TEXT NOT NULL,
+  created_at       TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_slack_threads_session ON slack_threads(session_id);
+CREATE TABLE IF NOT EXISTS integrations (
+  id         TEXT PRIMARY KEY,
+  enabled    INTEGER NOT NULL DEFAULT 1,
+  updated_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS server_state (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL

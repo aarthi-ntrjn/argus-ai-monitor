@@ -94,7 +94,9 @@ test.describe('Onboarding (real server): SC-001 & SC-006', () => {
 
     await expect(page.getByText('Welcome!')).not.toBeVisible({ timeout: 2000 });
 
-    await page.getByRole('button', { name: /settings/i }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await page.getByRole('button', { name: /advanced settings/i }).click();
+    await page.getByRole('button', { name: 'About' }).click();
     await expect(page.getByRole('button', { name: /restart tour/i })).toBeVisible({ timeout: 3000 });
     await page.getByRole('button', { name: /restart tour/i }).click();
 
@@ -111,7 +113,9 @@ test.describe('Onboarding (real server): SC-001 & SC-006', () => {
 
     await expect(page.getByText('Welcome!')).not.toBeVisible({ timeout: 2000 });
 
-    await page.getByRole('button', { name: /settings/i }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await page.getByRole('button', { name: /advanced settings/i }).click();
+    await page.getByRole('button', { name: 'About' }).click();
     await expect(page.getByRole('button', { name: /restart tour/i })).toBeVisible({ timeout: 3000 });
     await page.getByRole('button', { name: /restart tour/i }).click();
 

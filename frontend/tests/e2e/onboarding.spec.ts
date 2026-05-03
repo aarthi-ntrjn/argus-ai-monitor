@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 const REPOS_RESPONSE = [
   {
@@ -29,10 +29,6 @@ async function mockApi(page: import('@playwright/test').Page) {
   await page.route('**/api/v1/sessions**', route =>
     route.fulfill({ contentType: 'application/json', body: JSON.stringify(SESSIONS_RESPONSE) })
   );
-  await page.route('**/api/v1/tools**', route =>
-    route.fulfill({ contentType: 'application/json', body: JSON.stringify({ claude: true, copilot: false, claudeCmd: 'claude', copilotCmd: null }) })
-  );
-  await page.route('**/ws**', route => route.abort());
 }
 
 async function clearOnboarding(page: import('@playwright/test').Page) {
@@ -127,6 +123,8 @@ test.describe('US3: Restart Tour from Settings', () => {
 
     // Open settings
     await page.getByRole('button', { name: /settings/i }).click();
+    await page.getByRole('button', { name: /advanced settings/i }).click();
+    await page.getByRole('button', { name: /about/i }).click();
     await expect(page.getByRole('button', { name: /restart tour/i })).toBeVisible();
 
     // Click Restart Tour
@@ -148,6 +146,8 @@ test.describe('US4: Reset Onboarding', () => {
 
     // Open settings and click Restart Tour
     await page.getByRole('button', { name: /settings/i }).click();
+    await page.getByRole('button', { name: /advanced settings/i }).click();
+    await page.getByRole('button', { name: /about/i }).click();
     await expect(page.getByRole('button', { name: /restart tour/i })).toBeVisible();
     await page.getByRole('button', { name: /restart tour/i }).click();
 

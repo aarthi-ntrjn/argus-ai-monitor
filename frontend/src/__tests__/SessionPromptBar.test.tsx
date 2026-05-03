@@ -40,6 +40,8 @@ const SESSION: Session = {
   expiresAt: null,
   model: null,
   yoloMode: false,
+  hostPid: null,
+  reconciled: false,
 };
 
 const READ_ONLY_SESSION: Session = { ...SESSION, launchMode: 'detected' };

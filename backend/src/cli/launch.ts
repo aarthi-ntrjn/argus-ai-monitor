@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from 'node-pty';
 import { execSync } from 'child_process';
-import { appendFileSync, mkdirSync } from 'fs';
+import { appendFileSync, mkdirSync, existsSync, realpathSync, statSync } from 'fs';
 import { randomUUID } from 'crypto';
 import { platform, tmpdir } from 'os';
 import { join } from 'path';
@@ -17,6 +17,23 @@ function log(msg: string) {
   const line = `[${new Date().toISOString()}] ${msg}\n`;
   appendFileSync(logFile, line);
 }
+
+function failLaunch(message: string): never {
+  log(`launch failed: ${message}`);
+  process.stderr.write(`argus launch failed: ${message}\n`);
+  process.exit(1);
+}
+
+function normalizeLaunchCwd(rawCwd: string): string {
+  if (!existsSync(rawCwd)) {
+    failLaunch(`Launch directory does not exist: ${rawCwd}`);
+  }
+  if (!statSync(rawCwd).isDirectory()) {
+    failLaunch(`Launch directory is not a folder: ${rawCwd}`);
+  }
+  return realpathSync(rawCwd);
+}
+
 process.stderr.write(`[launch] log: ${logFile}\n`);
 
 // Parse --cwd <path> out of argv before passing the rest to resolveLaunchCommand.
@@ -41,6 +58,7 @@ if (toolArgs.length === 0) {
   process.exit(1);
 }
 
+cwd = normalizeLaunchCwd(cwd);
 const { sessionType, cmd, cmdArgs } = resolveLaunchCommand(toolArgs);
 const yoloActive = cmdArgs.includes('--dangerously-skip-permissions') || cmdArgs.includes('--allow-all');
 log(`launch started: sessionType=${sessionType} cmd=${cmd} args=${JSON.stringify(cmdArgs)} cwd=${cwd} yoloMode=${yoloActive}`);
@@ -70,13 +88,19 @@ for (const key of Object.keys(cleanEnv)) {
 
 const spawnStartMs = Date.now();
 log(`spawning PTY: ${ptyFile} ${JSON.stringify(ptyArgs)} at=${new Date(spawnStartMs).toISOString()}`);
-const pty = spawn(ptyFile, ptyArgs, {
-  name: 'xterm-256color',
-  cols: process.stdout.columns || 80,
-  rows: process.stdout.rows || 24,
-  cwd,
-  env: cleanEnv as Record<string, string>
-});
+let pty: ReturnType<typeof spawn>;
+try {
+  pty = spawn(ptyFile, ptyArgs, {
+    name: 'xterm-256color',
+    cols: process.stdout.columns || 80,
+    rows: process.stdout.rows || 24,
+    cwd,
+    env: cleanEnv as Record<string, string>
+  });
+} catch (err: unknown) {
+  const message = err instanceof Error ? err.message : String(err);
+  failLaunch(message);
+}
 log(`PTY spawned: pty.pid=${pty.pid} spawnMs=${Date.now() - spawnStartMs}`);
 
 // Proxy PTY output to the user's terminal
@@ -194,17 +218,25 @@ const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 //   await delay(WRITE_DELAY_MS);
 // };
 
+const sendInterrupt = (): void => {
+  log(`pty.write interrupt`);
+  pty.write('\x1b');
+};
+
 const sendPromptInterwriteDelayV2 = async (prompt: string, skipEnter = false): Promise<void> => {
   log(`focus-in`);
   pty.write('\x1b[I');
   await delay(WRITE_DELAY_MS);
-  log(`pty.write promptLen=${prompt.length}`);
+  log(`pty.write promptLen=${prompt.length} prompt=${JSON.stringify(prompt)}`);
   pty.write(prompt);
   await delay(WRITE_DELAY_MS);
-  // skipEnter is true when ask_user|AskUserQuestion tool is being handled
-  if (!skipEnter) {
+  // Single-char prompts (choice index digits) respect skipEnter; longer prompts always need Enter.
+  if (!skipEnter || prompt.length > 1) {
     // Without this keyboard mimic of '\r', Windows does not recognize the end of the sentence.
+    log(`pty.write enter`);
     pty.write('\r');
+  } else {
+    log(`pty.write enter skipped (skipEnter=true, promptLen=1)`);
   }
   log(`focus-out`);
   pty.write('\x1b[O');
@@ -221,16 +253,37 @@ const sendPromptInterwriteDelayV2 = async (prompt: string, skipEnter = false): P
 //   pty.write('\x1b[O');
 // };
 
+const sendChoiceWithAnswer = async (choiceNumber: string, answer: string): Promise<void> => {
+  log(`sendChoiceWithAnswer choice=${choiceNumber} answerLen=${answer.length}`);
+  await sendPromptInterwriteDelayV2(choiceNumber, false);
+  await sendPromptInterwriteDelayV2(answer, false);
+};
+
 // When Argus sends a prompt, deliver it to the PTY.
 // On any OS: use sendPromptInterwriteDelay (inter-write delays required for the Console API).
 // All other cases: use sendPromptNoDelay.
 client.onSendPrompt(async (actionId: string, prompt: string, skipEnter: boolean) => {
   log(`onSendPrompt actionId=${actionId} promptLen=${prompt.length} skipEnter=${skipEnter}`);
   try {
-    await sendPromptInterwriteDelayV2(prompt, skipEnter);    
+    if (prompt === '\x1b') {
+      sendInterrupt();
+    } else {
+      await sendPromptInterwriteDelayV2(prompt, skipEnter);
+    }
     client.ackDelivered(actionId);
-  } catch (err) {
+  } catch (err: unknown) {
     log(`prompt delivery failed: ${err}`);
+    client.ackFailed(actionId, err instanceof Error ? err.message : 'prompt delivery failed');
+  }
+});
+
+client.onSendChoiceWithPrompt(async (actionId: string, choiceNumber: string, prompt: string) => {
+  log(`onSendChoiceWithPrompt actionId=${actionId} choiceNumber=${choiceNumber} promptLen=${prompt.length}`);
+  try {
+    await sendChoiceWithAnswer(choiceNumber, prompt);
+    client.ackDelivered(actionId);
+  } catch (err: unknown) {
+    log(`choice+prompt delivery failed: ${err}`);
     client.ackFailed(actionId, err instanceof Error ? err.message : 'prompt delivery failed');
   }
 });
@@ -294,7 +347,7 @@ if (isWin) {
       } else {
         log(`pid resolver: attempt ${pidAttempts} — ${targetExe} not yet in process tree`);
       }
-    } catch (err) {
+    } catch (err: unknown) {
       log(`pid resolver: unexpected error on attempt ${pidAttempts} — ${err}`);
     }
   }, 500);
@@ -314,4 +367,3 @@ pty.onExit(({ exitCode }: { exitCode: number }) => {
     process.exit(exitCode ?? 0);
   });
 });
-

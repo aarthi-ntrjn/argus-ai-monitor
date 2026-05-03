@@ -15,6 +15,10 @@ vi.mock('../services/api', () => ({
   getTodos: vi.fn().mockResolvedValue([]),
   getArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false, yoloMode: false, restingThresholdMinutes: 20 }),
   patchArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false, yoloMode: false, restingThresholdMinutes: 20 }),
+  getIntegrationStatus: vi.fn().mockResolvedValue({ integrationsEnabled: false, slack: { notifier: null, listener: null }, teams: { notifier: null, listener: null } }),
+  startIntegration: vi.fn().mockResolvedValue(undefined),
+  stopIntegration: vi.fn().mockResolvedValue(undefined),
+  getHealth: vi.fn().mockResolvedValue({ status: 'ok', version: '1.2.3', uptime: 0 }),
 }));
 
 vi.mock('../hooks/useSettings', () => ({

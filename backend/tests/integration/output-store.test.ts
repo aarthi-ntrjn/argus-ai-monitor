@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { randomUUID } from 'crypto';
 import { rmSync, existsSync } from 'fs';
 import { insertRepository, upsertSession, closeDb } from '../../src/db/database.js';
+import { OutputStore, outputEvents } from '../../src/services/output-store.js';
 
 const testRepoId = randomUUID();
 const testSessionId = `test-${randomUUID()}`;
@@ -76,6 +77,60 @@ describe('OutputStore', () => {
     const page1 = getOutputForSession(sessionId, 5, '106');
     expect(page1.length).toBe(5);
     expect(page1.every((r) => r.sequenceNumber < 106)).toBe(true);
+  });
+
+  it('skipNotifications suppresses output listeners and outputEvents (historical replay guard)', () => {
+    const store = new OutputStore();
+    const listener = vi.fn();
+    store.addOutputListener(listener);
+
+    const eventsListener = vi.fn();
+    outputEvents.on('session.output.batch', eventsListener);
+
+    const output = {
+      id: randomUUID(),
+      sessionId: testSessionId,
+      timestamp: new Date().toISOString(),
+      type: 'message' as const,
+      content: 'historical message',
+      toolName: null,
+      sequenceNumber: 9001,
+    };
+
+    store.insertOutput(testSessionId, [output], { skipNotifications: true });
+
+    expect(listener).not.toHaveBeenCalled();
+    expect(eventsListener).not.toHaveBeenCalled();
+
+    outputEvents.off('session.output.batch', eventsListener);
+    store.removeOutputListener(listener);
+  });
+
+  it('insertOutput without skipNotifications fires output listeners and outputEvents', () => {
+    const store = new OutputStore();
+    const listener = vi.fn();
+    store.addOutputListener(listener);
+
+    const eventsListener = vi.fn();
+    outputEvents.on('session.output.batch', eventsListener);
+
+    const output = {
+      id: randomUUID(),
+      sessionId: testSessionId,
+      timestamp: new Date().toISOString(),
+      type: 'message' as const,
+      content: 'live message',
+      toolName: null,
+      sequenceNumber: 9002,
+    };
+
+    store.insertOutput(testSessionId, [output]);
+
+    expect(listener).toHaveBeenCalledOnce();
+    expect(eventsListener).toHaveBeenCalledOnce();
+
+    outputEvents.off('session.output.batch', eventsListener);
+    store.removeOutputListener(listener);
   });
 
   it('can prune oldest records when over limit', async () => {

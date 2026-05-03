@@ -55,7 +55,9 @@ export default function OutputPane({ session, onClose, className, 'data-tour-id'
       className={`flex flex-col bg-white border border-gray-200 rounded-lg overflow-hidden ${className ?? 'h-full'}`}
     >
       <div className="flex items-center justify-between px-3 py-2 bg-white border-b border-gray-200">
-        <span className="text-xs font-medium text-gray-600 truncate">Session <span className="font-mono text-[10px] text-gray-500">{session.id}</span></span>
+        <div className="flex flex-col min-w-0">
+          <span className="text-xs font-medium text-gray-600 truncate">Session <span className="font-mono text-[10px] text-gray-500">{session.id}</span></span>
+        </div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"

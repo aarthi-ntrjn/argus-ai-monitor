@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './fixtures';
 
 const SESSION_ID = 'session-detail-8c20d263-780c-4321-abcd-ef1234567890';
 
@@ -102,10 +102,10 @@ test.describe('Session Detail Page', () => {
   test('shows "ended" status badge', async ({ page }) => {
     await mockSession(page, { status: 'ended', endedAt: new Date().toISOString() });
     await page.goto(`/sessions/${SESSION_ID}`);
-    await expect(page.getByText('ended')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('ended', { exact: true })).toBeVisible({ timeout: 5000 });
   });
 
-  test('shows "resting" amber badge for sessions inactive over 20 minutes', async ({ page }) => {
+  test('shows "resting" amber badgefor sessions inactive over 20 minutes', async ({ page }) => {
     await mockSession(page, {
       status: 'active',
       lastActivityAt: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
@@ -198,7 +198,7 @@ test.describe('Session Detail Page', () => {
   test('Stop Session button is hidden for ended sessions', async ({ page }) => {
     await mockSession(page, { status: 'ended', endedAt: new Date().toISOString() });
     await page.goto(`/sessions/${SESSION_ID}`);
-    await expect(page.getByText('ended')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('ended', { exact: true })).toBeVisible({ timeout: 5000 });
     await expect(page.getByText('Stop Session')).not.toBeVisible();
   });
 

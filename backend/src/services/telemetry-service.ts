@@ -1,10 +1,13 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { homedir } from 'os';
+import { homedir, platform, arch } from 'os';
 import { randomUUID } from 'crypto';
 import type { TelemetryEventType } from '../models/index.js';
 import { loadConfig } from '../config/config-loader.js';
+import { createTaggedLogger } from '../utils/logger.js';
+
+const log = createTaggedLogger('[Telemetry]', '\x1b[31m'); // red
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -16,10 +19,18 @@ function getIdPath(): string {
   return process.env.ARGUS_TELEMETRY_ID_PATH ?? join(homedir(), '.argus', 'telemetry-id');
 }
 
+const OS_PLATFORM = ({ darwin: 'macos', win32: 'windows' } as Record<string, string>)[platform()] ?? 'linux';
+const OS_ARCH = arch();
+
 export class TelemetryService {
   private installationId: string | null = null;
   private appVersion: string | null = null;
   private enabledCache: { value: boolean; expiresAt: number } | null = null;
+  private integrationStatus: Record<string, 'on' | 'off' | 'na'> = {};
+
+  setIntegrationStatus(platform: string, status: 'on' | 'off' | 'na'): void {
+    this.integrationStatus[platform] = status;
+  }
 
   private isTelemetryEnabled(): boolean {
     const now = Date.now();
@@ -48,9 +59,9 @@ export class TelemetryService {
       mkdirSync(dirname(idPath), { recursive: true });
       writeFileSync(idPath, id, 'utf-8');
     } catch (err) {
-      console.error('[telemetry] failed to persist installation ID', { error: String(err) });
+      log.warn('failed to persist installation ID', String(err));
     }
-    console.info('[telemetry] generated new installation ID');
+    log.info('generated new installation ID');
     this.installationId = id;
     return id;
   }
@@ -74,15 +85,18 @@ export class TelemetryService {
 
     const installationId = this.loadOrCreateInstallationId();
     const appVersion = this.readAppVersion();
+    const integrationProps = Object.fromEntries(
+      Object.entries(this.integrationStatus).map(([k, v]) => [`${k}_status`, v]),
+    );
     const payload = {
       api_key: POSTHOG_API_KEY,
       distinct_id: installationId,
       event: type,
-      properties: { appVersion, $geoip_disable: true, $ip: '', ...extra },
+      properties: { appVersion, os_platform: OS_PLATFORM, os_arch: OS_ARCH, ...integrationProps, ...extra },
       timestamp: new Date().toISOString(),
     };
 
-    console.info('[telemetry] sendEvent', { type, appVersion, ...extra });
+    log.info(`sendEvent type=${type} appVersion=${appVersion} props=${JSON.stringify({ os_platform: OS_PLATFORM, os_arch: OS_ARCH, ...integrationProps, ...extra })}`);
 
     void (async () => {
       try {

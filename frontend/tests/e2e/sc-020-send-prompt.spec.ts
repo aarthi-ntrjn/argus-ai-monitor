@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -61,7 +61,6 @@ async function mockDashboard(page: import('@playwright/test').Page, session: typ
       route.fulfill({ contentType: 'application/json', body: JSON.stringify([session]) })
     ),
     stubOutput(page, session.id),
-    page.route('**/ws**', route => route.abort()),
   ]);
 }
 

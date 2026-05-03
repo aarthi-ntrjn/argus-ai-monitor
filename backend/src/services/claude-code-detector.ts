@@ -9,6 +9,8 @@ import { ClaudeJsonlWatcher } from './claude-jsonl-watcher.js';
 import { broadcast } from '../api/ws/event-dispatcher.js';
 import { detectYoloModeFromPids, isPidRunning, isExpectedProcess } from './process-utils.js';
 import type { Session, Repository, PendingChoice, PendingChoiceItem } from '../models/index.js';
+import { pendingChoiceEvents } from './pending-choice-events.js';
+import { telemetryService } from './telemetry-service.js';
 
 const CLAUDE_SETTINGS_PATH = join(homedir(), '.claude', 'settings.json');
 const HOOK_COMMAND = 'curl -sf -X POST http://127.0.0.1:7411/hooks/claude -H "Content-Type: application/json" -d @- 2>/dev/null || true';
@@ -45,6 +47,14 @@ export class ClaudeCodeDetector {
 
   getPendingChoice(sessionId: string): PendingChoice | null {
     return this.pendingChoices.get(sessionId) ?? null;
+  }
+
+  clearPendingChoice(sessionId: string): void {
+    if (!this.pendingChoices.has(sessionId)) return;
+    this.pendingChoices.delete(sessionId);
+    const now = new Date().toISOString();
+    broadcast({ type: 'session.pending_choice.resolved', timestamp: now, data: { sessionId } });
+    pendingChoiceEvents.emit('session.pending_choice.resolved', sessionId);
   }
 
   injectHooks(): void {
@@ -122,17 +132,14 @@ export class ClaudeCodeDetector {
     const registryEntries = registry.scanEntries();
 
     for (const entry of registryEntries) {
-      // Guard 1: process is running
-      if (!isPidRunning(entry.pid)) continue;
-
-      // Guard 2: session not already ended in DB
-      // Guard 3 (only when guard 2 fails): verify process name to catch PID reuse
+      // Guard 1: process is running (cheap signal-0 check)
+      // Guard 2: verify the process at this PID is actually the expected AI tool — catches
+      //   stale registry entries pointing to recycled PIDs (PID reuse by an unrelated process).
       const existingSession = getSession(entry.sessionId);
-      if (existingSession?.status === 'ended') {
-        if (!isExpectedProcess(entry.pid, 'claude-code')) {
-          logger.info(`[ClaudeDetector] PID reuse detected: session ${entry.sessionId} is ended but pid ${entry.pid} is running with wrong name — skipping`);
-          continue;
-        }
+      if (!isPidRunning(entry.pid)) continue;
+      if (!isExpectedProcess(entry.pid, 'claude-code')) {
+        logger.info(`[ClaudeDetector] PID reuse detected: pid ${entry.pid} is running with wrong name, skipping (sessionId=${entry.sessionId} existingStatus=${existingSession?.status ?? 'new'})`);
+        continue;
       }
 
       const normalizedCwd = normalize(entry.cwd.trimEnd().replace(/[/\\]+$/, ''));
@@ -180,7 +187,14 @@ export class ClaudeCodeDetector {
     if (!existing) return;
     updateSessionStatus(sessionId, 'ended', now);
     this.jsonlWatcher.closeWatcher(sessionId);
-    broadcast({ type: 'session.ended', timestamp: now, data: { ...existing, status: 'ended', endedAt: now } as unknown as Record<string, unknown> });
+    const ended = { ...existing, status: 'ended' as const, endedAt: now };
+    broadcast({ type: 'session.ended', timestamp: now, data: ended });
+    telemetryService.sendEvent('session_ended', {
+      sessionType: existing.type,
+      sessionId: existing.id,
+      launchMode: existing.launchMode === 'pty' ? 'connected' : 'readonly',
+      yoloMode: existing.yoloMode,
+    });
   }
 
   private handlePreAskQuestion(sessionId: string, existing: Session | null | undefined, payload: HookPayload, now: string): void {
@@ -231,12 +245,14 @@ export class ClaudeCodeDetector {
     const { question, choices } = allQuestions[0];
     this.pendingChoices.set(sessionId, { question, choices, allQuestions });
     broadcast({ type: 'session.pending_choice', timestamp: now, data: { sessionId, question, choices, allQuestions } });
+    pendingChoiceEvents.emit('session.pending_choice', { sessionId, question, choices, allQuestions });
   }
 
   private handlePostAskQuestion(sessionId: string, existing: Session | null | undefined, now: string): void {
     if (!existing) return;
     this.pendingChoices.delete(sessionId);
     broadcast({ type: 'session.pending_choice.resolved', timestamp: now, data: { sessionId } });
+    pendingChoiceEvents.emit('session.pending_choice.resolved', sessionId);
   }
 
   private async createPtySession(sessionId: string, repo: Repository, claimed: { pid: number | null; hostPid: number; ptyLaunchId: string }, now: string): Promise<void> {
@@ -288,7 +304,7 @@ export class ClaudeCodeDetector {
     session.lastActivityAt = now;
     upsertSession(session);
     if (existing) {
-      broadcast({ type: 'session.updated', timestamp: now, data: session as unknown as Record<string, unknown> });
+      broadcast({ type: 'session.updated', timestamp: now, data: session });
     } else {
       this.sessionCreatedCallback?.(session);
     }

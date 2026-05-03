@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 test.describe('SC-002: Real-time Output', () => {
   test('shows new output when session.output WS event received', async ({ page }) => {

@@ -1,10 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { UseMutationResult } from '@tanstack/react-query';
 import { getArgusSettings, patchArgusSettings } from '../services/api';
 import type { ArgusConfig } from '../types';
 
 export const ARGUS_SETTINGS_QUERY_KEY = ['argus-settings'];
 
-export function useArgusSettings() {
+export interface UseArgusSettingsResult {
+  settings: ArgusConfig | undefined;
+  isLoading: boolean;
+  patchSetting: UseMutationResult<ArgusConfig, Error, Partial<ArgusConfig>>['mutateAsync'];
+}
+
+export function useArgusSettings(): UseArgusSettingsResult {
   const queryClient = useQueryClient();
 
   const { data: settings, isLoading } = useQuery({

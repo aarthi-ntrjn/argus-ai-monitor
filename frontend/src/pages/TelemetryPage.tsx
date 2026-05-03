@@ -18,7 +18,7 @@ export default function TelemetryPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 md:p-12">
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto max-w-5xl">
         <div className="mb-8">
           <button onClick={() => navigate('/')} className="icon-btn text-sm font-medium text-gray-700 hover:text-blue-600 mb-6 flex items-center gap-1">
             <ArrowLeft size={14} />Back
@@ -34,7 +34,10 @@ export default function TelemetryPage() {
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">What is included</h2>
           <ul className="space-y-2 text-sm text-gray-700">
             <li>
-              <span className="font-medium text-gray-900">Anonymous installation ID:</span> a random UUID generated on first run. It is not linked to your identity, account, or machine.
+              <span className="font-medium text-gray-900">Approximate location:</span> country and region derived from your server's IP address via PostHog's built-in GeoIP enrichment. The raw IP address is not stored in any analytics event record.
+            </li>
+            <li>
+              <span className="font-medium text-gray-900">Anonymous installation ID:</span>a random UUID generated on first run. It is not linked to your identity, account, or machine.
             </li>
             <li>
               <span className="font-medium text-gray-900">App version:</span> the Argus version number (e.g. 0.1.0).
@@ -83,7 +86,7 @@ export default function TelemetryPage() {
             <li>File paths or repository names</li>
             <li>Prompts or session content</li>
             <li>Usernames or account information</li>
-            <li>IP address or hostname</li>
+            <li>Full IP address or hostname (IP is used transiently for GeoIP lookup but never stored)</li>
             <li>Operating system or hardware details</li>
           </ul>
         </section>

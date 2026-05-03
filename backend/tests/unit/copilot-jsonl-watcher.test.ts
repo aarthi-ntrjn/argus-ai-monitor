@@ -118,6 +118,31 @@ describe('CopilotJsonlWatcher — ask_user pending choice detection', () => {
     expect(event.data.sessionId).toBe('sess-2');
   });
 
+  it('broadcasts question text when ask_user has no choices (single-arg, non-JSON content)', async () => {
+    const noChoicesEvent = JSON.stringify({
+      type: 'tool.execution_start',
+      timestamp: '2025-01-01T00:00:00.000Z',
+      data: {
+        toolCallId: 'toolu_no_choices',
+        toolName: 'ask_user',
+        arguments: {
+          question: 'Are you sure you want to proceed?',
+        },
+      },
+    });
+    const file = writeTempJsonl(noChoicesEvent + '\n');
+    const watcher = new CopilotJsonlWatcher();
+    await watcher.watchFile('sess-no-choices', join(file, '..'));
+
+    const pendingCall = mockBroadcast.mock.calls.find(
+      (call) => (call[0] as { type: string }).type === 'session.pending_choice',
+    );
+    expect(pendingCall).toBeDefined();
+    const event = pendingCall![0] as { type: string; data: Record<string, unknown> };
+    expect(event.data.question).toBe('Are you sure you want to proceed?');
+    expect(event.data.choices).toEqual([]);
+  });
+
   it('does NOT broadcast session.pending_choice for non-ask_user tool_use events', async () => {
     const otherToolEvent = JSON.stringify({
       type: 'tool.execution_start',

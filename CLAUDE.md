@@ -22,17 +22,58 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Decision Making
 
 - **Always ask before making tradeoff decisions.** If a fix or change has meaningful tradeoffs (security, performance, correctness, maintainability), stop and present the options to the user with a brief explanation of each. Do not pick one unilaterally. Examples: weakening a security check, changing a default behavior, removing a feature, choosing between approaches with different risk profiles.
+- **Never silently override a spec or clarification decision during planning.** If research reveals that a decision recorded in `spec.md` or a clarification session is impractical or has a better alternative, flag the conflict explicitly and ask the user how to proceed. Do not quietly substitute a different approach in `research.md` or `plan.md` without disclosure.
 - **Only modify what the task requires.** Do not make unrelated changes in a file while fixing something else. If you spot something worth improving, raise it explicitly and get confirmation before touching it.
+- **Search for existing solutions before building new mechanisms.** Before implementing any new detection, scanning, or event-delivery mechanism, grep the codebase for similar patterns. This product already has shared event buses (`outputEvents` in `output-store.ts`), existing broadcasts (`session.pending_choice` from `ClaudeCodeDetector`), and shared services in `backend/src/services/`. Adding a parallel scan or a second read of the same data source when an existing event bus already carries the signal is always wrong. The right pattern is: find the place where the event already fires, emit on a shared EventEmitter there, and subscribe in the consumers. Never introduce a new polling loop or file scan to detect something that is already detected elsewhere.
 
 ## Debugging
 
 - **Add logs when the root cause is unclear.** If static analysis and code reading have not pinpointed a bug after a reasonable effort, add targeted log statements to the relevant code path, ask the user to reproduce the issue, and use the output to confirm the root cause before making any fix. Remove diagnostic logs after the bug is resolved.
 
+## Integration Design (Teams and Slack)
+
+The Teams and Slack integrations live under `backend/src/integration/{teams,slack}/`. Each platform has a notifier (outbound) and a listener (inbound), mirroring each other in structure and naming.
+
+**Consistent state field:** Both notifiers and both listeners use `private active: boolean` to represent whether the integration is running. Never use `disabled`, `enabled`, or any inverted flag. The `isRunning` getter always returns `this.active` directly. If the implementation derives running state from another source (e.g. `socketClient !== null`), the getter must still be named `isRunning`.
+
+**Interface:** Both notifiers implement `NotificationIntegration` from `models/index.ts`, which includes `readonly isRunning: boolean`. Do not add platform-specific running/stopped getters; use `isRunning` everywhere.
+
+**Handler guards:** Every session event handler (`onSessionCreated`, `onSessionUpdated`, `onSessionEnded`, `onSessionOutput`) must check `if (!this.active) return` as its first line, before any config or logging. This ensures stop takes effect immediately without draining in-flight config checks.
+
+**Restart support:** `initialize()` must be safe to call after `shutdown()`. Set `this.active = false` at the start of `initialize()` before validation, then `this.active = true` only on success. `shutdown()` sets `this.active = false` and drains the queue.
+
+**Double-subscription guard:** If a service subscribes to EventEmitter events in a method called by `initialize()`, guard with a `private subscribed: boolean` flag so re-initialization does not register duplicate listeners.
+
+**Layering:** Notifiers handle outbound notifications only. Listeners handle inbound commands only. Notifiers do not parse commands. Listeners do not send session notifications. Cross-cutting concerns (rate limiting, DB access) go through shared services in `backend/src/services/`, not duplicated in each integration.
+
+**Session diff logic lives in `SessionDiffTracker` (`backend/src/services/session-diff-tracker.ts`), not in notifiers.** Notifiers own one `SessionDiffTracker` instance each. In `onSessionCreated`, call `diffTracker.seed(session)` after the thread is created. In `onSessionUpdated`, call `diffTracker.update(session)` — it returns `null` (no baseline, skip), `[]` (no changes, skip), or a `SessionChange[]` to format and send. In `onSessionEnded`, call `diffTracker.clear(session.id)` after posting. Notifiers must not contain their own field comparison logic, baseline maps, or formatting of "what changed" — only platform-specific message formatting and network calls.
+
+**API:** Start/stop endpoints live in `backend/src/api/routes/integrations.ts`. Any new integration must be registered there.
+
 ## Logging
 
-- **Always prefix log messages with `[ComponentName]`** — every `logger.info`, `logger.warn`, etc. call must begin with a `[ComponentName]` tag so logs are easy to filter and attribute. Examples: `[CopilotDetector]`, `[PtyRegistry]`, `[Launcher]`, `[SessionMonitor]`.
-- **Use `createTaggedLogger` for components that need a distinct color.** Import from `utils/logger.ts` and call `createTaggedLogger('[ComponentName]', ansiColor)`. The returned logger automatically prepends the colored tag in TTY environments. Current assignments: `[PtyRegistry]` uses magenta (`\x1b[35m`).
-- **No em dashes in log messages.** Use a comma or colon instead (consistent with the Writing Style rule).
+**Always use `createTaggedLogger` for backend components.** Import from `utils/logger.ts` and create a module-level logger:
+
+```ts
+import { createTaggedLogger } from '../utils/logger.js';
+const log = createTaggedLogger('[ComponentName]', '\x1b[Xm'); // pick a color
+```
+
+Use `log.info`, `log.warn`, `log.error`, `log.debug` everywhere in that file. Never use `import * as logger` — it produces uncolored output and requires manually embedding `[ComponentName]` in every string.
+
+**Never use `console.log`, `console.info`, `console.warn`, or `console.error`** anywhere in backend source files. They bypass the shared logger's level filtering and formatting. The only exception is `utils/logger.ts` itself, which is the logger implementation.
+
+**Route handlers use the Fastify request logger** (`request.log`, `reply.log`) for per-request structured logging. That is fine and intentional — do not replace it with `createTaggedLogger`.
+
+**Color assignments** (use a different color for each new component):
+
+| Component | Color |
+|---|---|
+| `[PtyRegistry]` | magenta `\x1b[35m` |
+| `[TeamsNotifier]` / `[TeamsListener]` | cyan `\x1b[36m` |
+| `[SlackNotifier]` / `[SlackListener]` | green `\x1b[32m` |
+
+**No em dashes in log messages.** Use a comma or colon instead (consistent with the Writing Style rule).
 
 ## Error Handling
 

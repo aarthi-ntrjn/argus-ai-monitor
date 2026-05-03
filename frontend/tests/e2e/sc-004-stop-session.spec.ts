@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -17,7 +17,7 @@ const SESSION_ENDED = { ...SESSION_ACTIVE, status: 'ended', endedAt: new Date().
 const EMPTY_OUTPUT = { items: [], nextBefore: null, total: 0 };
 
 // The session detail page uses SessionPromptBar for interrupt control.
-// PTY sessions show an input field; pressing Escape in it calls POST /interrupt.
+// PTY sessions show an input field; pressing Escape sends raw ESC (\x1b) via POST /send.
 
 test.describe('SC-004: Stop Session', () => {
 
@@ -35,14 +35,14 @@ test.describe('SC-004: Stop Session', () => {
     await expect(page.getByRole('textbox', { name: /send a prompt/i })).toBeVisible({ timeout: 5000 });
   });
 
-  test('pressing Escape in prompt bar calls interrupt API', async ({ page }) => {
-    let interrupted = false;
+  test('pressing Escape in prompt bar sends raw ESC to PTY', async ({ page }) => {
+    let sentBody: unknown = null;
     await page.route(`**/api/v1/sessions/${SESSION_ID}`, route =>
       route.fulfill({ contentType: 'application/json', body: JSON.stringify(SESSION_ACTIVE) })
     );
-    await page.route(`**/api/v1/sessions/${SESSION_ID}/interrupt`, route => {
-      interrupted = true;
-      route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ actionId: 'a1', status: 'completed' }) });
+    await page.route(`**/api/v1/sessions/${SESSION_ID}/send`, async route => {
+      sentBody = JSON.parse(route.request().postData() ?? '{}');
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ actionId: 'a1', status: 'completed' }) });
     });
 
     await page.goto(`/sessions/${SESSION_ID}`);
@@ -50,7 +50,7 @@ test.describe('SC-004: Stop Session', () => {
     await input.click();
     await input.press('Escape');
 
-    await expect.poll(() => interrupted, { timeout: 3000 }).toBe(true);
+    await expect.poll(() => sentBody, { timeout: 3000 }).toMatchObject({ prompt: '\x1b', raw: true });
   });
 
   test('prompt bar shows read-only message for detected sessions', async ({ page }) => {

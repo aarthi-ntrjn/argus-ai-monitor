@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 test.describe('SC-001: Repository Overview', () => {
   test.beforeEach(async ({ page }) => {

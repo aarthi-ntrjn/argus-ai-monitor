@@ -1,6 +1,6 @@
 # argus2 Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-04-20
+Auto-generated from all feature plans. Last updated: 2026-04-25
 
 ## Active Technologies
 - TypeScript 5.9, Node.js 22 + node-pty (new), Fastify 5, better-sqlite3, ws, @fastify/websocket (020-fix-send-prompts)
@@ -16,6 +16,8 @@ Auto-generated from all feature plans. Last updated: 2026-04-20
 - TypeScript 5.x, React 18 + React, Tailwind CSS, Vitest, Playwright (026-configurable-resting)
 - `localStorage` via the existing `useSettings` hook (`argus:settings` key) (026-configurable-resting)
 - N/A (reads from existing session output query cache; no new persistence) (028-ai-choice-alert)
+- TypeScript 5, Node.js >=22 (backend); React 18 + TypeScript 5 (frontend) + Fastify 5, better-sqlite3, Vitest; Microsoft Graph API (via native `fetch`) + `@azure/msal-node` (Device Code Flow + token refresh) (031-teams-channel-integration)
+- SQLite (better-sqlite3) — new `teams_threads` table with `delta_link`; Teams credentials stored in `~/.argus/teams-config.json` (031-teams-channel-integration)
 - TypeScript (Node.js 20 backend, React 18 frontend) + Fastify, better-sqlite3, React Query, Tailwind CSS, Vite (032-repo-compare-session-focus)
 - SQLite via better-sqlite3; runtime migration pattern (ALTER TABLE IF NOT EXISTS column) (032-repo-compare-session-focus)
 - [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION] + [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION] (043-marketing-landing-page)
@@ -25,6 +27,8 @@ Auto-generated from all feature plans. Last updated: 2026-04-20
 - TypeScript 5.x + React 18, lucide-react (icons), Tailwind CSS (046-github-feedback)
 - TypeScript 5.x, React 18 + React Query (`@tanstack/react-query`) for session output data; existing `sendPrompt` API (051-prompt-history)
 - In-memory only — history is not persisted across page reloads (051-prompt-history)
+- TypeScript 5.9, Node.js ESM (tsx/tsc) + Fastify 5, Node.js built-in `net` module (outbound IP probe), PostHog via HTTP fetch (057-telemetry-location)
+- N/A (masked IP cached in-memory only; no new persistence) (057-telemetry-location)
 
 - TypeScript 5.9 (frontend + backend) + Fastify 5.x (backend), React 18 + TailwindCSS 3 + React Query (frontend), better-sqlite3 (storage), pino (logging), vitest + Playwright (testing) (014-engineer-todo-list)
 
@@ -45,9 +49,9 @@ npm test; npm run lint
 TypeScript 5.9 (frontend + backend): Follow standard conventions
 
 ## Recent Changes
+- 057-telemetry-location: Added TypeScript 5.9, Node.js ESM (tsx/tsc) + Fastify 5, Node.js built-in `net` module (outbound IP probe), PostHog via HTTP fetch
 - 051-prompt-history: Added TypeScript 5.x, React 18 + React Query (`@tanstack/react-query`) for session output data; existing `sendPrompt` API
 - 046-github-feedback: Added TypeScript 5.x + React 18, lucide-react (icons), Tailwind CSS
-- 043-marketing-landing-page: Added HTML5, CSS3, JavaScript ES2020 (vanilla, no framework) + None (zero npm dependencies); shields.io CDN for dynamic badges
 
 
 <!-- MANUAL ADDITIONS START -->

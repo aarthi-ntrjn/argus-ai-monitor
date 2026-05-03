@@ -1,7 +1,10 @@
+import { EventEmitter } from 'events';
 import { insertOutput as dbInsertOutput, getOutputForSession as dbGetOutput } from '../db/database.js';
 import { broadcast } from '../api/ws/event-dispatcher.js';
 import { getDb } from '../db/database.js';
 import type { SessionOutput } from '../models/index.js';
+
+export const outputEvents = new EventEmitter();
 
 export interface OutputPage {
   items: SessionOutput[];
@@ -9,16 +12,30 @@ export interface OutputPage {
   total: number;
 }
 
+type OutputListener = (sessionId: string, outputs: SessionOutput[]) => void;
+
 export class OutputStore {
+  private readonly listeners = new Set<OutputListener>();
+
+  addOutputListener(fn: OutputListener): void {
+    this.listeners.add(fn);
+  }
+
+  removeOutputListener(fn: OutputListener): void {
+    this.listeners.delete(fn);
+  }
+
   /** Returns true if at least one output was newly inserted (not a duplicate). */
-  insertOutput(sessionId: string, outputs: SessionOutput[]): boolean {
+  insertOutput(sessionId: string, outputs: SessionOutput[], options?: { skipNotifications?: boolean }): boolean {
     const inserted = outputs.filter(o => dbInsertOutput(o));
-    if (inserted.length > 0) {
+    if (inserted.length > 0 && !options?.skipNotifications) {
       broadcast({
         type: 'session.output.batch',
         timestamp: new Date().toISOString(),
-        data: { sessionId, outputs: inserted as unknown as Record<string, unknown>[] },
+        data: { sessionId, outputs: inserted },
       });
+      outputEvents.emit('session.output.batch', sessionId, outputs);
+      for (const fn of this.listeners) fn(sessionId, inserted);
     }
     return inserted.length > 0;
   }
@@ -62,3 +79,4 @@ export class OutputStore {
   }
 }
 
+export const outputStore = new OutputStore();

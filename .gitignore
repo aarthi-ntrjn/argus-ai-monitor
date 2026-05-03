@@ -16,3 +16,6 @@ Thumbs.db
 *.tmp
 frontend/dist/
 backend/dist/
+# Test-generated files
+backend/*.db
+backend/teams-config-*.json

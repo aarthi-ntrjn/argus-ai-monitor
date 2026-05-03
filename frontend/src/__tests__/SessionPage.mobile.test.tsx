@@ -16,10 +16,13 @@ vi.mock('../services/api', () => ({
     model: null,
     yoloMode: false,
     pid: null,
+    hostPid: null,
     pidSource: null,
+    reconciled: false,
   }),
   getSessionOutput: vi.fn().mockResolvedValue({ items: [] }),
   getArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false, yoloMode: false, restingThresholdMinutes: 20 }),
+  getRepositories: vi.fn().mockResolvedValue([]),
 }));
 
 

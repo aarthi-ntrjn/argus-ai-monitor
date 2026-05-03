@@ -12,6 +12,7 @@ vi.mock('../services/api', () => ({
   getSessionOutput: vi.fn().mockResolvedValue({ items: [] }),
   stopSession: (...args: unknown[]) => mockStopSession(...args),
   getArgusSettings: vi.fn().mockResolvedValue({ autoRegisterRepos: false, yoloMode: false, restingThresholdMinutes: 20 }),
+  getRepositories: vi.fn().mockResolvedValue([]),
 }));
 
 import { getSession } from '../services/api';
@@ -31,8 +32,10 @@ function renderSessionPage(sessionOverrides = {}) {
     model: null,
     yoloMode: false,
     pid: 12345,
+    hostPid: null,
     pidSource: 'pty_registry' as const,
     launchMode: null,
+    reconciled: false,
     ...sessionOverrides,
   };
 

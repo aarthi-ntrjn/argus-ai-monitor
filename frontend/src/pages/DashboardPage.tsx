@@ -5,11 +5,14 @@ import { useNavigate } from 'react-router-dom';
 import { getSessions, getRepositories } from '../services/api';
 import { useSettings } from '../hooks/useSettings';
 import { useArgusSettings } from '../hooks/useArgusSettings';
+import { useIntegrationControl } from '../hooks/useIntegrationControl';
 import { useOnboarding } from '../hooks/useOnboarding';
 import { useRepositoryManagement } from '../hooks/useRepositoryManagement';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { Button } from '../components/Button';
 import { SettingsPanel } from '../components/SettingsPanel';
+import { TeamsIntegrationButton, SlackIntegrationButton } from '../components/IntegrationButton/IntegrationButton';
+import { SettingsDialog, type SettingsTab } from '../components/SettingsDialog/SettingsDialog';
 import { TelemetryBanner } from '../components/TelemetryBanner';
 import { RemoveConfirmDialog } from '../components/RemoveConfirmDialog';
 import OutputPane from '../components/OutputPane/OutputPane';
@@ -36,6 +39,14 @@ export default function DashboardPage() {
   const isMobile = useIsMobile();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogTab, setDialogTab] = useState<SettingsTab>('general');
+
+  const openDialog = (tab: SettingsTab) => {
+    setDialogTab(tab);
+    setDialogOpen(true);
+    setSettingsOpen(false);
+  };
   const [isDashboardExpanded, setIsDashboardExpanded] = useState(
     () => localStorage.getItem('isDashboardExpanded') === 'true'
   );
@@ -52,7 +63,8 @@ export default function DashboardPage() {
   const settingsRef = useRef<HTMLDivElement>(null);
 
   const [settings, updateSetting] = useSettings();
-  const { settings: argusSettings, patchSetting } = useArgusSettings();
+  const { settings: argusSettings, isLoading: argusSettingsLoading, patchSetting } = useArgusSettings();
+  const { integrationsEnabled, toggle, isPending } = useIntegrationControl();
   const { tourStatus, seenRepoSteps, startTour, skipTour, completeTour, markRepoStepsSeen, resetOnboarding } = useOnboarding();
   const [tourRun, setTourRun] = useState(false);
   const [catchUpRun, setCatchUpRun] = useState(false);
@@ -105,6 +117,19 @@ export default function DashboardPage() {
     queryFn: () => getSessions(),
   });
 
+  // When the selected session ends, auto-switch to the first still-active session
+  // or close the output pane if none is available.
+  useEffect(() => {
+    if (!selectedSessionId || sessions.length === 0) return;
+    const selected = sessions.find(s => s.id === selectedSessionId);
+    if (!selected || ENDED_STATUSES.has(selected.status)) {
+      const next = sessions.find(s => ACTIVE_STATUSES.has(s.status));
+      selectSession(next?.id ?? null);
+    }
+  // selectSession is stable (defined once); sessions and selectedSessionId are the reactive deps.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessions, selectedSessionId]);
+
   const dashboardWidthClassName = isDashboardExpanded
     ? EXPANDED_DASHBOARD_WIDTH_CLASS
     : MANAGED_DASHBOARD_WIDTH_CLASS;
@@ -151,7 +176,7 @@ export default function DashboardPage() {
     }
   };
 
-  if (reposLoading || sessionsLoading) {
+  if (reposLoading || sessionsLoading || argusSettingsLoading) {
     return (
       <div className="h-screen flex flex-col overflow-hidden bg-slate-50">
         <header className="shrink-0 bg-slate-50 border-b border-gray-200">
@@ -216,8 +241,7 @@ export default function DashboardPage() {
             <div className="pt-8 max-w-lg mx-auto w-full text-left">
               <TelemetryBanner
                 onDismiss={handleTelemetryDismiss}
-                onOpenSettings={() => setSettingsOpen(true)}
-                subtle
+                onOpenSettings={() => openDialog('general')}
               />
             </div>
           )}
@@ -260,6 +284,20 @@ export default function DashboardPage() {
                 {infoSnapshot}
               </span>
             </div>
+            {integrationsEnabled && (
+              <div className="flex items-center gap-3">
+                <TeamsIntegrationButton
+                  disabled={isPending}
+                  onToggle={() => toggle('teams')}
+                  onOpenSettings={() => openDialog('teams')}
+                />
+                <SlackIntegrationButton
+                  disabled={isPending}
+                  onToggle={() => toggle('slack')}
+                  onOpenSettings={() => openDialog('slack')}
+                />
+              </div>
+            )}
             <div className="relative" ref={settingsRef}>
               <button
                 data-tour-id="dashboard-settings"
@@ -279,12 +317,7 @@ export default function DashboardPage() {
                 <SettingsPanel
                   settings={settings}
                   onToggle={(key, value) => updateSetting(key, value)}
-                  onRestartTour={() => {
-                    setSettingsOpen(false);
-                    resetOnboarding();
-                    startTour('manual');
-                    setTourRun(true);
-                  }}
+                  onOpenAllSettings={() => openDialog('general')}
                 />
               )}
             </div>
@@ -415,6 +448,21 @@ export default function DashboardPage() {
           onSkip={() => { markRepoStepsSeen(); setCatchUpRun(false); }}
         />
       )}
+
+      <SettingsDialog
+        open={dialogOpen}
+        tab={dialogTab}
+        onTabChange={setDialogTab}
+        onClose={() => setDialogOpen(false)}
+        settings={settings}
+        onToggle={(key, value) => updateSetting(key, value)}
+        onRestartTour={() => {
+          setDialogOpen(false);
+          resetOnboarding();
+          startTour('manual');
+          setTourRun(true);
+        }}
+      />
     </div>
   );
 }

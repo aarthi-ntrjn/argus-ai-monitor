@@ -82,12 +82,20 @@ export async function interruptSession(id: string): Promise<{ actionId: string; 
   return apiFetch<{ actionId: string; status: string }>(`/sessions/${id}/interrupt`, { method: 'POST' });
 }
 
+export async function rejectTool(id: string): Promise<{ status: string }> {
+  return apiFetch<{ status: string }>(`/sessions/${id}/reject-tool`, { method: 'POST' });
+}
+
 export async function dismissSession(id: string): Promise<{ status: string }> {
   return apiFetch<{ status: string }>(`/sessions/${id}/dismiss`, { method: 'POST' });
 }
 
-export async function sendPrompt(id: string, prompt: string): Promise<ControlAction> {
-  return apiFetch<ControlAction>(`/sessions/${id}/send`, { method: 'POST', body: JSON.stringify({ prompt }) });
+export async function sendPrompt(id: string, prompt: string, opts?: { raw?: boolean }): Promise<ControlAction> {
+  return apiFetch<ControlAction>(`/sessions/${id}/send`, { method: 'POST', body: JSON.stringify({ prompt, ...(opts?.raw ? { raw: true } : {}) }) });
+}
+
+export async function sendPromptWithChoice(id: string, choiceNumber: string, prompt: string): Promise<ControlAction> {
+  return apiFetch<ControlAction>(`/sessions/${id}/send-with-choice`, { method: 'POST', body: JSON.stringify({ choiceNumber, prompt }) });
 }
 
 export async function getTodos(): Promise<TodoItem[]> {
@@ -147,6 +155,66 @@ export async function getArgusSettings(): Promise<ArgusConfig> {
 
 export async function patchArgusSettings(patch: Partial<ArgusConfig>): Promise<ArgusConfig> {
   return apiFetch<ArgusConfig>('/settings', { method: 'PATCH', body: JSON.stringify(patch) });
+}
+
+export interface TeamsSettings {
+  enabled: boolean;
+  teamId?: string;
+  channelId?: string;
+  ownerSenderId?: string;
+  clientId?: string;
+  tenantId?: string;
+  connectionStatus: 'connected' | 'stopped' | 'unconfigured';
+}
+
+export async function getTeamsSettings(): Promise<TeamsSettings> {
+  return apiFetch<TeamsSettings>('/settings/teams');
+}
+
+export async function patchTeamsSettings(patch: Partial<Omit<TeamsSettings, 'enabled' | 'connectionStatus'>>): Promise<TeamsSettings> {
+  return apiFetch<TeamsSettings>('/settings/teams', { method: 'PATCH', body: JSON.stringify(patch) });
+}
+
+export interface SlackSettings {
+  botToken: string;
+  appToken?: string;
+  channelId: string;
+  ownerSenderId?: string;
+  enabled: boolean;
+}
+
+export async function getSlackSettings(): Promise<SlackSettings> {
+  return apiFetch<SlackSettings>('/settings/slack');
+}
+
+export async function patchSlackSettings(patch: Partial<Omit<SlackSettings, 'enabled'>>): Promise<SlackSettings> {
+  return apiFetch<SlackSettings>('/settings/slack', { method: 'PATCH', body: JSON.stringify(patch) });
+}
+
+export type ConnectionStatus = 'connected' | 'stopped' | 'unconfigured';
+
+export interface IntegrationRunState {
+  connectionStatus: ConnectionStatus;
+  notifier: { running: boolean } | null;
+  listener: { running: boolean } | null;
+}
+
+export interface IntegrationStatus {
+  integrationsEnabled: boolean;
+  slack: IntegrationRunState;
+  teams: IntegrationRunState;
+}
+
+export async function getIntegrationStatus(): Promise<IntegrationStatus> {
+  return apiFetch<IntegrationStatus>('/integrations');
+}
+
+export async function startIntegration(platform: 'slack' | 'teams'): Promise<void> {
+  await apiFetch<unknown>(`/integrations/${platform}/start`, { method: 'POST' });
+}
+
+export async function stopIntegration(platform: 'slack' | 'teams'): Promise<void> {
+  await apiFetch<unknown>(`/integrations/${platform}/stop`, { method: 'POST' });
 }
 
 export async function getHealth(): Promise<{ status: string; version: string; uptime: number }> {
