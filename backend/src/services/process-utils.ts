@@ -49,6 +49,14 @@ function getProcessCommandLine(pid: number): string | null {
 // Win32 BOOL is a 4-byte int, not C bool. Using int32 avoids ABI mismatch on
 // any calling convention where size matters (e.g. ia32 stdcall).
 const WIN32_BOOL = 'int32';
+const PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+// UNICODE_STRING header layout on x64: Length(2) + MaxLen(2) + padding(4) + Buffer ptr(8) = 16 bytes.
+// On x86: Length(2) + MaxLen(2) + Buffer ptr(4) = 8 bytes. String data follows immediately after.
+const UNICODE_STRING_HEADER = process.arch === 'ia32' ? 8 : 16;
+// ProcessCommandLineInformation (class 60), available on Windows 8.1+.
+// NtQueryInformationProcess returns a UNICODE_STRING with the full command line copied inline.
+const PROCESS_CMDLINE_INFO = 60;
+const STATUS_SUCCESS = 0;
 
 type Win32Fn<T> = (pid: number) => T;
 let _win32GetName: Win32Fn<string | null> | null | undefined = undefined;
@@ -63,7 +71,6 @@ function initWin32GetName(): Win32Fn<string | null> | null {
     const koffi = _require('koffi') as any;
     const kernel32 = koffi.load('kernel32.dll');
 
-    const PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
     const WCHAR_BUFSIZE = 32767; // supports extended-length paths
 
     const OpenProcess = kernel32.func(
@@ -107,15 +114,6 @@ function initWin32GetCmdLine(): Win32Fn<string | null> | null {
     const koffi = _require('koffi') as any;
     const kernel32 = koffi.load('kernel32.dll');
     const ntdll = koffi.load('ntdll.dll');
-
-    const PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
-    // UNICODE_STRING header layout on x64: Length(2) + MaxLen(2) + padding(4) + Buffer ptr(8) = 16 bytes.
-    // On x86: Length(2) + MaxLen(2) + Buffer ptr(4) = 8 bytes. String data follows immediately after.
-    const UNICODE_STRING_HEADER = process.arch === 'ia32' ? 8 : 16;
-    // ProcessCommandLineInformation (class 60), available on Windows 8.1+.
-    // NtQueryInformationProcess returns a UNICODE_STRING with the full command line copied inline.
-    const PROCESS_CMDLINE_INFO = 60;
-    const STATUS_SUCCESS = 0;
 
     const OpenProcess = kernel32.func(
       `void* __stdcall OpenProcess(uint32 dwDesiredAccess, ${WIN32_BOOL} bInheritHandle, uint32 dwProcessId)`
