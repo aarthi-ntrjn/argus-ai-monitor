@@ -33,8 +33,6 @@ export default function PendingChoicePanel({ pendingChoice, session, idx, onAdva
   const showSubmitPanel = questions.length > 1;
   const allSelected = idx >= questions.length;
   const current = questions[Math.min(idx, questions.length - 1)];
-  const isClaudeCode = session.type === 'claude-code';
-
   const handleChoice = async (choice: string) => {
     if (!canSend) return;
     setSending(true);
@@ -171,7 +169,7 @@ export default function PendingChoicePanel({ pendingChoice, session, idx, onAdva
                 )
               )}
 
-              {isClaudeCode && canSend && (
+              {canSend && (
                 <>
                   {showCustomInput ? (
                     <div className="flex gap-1 mt-0.5" onClick={e => e.stopPropagation()}>

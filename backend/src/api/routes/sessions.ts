@@ -4,6 +4,7 @@ import { OutputStore } from '../../services/output-store.js';
 import { SessionController } from '../../services/session-controller.js';
 import { ptyRegistry } from '../../services/pty-registry.js';
 import { telemetryService } from '../../services/telemetry-service.js';
+import { broadcast } from '../ws/event-dispatcher.js';
 
 let _claudeDetector: { getPendingChoice(sessionId: string): unknown; clearPendingChoice(sessionId: string): void } | null = null;
 
@@ -72,6 +73,7 @@ const sessionsRoutes: FastifyPluginAsync = async (app) => {
       try {
         const action = await sessionController.interruptSession(req.params.id);
         _claudeDetector?.clearPendingChoice(req.params.id);
+        broadcast({ type: 'session.pending_choice.resolved', timestamp: new Date().toISOString(), data: { sessionId: req.params.id } });
         return reply.status(202).send({ actionId: action.id, status: action.status });
       } catch (err: unknown) {
         const e = err as { code?: string; message?: string };
@@ -144,6 +146,7 @@ const sessionsRoutes: FastifyPluginAsync = async (app) => {
       } catch { /* best effort — clear the pending choice regardless */ }
 
       _claudeDetector?.clearPendingChoice(req.params.id);
+      broadcast({ type: 'session.pending_choice.resolved', timestamp: new Date().toISOString(), data: { sessionId: req.params.id } });
       return reply.send({ status: 'rejected' });
     }
   );
