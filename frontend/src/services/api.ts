@@ -90,8 +90,8 @@ export async function dismissSession(id: string): Promise<{ status: string }> {
   return apiFetch<{ status: string }>(`/sessions/${id}/dismiss`, { method: 'POST' });
 }
 
-export async function sendPrompt(id: string, prompt: string): Promise<ControlAction> {
-  return apiFetch<ControlAction>(`/sessions/${id}/send`, { method: 'POST', body: JSON.stringify({ prompt }) });
+export async function sendPrompt(id: string, prompt: string, opts?: { raw?: boolean }): Promise<ControlAction> {
+  return apiFetch<ControlAction>(`/sessions/${id}/send`, { method: 'POST', body: JSON.stringify({ prompt, ...(opts?.raw ? { raw: true } : {}) }) });
 }
 
 export async function getTodos(): Promise<TodoItem[]> {

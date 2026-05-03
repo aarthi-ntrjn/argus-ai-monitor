@@ -112,17 +112,17 @@ const sessionsRoutes: FastifyPluginAsync = async (app) => {
     }
   );
 
-  app.post<{ Params: { id: string }; Body: { prompt?: string } }>(
+  app.post<{ Params: { id: string }; Body: { prompt?: string; raw?: boolean } }>(
     '/api/v1/sessions/:id/send',
     async (req, reply) => {
-      const { prompt } = req.body ?? {};
+      const { prompt, raw } = req.body ?? {};
       if (!prompt) return reply.status(400).send({ error: 'MISSING_PROMPT', message: 'prompt is required' });
 
       try {
         const session = getSession(req.params.id);
         if (!session) return reply.status(404).send({ error: 'NOT_FOUND', message: `Session ${req.params.id} not found` });
 
-        const skipEnter = !!_claudeDetector?.getPendingChoice(req.params.id);
+        const skipEnter = raw ? true : !!_claudeDetector?.getPendingChoice(req.params.id);
         const action = await sessionController.sendPrompt(req.params.id, prompt, skipEnter);
         return reply.status(202).send({ actionId: action.id, status: action.status });
       } catch (err: unknown) {
