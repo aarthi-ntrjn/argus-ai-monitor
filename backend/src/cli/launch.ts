@@ -218,6 +218,11 @@ const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 //   await delay(WRITE_DELAY_MS);
 // };
 
+const sendInterrupt = (): void => {
+  log(`pty.write interrupt`);
+  pty.write('\x1b');
+};
+
 const sendPromptInterwriteDelayV2 = async (prompt: string, skipEnter = false): Promise<void> => {
   log(`focus-in`);
   pty.write('\x1b[I');
@@ -254,7 +259,11 @@ const sendPromptInterwriteDelayV2 = async (prompt: string, skipEnter = false): P
 client.onSendPrompt(async (actionId: string, prompt: string, skipEnter: boolean) => {
   log(`onSendPrompt actionId=${actionId} promptLen=${prompt.length} skipEnter=${skipEnter}`);
   try {
-    await sendPromptInterwriteDelayV2(prompt, skipEnter);    
+    if (skipEnter && prompt === '\x1b') {
+      sendInterrupt();
+    } else {
+      await sendPromptInterwriteDelayV2(prompt, skipEnter);
+    }
     client.ackDelivered(actionId);
   } catch (err: unknown) {
     log(`prompt delivery failed: ${err}`);
