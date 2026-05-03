@@ -1,6 +1,10 @@
 import { execSync } from 'child_process';
+import { createRequire } from 'module';
 import { platform } from 'os';
+import { basename } from 'path';
 import type { SessionType } from '../models/index.js';
+
+const PLATFORM = platform();
 
 const YOLO_FLAGS: Record<SessionType, string> = {
   'claude-code': '--dangerously-skip-permissions',
@@ -23,37 +27,145 @@ function detectYoloMode(pid: number, type: SessionType): boolean | null {
 
 function getProcessCommandLine(pid: number): string | null {
   try {
-    if (platform() === 'win32') {
-      const out = execSync(
-        `powershell -NoProfile -Command "(Get-CimInstance Win32_Process -Filter 'ProcessId = ${pid}' -ErrorAction SilentlyContinue).CommandLine"`,
-        { encoding: 'utf-8', timeout: 3000 }
-      ).trim();
-      return out || null;
-    } else {
-      const out = execSync(`ps -o args= -p ${pid}`, {
-        encoding: 'utf-8',
-        timeout: 3000,
-      }).trim();
-      return out || null;
+    if (PLATFORM === 'win32') {
+      return getProcessCmdLineWin32(pid);
     }
+    const out = execSync(`ps -o args= -p ${pid}`, {
+      encoding: 'utf-8',
+      timeout: 3000,
+    }).trim();
+    return out || null;
   } catch {
     return null;
   }
 }
 
-/**
- * Get the base process name for the given PID on Windows only.
- * Uses Get-Process (Win32 API, no WMI).
- */
-function getProcessName(pid: number): string | null {
+// ---------------------------------------------------------------------------
+// Windows-native process introspection via koffi FFI.
+// Two independent lazy-init functions so a failure in one does not disable
+// the other (e.g. ntdll binding failure must not break name lookup).
+// ---------------------------------------------------------------------------
+
+// Win32 BOOL is a 4-byte int, not C bool. Using int32 avoids ABI mismatch on
+// any calling convention where size matters (e.g. ia32 stdcall).
+const WIN32_BOOL = 'int32';
+const PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+// UNICODE_STRING header layout on x64: Length(2) + MaxLen(2) + padding(4) + Buffer ptr(8) = 16 bytes.
+// On x86: Length(2) + MaxLen(2) + Buffer ptr(4) = 8 bytes. String data follows immediately after.
+const UNICODE_STRING_HEADER = process.arch === 'ia32' ? 8 : 16;
+// ProcessCommandLineInformation (class 60), available on Windows 8.1+.
+// NtQueryInformationProcess returns a UNICODE_STRING with the full command line copied inline.
+const PROCESS_CMDLINE_INFO = 60;
+const STATUS_SUCCESS = 0;
+
+type Win32Fn<T> = (pid: number) => T;
+let _win32GetName: Win32Fn<string | null> | null | undefined = undefined;
+let _win32GetCmdLine: Win32Fn<string | null> | null | undefined = undefined;
+
+function initWin32GetName(): Win32Fn<string | null> | null {
+  if (PLATFORM !== 'win32') return null;
   try {
-    return execSync(
-      `powershell -NoProfile -Command "(Get-Process -Id ${pid} -ErrorAction SilentlyContinue).Name"`,
-      { encoding: 'utf-8', timeout: 3000 }
-    ).trim() || null;
+    // Use createRequire so the load is synchronous and any failure is caught here.
+    const _require = createRequire(import.meta.url);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const koffi = _require('koffi') as any;
+    const kernel32 = koffi.load('kernel32.dll');
+
+    const WCHAR_BUFSIZE = 32767; // supports extended-length paths
+
+    const OpenProcess = kernel32.func(
+      `void* __stdcall OpenProcess(uint32 dwDesiredAccess, ${WIN32_BOOL} bInheritHandle, uint32 dwProcessId)`
+    );
+    const CloseHandle = kernel32.func(`${WIN32_BOOL} __stdcall CloseHandle(void* hObject)`);
+    const QueryFullProcessImageNameW = kernel32.func(
+      `${WIN32_BOOL} __stdcall QueryFullProcessImageNameW(void* hProcess, uint32 dwFlags, void* lpExeName, _Inout_ uint32* lpdwSize)`
+    );
+
+    return (pid: number): string | null => {
+      const handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
+      if (!handle) return null;
+      try {
+        const buf = Buffer.alloc(WCHAR_BUFSIZE * 2); // 2 bytes per UTF-16 char
+        const size = [WCHAR_BUFSIZE]; // in: capacity; out: chars written (excluding NUL)
+        const ok = QueryFullProcessImageNameW(handle, 0, buf, size);
+        if (!ok || size[0] === 0) return null;
+        const fullPath = buf.toString('utf16le', 0, size[0] * 2);
+        // QueryFullProcessImageNameW returns the current on-disk path. During a Copilot CLI
+        // auto-update, the updater renames the running binary from copilot.exe to copilot.exe.old
+        // (it cannot delete a file that is in use) and drops the new binary as copilot.exe.
+        // The process keeps running from the renamed file, so we get "copilot.exe.old" here
+        // even though the session is legitimate. Strip .old first, then .exe, so that
+        // copilot.exe.old -> copilot.exe -> copilot, matching isAiToolName.
+        return basename(fullPath).replace(/\.old$/i, '').replace(/\.exe$/i, '');
+      } finally {
+        CloseHandle(handle);
+      }
+    };
   } catch {
-    return null;
+    return null; // koffi unavailable — isExpectedProcess will fail open
   }
+}
+
+function initWin32GetCmdLine(): Win32Fn<string | null> | null {
+  if (PLATFORM !== 'win32') return null;
+  try {
+    const _require = createRequire(import.meta.url);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const koffi = _require('koffi') as any;
+    const kernel32 = koffi.load('kernel32.dll');
+    const ntdll = koffi.load('ntdll.dll');
+
+    const OpenProcess = kernel32.func(
+      `void* __stdcall OpenProcess(uint32 dwDesiredAccess, ${WIN32_BOOL} bInheritHandle, uint32 dwProcessId)`
+    );
+    const CloseHandle = kernel32.func(`${WIN32_BOOL} __stdcall CloseHandle(void* hObject)`);
+    const NtQueryInformationProcess = ntdll.func(
+      'int32 __stdcall NtQueryInformationProcess(void* ProcessHandle, int32 ProcessInformationClass, void* ProcessInformation, uint32 ProcessInformationLength, _Out_ uint32* ReturnLength)'
+    );
+
+    return (pid: number): string | null => {
+      const handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
+      if (!handle) return null;
+      try {
+        // Probe call: passing length 0 causes STATUS_INFO_LENGTH_MISMATCH and writes the
+        // required buffer size into retLen. A zero retLen means class 60 is unsupported.
+        const retLen = [0];
+        NtQueryInformationProcess(handle, PROCESS_CMDLINE_INFO, null, 0, retLen);
+        const needed = retLen[0];
+        if (needed < UNICODE_STRING_HEADER) return null;
+
+        const buf = Buffer.alloc(needed);
+        const status = NtQueryInformationProcess(handle, PROCESS_CMDLINE_INFO, buf, needed, retLen);
+        if (status !== STATUS_SUCCESS) return null;
+
+        // UNICODE_STRING.Length (offset 0) is the byte length of the string, excluding NUL.
+        // The string data starts immediately after the struct header.
+        const strBytes = buf.readUInt16LE(0);
+        if (strBytes === 0 || UNICODE_STRING_HEADER + strBytes > needed) return null;
+        return buf.toString('utf16le', UNICODE_STRING_HEADER, UNICODE_STRING_HEADER + strBytes);
+      } finally {
+        CloseHandle(handle);
+      }
+    };
+  } catch {
+    return null; // koffi or ntdll unavailable
+  }
+}
+
+function getProcessNameWin32(pid: number): string | null {
+  if (_win32GetName === undefined) _win32GetName = initWin32GetName();
+  return _win32GetName ? _win32GetName(pid) : null;
+}
+
+function getProcessCmdLineWin32(pid: number): string | null {
+  if (_win32GetCmdLine === undefined) _win32GetCmdLine = initWin32GetCmdLine();
+  if (_win32GetCmdLine) return _win32GetCmdLine(pid);
+  // Fall back to PowerShell WMI if koffi/ntdll is unavailable.
+  const out = execSync(
+    `powershell -NoProfile -Command "(Get-CimInstance Win32_Process -Filter 'ProcessId = ${pid}' -ErrorAction SilentlyContinue).CommandLine"`,
+    { encoding: 'utf-8', timeout: 3000 }
+  ).trim();
+  return out || null;
 }
 
 function isAiToolCmdLine(cmdLine: string, type: SessionType): boolean {
@@ -72,17 +184,20 @@ function isAiToolName(name: string, type: SessionType): boolean {
 
 /**
  * Guard 3: verify the process at the given PID is the expected AI tool.
- * Fails open (returns true) when the command line cannot be read.
+ * Fails open (returns true) when the process name cannot be read.
  *
- * On Linux/Mac we use the full command line (ps -o args=) rather than the short
- * kernel name (/proc/pid/comm). The kernel name is useless here: it returns "node"
- * for any Node.js binary regardless of the script being run (e.g. /usr/local/bin/copilot).
- * On Windows we fall back to the short process name from Get-Process because
- * Get-CimInstance CommandLine is slower and less reliable for this check.
+ * On Windows: uses koffi FFI to call QueryFullProcessImageNameW directly —
+ * sub-millisecond, no child-process spawn.
+ * On Linux: reads /proc/<pid>/cmdline — no process spawn needed.
+ * On macOS: falls back to spawning ps.
+ *
+ * The full command line (not just the kernel short name) is used on Linux/Mac
+ * because Node.js binaries (e.g. /usr/local/bin/copilot) report as "node" in
+ * /proc/pid/comm regardless of the script being run.
  */
 export function isExpectedProcess(pid: number, type: SessionType): boolean {
-  if (platform() === 'win32') {
-    const name = getProcessName(pid);
+  if (PLATFORM === 'win32') {
+    const name = getProcessNameWin32(pid);
     if (!name) return true; // cannot verify — fail open
     return isAiToolName(name, type);
   }
