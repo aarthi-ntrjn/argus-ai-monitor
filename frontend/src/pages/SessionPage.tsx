@@ -82,7 +82,7 @@ export default function SessionPage() {
       </div>
 
       {/* Output stream + prompt bar — fills remaining height */}
-      <div className="flex-1 min-h-0 flex flex-col px-4 md:px-8 pb-4 md:pb-6 mt-4">
+      <div className="flex-1 min-h-0 flex flex-col px-4 md:px-8 pb-4 md:pb-6 mt-2">
         <div className="max-w-4xl mx-auto w-full flex-1 min-h-0 flex flex-col">
 
           <OutputPane
