@@ -63,7 +63,7 @@ export default function OutputPane({ session, repo, onClose, className, 'data-to
                 {repo.name}
                 {repo.branch && <span className="ml-1 font-normal text-gray-500">({repo.branch})</span>}
               </span>
-              <span className="text-[10px] text-gray-400 truncate">{repo.path.split(/[\\/]/).pop()}</span>
+              <span className="text-[10px] text-gray-400 truncate" title={repo.path}>{repo.path}</span>
             </>
           ) : (
             <span className="text-xs font-medium text-gray-600 truncate">Session <span className="font-mono text-[10px] text-gray-500">{session.id}</span></span>
