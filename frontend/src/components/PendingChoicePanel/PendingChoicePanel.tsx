@@ -9,9 +9,10 @@ interface Props {
   session: Session;
   idx: number;
   onAdvance: () => void;
+  onFocusPromptBar?: () => void;
 }
 
-export default function PendingChoicePanel({ pendingChoice, session, idx, onAdvance }: Props) {
+export default function PendingChoicePanel({ pendingChoice, session, idx, onAdvance, onFocusPromptBar }: Props) {
   const questions: PendingChoiceItem[] = pendingChoice.allQuestions ?? [
     { question: pendingChoice.question, choices: pendingChoice.choices },
   ];
@@ -19,14 +20,10 @@ export default function PendingChoicePanel({ pendingChoice, session, idx, onAdva
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
-  const [showCustomInput, setShowCustomInput] = useState(false);
-  const [customAnswer, setCustomAnswer] = useState('');
 
   useEffect(() => {
     setError(null);
     setSubmitted(false);
-    setShowCustomInput(false);
-    setCustomAnswer('');
   }, [pendingChoice]);
 
   const canSend = session.launchMode === 'pty' && session.ptyConnected !== false;
@@ -83,14 +80,6 @@ export default function PendingChoicePanel({ pendingChoice, session, idx, onAdva
     } finally {
       setSending(false);
     }
-  };
-
-  const handleCustomSubmit = async () => {
-    const text = customAnswer.trim();
-    if (!text) return;
-    setShowCustomInput(false);
-    setCustomAnswer('');
-    await handleChoice(text);
   };
 
   return (
@@ -171,35 +160,15 @@ export default function PendingChoicePanel({ pendingChoice, session, idx, onAdva
 
               {canSend && (
                 <>
-                  {showCustomInput ? (
-                    <div className="flex gap-1 mt-0.5" onClick={e => e.stopPropagation()}>
-                      <input
-                        type="text"
-                        value={customAnswer}
-                        autoFocus
-                        onChange={e => setCustomAnswer(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); handleCustomSubmit(); } if (e.key === 'Escape') { setShowCustomInput(false); } }}
-                        className="flex-1 text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                        placeholder="Type your answer..."
-                      />
-                      <Button size="sm" variant="primary" disabled={sending || !customAnswer.trim()} onClick={e => { e.stopPropagation(); handleCustomSubmit(); }}>
-                        Send
-                      </Button>
-                      <Button size="sm" variant="ghost" disabled={sending} onClick={e => { e.stopPropagation(); setShowCustomInput(false); }}>
-                        Cancel
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={sending}
-                      onClick={e => { e.stopPropagation(); setShowCustomInput(true); }}
-                      className="text-left justify-start"
-                    >
-                      <span className="font-semibold">{current.choices.length + 1}. Type your own answer</span>
-                    </Button>
-                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={sending}
+                    onClick={e => { e.stopPropagation(); void handleChoice(String(current.choices.length + 1)); onFocusPromptBar?.(); }}
+                    className="text-left justify-start"
+                  >
+                    <span className="font-semibold">{current.choices.length + 1}. Type your own answer</span>
+                  </Button>
                   <Button
                     variant="danger"
                     size="sm"

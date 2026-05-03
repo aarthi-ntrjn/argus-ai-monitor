@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useImperativeHandle, forwardRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CornerDownLeft } from 'lucide-react';
 import { sendPrompt, getSessionOutput } from '../../services/api';
@@ -11,9 +11,13 @@ interface Props {
   onPromptSent?: () => void;
 }
 
+export interface SessionPromptBarHandle {
+  focusInput(): void;
+}
+
 type ConnectionState = 'readonly' | 'connecting' | 'connected';
 
-export default function SessionPromptBar({ session, onPromptSent }: Props) {
+const SessionPromptBar = forwardRef<SessionPromptBarHandle, Props>(function SessionPromptBar({ session, onPromptSent }, ref) {
   const connectionState: ConnectionState =
     session.launchMode !== 'pty' ? 'readonly' :
     session.ptyConnected === false ? 'connecting' : 'connected';
@@ -21,6 +25,10 @@ export default function SessionPromptBar({ session, onPromptSent }: Props) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    focusInput() { inputRef.current?.focus(); },
+  }));
 
   const { data: outputData } = useQuery({
     queryKey: ['session-output', session.id],
@@ -124,4 +132,6 @@ export default function SessionPromptBar({ session, onPromptSent }: Props) {
       {error && <p role="alert" className="text-xs text-red-600 mt-0.5">{error}</p>}
     </div>
   );
-}
+});
+
+export default SessionPromptBar;

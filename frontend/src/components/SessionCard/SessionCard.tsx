@@ -1,4 +1,4 @@
-import { memo, useState, useEffect } from 'react';
+import { memo, useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -6,7 +6,7 @@ import type { Session } from '../../types';
 import { getSessionOutput } from '../../services/api';
 import { isInactive, type PendingChoice } from '../../utils/sessionUtils';
 import { useArgusSettings } from '../../hooks/useArgusSettings';
-import SessionPromptBar from '../SessionPromptBar/SessionPromptBar';
+import SessionPromptBar, { type SessionPromptBarHandle } from '../SessionPromptBar/SessionPromptBar';
 import SessionMetaRow from '../SessionMetaRow/SessionMetaRow';
 import { useKillSession } from '../../hooks/useKillSession';
 import { KillSessionDialog } from '../KillSessionDialog/KillSessionDialog';
@@ -41,6 +41,8 @@ function SessionCard({ session, selected, onSelect }: Props) {
   const [questionIdx, setQuestionIdx] = useState(0);
   useEffect(() => { setQuestionIdx(0); }, [hookPendingChoice]);
 
+  const promptBarRef = useRef<SessionPromptBarHandle>(null);
+
   const items = lastOutput?.items ?? [];
   const previewItem =
     [...items].reverse().find((i: import('../../types').SessionOutput) => i.type === 'message' && i.role === 'assistant') ??
@@ -64,7 +66,7 @@ function SessionCard({ session, selected, onSelect }: Props) {
 
       {/* Summary / topic */}
       {pendingChoice !== null ? (
-        <PendingChoicePanel pendingChoice={pendingChoice} session={session} idx={questionIdx} onAdvance={() => setQuestionIdx(i => i + 1)} />
+        <PendingChoicePanel pendingChoice={pendingChoice} session={session} idx={questionIdx} onAdvance={() => setQuestionIdx(i => i + 1)} onFocusPromptBar={() => promptBarRef.current?.focusInput()} />
       ) : (
         <p className={`text-sm mt-2 truncate ${session.summary ? 'text-gray-600' : 'text-gray-500 italic'}`}>
           {session.summary || 'Nothing sent yet'}
@@ -86,7 +88,7 @@ function SessionCard({ session, selected, onSelect }: Props) {
 
       {session.launchMode === 'pty' && (
         <div onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
-          <SessionPromptBar session={session} onPromptSent={pendingChoice ? () => setQuestionIdx(i => i + 1) : undefined} />
+          <SessionPromptBar ref={promptBarRef} session={session} onPromptSent={pendingChoice ? () => setQuestionIdx(i => i + 1) : undefined} />
         </div>
       )}
 
