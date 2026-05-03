@@ -85,7 +85,13 @@ function initWin32GetName(): Win32GetNameFn | null {
         const ok = QueryFullProcessImageNameW(handle, 0, buf, size);
         if (!ok || size[0] === 0) return null;
         const fullPath = buf.toString('utf16le', 0, size[0] * 2);
-        return basename(fullPath).replace(/\.exe$/i, '');
+        // QueryFullProcessImageNameW returns the current on-disk path. During a Copilot CLI
+        // auto-update, the updater renames the running binary from copilot.exe to copilot.exe.old
+        // (it cannot delete a file that is in use) and drops the new binary as copilot.exe.
+        // The process keeps running from the renamed file, so we get "copilot.exe.old" here
+        // even though the session is legitimate. Strip .old first, then .exe, so that
+        // copilot.exe.old → copilot.exe → copilot, matching isAiToolName.
+        return basename(fullPath).replace(/\.old$/i, '').replace(/\.exe$/i, '');
       } finally {
         CloseHandle(handle);
       }
