@@ -55,11 +55,15 @@ Each card is a live snapshot of a session:
 - **Send prompt input and button**: (only in live sessions) Type a prompt and send to the CLI session from Argus.
 - **Focus button** (crosshair icon): brings the originating terminal window to the foreground. Shown for all active sessions; disabled when no PID is known.
 
+### Session Detail Page
+
+The drill-in link on any session card opens a full-page view. At the top, when the session belongs to a registered repository, a **repo context bar** shows the repository name, full path, current branch badge, and a GitHub compare link. Below that is the session status card, followed by the full output stream. When a session has ended, the prompt input bar is replaced with a **This session has ended** notice.
+
 ### Session Output
 
 <img src="docs/images/argus-session-stream.png" alt="Session Output" height="300">
 
-Click any card to open a **live output pane** on the right inline. The card list stays visible on the left. Click another card to switch sessions. The selected session is persisted across page refreshes. Click the **X** icon in the output pane header to close it.
+Click any card to open a **live output pane** on the right inline. The card list stays visible on the left. Click another card to switch sessions. The selected session is persisted across page refreshes. Click the **X** icon in the output pane header to close it. When the selected session ends, Argus automatically switches to the next active session, or closes the pane if no active sessions remain.
 
 Output lines carry type badges so you always know what's what: **YOU** (your input), **AI** (assistant reply), **TOOL** (tool call), **RESULT** (tool result), **STATUS** (status change), **ERR** (error). These are streamed in real time, including tool calls.
 
