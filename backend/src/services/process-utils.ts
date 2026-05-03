@@ -1,5 +1,4 @@
 import { execSync } from 'child_process';
-import { readFileSync } from 'fs';
 import { createRequire } from 'module';
 import { platform } from 'os';
 import { basename } from 'path';
@@ -35,12 +34,6 @@ function getProcessCommandLine(pid: number): string | null {
       ).trim();
       return out || null;
     }
-    if (PLATFORM === 'linux') {
-      // Direct /proc read — no child-process spawn needed on Linux.
-      const raw = readFileSync(`/proc/${pid}/cmdline`);
-      return raw.toString('utf8').replace(/\0/g, ' ').trim() || null;
-    }
-    // macOS: no /proc, fall back to ps.
     const out = execSync(`ps -o args= -p ${pid}`, {
       encoding: 'utf-8',
       timeout: 3000,
