@@ -1,12 +1,14 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
-import { getSession } from '../services/api';
+import { getSession, getRepositories } from '../services/api';
 import OutputPane from '../components/OutputPane/OutputPane';
 import SessionPromptBar from '../components/SessionPromptBar/SessionPromptBar';
 import SessionMetaRow from '../components/SessionMetaRow/SessionMetaRow';
 import { useKillSession } from '../hooks/useKillSession';
 import { KillSessionDialog } from '../components/KillSessionDialog/KillSessionDialog';
+
+const ENDED_STATUSES = new Set(['completed', 'ended']);
 
 
 export default function SessionPage() {
@@ -19,6 +21,14 @@ export default function SessionPage() {
     queryFn: () => getSession(id!),
     enabled: !!id,
   });
+
+  const { data: repos = [] } = useQuery({
+    queryKey: ['repositories'],
+    queryFn: getRepositories,
+    enabled: !!session,
+  });
+
+  const repo = session ? repos.find(r => r.id === session.repositoryId) : undefined;
 
   if (sessionLoading) {
     return (
@@ -61,6 +71,11 @@ export default function SessionPage() {
               <p className="font-mono text-sm text-gray-800 mt-2 px-1">{session.summary}</p>
             )}
           </div>
+          {ENDED_STATUSES.has(session.status) && (
+            <div role="alert" className="mt-2 px-3 py-2 bg-gray-100 border border-gray-300 rounded text-gray-600 text-sm">
+              This session has ended.
+            </div>
+          )}
         </div>
       </div>
 
@@ -70,6 +85,7 @@ export default function SessionPage() {
 
           <OutputPane
             session={session}
+            repo={repo}
             className="flex-1 min-h-0 shadow"
             data-tour-id="session-output-stream"
           />

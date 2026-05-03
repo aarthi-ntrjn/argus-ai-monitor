@@ -220,20 +220,17 @@ export class SlackNotifier implements NotificationIntegration {
   }
 
   async onSessionUpdated(session: Session): Promise<void> {
-    log.info(`slack.session.updated.received: session=${session.id} status=${session.status}`);
+    log.debug(`slack.session.updated.received: session=${session.id} status=${session.status}`);
     if (!this.active || !this.client) return;
-    if (!this.isEventEnabled(SESSION_UPDATED)) {
-      log.info(`slack.session.updated.skipped: event not enabled`);
-      return;
-    }
+    if (!this.isEventEnabled(SESSION_UPDATED)) return;
 
     const changes = this.diffTracker.update(session);
     if (changes === null) {
-      log.info(`slack.session.updated.skipped: no baseline, recording current state for session=${session.id}`);
+      log.debug(`slack.session.updated.skipped: no baseline, recording current state for session=${session.id}`);
       return;
     }
     if (changes.length === 0) {
-      log.info(`slack.session.updated.skipped: no meaningful changes for session=${session.id}`);
+      log.debug(`slack.session.updated.skipped: no meaningful changes for session=${session.id}`);
       return;
     }
 
@@ -270,10 +267,7 @@ export class SlackNotifier implements NotificationIntegration {
 
   async onSessionOutput(sessionId: string, outputs: SessionOutput[]): Promise<void> {
     if (!this.active || !this.client) return;
-    if (!this.isEventEnabled(SESSION_AI_RESPONSE)) {
-      log.info(`slack.session.output.skipped: event not enabled for session=${sessionId}`);
-      return;
-    }
+    if (!this.isEventEnabled(SESSION_AI_RESPONSE)) return;
 
     const relevant = outputs.filter((o) => o.type === 'message' && o.content.trim() && !o.isMeta &&
       (o.role === 'assistant' || o.role === 'user'));
@@ -291,7 +285,7 @@ export class SlackNotifier implements NotificationIntegration {
           text,
           thread_ts: threadTs,
         });
-        log.info(`slack.session.output.posted: session=${sessionId} chars=${text.length}`);
+        log.debug(`slack.session.output.posted: session=${sessionId} chars=${text.length}`);
       } catch (err) {
         log.error(`slack.session.output.failed: session=${sessionId}`, err);
       }

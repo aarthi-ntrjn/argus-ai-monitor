@@ -117,6 +117,19 @@ export default function DashboardPage() {
     queryFn: () => getSessions(),
   });
 
+  // When the selected session ends, auto-switch to the first still-active session
+  // or close the output pane if none is available.
+  useEffect(() => {
+    if (!selectedSessionId) return;
+    const selected = sessions.find(s => s.id === selectedSessionId);
+    if (!selected || ENDED_STATUSES.has(selected.status)) {
+      const next = sessions.find(s => ACTIVE_STATUSES.has(s.status));
+      selectSession(next?.id ?? null);
+    }
+  // selectSession is stable (defined once); sessions and selectedSessionId are the reactive deps.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessions, selectedSessionId]);
+
   const dashboardWidthClassName = isDashboardExpanded
     ? EXPANDED_DASHBOARD_WIDTH_CLASS
     : MANAGED_DASHBOARD_WIDTH_CLASS;
@@ -373,10 +386,12 @@ export default function DashboardPage() {
                 <div className={`${selectedSessionId ? (isDashboardExpanded ? 'flex-[3]' : 'flex-1') : 'flex-[7]'} flex flex-col gap-4 min-h-0 min-w-0`}>
                   {selectedSessionId && (() => {
                     const selectedSession = sessions.find(s => s.id === selectedSessionId);
+                    const selectedRepo = selectedSession ? repos.find(r => r.id === selectedSession.repositoryId) : undefined;
                     return selectedSession ? (
                       <div className={settings.hideTodoPanel ? 'flex-1 min-h-0' : 'flex-[3] min-h-0'}>
                         <OutputPane
                           session={selectedSession}
+                          repo={selectedRepo}
                           onClose={() => selectSession(null)}
                         />
                       </div>

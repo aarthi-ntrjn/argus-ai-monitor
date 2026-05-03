@@ -1,19 +1,20 @@
 import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getSessionOutput } from '../../services/api';
-import type { Session } from '../../types';
+import type { Session, Repository } from '../../types';
 import { useSettings } from '../../hooks/useSettings';
 import SessionDetail from '../SessionDetail/SessionDetail';
 import { Button } from '../Button';
 
 interface Props {
   session: Session;
+  repo?: Repository;
   onClose?: () => void;
   className?: string;
   'data-tour-id'?: string;
 }
 
-export default function OutputPane({ session, onClose, className, 'data-tour-id': dataTourId }: Props) {
+export default function OutputPane({ session, repo, onClose, className, 'data-tour-id': dataTourId }: Props) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const pinnedToBottom = useRef(true);
   const [settings, updateSetting] = useSettings();
@@ -55,7 +56,19 @@ export default function OutputPane({ session, onClose, className, 'data-tour-id'
       className={`flex flex-col bg-white border border-gray-200 rounded-lg overflow-hidden ${className ?? 'h-full'}`}
     >
       <div className="flex items-center justify-between px-3 py-2 bg-white border-b border-gray-200">
-        <span className="text-xs font-medium text-gray-600 truncate">Session <span className="font-mono text-[10px] text-gray-500">{session.id}</span></span>
+        <div className="flex flex-col min-w-0">
+          {repo ? (
+            <>
+              <span className="text-xs font-semibold text-gray-700 truncate">
+                {repo.name}
+                {repo.branch && <span className="ml-1 font-normal text-gray-500">({repo.branch})</span>}
+              </span>
+              <span className="text-[10px] text-gray-400 truncate">{repo.path.split(/[\\/]/).pop()}</span>
+            </>
+          ) : (
+            <span className="text-xs font-medium text-gray-600 truncate">Session <span className="font-mono text-[10px] text-gray-500">{session.id}</span></span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"

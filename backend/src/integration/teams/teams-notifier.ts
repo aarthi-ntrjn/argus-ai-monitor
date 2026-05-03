@@ -172,10 +172,7 @@ export class TeamsNotifier implements NotificationIntegration {
   async onSessionOutput(sessionId: string, outputs: SessionOutput[]): Promise<void> {
     if (!this.active) return;
     const config = loadTeamsConfig();
-    if (!config.enabled) {
-      this.log.info(`teams.session.output.skipped: not enabled session=${sessionId}`);
-      return;
-    }
+    if (!config.enabled) return;
     const relevant = outputs.filter(o => o.type === 'message' && o.content.trim() && !o.isMeta &&
       (o.role === 'assistant' || o.role === 'user'));
     if (relevant.length === 0) return;
@@ -190,7 +187,7 @@ export class TeamsNotifier implements NotificationIntegration {
       try {
         const threadConvId = `${channelId};messageid=${thread.teamsThreadId}`;
         await this.teamsApp.api.conversations.activities(threadConvId).create(new MessageActivity(text));
-        this.log.info(`teams.session.output.posted: session=${sessionId} chars=${text.length}`);
+        this.log.debug(`teams.session.output.posted: session=${sessionId} chars=${text.length}`);
       } catch (err) {
         this.log.error(`teams.session.output.failed: session=${sessionId}`, err);
       }
