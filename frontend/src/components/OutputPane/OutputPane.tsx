@@ -1,10 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getSessionOutput } from '../../services/api';
+import { getSessionOutput, postTelemetryEvent } from '../../services/api';
 import type { Session, Repository } from '../../types';
 import { useSettings } from '../../hooks/useSettings';
 import SessionDetail from '../SessionDetail/SessionDetail';
 import { Button } from '../Button';
+import { buildGitHubCompareUrl } from '../../utils/repoUtils';
+import { GitCompare } from 'lucide-react';
 
 interface Props {
   session: Session;
@@ -59,15 +61,28 @@ export default function OutputPane({ session, repo, onClose, className, 'data-to
         <div className="flex flex-col min-w-0">
           {repo ? (
             <>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-semibold text-gray-900 truncate">{repo.name}</span>
+              <span className="text-xs font-semibold text-gray-900 truncate">{repo.name}</span>
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                <p className="text-xs text-gray-500 font-mono truncate" title={repo.path}>{repo.path}</p>
                 {repo.branch && (
                   <span className="inline-flex items-center gap-1 text-xs font-mono text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
                     ⎇ {repo.branch}
                   </span>
                 )}
+                {buildGitHubCompareUrl(repo.remoteUrl, repo.branch) && (
+                  <a
+                    href={buildGitHubCompareUrl(repo.remoteUrl, repo.branch)!}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="View diff on GitHub"
+                    aria-label="View diff on GitHub"
+                    className="inline-flex items-center text-gray-400 hover:text-gray-700"
+                    onClick={e => { e.stopPropagation(); postTelemetryEvent('repo_diff_opened'); }}
+                  >
+                    <GitCompare size={14} aria-hidden="true" />
+                  </a>
+                )}
               </div>
-              <p className="text-xs text-gray-500 font-mono truncate" title={repo.path}>{repo.path}</p>
             </>
           ) : null}
           <span className="font-mono text-[10px] text-gray-400 truncate">{session.id}</span>
