@@ -34,18 +34,35 @@ class TestableWatcher extends ClaudeJsonlWatcher {
   }
 }
 
-function makeMessage(content: string): SessionOutput {
+function makeOutput(overrides: Partial<SessionOutput>): SessionOutput {
   return {
     id: 'test-id',
     sessionId: 'test-session',
     timestamp: new Date().toISOString(),
     type: 'message',
     role: 'user',
-    content,
+    content: '',
     toolName: null,
     toolCallId: null,
     sequenceNumber: 1,
+    ...overrides,
   };
+}
+
+function assertResolved(sessionId: string): void {
+  const resolved = mockBroadcast.mock.calls.find(
+    (call) => (call[0] as { type: string }).type === 'session.pending_choice.resolved',
+  );
+  expect(resolved).toBeDefined();
+  expect((resolved![0] as { data: Record<string, unknown> }).data.sessionId).toBe(sessionId);
+  expect(mockPendingChoiceEmit).toHaveBeenCalledWith('session.pending_choice.resolved', sessionId);
+}
+
+function assertNotResolved(): void {
+  const resolved = mockBroadcast.mock.calls.find(
+    (call) => (call[0] as { type: string }).type === 'session.pending_choice.resolved',
+  );
+  expect(resolved).toBeUndefined();
 }
 
 beforeEach(() => {
@@ -53,41 +70,67 @@ beforeEach(() => {
   mockPendingChoiceEmit.mockClear();
 });
 
-describe('ClaudeJsonlWatcher — ask_user interrupt detection', () => {
-  it('broadcasts session.pending_choice.resolved when interrupt sentinel appears', () => {
+describe('ClaudeJsonlWatcher — pending choice resolution', () => {
+  it('resolves when tool_result arrives for a tracked AskUserQuestion call (normal answer)', () => {
     const watcher = new TestableWatcher();
     watcher.callOnNewOutputs('sess-1', [
-      makeMessage('[Request interrupted by user for tool use]'),
+      makeOutput({ type: 'tool_use', toolName: 'AskUserQuestion', toolCallId: 'call-123', role: null }),
     ]);
+    mockBroadcast.mockClear();
+    mockPendingChoiceEmit.mockClear();
 
-    const resolved = mockBroadcast.mock.calls.find(
-      (call) => (call[0] as { type: string }).type === 'session.pending_choice.resolved',
-    );
-    expect(resolved).toBeDefined();
-    expect((resolved![0] as { data: Record<string, unknown> }).data.sessionId).toBe('sess-1');
-    expect(mockPendingChoiceEmit).toHaveBeenCalledWith('session.pending_choice.resolved', 'sess-1');
+    watcher.callOnNewOutputs('sess-1', [
+      makeOutput({ type: 'tool_result', toolCallId: 'call-123', role: null }),
+    ]);
+    assertResolved('sess-1');
   });
 
-  it('does NOT broadcast session.pending_choice.resolved for ordinary user messages', () => {
+  it('resolves when "clarify" rejection tool_result arrives (no interrupt sentinel)', () => {
     const watcher = new TestableWatcher();
-    watcher.callOnNewOutputs('sess-2', [makeMessage('hi')]);
+    watcher.callOnNewOutputs('sess-2', [
+      makeOutput({ type: 'tool_use', toolName: 'AskUserQuestion', toolCallId: 'call-clarify', role: null }),
+    ]);
+    mockBroadcast.mockClear();
+    mockPendingChoiceEmit.mockClear();
 
-    const resolved = mockBroadcast.mock.calls.find(
-      (call) => (call[0] as { type: string }).type === 'session.pending_choice.resolved',
-    );
-    expect(resolved).toBeUndefined();
+    watcher.callOnNewOutputs('sess-2', [
+      makeOutput({ type: 'tool_result', toolCallId: 'call-clarify', content: "The user wants to clarify these questions.", role: null }),
+    ]);
+    assertResolved('sess-2');
   });
 
-  it('does NOT fire for assistant messages with the same text', () => {
+  it('resolves via interrupt sentinel even without a prior tool_use in the same session', () => {
     const watcher = new TestableWatcher();
-    watcher.callOnNewOutputs('sess-3', [{
-      ...makeMessage('[Request interrupted by user for tool use]'),
-      role: 'assistant',
-    }]);
+    watcher.callOnNewOutputs('sess-3', [
+      makeOutput({ type: 'message', role: 'user', content: '[Request interrupted by user for tool use]' }),
+    ]);
+    assertResolved('sess-3');
+  });
 
-    const resolved = mockBroadcast.mock.calls.find(
-      (call) => (call[0] as { type: string }).type === 'session.pending_choice.resolved',
-    );
-    expect(resolved).toBeUndefined();
+  it('does NOT resolve for ordinary user messages', () => {
+    const watcher = new TestableWatcher();
+    watcher.callOnNewOutputs('sess-4', [makeOutput({ content: 'hi' })]);
+    assertNotResolved();
+  });
+
+  it('does NOT resolve for tool_result with a non-matching call ID', () => {
+    const watcher = new TestableWatcher();
+    watcher.callOnNewOutputs('sess-5', [
+      makeOutput({ type: 'tool_use', toolName: 'AskUserQuestion', toolCallId: 'call-abc', role: null }),
+    ]);
+    mockBroadcast.mockClear();
+
+    watcher.callOnNewOutputs('sess-5', [
+      makeOutput({ type: 'tool_result', toolCallId: 'call-different', role: null }),
+    ]);
+    assertNotResolved();
+  });
+
+  it('does NOT fire for assistant messages with the interrupt sentinel text', () => {
+    const watcher = new TestableWatcher();
+    watcher.callOnNewOutputs('sess-6', [
+      makeOutput({ type: 'message', role: 'assistant', content: '[Request interrupted by user for tool use]' }),
+    ]);
+    assertNotResolved();
   });
 });
