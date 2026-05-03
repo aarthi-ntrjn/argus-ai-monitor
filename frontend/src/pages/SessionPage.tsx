@@ -5,6 +5,7 @@ import { getSession, getRepositories } from '../services/api';
 import OutputPane from '../components/OutputPane/OutputPane';
 import SessionPromptBar from '../components/SessionPromptBar/SessionPromptBar';
 import SessionMetaRow from '../components/SessionMetaRow/SessionMetaRow';
+import RepoContextBar from '../components/RepoContextBar/RepoContextBar';
 import { useKillSession } from '../hooks/useKillSession';
 import { KillSessionDialog } from '../components/KillSessionDialog/KillSessionDialog';
 
@@ -76,6 +77,7 @@ export default function SessionPage() {
               This session has ended.
             </div>
           )}
+          {repo && <RepoContextBar repo={repo} />}
         </div>
       </div>
 
@@ -85,7 +87,6 @@ export default function SessionPage() {
 
           <OutputPane
             session={session}
-            repo={repo}
             className="flex-1 min-h-0 shadow"
             data-tour-id="session-output-stream"
           />
