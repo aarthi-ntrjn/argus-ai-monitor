@@ -120,7 +120,7 @@ export default function DashboardPage() {
   // When the selected session ends, auto-switch to the first still-active session
   // or close the output pane if none is available.
   useEffect(() => {
-    if (!selectedSessionId) return;
+    if (!selectedSessionId || sessions.length === 0) return;
     const selected = sessions.find(s => s.id === selectedSessionId);
     if (!selected || ENDED_STATUSES.has(selected.status)) {
       const next = sessions.find(s => ACTIVE_STATUSES.has(s.status));
